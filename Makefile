@@ -2,5 +2,7 @@ ALL_CFLAGS=$(CFLAGS) -Wall -Wextra -Wshadow -Wconversion -Wpedantic -pedantic -s
 	-Wno-unused-function -Wno-fixed-enum-extension -Wimplicit-fallthrough
 LIBS=-lSDL2 -lGL -ldl
 DEBUG_CFLAGS=$(ALL_CFLAGS) $(LIBS) -DDEBUG -O0 -g
-ted: *.[ch]
-	$(CC) main.c -o $@ $(DEBUG_CFLAGS)
+ted: *.[ch] text.o
+	$(CC) main.c text.o -o $@ $(DEBUG_CFLAGS)
+%.o: %.c
+	$(CC) $< -c -o $@ $(DEBUG_CFLAGS)

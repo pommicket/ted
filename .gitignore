@@ -3,3 +3,9 @@ ted
 *.swp
 tags
 TAGS
+*.o
+*.obj
+*.exe
+*.dll
+*.pdb
+*.ilk
