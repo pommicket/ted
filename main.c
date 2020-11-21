@@ -3,6 +3,7 @@ no_warn_start
 #include <SDL2/SDL.h>
 no_warn_end
 #include <GL/gl.h>
+#include "text.h"
 
 static void die(char const *fmt, ...) {
 	char buf[256] = {0};
@@ -38,6 +39,10 @@ int main(void) {
 
 	SDL_GL_SetSwapInterval(1); // vsync
 
+	Font *font = text_font_load("assets/font.ttf", 12);
+	if (!font) {
+		die("Couldn't load font: %s", text_get_err());
+	}
 	
 	bool quit = false;
 	while (!quit) {

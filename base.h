@@ -1,6 +1,10 @@
 #ifndef BASE_H_
 #define BASE_H_
 
+#ifndef DEBUG
+#define NDEBUG 1
+#endif
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -32,6 +36,24 @@ typedef unsigned long ulong;
 #else
 #define no_warn_start
 #define no_warn_end
+#endif
+
+#if DEBUG
+#if __unix__
+#define debug_println printf
+#else // __unix__
+static void debug_println(char const *fmt, ...) {
+	char buf[256];
+	va_list args;
+	va_start(args, fmt);
+	vsprintf_s(buf, sizeof buf, fmt, args);
+	va_end(args);
+	OutputDebugStringA(buf);
+	OutputDebugStringA("\n");
+}
+#endif // __unix__
+#else // DEBUG
+#define debug_println(...)
 #endif
 
 #endif
