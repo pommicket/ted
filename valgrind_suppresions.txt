@@ -1,0 +1,70 @@
+{
+   Ignore dlopen .
+   Memcheck:Leak
+   ...
+   fun:_dl_open
+   ...
+}
+{
+   Ignore dlopen .
+   Memcheck:Leak
+   ...
+   fun:_dlerror_run
+   ...
+}
+{
+   Ignore dlopen .
+   Memcheck:Leak
+   ...
+   fun:_dl_init
+   ...
+}
+{
+   Ignore.
+   Memcheck:Leak
+   ...
+   obj:*/radeonsi_dri.so
+   ...
+}
+{
+   Ignore.
+   Memcheck:Leak
+   ...
+   fun:_XlcCreateLC
+   ...
+}
+{
+   Ignore.
+   Memcheck:Leak
+   ...
+   obj:*LLVM*
+   ...
+}
+{
+   Ignore.
+   Memcheck:Leak
+   ...
+   fun:dbus_connection_send_with_reply_and_block
+   ...
+}
+{
+   Ignore.
+   Memcheck:Leak
+   ...
+   fun:__glDispatchMakeCurrent
+   ...
+}
+{
+   Ignore.
+   Memcheck:Leak
+   ...
+   obj:*libdbus-1.so*
+   ...
+}
+{
+   Ignore.
+   Memcheck:Leak
+   ...
+   fun:XSetLocaleModifiers
+   ...
+}

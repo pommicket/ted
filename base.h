@@ -40,7 +40,7 @@ typedef unsigned long ulong;
 
 #if DEBUG
 #if __unix__
-#define debug_println printf
+#define debug_println(...) printf(__VA_ARGS__), printf("\n")
 #else // __unix__
 static void debug_println(char const *fmt, ...) {
 	char buf[256];
