@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stddef.h>
+#include <assert.h>
 
 typedef uint8_t  u8;
 typedef uint16_t u16;
@@ -22,6 +23,15 @@ typedef int64_t i64;
 
 typedef unsigned int  uint;
 typedef unsigned long ulong;
+
+#ifdef __GNUC__
+#define WarnUnusedResult __attribute__((warn_unused_result))
+#else
+#define WarnUnusedResult
+#endif
+
+#define Status bool WarnUnusedResult // false = error, true = success
+
 
 #ifdef __GNUC__
 #define no_warn_start _Pragma("GCC diagnostic push") \

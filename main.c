@@ -5,6 +5,7 @@ no_warn_end
 #include <GL/gl.h>
 #include <locale.h>
 #include "text.h"
+#include "buffer.c"
 
 static void die(char const *fmt, ...) {
 	char buf[256] = {0};
@@ -47,6 +48,18 @@ int main(void) {
 	}
 	
 	bool quit = false;
+	TextBuffer text_buffer;
+
+	{
+		FILE *fp = fopen("main.c", "r");
+		assert(fp);
+		bool success = text_buffer_load_file(&text_buffer, fp);
+		fclose(fp);
+		if (!success)
+			die("Error loading file.");
+	}
+
+
 	while (!quit) {
 		SDL_Event event;
 		while (SDL_PollEvent(&event)) {
@@ -77,12 +90,15 @@ int main(void) {
 			break;
 		}
 
+		//text_buffer_print_debug(&text_buffer);
+
 		SDL_GL_SwapWindow(window);
 	}
 
 	SDL_GL_DeleteContext(glctx);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
+	text_buffer_free(&text_buffer);
 	text_font_free(font);
 
 	return 0;
