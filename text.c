@@ -5,7 +5,6 @@
 no_warn_start
 #include "lib/stb_truetype.h"
 no_warn_end
-#include <stdarg.h>
 #include <stdlib.h>
 #include <GL/gl.h>
 
@@ -167,7 +166,7 @@ void text_chars_end(Font *font) {
 
 static void text_render_char_internal(Font *font, char32_t c, TextRenderState *state) {
 	if (c >= 0x30000 && c < 0xE0000){
-		// these Unicode code points are currently unassigned. replace them with ☐.
+		// these Unicode code points are currently unassigned. replace them with a Unicode box.
 		// (specifically, we don't want to use extra memory for pages which
 		// won't even have any valid characters in them)
 		c = 0x2610;

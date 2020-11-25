@@ -9,3 +9,4 @@ TAGS
 *.dll
 *.pdb
 *.ilk
+SDL2

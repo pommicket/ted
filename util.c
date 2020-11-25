@@ -4,8 +4,16 @@
 #include "base.h"
 
 static uint util_popcount(u64 x) {
-	// @TODO: portability
+#ifdef __GNUC__
 	return (uint)__builtin_popcountll(x);
+#else
+	uint count = 0;
+	while (x) {
+		x &= x-1;
+		++count;
+	}
+	return count;
+#endif
 }
 
 static bool util_is_power_of_2(u64 x) {

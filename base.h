@@ -5,10 +5,15 @@
 #define NDEBUG 1
 #endif
 
+#if _WIN32
+#include <windows.h>
+#endif
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stddef.h>
+#include <stdarg.h>
 #include <assert.h>
 
 typedef uint8_t  u8;

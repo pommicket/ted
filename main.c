@@ -1,6 +1,10 @@
 #include "base.h"
 no_warn_start
+#if _WIN32
+#include <SDL.h>
+#else
 #include <SDL2/SDL.h>
+#endif
 no_warn_end
 #include <GL/gl.h>
 #include <locale.h>
@@ -24,7 +28,12 @@ static void die(char const *fmt, ...) {
 }
 
 
+#if _WIN32
+INT WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
+    PSTR lpCmdLine, INT nCmdShow) {
+#else
 int main(void) {
+#endif
 	setlocale(LC_ALL, ""); // allow unicode
 	if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER) < 0)
 		die("%s", SDL_GetError());
@@ -84,7 +93,7 @@ int main(void) {
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		glColor3f(1,1,1);
-		text_render(font, u8"hőello☐øλㄔ☺☹", 50, 50);
+		text_render(font, "hellσ! öθ☺", 50, 50);
 		if (text_has_err()) {
 			printf("Text error: %s\n", text_get_err());
 			break;
