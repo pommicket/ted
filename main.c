@@ -43,6 +43,12 @@ int main(void) {
 	if (!window)
 		die("%s", SDL_GetError());
 
+	{ // set icon
+		SDL_Surface *icon = SDL_LoadBMP("assets/icon.bmp");
+		SDL_SetWindowIcon(window, icon);
+		SDL_FreeSurface(icon);
+	}
+
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
 	SDL_GLContext *glctx = SDL_GL_CreateContext(window);
@@ -95,7 +101,6 @@ int main(void) {
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		glColor3f(1,1,1);
-		//text_render(font, "hellσ! öθ☺", 50, 50);
 		text_buffer_render(&text_buffer, font, 50, window_heightf-50, window_widthf-100, window_heightf-100);
 		if (text_has_err()) {
 			printf("Text error: %s\n", text_get_err());

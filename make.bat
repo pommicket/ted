@@ -5,7 +5,8 @@ if _%VCVARS% == _ (
 )
 
 SET CFLAGS=/nologo /W3 /D_CRT_SECURE_NO_WARNINGS /I SDL2/include SDL2/lib/x64/SDL2main.lib SDL2/lib/x64/SDL2.lib opengl32.lib
-SET SOURCES=main.c text.c
+rc /nologo ted.rc
+SET SOURCES=main.c text.c ted.res
 if _%1 == _ (
 	cl %SOURCES% /DDEBUG /DEBUG /Zi %CFLAGS% /Fe:ted
 )

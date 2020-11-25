@@ -125,8 +125,8 @@ void text_buffer_render(TextBuffer *buffer, Font *font, float box_x, float box_y
 	text_chars_begin(font);
 	TextRenderState text_state = {
 		.x = box_x, .y = box_y,
-		.edge_right = box_x+box_w,
-		.edge_bottom = box_y+box_h
+		.min_x = box_x, .min_y = box_y,
+		.max_x = box_x+box_w, .max_y = box_y+box_h
 	};
 
 	for (uint block_idx = 0; block_idx < nblocks; ++block_idx) {

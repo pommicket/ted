@@ -12,8 +12,8 @@ typedef struct Font Font;
 
 typedef struct {
 	float x, y;
-	// points at which the text should be cut off in the x and y directions
-	float edge_right, edge_bottom;
+	// points at which the text should be cut off
+	float min_x, max_x, min_y, max_y;
 } TextRenderState;
 
 extern bool text_has_err(void);
