@@ -178,16 +178,40 @@ void text_render_char(Font *font, char32_t c, TextRenderState *state) {
 	stbtt_bakedchar *char_data = font->char_pages[page];
 	if (char_data) { // if page was successfully loaded
 		stbtt_aligned_quad q = {0};
-		// because stb_truetype uses down is positive, we need to negate the y
-		// coordinate, pass it into the function, then negate it back.
-		state->y = -state->y;
 		stbtt_GetBakedQuad(char_data, font->tex_widths[page], font->tex_heights[page],
 			(int)index, &state->x, &state->y, &q, 1);
-		state->y = -state->y;
-		glTexCoord2f(q.s0,q.t1); glVertex2f(q.x0,-q.y1);
-		glTexCoord2f(q.s1,q.t1); glVertex2f(q.x1,-q.y1);
-		glTexCoord2f(q.s1,q.t0); glVertex2f(q.x1,-q.y0);
-		glTexCoord2f(q.s0,q.t0); glVertex2f(q.x0,-q.y0);
+		float s0 = q.s0, t0 = q.t0;
+		float s1 = q.s1, t1 = q.t1;
+		float x0 = q.x0, y0 = q.y0;
+		float x1 = q.x1, y1 = q.y1;
+		float const min_x = state->min_x, max_x = state->max_x;
+		float const min_y = state->min_y, max_y = state->max_y;
+		if (x0 > max_x || y0 > max_y || x1 < min_x || y1 < min_y)
+			return;
+		if (x0 < min_x) {
+			// left side of character is clipped
+			s0 = (min_x-x0) / (x1-x0) * (s1-s0) + s0;
+			x0 = min_x;
+		}
+		if (x1 >= max_x) {
+			// right side of character is clipped
+			s1 = (max_x-x0) / (x1-x0) * (s1-s0) + s0;
+			x1 = max_x;
+		}
+		if (y0 < min_y) {
+			// top side of character is clipped
+			t0 = (min_y-y0) / (y1-y0) * (t1-t0) + t0;
+			y0 = min_y;
+		}
+		if (y1 >= max_y) {
+			// bottom side of character is clipped
+			t1 = (max_y-y0) / (y1-y0) * (t1-t0) + t0;
+			y1 = max_y;
+		}
+		glTexCoord2f(s0,t0); glVertex2f(x0,y0);
+		glTexCoord2f(s0,t1); glVertex2f(x0,y1);
+		glTexCoord2f(s1,t1); glVertex2f(x1,y1);
+		glTexCoord2f(s1,t0); glVertex2f(x1,y0);
 	}
 }
 

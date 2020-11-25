@@ -1,3 +1,4 @@
+
 #include "base.h"
 no_warn_start
 #if _WIN32
@@ -96,15 +97,20 @@ int main(void) {
 		glViewport(0, 0, window_width, window_height);
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
-		glOrtho(0, window_width, 0, window_height, -1, +1);
+		// pixel coordinates; down is positive y
+		glOrtho(0, window_width, window_height, 0, -1, +1);
 		glClearColor(0, 0, 0, 1);
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		glColor3f(1,1,1);
-		text_buffer_render(&text_buffer, font, 50, window_heightf-50, window_widthf-100, window_heightf-100);
-		if (text_has_err()) {
-			printf("Text error: %s\n", text_get_err());
-			break;
+
+		{
+			float x1 = 50, y1 = 50, x2 = window_widthf-50, y2 = window_heightf-50;
+			text_buffer_render(&text_buffer, font, x1, y1, x2, y2);
+			if (text_has_err()) {
+				printf("Text error: %s\n", text_get_err());
+				break;
+			}
 		}
 
 		//text_buffer_print_debug(&text_buffer);

@@ -118,15 +118,22 @@ void text_buffer_free(TextBuffer *buffer) {
 }
 
 // Render the text buffer in the given rectangle
-void text_buffer_render(TextBuffer *buffer, Font *font, float box_x, float box_y, float box_w, float box_h) {
+void text_buffer_render(TextBuffer *buffer, Font *font, float x1, float y1, float x2, float y2) {
 	mbstate_t mbstate = {0};
 	uint nblocks = buffer->nblocks;
 	TextBlock *blocks = buffer->blocks;
+	glBegin(GL_LINE_LOOP);
+	glVertex2f(x1,y1);
+	glVertex2f(x1,y2);
+	glVertex2f(x2,y2);
+	glVertex2f(x2,y1);
+	glEnd();
+
 	text_chars_begin(font);
 	TextRenderState text_state = {
-		.x = box_x, .y = box_y,
-		.min_x = box_x, .min_y = box_y,
-		.max_x = box_x+box_w, .max_y = box_y+box_h
+		.x = x1, .y = y1 + text_font_char_height(font),
+		.min_x = x1, .min_y = y1,
+		.max_x = x2, .max_y = y2
 	};
 
 	for (uint block_idx = 0; block_idx < nblocks; ++block_idx) {
@@ -154,8 +161,8 @@ void text_buffer_render(TextBuffer *buffer, Font *font, float box_x, float box_y
 			}
 			switch (c) {
 			case L'\n':
-				text_state.x = box_x;
-				text_state.y -= text_font_char_height(font);
+				text_state.x = x1;
+				text_state.y += text_font_char_height(font);
 				break;
 			case L'\r': break; // for CRLF line endings
 			case L'\t':
