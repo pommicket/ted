@@ -14,6 +14,8 @@
 #include <stdio.h>
 #include <stddef.h>
 #include <stdarg.h>
+#include <float.h>
+#include <limits.h>
 #include <assert.h>
 
 typedef uint8_t  u8;

@@ -217,7 +217,7 @@ void text_render_char(Font *font, char32_t c, TextRenderState *state) {
 
 static void text_render_internal(Font *font, char const *text, float *x, float *y) {
 	mbstate_t mbstate = {0};
-	TextRenderState render_state = {*x, *y};
+	TextRenderState render_state = {.x = *x, .y = *y, .min_x = -FLT_MAX, .max_x = FLT_MAX, .min_y = -FLT_MAX, .max_y = FLT_MAX};
 	text_chars_begin(font);
 	char32_t c = 0;
 	char const *end = text + strlen(text);
