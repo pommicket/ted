@@ -3,7 +3,9 @@
 // blocks of a few thousand bytes. Block boundaries are not necessarily
 // on character boundaries, so one block might have part of a UTF-8 character
 // with the next block having the rest.
+#include "unicode.h"
 #include "util.c"
+#include "text.h"
 
 #define TEXT_BLOCK_MAX_SIZE 400
 // Once two adjacent blocks are at most this big, combine them into
@@ -113,4 +115,58 @@ void text_buffer_free(TextBuffer *buffer) {
 		free(blocks[i].contents);
 	}
 	free(blocks);
+}
+
+// Render the text buffer in the given rectangle
+void text_buffer_render(TextBuffer *buffer, Font *font, float box_x, float box_y, float box_w, float box_h) {
+	mbstate_t mbstate = {0};
+	uint nblocks = buffer->nblocks;
+	TextBlock *blocks = buffer->blocks;
+	text_chars_begin(font);
+	TextRenderState text_state = {
+		.x = box_x, .y = box_y,
+		.edge_right = box_x+box_w,
+		.edge_bottom = box_y+box_h
+	};
+
+	for (uint block_idx = 0; block_idx < nblocks; ++block_idx) {
+		TextBlock *block = &blocks[block_idx];
+		char *p = block->contents, *end = p + block->len;
+		while (p != end) {
+			char32_t c;
+			size_t n = mbrtoc32(&c, p, (size_t)(end - p), &mbstate);
+			if (n == 0) {
+				// null character
+				c = UNICODE_BOX_CHARACTER;
+				++p;
+			} else if (n == (size_t)(-3)) {
+				// no bytes consumed, but a character was produced
+			} else if (n == (size_t)(-2)) {
+				// incomplete character at end of block.
+				c = 0;
+				p = end;
+			} else if (n == (size_t)(-1)) {
+				// invalid UTF-8
+				c = UNICODE_BOX_CHARACTER;
+				++p;
+			} else {
+				p += n;
+			}
+			switch (c) {
+			case L'\n':
+				text_state.x = box_x;
+				text_state.y -= text_font_char_height(font);
+				break;
+			case L'\r': break; // for CRLF line endings
+			case L'\t':
+				for (int i = 0; i < 4; ++i)
+					text_render_char(font, L' ', &text_state);
+				break;
+			default:
+				text_render_char(font, c, &text_state);
+				break;
+			}
+		}
+	}
+	text_chars_end(font);
 }

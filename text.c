@@ -1,5 +1,6 @@
 #include "base.h"
 #include "text.h"
+#include "unicode.h"
 #define STB_TRUETYPE_IMPLEMENTATION
 #define STBTT_STATIC
 no_warn_start
@@ -8,7 +9,6 @@ no_warn_end
 #include <stdlib.h>
 #include <GL/gl.h>
 
-#define UNICODE_CODE_POINTS 0x110000 // number of Unicode code points
 // We split up code points into a bunch of pages, so we don't have to load all of the font at
 // once into one texture.
 #define CHAR_PAGE_SIZE 2048
@@ -136,9 +136,9 @@ Font *text_font_load(char const *ttf_filename, float font_size) {
 	return font;
 }
 
-typedef struct {
-	float x, y;
-} TextRenderState;
+float text_font_char_height(Font *font) {
+	return font->char_height;
+}
 
 static void text_render_with_page(Font *font, int page) {
 	if (font->curr_page != page) {
@@ -164,14 +164,14 @@ void text_chars_end(Font *font) {
 	font->curr_page = -1;
 }
 
-static void text_render_char_internal(Font *font, char32_t c, TextRenderState *state) {
+void text_render_char(Font *font, char32_t c, TextRenderState *state) {
 	if (c >= 0x30000 && c < 0xE0000){
 		// these Unicode code points are currently unassigned. replace them with a Unicode box.
 		// (specifically, we don't want to use extra memory for pages which
 		// won't even have any valid characters in them)
-		c = 0x2610;
+		c = UNICODE_BOX_CHARACTER;
 	}
-	if (c >= UNICODE_CODE_POINTS) c = 0x2610; // code points this big should never appear in valid Unicode
+	if (c >= UNICODE_CODE_POINTS) c = UNICODE_BOX_CHARACTER; // code points this big should never appear in valid Unicode
 	uint page = c / CHAR_PAGE_SIZE;
 	uint index = c % CHAR_PAGE_SIZE;
 	text_render_with_page(font, (int)page);
@@ -191,13 +191,6 @@ static void text_render_char_internal(Font *font, char32_t c, TextRenderState *s
 	}
 }
 
-void text_render_char(Font *font, char32_t c, float *x, float *y) {
-	TextRenderState state = {*x, *y};
-	text_render_char_internal(font, c, &state);
-	*x = state.x;
-	*y = state.y;
-}
-
 static void text_render_internal(Font *font, char const *text, float *x, float *y) {
 	mbstate_t mbstate = {0};
 	TextRenderState render_state = {*x, *y};
@@ -208,18 +201,18 @@ static void text_render_internal(Font *font, char const *text, float *x, float *
 		size_t ret = mbrtoc32(&c, text, (size_t)(end - text), &mbstate);
 		if (ret == 0) break;
 		if (ret == (size_t)(-2)) { // incomplete multi-byte character
-			text_render_char_internal(font, '?', &render_state);
+			text_render_char(font, '?', &render_state);
 			text = end; // done reading text
 		} else if (ret == (size_t)(-1)) {
 			// invalid UTF-8; skip this byte
-			text_render_char_internal(font, '?', &render_state);
+			text_render_char(font, '?', &render_state);
 			++text;
 		} else {
 			if (ret != (size_t)(-3))
 				text += ret; // character consists of `ret` bytes
 			switch (c) {
 			default:
-				text_render_char_internal(font, (char32_t)c, &render_state);
+				text_render_char(font, (char32_t)c, &render_state);
 				break;
 			}
 		}

@@ -38,7 +38,8 @@ int main(void) {
 	if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER) < 0)
 		die("%s", SDL_GetError());
 
-	SDL_Window *window = SDL_CreateWindow("ted", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 1280, 720, SDL_WINDOW_SHOWN|SDL_WINDOW_OPENGL);
+	SDL_Window *window = SDL_CreateWindow("ted", SDL_WINDOWPOS_UNDEFINED, 
+		SDL_WINDOWPOS_UNDEFINED, 1280, 720, SDL_WINDOW_SHOWN|SDL_WINDOW_OPENGL|SDL_WINDOW_RESIZABLE);
 	if (!window)
 		die("%s", SDL_GetError());
 
@@ -51,7 +52,7 @@ int main(void) {
 
 	SDL_GL_SetSwapInterval(1); // vsync
 
-	Font *font = text_font_load("assets/font.ttf", 24);
+	Font *font = text_font_load("assets/font.ttf", 16);
 	if (!font) {
 		die("Couldn't load font: %s", text_get_err());
 	}
@@ -81,6 +82,7 @@ int main(void) {
 
 		int window_width = 0, window_height = 0;
 		SDL_GetWindowSize(window, &window_width, &window_height);
+		float window_widthf = (float)window_width, window_heightf = (float)window_height;
 
 		// set up GL
 		glEnable(GL_BLEND);
@@ -93,7 +95,8 @@ int main(void) {
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		glColor3f(1,1,1);
-		text_render(font, "hellσ! öθ☺", 50, 50);
+		//text_render(font, "hellσ! öθ☺", 50, 50);
+		text_buffer_render(&text_buffer, font, 50, window_heightf-50, window_widthf-100, window_heightf-100);
 		if (text_has_err()) {
 			printf("Text error: %s\n", text_get_err());
 			break;
