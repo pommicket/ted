@@ -66,6 +66,7 @@ int main(void) {
 	
 	bool quit = false;
 	TextBuffer text_buffer;
+	text_buffer_create(&text_buffer, font);
 
 	{
 		FILE *fp = fopen("main.c", "r");
@@ -84,6 +85,7 @@ int main(void) {
 			
 
 		while (SDL_PollEvent(&event)) {
+			// @TODO: make a function to handle text buffer events
 			switch (event.type) {
 			case SDL_QUIT:
 				quit = true;
@@ -93,6 +95,16 @@ int main(void) {
 				Sint32 dx = event.wheel.x, dy = -event.wheel.y;
 				double scroll_speed = 2.5;
 				text_buffer_scroll(&text_buffer, dx * scroll_speed, dy * scroll_speed);
+			} break;
+			case SDL_KEYDOWN: {
+				switch (event.key.keysym.sym) {
+				case SDLK_PAGEUP:
+					text_buffer_scroll(&text_buffer, 0, -text_buffer_num_rows(&text_buffer));
+					break;
+				case SDLK_PAGEDOWN:
+					text_buffer_scroll(&text_buffer, 0, +text_buffer_num_rows(&text_buffer));
+					break;
+				}
 			} break;
 			}
 		}
@@ -115,13 +127,10 @@ int main(void) {
 				text_buffer_scroll(&text_buffer, 0, -scroll_amount);
 			if (keyboard_state[SDL_SCANCODE_DOWN])
 				text_buffer_scroll(&text_buffer, 0, +scroll_amount);
-			// @TODO: get this to work
-			#if 0
 			if (keyboard_state[SDL_SCANCODE_LEFT])
 				text_buffer_scroll(&text_buffer, -scroll_amount, 0);
 			if (keyboard_state[SDL_SCANCODE_RIGHT])
 				text_buffer_scroll(&text_buffer, +scroll_amount, 0);
-			#endif
 		}
 			
 
@@ -142,7 +151,7 @@ int main(void) {
 
 		{
 			float x1 = 50, y1 = 50, x2 = window_widthf-50, y2 = window_heightf-50;
-			text_buffer_render(&text_buffer, font, x1, y1, x2, y2);
+			text_buffer_render(&text_buffer, x1, y1, x2, y2);
 			if (text_has_err()) {
 				printf("Text error: %s\n", text_get_err());
 				break;

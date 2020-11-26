@@ -24,6 +24,8 @@ typedef struct {
 	u32 nblocks; // number of text blocks
 	double scroll_x, scroll_y; // number of characters scrolled in the x/y direction
 	TextBlock *blocks;
+	Font *font;
+	float x1, y1, x2, y2;
 } TextBuffer;
 
 // Returns a new block added at index `where`,
@@ -61,11 +63,15 @@ static TextBlock *text_buffer_add_block(TextBuffer *buffer, u32 where) {
 	return block;
 }
 
+void text_buffer_create(TextBuffer *buffer, Font *font) {
+	util_zero_memory(buffer, sizeof *buffer);
+	buffer->font = font;
+}
+
 Status text_buffer_load_file(TextBuffer *buffer, FILE *fp) {
 	char block_contents[TEXT_BLOCK_DEFAULT_SIZE];
 	size_t bytes_read;
-
-	util_zero_memory(buffer, sizeof *buffer);
+	// @TODO: @TODO: IMPORTANT! make this work if buffer already has a file
 	
 	// read file one block at a time
 	do {
@@ -118,13 +124,26 @@ void text_buffer_free(TextBuffer *buffer) {
 	free(blocks);
 }
 
+// make sure we don't scroll too far
+static void text_buffer_correct_scroll(TextBuffer *buffer) {
+	if (buffer->scroll_x < 0)
+		buffer->scroll_x = 0;
+	if (buffer->scroll_y < 0)
+		buffer->scroll_y = 0;
+	// @TODO: maximum scroll_x and scroll_y
+}
+
 void text_buffer_scroll(TextBuffer *buffer, double dx, double dy) {
 	buffer->scroll_x += dx;
 	buffer->scroll_y += dy;
+	text_buffer_correct_scroll(buffer);
 }
 
 // Render the text buffer in the given rectangle
-void text_buffer_render(TextBuffer *buffer, Font *font, float x1, float y1, float x2, float y2) {
+// NOTE: also corrects scroll
+void text_buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
+	buffer->x1 = x1; buffer->y1 = y1; buffer->x2 = x2; buffer->y2 = y2;
+	Font *font = buffer->font;
 	mbstate_t mbstate = {0};
 	uint nblocks = buffer->nblocks;
 	TextBlock *blocks = buffer->blocks;
@@ -140,14 +159,17 @@ void text_buffer_render(TextBuffer *buffer, Font *font, float x1, float y1, floa
 
 	glColor3f(1,1,1);
 	text_chars_begin(font);
+
+	// what x coordinate to start rendering the text from
+	float render_start_x = x1 - (float)buffer->scroll_x * char_height;
+
 	TextRenderState text_state = {
-		.x = x1, .y = y1 + text_font_char_height(font),
+		.x = render_start_x, .y = y1 + text_font_char_height(font),
 		.min_x = x1, .min_y = y1,
 		.max_x = x2, .max_y = y2
 	};
 
 	// @TODO: make this better (we should figure out where to start rendering, etc.)
-	text_state.x -= (float)buffer->scroll_x * char_height;
 	text_state.y -= (float)buffer->scroll_y * char_height;
 
 	for (uint block_idx = 0; block_idx < nblocks; ++block_idx) {
@@ -175,7 +197,7 @@ void text_buffer_render(TextBuffer *buffer, Font *font, float x1, float y1, floa
 			}
 			switch (c) {
 			case L'\n':
-				text_state.x = x1;
+				text_state.x = render_start_x;
 				text_state.y += text_font_char_height(font);
 				break;
 			case L'\r': break; // for CRLF line endings
@@ -192,3 +214,12 @@ void text_buffer_render(TextBuffer *buffer, Font *font, float x1, float y1, floa
 	text_chars_end(font);
 }
 
+// returns the number of rows of text that can fit in the buffer, rounded down.
+int text_buffer_num_rows(TextBuffer *buffer) {
+	return (int)((buffer->y2 - buffer->y1) / text_font_char_height(buffer->font));
+}
+
+// returns the number of columns of text that can fit in the buffer, rounded down.
+int text_buffer_num_cols(TextBuffer *buffer) {
+	return (int)((buffer->x2 - buffer->x1) / text_font_char_width(buffer->font));
+}

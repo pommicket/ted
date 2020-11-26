@@ -15,6 +15,7 @@ no_warn_end
 #define CHAR_PAGE_COUNT UNICODE_CODE_POINTS / CHAR_PAGE_SIZE
 
 struct Font {
+	float char_width; // width of the character 'a'. calculated when font is loaded.
 	float char_height;
 	GLuint textures[CHAR_PAGE_COUNT];
 	int tex_widths[CHAR_PAGE_COUNT], tex_heights[CHAR_PAGE_COUNT];
@@ -114,6 +115,13 @@ Font *text_font_load(char const *ttf_filename, float font_size) {
 					font->char_height = font_size;
 					font->ttf_data = file_data;
 					text_load_char_page(font, 0); // load page with Latin text, etc.
+					{ // calculate width of the character 'a'
+						stbtt_aligned_quad q = {0};
+						float x = 0, y = 0;
+						stbtt_GetBakedQuad(font->char_pages[0], font->tex_widths[0], font->tex_heights[0],
+							'a', &x, &y, &q, 1);
+						font->char_width = x;
+					}
 					font->curr_page = -1;
 				} else {
 					text_set_err("Couldn't read font file.");
@@ -138,6 +146,10 @@ Font *text_font_load(char const *ttf_filename, float font_size) {
 
 float text_font_char_height(Font *font) {
 	return font->char_height;
+}
+
+float text_font_char_width(Font *font) {
+	return font->char_width;
 }
 
 static void text_render_with_page(Font *font, int page) {

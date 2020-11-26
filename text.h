@@ -25,6 +25,9 @@ extern void text_clear_err(void);
 extern Font *text_font_load(char const *ttf_filename, float font_size);
 // Height of a character of this font in pixels.
 extern float text_font_char_height(Font *font);
+// Width of the character 'a' of this font in pixels.
+// This is meant to be only used for monospace fonts.
+extern float text_font_char_width(Font *font);
 // Render some UTF-8 text to the screen (simple interface).
 extern void text_render(Font *font, char const *text, float x, float y);
 // Get the dimensions of some text.
