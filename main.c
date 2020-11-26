@@ -1,4 +1,3 @@
-
 #include "base.h"
 no_warn_start
 #if _WIN32
@@ -36,6 +35,7 @@ INT WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 int main(void) {
 #endif
 	setlocale(LC_ALL, ""); // allow unicode
+	SDL_SetHint(SDL_HINT_NO_SIGNAL_HANDLERS, "1"); // if this program is sent a SIGTERM/SIGINT, don't turn it into a quit event 
 	if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER) < 0)
 		die("%s", SDL_GetError());
 
@@ -43,7 +43,7 @@ int main(void) {
 		SDL_WINDOWPOS_UNDEFINED, 1280, 720, SDL_WINDOW_SHOWN|SDL_WINDOW_OPENGL|SDL_WINDOW_RESIZABLE);
 	if (!window)
 		die("%s", SDL_GetError());
-
+		
 	{ // set icon
 		SDL_Surface *icon = SDL_LoadBMP("assets/icon.bmp");
 		SDL_SetWindowIcon(window, icon);
@@ -77,15 +77,53 @@ int main(void) {
 	}
 
 
+	Uint32 time_at_last_frame = SDL_GetTicks();
+
 	while (!quit) {
 		SDL_Event event;
+			
+
 		while (SDL_PollEvent(&event)) {
 			switch (event.type) {
 			case SDL_QUIT:
 				quit = true;
 				break;
+			case SDL_MOUSEWHEEL: {
+				// scroll with mouse wheel
+				Sint32 dx = event.wheel.x, dy = -event.wheel.y;
+				double scroll_speed = 2.5;
+				text_buffer_scroll(&text_buffer, dx * scroll_speed, dy * scroll_speed);
+			} break;
 			}
 		}
+
+		Uint8 const *keyboard_state = SDL_GetKeyboardState(NULL);
+		bool control_key_down = keyboard_state[SDL_SCANCODE_LCTRL] || keyboard_state[SDL_SCANCODE_RCTRL];
+
+		double frame_dt;
+		{
+			Uint32 time_this_frame = SDL_GetTicks();
+			frame_dt = 0.001 * (time_this_frame - time_at_last_frame);
+			time_at_last_frame = time_this_frame;
+		}
+
+		if (control_key_down) {
+			// control + arrow keys to scroll
+			double scroll_speed = 20.0;
+			double scroll_amount = scroll_speed * frame_dt;
+			if (keyboard_state[SDL_SCANCODE_UP])
+				text_buffer_scroll(&text_buffer, 0, -scroll_amount);
+			if (keyboard_state[SDL_SCANCODE_DOWN])
+				text_buffer_scroll(&text_buffer, 0, +scroll_amount);
+			// @TODO: get this to work
+			#if 0
+			if (keyboard_state[SDL_SCANCODE_LEFT])
+				text_buffer_scroll(&text_buffer, -scroll_amount, 0);
+			if (keyboard_state[SDL_SCANCODE_RIGHT])
+				text_buffer_scroll(&text_buffer, +scroll_amount, 0);
+			#endif
+		}
+			
 
 		int window_width = 0, window_height = 0;
 		SDL_GetWindowSize(window, &window_width, &window_height);
@@ -101,8 +139,6 @@ int main(void) {
 		glOrtho(0, window_width, window_height, 0, -1, +1);
 		glClearColor(0, 0, 0, 1);
 		glClear(GL_COLOR_BUFFER_BIT);
-
-		glColor3f(1,1,1);
 
 		{
 			float x1 = 50, y1 = 50, x2 = window_widthf-50, y2 = window_heightf-50;

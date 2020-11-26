@@ -22,6 +22,7 @@ typedef struct {
 
 typedef struct {
 	u32 nblocks; // number of text blocks
+	double scroll_x, scroll_y; // number of characters scrolled in the x/y direction
 	TextBlock *blocks;
 } TextBuffer;
 
@@ -117,24 +118,37 @@ void text_buffer_free(TextBuffer *buffer) {
 	free(blocks);
 }
 
+void text_buffer_scroll(TextBuffer *buffer, double dx, double dy) {
+	buffer->scroll_x += dx;
+	buffer->scroll_y += dy;
+}
+
 // Render the text buffer in the given rectangle
 void text_buffer_render(TextBuffer *buffer, Font *font, float x1, float y1, float x2, float y2) {
 	mbstate_t mbstate = {0};
 	uint nblocks = buffer->nblocks;
 	TextBlock *blocks = buffer->blocks;
-	glBegin(GL_LINE_LOOP);
+	float char_height = text_font_char_height(font);
+	glColor3f(0.5f,0.5f,0.5f);
+	glBegin(GL_LINE_STRIP);
 	glVertex2f(x1,y1);
 	glVertex2f(x1,y2);
 	glVertex2f(x2,y2);
 	glVertex2f(x2,y1);
+	glVertex2f(x1-1,y1);
 	glEnd();
 
+	glColor3f(1,1,1);
 	text_chars_begin(font);
 	TextRenderState text_state = {
 		.x = x1, .y = y1 + text_font_char_height(font),
 		.min_x = x1, .min_y = y1,
 		.max_x = x2, .max_y = y2
 	};
+
+	// @TODO: make this better (we should figure out where to start rendering, etc.)
+	text_state.x -= (float)buffer->scroll_x * char_height;
+	text_state.y -= (float)buffer->scroll_y * char_height;
 
 	for (uint block_idx = 0; block_idx < nblocks; ++block_idx) {
 		TextBlock *block = &blocks[block_idx];
@@ -177,3 +191,4 @@ void text_buffer_render(TextBuffer *buffer, Font *font, float x1, float y1, floa
 	}
 	text_chars_end(font);
 }
+
