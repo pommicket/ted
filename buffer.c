@@ -163,6 +163,8 @@ void text_buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float 
 	// what x coordinate to start rendering the text from
 	float render_start_x = x1 - (float)buffer->scroll_x * char_height;
 
+	u32 column = 0;
+
 	TextRenderState text_state = {
 		.x = render_start_x, .y = y1 + text_font_char_height(font),
 		.min_x = x1, .min_y = y1,
@@ -199,14 +201,18 @@ void text_buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float 
 			case L'\n':
 				text_state.x = render_start_x;
 				text_state.y += text_font_char_height(font);
+				column = 0;
 				break;
 			case L'\r': break; // for CRLF line endings
 			case L'\t':
-				for (int i = 0; i < 4; ++i)
+				do {
 					text_render_char(font, L' ', &text_state);
+					++column;
+				} while (column % 4);
 				break;
 			default:
 				text_render_char(font, c, &text_state);
+				++column;
 				break;
 			}
 		}

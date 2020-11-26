@@ -69,7 +69,7 @@ int main(void) {
 	text_buffer_create(&text_buffer, font);
 
 	{
-		FILE *fp = fopen("main.c", "r");
+		FILE *fp = fopen("test.txt", "r");
 		assert(fp);
 		bool success = text_buffer_load_file(&text_buffer, fp);
 		fclose(fp);
