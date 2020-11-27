@@ -3,11 +3,11 @@
 
 #include "base.h"
 
-static uint util_popcount(u64 x) {
+static u32 util_popcount(u64 x) {
 #ifdef __GNUC__
-	return (uint)__builtin_popcountll(x);
+	return (u32)__builtin_popcountll(x);
 #else
-	uint count = 0;
+	u32 count = 0;
 	while (x) {
 		x &= x-1;
 		++count;

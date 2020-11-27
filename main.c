@@ -35,7 +35,7 @@ INT WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 int main(void) {
 #endif
 	setlocale(LC_ALL, ""); // allow unicode
-	SDL_SetHint(SDL_HINT_NO_SIGNAL_HANDLERS, "1"); // if this program is sent a SIGTERM/SIGINT, don't turn it into a quit event 
+	SDL_SetHint(SDL_HINT_NO_SIGNAL_HANDLERS, "1"); // if this program is sent a SIGTERM/SIGINT, don't turn it into a quit event
 	if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER) < 0)
 		die("%s", SDL_GetError());
 
@@ -66,12 +66,12 @@ int main(void) {
 	
 	bool quit = false;
 	TextBuffer text_buffer;
-	text_buffer_create(&text_buffer, font);
+	buffer_create(&text_buffer, font);
 
 	{
-		FILE *fp = fopen("test.txt", "r");
+		FILE *fp = fopen("main.c", "r");
 		assert(fp);
-		bool success = text_buffer_load_file(&text_buffer, fp);
+		bool success = buffer_load_file(&text_buffer, fp);
 		fclose(fp);
 		if (!success)
 			die("Error loading file.");
@@ -94,15 +94,15 @@ int main(void) {
 				// scroll with mouse wheel
 				Sint32 dx = event.wheel.x, dy = -event.wheel.y;
 				double scroll_speed = 2.5;
-				text_buffer_scroll(&text_buffer, dx * scroll_speed, dy * scroll_speed);
+				buffer_scroll(&text_buffer, dx * scroll_speed, dy * scroll_speed);
 			} break;
 			case SDL_KEYDOWN: {
 				switch (event.key.keysym.sym) {
 				case SDLK_PAGEUP:
-					text_buffer_scroll(&text_buffer, 0, -text_buffer_num_rows(&text_buffer));
+					buffer_scroll(&text_buffer, 0, -buffer_display_rows(&text_buffer));
 					break;
 				case SDLK_PAGEDOWN:
-					text_buffer_scroll(&text_buffer, 0, +text_buffer_num_rows(&text_buffer));
+					buffer_scroll(&text_buffer, 0, +buffer_display_rows(&text_buffer));
 					break;
 				}
 			} break;
@@ -122,15 +122,16 @@ int main(void) {
 		if (control_key_down) {
 			// control + arrow keys to scroll
 			double scroll_speed = 20.0;
-			double scroll_amount = scroll_speed * frame_dt;
+			double scroll_amount_x = scroll_speed * frame_dt * 1.5; // characters are taller than they are wide
+			double scroll_amount_y = scroll_speed * frame_dt;
 			if (keyboard_state[SDL_SCANCODE_UP])
-				text_buffer_scroll(&text_buffer, 0, -scroll_amount);
+				buffer_scroll(&text_buffer, 0, -scroll_amount_y);
 			if (keyboard_state[SDL_SCANCODE_DOWN])
-				text_buffer_scroll(&text_buffer, 0, +scroll_amount);
+				buffer_scroll(&text_buffer, 0, +scroll_amount_y);
 			if (keyboard_state[SDL_SCANCODE_LEFT])
-				text_buffer_scroll(&text_buffer, -scroll_amount, 0);
+				buffer_scroll(&text_buffer, -scroll_amount_x, 0);
 			if (keyboard_state[SDL_SCANCODE_RIGHT])
-				text_buffer_scroll(&text_buffer, +scroll_amount, 0);
+				buffer_scroll(&text_buffer, +scroll_amount_x, 0);
 		}
 			
 
@@ -151,14 +152,14 @@ int main(void) {
 
 		{
 			float x1 = 50, y1 = 50, x2 = window_widthf-50, y2 = window_heightf-50;
-			text_buffer_render(&text_buffer, x1, y1, x2, y2);
+			buffer_render(&text_buffer, x1, y1, x2, y2);
 			if (text_has_err()) {
 				printf("Text error: %s\n", text_get_err());
 				break;
 			}
 		}
 
-		//text_buffer_print_debug(&text_buffer);
+		//buffer_print_debug(&text_buffer);
 
 		SDL_GL_SwapWindow(window);
 	}
@@ -166,7 +167,7 @@ int main(void) {
 	SDL_GL_DeleteContext(glctx);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
-	text_buffer_free(&text_buffer);
+	buffer_free(&text_buffer);
 	text_font_free(font);
 
 	return 0;
