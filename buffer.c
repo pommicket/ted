@@ -7,6 +7,7 @@
 #include "util.c"
 #include "text.h"
 
+// @TODO: make this bigger -- maybe 4000 (it's small now to test having a bunch of blocks)
 #define TEXT_BLOCK_MAX_SIZE 400
 // Once two adjacent blocks are at most this big, combine them into
 // one bigger text block.
@@ -20,9 +21,16 @@ typedef struct {
 	char *contents;
 } TextBlock;
 
+// a position in the buffer
+typedef struct {
+	u32 block;
+	u32 idx;
+} BufferPos;
+
 typedef struct {
 	double scroll_x, scroll_y; // number of characters scrolled in the x/y direction
 	Font *font;
+	BufferPos cursor_pos;
 	u8 tab_width;
 	float x1, y1, x2, y2;
 	u32 nblocks; // number of text blocks
@@ -126,35 +134,46 @@ void buffer_free(TextBuffer *buffer) {
 	free(blocks);
 }
 
+// advance line and col according to the character c
+// either can be NULL
+static void buffer_update_line_col(TextBuffer *buffer, u64 *line, u64 *col, int c) {
+	if (line) {
+		if (c == '\n') ++*line;
+	}
+	if (col) {
+		switch (c) {
+		case '\n':
+			*col = 0;
+			break;
+		case '\r': break;
+		case '\t':
+			do
+				++*col;
+			while (*col % buffer->tab_width);
+			break;
+		default:
+			++*col;
+			break;
+		}
+	}
+}
+
 // returns the number of lines of text in the buffer into *lines (if not NULL),
 // and the number of columns of text, i.e. the length of the longest line, into *cols (if not NULL)
 static void buffer_text_dimensions(TextBuffer *buffer, u64 *lines, u64 *cols) {
-	u64 nlines = 1;
+	// @OPTIMIZE
+	u64 line = 1;
 	u64 maxcol = 0;
 	u64 col = 0;
 	for (u32 i = 0; i < buffer->nblocks; ++i) {
 		TextBlock *block = &buffer->blocks[i];
 		for (char *p = block->contents, *end = p + block->len; p != end; ++p) {
-			switch (*p) {
-			case '\n':
-				++nlines;
-				col = 0;
-				break;
-			case '\r': break;
-			case '\t':
-				do
-					++col;
-				while (col % buffer->tab_width);
-				break;
-			default:
-				++col;
-				break;
-			}
+			buffer_update_line_col(buffer, &line, &col, *p);
 			if (col > maxcol)
 				maxcol = col;
 		}
 	}
-	if (lines) *lines = nlines;
+	if (lines) *lines = line;
 	if (cols) *cols = maxcol;
 }
 
@@ -195,6 +214,21 @@ void buffer_scroll(TextBuffer *buffer, double dx, double dy) {
 	buffer->scroll_x += dx;
 	buffer->scroll_y += dy;
 	buffer_correct_scroll(buffer);
+}
+
+// returns the line and column of the given buffer position.
+// line/col can be NULL.
+void buffer_pos_to_line_col(TextBuffer *buffer, BufferPos pos, u64 *line, u64 *col) {
+	// @TODO
+}
+
+// returns the position of the character at the given position in the buffer.
+// x/y can be NULL.
+void buffer_pos_to_pixels(TextBuffer *buffer, BufferPos pos, float *x, float *y) {
+	u64 line, col;
+	buffer_pos_to_line_col(buffer, pos, &line, &col);
+	if (x) *x = ((double)col  - buffer->scroll_x) * font_char_width(buffer->font);
+	if (y) *y = ((double)line - buffer->scroll_y) * font_char_height(buffer->font);
 }
 
 // Render the text buffer in the given rectangle
