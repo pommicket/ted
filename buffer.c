@@ -18,13 +18,13 @@
 #define TEXT_BLOCK_DEFAULT_SIZE (3*(TEXT_BLOCK_MAX_SIZE / 4))
 typedef struct {
 	u16 len;
-	char *contents;
+	u8 *contents;
 } TextBlock;
 
 // a position in the buffer
 typedef struct {
 	u32 block;
-	u32 idx;
+	u32 index;
 } BufferPos;
 
 typedef struct {
@@ -42,7 +42,7 @@ typedef struct {
 static TextBlock *buffer_add_block(TextBuffer *buffer, u32 where) {
 	// make sure we can actually allocate enough memory for the contents of the block
 	// before doing anything
-	char *block_contents = calloc(1, TEXT_BLOCK_MAX_SIZE);
+	u8 *block_contents = calloc(1, TEXT_BLOCK_MAX_SIZE);
 	if (!block_contents) {
 		return NULL;
 	}
@@ -167,7 +167,7 @@ static void buffer_text_dimensions(TextBuffer *buffer, u64 *lines, u64 *cols) {
 	u64 col = 0;
 	for (u32 i = 0; i < buffer->nblocks; ++i) {
 		TextBlock *block = &buffer->blocks[i];
-		for (char *p = block->contents, *end = p + block->len; p != end; ++p) {
+		for (u8 *p = block->contents, *end = p + block->len; p != end; ++p) {
 			buffer_update_line_col(buffer, &line, &col, *p);
 			if (col > maxcol)
 				maxcol = col;
@@ -219,7 +219,20 @@ void buffer_scroll(TextBuffer *buffer, double dx, double dy) {
 // returns the line and column of the given buffer position.
 // line/col can be NULL.
 void buffer_pos_to_line_col(TextBuffer *buffer, BufferPos pos, u64 *line, u64 *col) {
-	// @TODO
+	TextBlock *pos_block = buffer->blocks + pos.block;
+	assert(pos.index < pos_block->len);
+	u8 *pos_byte = pos_block->contents + pos.index;
+	u64 l = 1, c = 0;
+	for (TextBlock *block = buffer->blocks; block <= pos_block; ++block) {
+		for (u8 *p = block->contents, *end = p + block->len; p != end; ++p) {
+			if (p == pos_byte) {
+				if (line) *line = l;
+				if (col) *col = c;
+				return;
+			}
+			buffer_update_line_col(buffer, &l, &c, *p);
+		}
+	}
 }
 
 // returns the position of the character at the given position in the buffer.
@@ -227,8 +240,22 @@ void buffer_pos_to_line_col(TextBuffer *buffer, BufferPos pos, u64 *line, u64 *c
 void buffer_pos_to_pixels(TextBuffer *buffer, BufferPos pos, float *x, float *y) {
 	u64 line, col;
 	buffer_pos_to_line_col(buffer, pos, &line, &col);
-	if (x) *x = ((double)col  - buffer->scroll_x) * font_char_width(buffer->font);
-	if (y) *y = ((double)line - buffer->scroll_y) * font_char_height(buffer->font);
+	if (x) *x = (float)((double)col  - buffer->scroll_x) * text_font_char_width(buffer->font) + buffer->x1;
+	if (y) *y = (float)((double)(line-1) - buffer->scroll_y) * text_font_char_height(buffer->font) + buffer->y1;
+}
+
+
+// clip the rectangle so it's all inside the buffer. returns true if there's any rectangle left.
+static bool buffer_clip_rect(TextBuffer *buffer, float *x1, float *y1, float *x2, float *y2) {
+	if (*x1 > buffer->x2 || *y1 > buffer->y2 || *x2 < buffer->x1 || *y2 < buffer->y1) {
+		*x1 = *y1 = *x2 = *y2 = 0;
+		return false;
+	}
+	if (*x1 < buffer->x1) *x1 = buffer->x1;
+	if (*y1 < buffer->y1) *y1 = buffer->y1;
+	if (*x2 > buffer->x2) *x2 = buffer->x2;
+	if (*y2 > buffer->y2) *y2 = buffer->y2;
+	return true;
 }
 
 // Render the text buffer in the given rectangle
@@ -269,10 +296,14 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 
 	for (u32 block_idx = 0; block_idx < nblocks; ++block_idx) {
 		TextBlock *block = &blocks[block_idx];
-		char *p = block->contents, *end = p + block->len;
+		{
+			float v = 0.7f + 0.3f * (float)(block_idx % 2);
+			glColor3f(v, v, 1);
+		}
+		u8 *p = block->contents, *end = p + block->len;
 		while (p != end) {
 			char32_t c;
-			size_t n = mbrtoc32(&c, p, (size_t)(end - p), &mbstate);
+			size_t n = mbrtoc32(&c, (char *)p, (size_t)(end - p), &mbstate);
 			if (n == 0) {
 				// null character
 				c = UNICODE_BOX_CHARACTER;
@@ -311,4 +342,60 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 		}
 	}
 	text_chars_end(font);
+
+	{ // render cursor
+		float cur_x1, cur_y1;
+		buffer_pos_to_pixels(buffer, buffer->cursor_pos, &cur_x1, &cur_y1);
+		cur_y1 += 0.25f * char_height;
+		float cur_x2 = cur_x1 + 1.0f, cur_y2 = cur_y1 + char_height;
+		if (buffer_clip_rect(buffer, &cur_x1, &cur_y1, &cur_x2, &cur_y2)) {
+			glColor3f(0,1,1);
+			glBegin(GL_QUADS);
+			glVertex2f(cur_x1,cur_y1);
+			glVertex2f(cur_x2,cur_y1);
+			glVertex2f(cur_x2,cur_y2);
+			glVertex2f(cur_x1,cur_y2);
+			glEnd();
+		}
+	}
+}
+
+static u8 buffer_byte_at_pos(TextBuffer *buffer, BufferPos p) {
+	return buffer->blocks[p.block].contents[p.index];
+}
+
+// returns true if p could move left (i.e. if it's not the very first position in the file)
+static bool buffer_pos_move_left(TextBuffer *buffer, BufferPos *p) {
+	do {
+		if (p->index == 0) {
+			if (p->block == 0) 
+				return false;
+			--p->block;
+		} else {
+			--p->index;
+		}
+	} while (!unicode_is_start_of_code_point(buffer_byte_at_pos(buffer, *p)));
+	return true;
+}
+
+static bool buffer_pos_move_right(TextBuffer *buffer, BufferPos *p) {
+	do {
+		TextBlock *block = buffer->blocks + p->block;
+		if (p->index >= block->len-1) {
+			if (p->block >= buffer->nblocks-1) 
+				return false;
+			++p->block;
+		} else {
+			++p->index;
+		}
+	} while (!unicode_is_start_of_code_point(buffer_byte_at_pos(buffer, *p)));
+	return true;
+}
+
+bool buffer_cursor_move_left(TextBuffer *buffer) {
+	return buffer_pos_move_left(buffer, &buffer->cursor_pos);
+}
+
+bool buffer_cursor_move_right(TextBuffer *buffer) {
+	return buffer_pos_move_right(buffer, &buffer->cursor_pos);
 }

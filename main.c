@@ -104,6 +104,12 @@ int main(void) {
 				case SDLK_PAGEDOWN:
 					buffer_scroll(&text_buffer, 0, +buffer_display_rows(&text_buffer));
 					break;
+				case SDLK_RIGHT:
+					buffer_cursor_move_right(&text_buffer);
+					break;
+				case SDLK_LEFT:
+					buffer_cursor_move_left(&text_buffer);
+					break;
 				}
 			} break;
 			}
