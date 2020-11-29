@@ -8,7 +8,7 @@
 #include "text.h"
 
 // @TODO: make this bigger -- maybe 4000 (it's small now to test having a bunch of blocks)
-#define TEXT_BLOCK_MAX_SIZE 400
+#define TEXT_BLOCK_MAX_SIZE 100
 // Once two adjacent blocks are at most this big, combine them into
 // one bigger text block.
 #define TEXT_BLOCK_COMBINE_SIZE (3*(TEXT_BLOCK_MAX_SIZE / 4))
@@ -371,6 +371,7 @@ static bool buffer_pos_move_left(TextBuffer *buffer, BufferPos *p) {
 			if (p->block == 0) 
 				return false;
 			--p->block;
+			p->index = buffer->blocks[p->block].len-1;
 		} else {
 			--p->index;
 		}
@@ -385,6 +386,7 @@ static bool buffer_pos_move_right(TextBuffer *buffer, BufferPos *p) {
 			if (p->block >= buffer->nblocks-1) 
 				return false;
 			++p->block;
+			p->index = 0;
 		} else {
 			++p->index;
 		}
