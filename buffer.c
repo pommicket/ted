@@ -1,31 +1,18 @@
 // Text buffers - These store the contents of a file.
-// To make inserting characters faster, the file contents are split up into
-// blocks of a few thousand bytes. Block boundaries are not necessarily
-// on character boundaries, so one block might have part of a UTF-8 character
-// with the next block having the rest.
 #include "unicode.h"
 #include "util.c"
 #include "text.h"
 
-// @TODO: make this bigger -- maybe 4000 (it's small now to test having a bunch of blocks)
-#define TEXT_BLOCK_MAX_SIZE 100
-// Once two adjacent blocks are at most this big, combine them into
-// one bigger text block.
-#define TEXT_BLOCK_COMBINE_SIZE (3*(TEXT_BLOCK_MAX_SIZE / 4))
-// A good size for text blocks to be. When a file is loaded, there
-// shouldn't be just full blocks, because they will all immediately split.
-// Instead, we use blocks of this size.
-#define TEXT_BLOCK_DEFAULT_SIZE (3*(TEXT_BLOCK_MAX_SIZE / 4))
-typedef struct {
-	u16 len;
-	u8 *contents;
-} TextBlock;
-
 // a position in the buffer
 typedef struct {
-	u32 block;
-	u32 index;
+	u32 line;
+	u32 col;
 } BufferPos;
+
+typedef struct {
+	u32 len;
+	char32_t *str;
+} Line;
 
 typedef struct {
 	double scroll_x, scroll_y; // number of characters scrolled in the x/y direction
@@ -33,44 +20,9 @@ typedef struct {
 	BufferPos cursor_pos;
 	u8 tab_width;
 	float x1, y1, x2, y2;
-	u32 nblocks; // number of text blocks
-	TextBlock *blocks;
+	u32 nlines;
+	Line *lines;
 } TextBuffer;
-
-// Returns a new block added at index `where`,
-// or NULL if there's not enough memory.
-static TextBlock *buffer_add_block(TextBuffer *buffer, u32 where) {
-	// make sure we can actually allocate enough memory for the contents of the block
-	// before doing anything
-	u8 *block_contents = calloc(1, TEXT_BLOCK_MAX_SIZE);
-	if (!block_contents) {
-		return NULL;
-	}
-
-	u32 nblocks_before = buffer->nblocks;
-	u32 nblocks_after = buffer->nblocks + 1;
-	if (util_is_power_of_2(nblocks_after)) {
-		// whenever the number of blocks is a power of 2, we need to grow the blocks array.
-		buffer->blocks = realloc(buffer->blocks, 2 * nblocks_after * sizeof *buffer->blocks);
-		if (!buffer->blocks) {
-			// out of memory
-			free(block_contents);
-			return NULL;
-		}
-	}
-	if (where != nblocks_before) { // if we aren't just inserting the block at the end,
-		// make space for the new block
-		memmove(buffer->blocks + (where + 1), buffer->blocks + where, nblocks_before - where);
-	}
-	
-	TextBlock *block = buffer->blocks + where;
-	util_zero_memory(block, sizeof *buffer->blocks); // zero everything
-	block->contents = block_contents;
-
-	
-	buffer->nblocks = nblocks_after;
-	return block;
-}
 
 void buffer_create(TextBuffer *buffer, Font *font) {
 	util_zero_memory(buffer, sizeof *buffer);
@@ -78,103 +30,132 @@ void buffer_create(TextBuffer *buffer, Font *font) {
 	buffer->tab_width = 4;
 }
 
-Status buffer_load_file(TextBuffer *buffer, FILE *fp) {
-	char block_contents[TEXT_BLOCK_DEFAULT_SIZE];
-	size_t bytes_read;
-	// @TODO: @TODO: IMPORTANT! make this work if buffer already has a file
-	
-	// read file one block at a time
-	do {
-		bytes_read = fread(block_contents, 1, sizeof block_contents, fp);
-		if (bytes_read > 0) {
-			TextBlock *block = buffer_add_block(buffer, buffer->nblocks);
-			if (!block) {
-				return false;
-			}
-			memcpy(block->contents, block_contents, bytes_read);
-			block->len = (u16)bytes_read;
+static Status buffer_line_append_char(Line *line, char32_t c) {
+	if (line->len == 0 || util_is_power_of_2(line->len)) {
+		// when the length of a line gets to a power of 2, double its allocated size
+		size_t new_size = line->len == 0 ? 1 : line->len * 2;
+		line->str = realloc(line->str, new_size * sizeof *line->str);
+		if (!line->str) {
+			return false;
 		}
-	} while (bytes_read == sizeof block_contents);
-	if (ferror(fp))	
-		return false;
+	}
+	line->str[line->len++] = c;
 	return true;
 }
 
-static void buffer_print_internal(TextBuffer *buffer, bool debug) {
+Status buffer_load_file(TextBuffer *buffer, FILE *fp) {
+	assert(fp);
+	fseek(fp, 0, SEEK_END);
+	size_t file_size = (size_t)ftell(fp);
+	fseek(fp, 0, SEEK_SET);
+	if (file_size > 10L<<20) {
+		// @EVENTUALLY: better handling
+		printf("File too big.\n");
+		return false;
+	}
+
+	u8 *file_contents = malloc(file_size);
+	bool success = true;
+	if (file_contents) {
+		buffer->lines = calloc(1, sizeof *buffer->lines); // first line
+		buffer->nlines = 1;
+		if (fread(file_contents, 1, file_size, fp) == file_size) {
+			char32_t c = 0;
+			mbstate_t mbstate = {0};
+			for (u8 *p = file_contents, *end = p + file_size; p != end; ) {
+				size_t n = mbrtoc32(&c, (char *)p, (size_t)(end - p), &mbstate);
+				if (n == 0) {
+					// null character
+					c = 0;
+					++p;
+				} else if (n == (size_t)(-3)) {
+					// no bytes consumed, but a character was produced
+				} else if (n == (size_t)(-2) || n == (size_t)(-1)) {
+					// incomplete character at end of file or invalid UTF-8 respectively; just treat it as a byte
+					c = *p;
+					++p;
+				} else {
+					p += n;
+				}
+				if (c == U'\n') {
+					if (util_is_power_of_2(buffer->nlines)) {
+						// allocate more lines
+						buffer->lines = realloc(buffer->lines, buffer->nlines * 2 * sizeof *buffer->lines);
+						// zero new lines
+						memset(buffer->lines + buffer->nlines, 0, buffer->nlines * sizeof *buffer->lines);
+					}
+					++buffer->nlines;
+				} else {
+					u32 line_idx = buffer->nlines - 1;
+					Line *line = &buffer->lines[line_idx];
+
+					if (!buffer_line_append_char(line, c)) {
+						success = false;
+						break;
+					}
+				}
+			}
+		}
+		free(file_contents);
+	}
+	if (ferror(fp)) success = false;
+	if (!success) {
+		for (u32 i = 0; i < buffer->nlines; ++i)
+			free(buffer->lines[i].str);
+		free(buffer->lines); 
+		buffer->nlines = 0;
+	}
+	return success;
+
+}
+
+// print the contents of a buffer to stdout
+static void buffer_print(TextBuffer const *buffer) {
 	printf("\033[2J\033[;H"); // clear terminal screen
-	TextBlock *blocks = buffer->blocks;
-	u32 nblocks = buffer->nblocks;
+	Line *lines = buffer->lines;
+	u32 nlines = buffer->nlines;
 	
-	for (u32 i = 0; i < nblocks; ++i) {
-		TextBlock *block = &blocks[i];
-		fwrite(block->contents, 1, block->len, stdout);
-		if (debug)
-			printf("\n\n------\n\n"); // NOTE: could be bad with UTF-8
+	for (u32 i = 0; i < nlines; ++i) {
+		Line *line = &lines[i];
+		for (u32 j = 0; j < line->len; ++j) {
+			// on windows, this will print characters outside the Basic Multilingual Plane incorrectly
+			// but this function is just for debugging anyways
+			putwchar((wchar_t)line->str[j]);
+		}
 	}
 	fflush(stdout);
 }
 
-// print the contents of a buffer to stdout
-void buffer_print(TextBuffer *buffer) {
-	buffer_print_internal(buffer, false);
-}
-
-// print the contents of a buffer to stdout, along with debugging information
-void buffer_print_debug(TextBuffer *buffer) {
-	buffer_print_internal(buffer, true);
-}
-
 // Does not free the pointer `buffer` (buffer might not have even been allocated with malloc)
 void buffer_free(TextBuffer *buffer) {
-	TextBlock *blocks = buffer->blocks;
-	u32 nblocks = buffer->nblocks;
-	for (u32 i = 0; i < nblocks; ++i) {
-		free(blocks[i].contents);
+	Line *lines = buffer->lines;
+	u32 nlines = buffer->nlines;
+	for (u32 i = 0; i < nlines; ++i) {
+		free(lines[i].str);
 	}
-	free(blocks);
-}
-
-// advance line and col according to the character c
-// either can be NULL
-static void buffer_update_line_col(TextBuffer *buffer, u64 *line, u64 *col, int c) {
-	if (line) {
-		if (c == '\n') ++*line;
-	}
-	if (col) {
-		switch (c) {
-		case '\n':
-			*col = 0;
-			break;
-		case '\r': break;
-		case '\t':
-			do
-				++*col;
-			while (*col % buffer->tab_width);
-			break;
-		default:
-			++*col;
-			break;
-		}
-	}
+	free(lines);
+	buffer->nlines = 0;
+	buffer->lines = NULL;
 }
 
 // returns the number of lines of text in the buffer into *lines (if not NULL),
 // and the number of columns of text, i.e. the length of the longest line, into *cols (if not NULL)
-static void buffer_text_dimensions(TextBuffer *buffer, u64 *lines, u64 *cols) {
-	// @OPTIMIZE
-	u64 line = 1;
-	u64 maxcol = 0;
-	u64 col = 0;
-	for (u32 i = 0; i < buffer->nblocks; ++i) {
-		TextBlock *block = &buffer->blocks[i];
-		for (u8 *p = block->contents, *end = p + block->len; p != end; ++p) {
-			buffer_update_line_col(buffer, &line, &col, *p);
-			if (col > maxcol)
-				maxcol = col;
-		}
+void buffer_text_dimensions(TextBuffer *buffer, u32 *lines, u32 *cols) {
+	if (lines) {
+		*lines = buffer->nlines;
 	}
-	if (lines) *lines = line;
-	if (cols) *cols = maxcol;
+	if (cols) {
+		// @OPTIMIZE
+		u32 nlines = buffer->nlines;
+		Line *line_arr = buffer->lines;
+		u32 maxcol = 0;
+		for (u32 i = 0; i < nlines; ++i) {
+			Line *line = &line_arr[i];
+			if (line->len > maxcol)
+				maxcol = line->len;
+		}
+		*cols = maxcol;
+	}
 }
 
 
@@ -187,13 +168,14 @@ int buffer_display_rows(TextBuffer *buffer) {
 int buffer_display_cols(TextBuffer *buffer) {
 	return (int)((buffer->x2 - buffer->x1) / text_font_char_width(buffer->font));
 }
+
 // make sure we don't scroll too far
 static void buffer_correct_scroll(TextBuffer *buffer) {
 	if (buffer->scroll_x < 0)
 		buffer->scroll_x = 0;
 	if (buffer->scroll_y < 0)
 		buffer->scroll_y = 0;
-	u64 nlines, ncols;
+	u32 nlines, ncols;
 	buffer_text_dimensions(buffer, &nlines, &ncols);
 	double max_scroll_x = (double)ncols  - buffer_display_cols(buffer);
 	double max_scroll_y = (double)nlines - buffer_display_rows(buffer);
@@ -216,32 +198,12 @@ void buffer_scroll(TextBuffer *buffer, double dx, double dy) {
 	buffer_correct_scroll(buffer);
 }
 
-// returns the line and column of the given buffer position.
-// line/col can be NULL.
-void buffer_pos_to_line_col(TextBuffer *buffer, BufferPos pos, u64 *line, u64 *col) {
-	TextBlock *pos_block = buffer->blocks + pos.block;
-	assert(pos.index < pos_block->len);
-	u8 *pos_byte = pos_block->contents + pos.index;
-	u64 l = 1, c = 0;
-	for (TextBlock *block = buffer->blocks; block <= pos_block; ++block) {
-		for (u8 *p = block->contents, *end = p + block->len; p != end; ++p) {
-			if (p == pos_byte) {
-				if (line) *line = l;
-				if (col) *col = c;
-				return;
-			}
-			buffer_update_line_col(buffer, &l, &c, *p);
-		}
-	}
-}
-
 // returns the position of the character at the given position in the buffer.
 // x/y can be NULL.
 void buffer_pos_to_pixels(TextBuffer *buffer, BufferPos pos, float *x, float *y) {
-	u64 line, col;
-	buffer_pos_to_line_col(buffer, pos, &line, &col);
+	u32 line = pos.line, col = pos.col;
 	if (x) *x = (float)((double)col  - buffer->scroll_x) * text_font_char_width(buffer->font) + buffer->x1;
-	if (y) *y = (float)((double)(line-1) - buffer->scroll_y) * text_font_char_height(buffer->font) + buffer->y1;
+	if (y) *y = (float)((double)line - buffer->scroll_y) * text_font_char_height(buffer->font) + buffer->y1;
 }
 
 
@@ -263,9 +225,8 @@ static bool buffer_clip_rect(TextBuffer *buffer, float *x1, float *y1, float *x2
 void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 	buffer->x1 = x1; buffer->y1 = y1; buffer->x2 = x2; buffer->y2 = y2;
 	Font *font = buffer->font;
-	mbstate_t mbstate = {0};
-	u32 nblocks = buffer->nblocks;
-	TextBlock *blocks = buffer->blocks;
+	u32 nlines = buffer->nlines;
+	Line *lines = buffer->lines;
 	float char_width = text_font_char_width(font),
 		char_height = text_font_char_height(font);
 	glColor3f(0.5f,0.5f,0.5f);
@@ -294,43 +255,17 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 	// @TODO: make this better (we should figure out where to start rendering, etc.)
 	text_state.y -= (float)buffer->scroll_y * char_height;
 
-	for (u32 block_idx = 0; block_idx < nblocks; ++block_idx) {
-		TextBlock *block = &blocks[block_idx];
-		{
-			float v = 0.7f + 0.3f * (float)(block_idx % 2);
-			glColor3f(v, v, 1);
-		}
-		u8 *p = block->contents, *end = p + block->len;
-		while (p != end) {
-			char32_t c;
-			size_t n = mbrtoc32(&c, (char *)p, (size_t)(end - p), &mbstate);
-			if (n == 0) {
-				// null character
-				c = UNICODE_BOX_CHARACTER;
-				++p;
-			} else if (n == (size_t)(-3)) {
-				// no bytes consumed, but a character was produced
-			} else if (n == (size_t)(-2)) {
-				// incomplete character at end of block.
-				c = 0;
-				p = end;
-			} else if (n == (size_t)(-1)) {
-				// invalid UTF-8
-				c = UNICODE_BOX_CHARACTER;
-				++p;
-			} else {
-				p += n;
-			}
+	for (u32 line_idx = 0; line_idx < nlines; ++line_idx) {
+		Line *line = &lines[line_idx];
+		for (char32_t *p = line->str, *end = p + line->len; p != end; ++p) {
+			char32_t c = *p;
+
 			switch (c) {
-			case L'\n':
-				text_state.x = render_start_x;
-				text_state.y += text_font_char_height(font);
-				column = 0;
-				break;
-			case L'\r': break; // for CRLF line endings
-			case L'\t':
+			case U'\n': assert(0);
+			case U'\r': break; // for CRLF line endings
+			case U'\t':
 				do {
-					text_render_char(font, L' ', &text_state);
+					text_render_char(font, U' ', &text_state);
 					++column;
 				} while (column % buffer->tab_width);
 				break;
@@ -340,6 +275,11 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 				break;
 			}
 		}
+
+		// next line
+		text_state.x = render_start_x;
+		text_state.y += text_font_char_height(font);
+		column = 0;
 	}
 	text_chars_end(font);
 
@@ -360,37 +300,62 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 	}
 }
 
-static u8 buffer_byte_at_pos(TextBuffer *buffer, BufferPos p) {
-	return buffer->blocks[p.block].contents[p.index];
+// code point at position.
+// returns 0 if the position is invalid. note that it can also return 0 for a valid position, if there's a null character there
+char32_t buffer_char_at_pos(TextBuffer *buffer, BufferPos p) {
+	if (p.line >= buffer->nlines)
+		return 0; // invalid (line too large)
+	
+	Line *line = &buffer->lines[p.line];
+	if (p.col < line->len) {
+		return line->str[p.col];
+	} else if (p.col > line->len) {
+		// invalid (col too large)
+		return 0;
+	} else {
+		return U'\n';
+	}
+}
+
+BufferPos buffer_start_pos(TextBuffer *buffer) {
+	(void)buffer;
+	return (BufferPos){.line = 0, .col = 0};
+}
+
+BufferPos buffer_end_pos(TextBuffer *buffer) {
+	return (BufferPos){.line = buffer->nlines - 1, .col = buffer->lines[buffer->nlines-1].len};
 }
 
 // returns true if p could move left (i.e. if it's not the very first position in the file)
-static bool buffer_pos_move_left(TextBuffer *buffer, BufferPos *p) {
-	do {
-		if (p->index == 0) {
-			if (p->block == 0) 
-				return false;
-			--p->block;
-			p->index = buffer->blocks[p->block].len-1;
-		} else {
-			--p->index;
-		}
-	} while (!unicode_is_start_of_code_point(buffer_byte_at_pos(buffer, *p)));
+bool buffer_pos_move_left(TextBuffer *buffer, BufferPos *p) {
+	if (p->line >= buffer->nlines)
+		*p = buffer_end_pos(buffer);
+	if (p->col == 0) {
+		if (p->line == 0)
+			return false;
+		--p->line;
+		p->col = buffer->lines[p->line].len;
+	} else {
+		--p->col;
+	}
 	return true;
 }
 
-static bool buffer_pos_move_right(TextBuffer *buffer, BufferPos *p) {
-	do {
-		TextBlock *block = buffer->blocks + p->block;
-		if (p->index >= block->len-1) {
-			if (p->block >= buffer->nblocks-1) 
-				return false;
-			++p->block;
-			p->index = 0;
+bool buffer_pos_move_right(TextBuffer *buffer, BufferPos *p) {
+	if (p->line >= buffer->nlines)
+		*p = buffer_end_pos(buffer);
+	Line *line = &buffer->lines[p->line];
+	if (p->col >= line->len) {
+		if (p->line >= buffer->nlines - 1) {
+			*p = buffer_end_pos(buffer);
+			return false;
 		} else {
-			++p->index;
+			p->col = 0;
+			++p->line;
 		}
-	} while (!unicode_is_start_of_code_point(buffer_byte_at_pos(buffer, *p)));
+	} else {
+		++p->col;
+	}
 	return true;
 }
 
@@ -401,3 +366,4 @@ bool buffer_cursor_move_left(TextBuffer *buffer) {
 bool buffer_cursor_move_right(TextBuffer *buffer) {
 	return buffer_pos_move_right(buffer, &buffer->cursor_pos);
 }
+
