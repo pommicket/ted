@@ -43,8 +43,7 @@ static Status buffer_line_append_char(Line *line, char32_t c) {
 	return true;
 }
 
-// fp needs to be a binary file for this to work
-// (because of the way we're checking the size of the file)
+// fp should be a binary file
 Status buffer_load_file(TextBuffer *buffer, FILE *fp) {
 	assert(fp);
 	fseek(fp, 0, SEEK_END);
@@ -66,19 +65,25 @@ Status buffer_load_file(TextBuffer *buffer, FILE *fp) {
 			char32_t c = 0;
 			mbstate_t mbstate = {0};
 			for (u8 *p = file_contents, *end = p + file_size; p != end; ) {
-				size_t n = mbrtoc32(&c, (char *)p, (size_t)(end - p), &mbstate);
-				if (n == 0) {
-					// null character
-					c = 0;
-					++p;
-				} else if (n == (size_t)(-3)) {
-					// no bytes consumed, but a character was produced
-				} else if (n == (size_t)(-2) || n == (size_t)(-1)) {
-					// incomplete character at end of file or invalid UTF-8 respectively; just treat it as a byte
-					c = *p;
-					++p;
+				if (*p == '\r' && p != end-1 && p[1] == '\n') {
+					// CRLF line endings
+					p += 2;
+					c = U'\n';
 				} else {
-					p += n;
+					size_t n = mbrtoc32(&c, (char *)p, (size_t)(end - p), &mbstate);
+					if (n == 0) {
+						// null character
+						c = 0;
+						++p;
+					} else if (n == (size_t)(-3)) {
+						// no bytes consumed, but a character was produced
+					} else if (n == (size_t)(-2) || n == (size_t)(-1)) {
+						// incomplete character at end of file or invalid UTF-8 respectively; just treat it as a byte
+						c = *p;
+						++p;
+					} else {
+						p += n;
+					}
 				}
 				if (c == U'\n') {
 					if (util_is_power_of_2(buffer->nlines)) {
@@ -359,6 +364,25 @@ bool buffer_pos_move_right(TextBuffer *buffer, BufferPos *p) {
 	} else {
 		++p->col;
 	}
+	return true;
+}
+
+bool buffer_pos_move_up(TextBuffer *buffer, BufferPos *pos) {
+	(void)buffer;
+	if (pos->line == 0)
+		return false;
+	--pos->line;
+	u32 line_len = buffer->lines[pos->line].len;
+	if (pos->col >= line_len) pos->col = line_len;
+	return true;
+}
+
+bool buffer_pos_move_down(TextBuffer *buffer, BufferPos *pos) {
+	if (pos->line >= buffer->nlines-1)
+		return false;
+	++pos->line;
+	u32 line_len = buffer->lines[pos->line].len;
+	if (pos->col >= line_len) pos->col = line_len;
 	return true;
 }
 
