@@ -19,9 +19,9 @@ static void die(char const *fmt, ...) {
 	vsnprintf(buf, sizeof buf - 1, fmt, args);
 	va_end(args);
 
-	// show a message box, and if that fails, print to stderr
+	// show a message box, and if that fails, print it
 	if (SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", buf, NULL) < 0) {
-		fprintf(stderr, "%s\n", buf);
+		debug_println("%s\n", buf);
 	}
 
 	exit(EXIT_FAILURE);
@@ -69,7 +69,7 @@ int main(void) {
 	buffer_create(&text_buffer, font);
 
 	{
-		FILE *fp = fopen("main.c", "r");
+		FILE *fp = fopen("main.c", "rb");
 		assert(fp);
 		bool success = buffer_load_file(&text_buffer, fp);
 		fclose(fp);
@@ -160,7 +160,7 @@ int main(void) {
 			float x1 = 50, y1 = 50, x2 = window_widthf-50, y2 = window_heightf-50;
 			buffer_render(&text_buffer, x1, y1, x2, y2);
 			if (text_has_err()) {
-				printf("Text error: %s\n", text_get_err());
+				debug_println("Text error: %s\n", text_get_err());
 				break;
 			}
 		}

@@ -43,6 +43,8 @@ static Status buffer_line_append_char(Line *line, char32_t c) {
 	return true;
 }
 
+// fp needs to be a binary file for this to work
+// (because of the way we're checking the size of the file)
 Status buffer_load_file(TextBuffer *buffer, FILE *fp) {
 	assert(fp);
 	fseek(fp, 0, SEEK_END);
@@ -59,7 +61,8 @@ Status buffer_load_file(TextBuffer *buffer, FILE *fp) {
 	if (file_contents) {
 		buffer->lines = calloc(1, sizeof *buffer->lines); // first line
 		buffer->nlines = 1;
-		if (fread(file_contents, 1, file_size, fp) == file_size) {
+		size_t bytes_read = fread(file_contents, 1, file_size, fp);
+		if (bytes_read == file_size) {
 			char32_t c = 0;
 			mbstate_t mbstate = {0};
 			for (u8 *p = file_contents, *end = p + file_size; p != end; ) {
