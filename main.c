@@ -110,6 +110,12 @@ int main(void) {
 				case SDLK_LEFT:
 					buffer_cursor_move_left(&text_buffer);
 					break;
+				case SDLK_UP:
+					buffer_cursor_move_up(&text_buffer);
+					break;
+				case SDLK_DOWN:
+					buffer_cursor_move_down(&text_buffer);
+					break;
 				}
 			} break;
 			}

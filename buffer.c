@@ -6,7 +6,7 @@
 // a position in the buffer
 typedef struct {
 	u32 line;
-	u32 col;
+	u32 index; // index of character in line (not the same as column, since a tab is buffer->tab_size columns)
 } BufferPos;
 
 typedef struct {
@@ -146,23 +146,65 @@ void buffer_free(TextBuffer *buffer) {
 	buffer->lines = NULL;
 }
 
+static u32 buffer_index_to_column(TextBuffer *buffer, u32 line, u32 index) {
+	char32_t *str = buffer->lines[line].str;
+	u32 col = 0;
+	for (u32 i = 0; i < index; ++i) {
+		switch (str[i]) {
+		case U'\t':
+			do
+				++col;
+			while (col % buffer->tab_width);
+			break;
+		default:
+			++col;
+			break;
+		}
+	}
+	return col;
+}
+
+static u32 buffer_column_to_index(TextBuffer *buffer, u32 line, u32 column) {
+	char32_t *str = buffer->lines[line].str;
+	u32 len = buffer->lines[line].len;
+	u32 col = 0;
+	for (u32 i = 0; i < len; ++i) {
+		switch (str[i]) {
+		case U'\t':
+			do {
+				if (col == column)
+					return i;
+				++col;
+			} while (col % buffer->tab_width);
+			break;
+		default:
+			if (col == column)
+				return i;
+			++col;
+			break;
+		}
+	}
+	return len;
+}
+
 // returns the number of lines of text in the buffer into *lines (if not NULL),
-// and the number of columns of text, i.e. the length of the longest line, into *cols (if not NULL)
-void buffer_text_dimensions(TextBuffer *buffer, u32 *lines, u32 *cols) {
+// and the number of columns of text, i.e. the number of columns in the longest line, into *cols (if not NULL)
+void buffer_text_dimensions(TextBuffer *buffer, u32 *lines, u32 *columns) {
 	if (lines) {
 		*lines = buffer->nlines;
 	}
-	if (cols) {
+	if (columns) {
 		// @OPTIMIZE
 		u32 nlines = buffer->nlines;
 		Line *line_arr = buffer->lines;
 		u32 maxcol = 0;
 		for (u32 i = 0; i < nlines; ++i) {
 			Line *line = &line_arr[i];
-			if (line->len > maxcol)
-				maxcol = line->len;
+			u32 cols = buffer_index_to_column(buffer, i, line->len);
+			if (cols > maxcol)
+				maxcol = cols;
 		}
-		*cols = maxcol;
+		*columns = maxcol;
 	}
 }
 
@@ -209,7 +251,9 @@ void buffer_scroll(TextBuffer *buffer, double dx, double dy) {
 // returns the position of the character at the given position in the buffer.
 // x/y can be NULL.
 void buffer_pos_to_pixels(TextBuffer *buffer, BufferPos pos, float *x, float *y) {
-	u32 line = pos.line, col = pos.col;
+	u32 line = pos.line, index = pos.index;
+	u32 col = buffer_index_to_column(buffer, line, index);
+	// we need to convert the index to a column
 	if (x) *x = (float)((double)col  - buffer->scroll_x) * text_font_char_width(buffer->font) + buffer->x1;
 	if (y) *y = (float)((double)line - buffer->scroll_y) * text_font_char_height(buffer->font) + buffer->y1;
 }
@@ -315,9 +359,9 @@ char32_t buffer_char_at_pos(TextBuffer *buffer, BufferPos p) {
 		return 0; // invalid (line too large)
 	
 	Line *line = &buffer->lines[p.line];
-	if (p.col < line->len) {
-		return line->str[p.col];
-	} else if (p.col > line->len) {
+	if (p.index < line->len) {
+		return line->str[p.index];
+	} else if (p.index > line->len) {
 		// invalid (col too large)
 		return 0;
 	} else {
@@ -327,42 +371,45 @@ char32_t buffer_char_at_pos(TextBuffer *buffer, BufferPos p) {
 
 BufferPos buffer_start_pos(TextBuffer *buffer) {
 	(void)buffer;
-	return (BufferPos){.line = 0, .col = 0};
+	return (BufferPos){.line = 0, .index = 0};
 }
 
 BufferPos buffer_end_pos(TextBuffer *buffer) {
-	return (BufferPos){.line = buffer->nlines - 1, .col = buffer->lines[buffer->nlines-1].len};
+	return (BufferPos){.line = buffer->nlines - 1, .index = buffer->lines[buffer->nlines-1].len};
 }
 
 // returns true if p could move left (i.e. if it's not the very first position in the file)
 bool buffer_pos_move_left(TextBuffer *buffer, BufferPos *p) {
 	if (p->line >= buffer->nlines)
-		*p = buffer_end_pos(buffer);
-	if (p->col == 0) {
+		*p = buffer_end_pos(buffer); // invalid position; move to end of buffer
+	if (p->index == 0) {
+		// first column; move to previous line
 		if (p->line == 0)
 			return false;
 		--p->line;
-		p->col = buffer->lines[p->line].len;
+		p->index = buffer->lines[p->line].len;
 	} else {
-		--p->col;
+		--p->index;
 	}
 	return true;
 }
 
 bool buffer_pos_move_right(TextBuffer *buffer, BufferPos *p) {
 	if (p->line >= buffer->nlines)
-		*p = buffer_end_pos(buffer);
+		*p = buffer_end_pos(buffer); // invalid position; move to end of buffer
 	Line *line = &buffer->lines[p->line];
-	if (p->col >= line->len) {
+	if (p->index >= line->len) {
+		// last column; move to next line
 		if (p->line >= buffer->nlines - 1) {
+			// last line
 			*p = buffer_end_pos(buffer);
 			return false;
 		} else {
-			p->col = 0;
+			p->index = 0;
 			++p->line;
 		}
 	} else {
-		++p->col;
+		++p->index;
 	}
 	return true;
 }
@@ -371,18 +418,27 @@ bool buffer_pos_move_up(TextBuffer *buffer, BufferPos *pos) {
 	(void)buffer;
 	if (pos->line == 0)
 		return false;
+	// moving up/down should preserve the column, not the index.
+	// consider:
+	// tab|hello world
+	// tab|tab|more text
+	// the character above the 'm' is the 'o', not the 'e'
+	u32 column = buffer_index_to_column(buffer, pos->line, pos->index);
 	--pos->line;
+	pos->index = buffer_column_to_index(buffer, pos->line, column);
 	u32 line_len = buffer->lines[pos->line].len;
-	if (pos->col >= line_len) pos->col = line_len;
+	if (pos->index >= line_len) pos->index = line_len;
 	return true;
 }
 
 bool buffer_pos_move_down(TextBuffer *buffer, BufferPos *pos) {
 	if (pos->line >= buffer->nlines-1)
 		return false;
+	u32 column = buffer_index_to_column(buffer, pos->line, pos->index);
 	++pos->line;
+	pos->index = buffer_column_to_index(buffer, pos->line, column);
 	u32 line_len = buffer->lines[pos->line].len;
-	if (pos->col >= line_len) pos->col = line_len;
+	if (pos->index >= line_len) pos->index = line_len;
 	return true;
 }
 
@@ -394,3 +450,10 @@ bool buffer_cursor_move_right(TextBuffer *buffer) {
 	return buffer_pos_move_right(buffer, &buffer->cursor_pos);
 }
 
+bool buffer_cursor_move_up(TextBuffer *buffer) {
+	return buffer_pos_move_up(buffer, &buffer->cursor_pos);
+}
+
+bool buffer_cursor_move_down(TextBuffer *buffer) {
+	return buffer_pos_move_down(buffer, &buffer->cursor_pos);
+}
