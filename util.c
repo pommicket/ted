@@ -25,4 +25,12 @@ static void util_zero_memory(void *mem, size_t size) {
 	memset(mem, 0, size);
 }
 
+static double util_maxd(double a, double b) {
+	return a > b ? a : b;
+}
+
+static double util_mind(double a, double b) {
+	return a < b ? a : b;
+}
+
 #endif

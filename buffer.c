@@ -442,18 +442,62 @@ bool buffer_pos_move_down(TextBuffer *buffer, BufferPos *pos) {
 	return true;
 }
 
+// if the cursor is offscreen, this will scroll to make it onscreen.
+static void buffer_scroll_to_cursor(TextBuffer *buffer) {
+	i64 cursor_line = buffer->cursor_pos.line;
+	i64 cursor_col  = buffer_index_to_column(buffer, (u32)cursor_line, buffer->cursor_pos.index);
+	i64 display_lines = buffer_display_rows(buffer);
+	i64 display_cols = buffer_display_cols(buffer);
+	double scroll_x = buffer->scroll_x, scroll_y = buffer->scroll_y;
+	i64 scroll_padding = 5;
+
+	// scroll left if cursor is off screen in that direction
+	double max_scroll_x = (double)(cursor_col - scroll_padding);
+	scroll_x = util_mind(scroll_x, max_scroll_x);
+	// scroll right
+	double min_scroll_x = (double)(cursor_col - display_cols + scroll_padding);
+	scroll_x = util_maxd(scroll_x, min_scroll_x);
+	// scroll up
+	double max_scroll_y = (double)(cursor_line - scroll_padding);
+	scroll_y = util_mind(scroll_y, max_scroll_y);
+	// scroll down
+	double min_scroll_y = (double)(cursor_line - display_lines + scroll_padding);
+	scroll_y = util_maxd(scroll_y, min_scroll_y);
+
+	buffer->scroll_x = scroll_x;
+	buffer->scroll_y = scroll_y;
+	buffer_correct_scroll(buffer); // it's possible that min/max_scroll_x/y go too far
+}
+
 bool buffer_cursor_move_left(TextBuffer *buffer) {
-	return buffer_pos_move_left(buffer, &buffer->cursor_pos);
+	if (buffer_pos_move_left(buffer, &buffer->cursor_pos)) {
+		buffer_scroll_to_cursor(buffer);
+		return true;
+	}
+	return false;
 }
 
 bool buffer_cursor_move_right(TextBuffer *buffer) {
-	return buffer_pos_move_right(buffer, &buffer->cursor_pos);
+	if (buffer_pos_move_right(buffer, &buffer->cursor_pos)) {
+		buffer_scroll_to_cursor(buffer);
+		return true;
+	}
+	return false;
 }
 
 bool buffer_cursor_move_up(TextBuffer *buffer) {
-	return buffer_pos_move_up(buffer, &buffer->cursor_pos);
+	if (buffer_pos_move_up(buffer, &buffer->cursor_pos)) {
+		buffer_scroll_to_cursor(buffer);
+		return true;
+	}
+	return false;
 }
 
 bool buffer_cursor_move_down(TextBuffer *buffer) {
-	return buffer_pos_move_down(buffer, &buffer->cursor_pos);
+	if (buffer_pos_move_down(buffer, &buffer->cursor_pos)) {
+		buffer_scroll_to_cursor(buffer);
+		return true;
+	}
+	return false;
 }
+
