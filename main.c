@@ -116,7 +116,15 @@ int main(void) {
 				case SDLK_DOWN:
 					buffer_cursor_move_down(&text_buffer);
 					break;
+				case SDLK_RETURN:
+					//buffer_insert_text_at_cursor(buffer, U"\n", 1);
+					break;
 				}
+			} break;
+			case SDL_TEXTINPUT: {
+				char *text = event.text.text;
+				printf("TEXT: %s\n",text);
+				buffer_insert_utf8_at_cursor(&text_buffer, text);
 			} break;
 			}
 		}
