@@ -4,15 +4,15 @@ typedef struct {
 	char32_t *str;
 } String32;
 
-void s32_free(String32 *s) {
+void str32_free(String32 *s) {
 	free(s->str);
 	s->str = NULL;
 	s->len = 0;
 }
 
-// the string returned should be s32_free'd.
+// the string returned should be str32_free'd.
 // this will return an empty string if the allocation failed or the string is invalid UTF-8
-String32 s32_from_utf8(char const *utf8) {
+String32 str32_from_utf8(char const *utf8) {
 	String32 string = {0, NULL};
 	size_t len = strlen(utf8);
 	if (len) {
@@ -48,3 +48,20 @@ String32 s32_from_utf8(char const *utf8) {
 	return string;
 }
 
+// returns the index of the given character in the string, or the length of the string if it's not found.
+size_t str32chr(String32 s, char32_t c) {
+	for (size_t i = 0; i < s.len; ++i) {
+		if (s.str[i] == c)
+			return i;
+	}
+	return s.len;
+}
+
+// returns number of instances of c in s
+size_t str32_count_char(String32 s, char32_t c) {
+	size_t total = 0;
+	for (size_t i = 0; i < s.len; ++i) {
+		total += s.str[i] == c;
+	}
+	return total;
+}

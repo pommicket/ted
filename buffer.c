@@ -24,6 +24,7 @@ typedef struct {
 	bool out_of_mem; // set to true if an allocation fails
 	float x1, y1, x2, y2;
 	u32 nlines;
+	u32 lines_capacity;
 	Line *lines;
 } TextBuffer;
 
@@ -54,6 +55,26 @@ static Status buffer_line_grow(TextBuffer *buffer, Line *line, u32 minimum_capac
 		// allocation successful
 		line->str = new_str;
 		line->capacity = new_capacity;
+	}
+	return true;
+}
+
+// grow capacity of buffer->lines array
+// returns true if successful
+static Status buffer_lines_grow(TextBuffer *buffer, u32 minimum_capacity) {
+	while (minimum_capacity >= buffer->lines_capacity) {
+		// allocate more lines
+		u32 new_capacity = buffer->lines_capacity * 2;
+		Line *new_lines = realloc(buffer->lines, new_capacity * sizeof *buffer->lines);
+		if (new_lines) {
+			buffer->lines = new_lines;
+			buffer->lines_capacity = new_capacity;
+			// zero new lines
+			memset(buffer->lines + buffer->nlines, 0, (new_capacity - buffer->nlines) * sizeof *buffer->lines);
+		} else {
+			buffer->out_of_mem = true;
+			return false;
+		}
 	}
 	return true;
 }
@@ -91,7 +112,8 @@ Status buffer_load_file(TextBuffer *buffer, FILE *fp) {
 	u8 *file_contents = malloc(file_size);
 	bool success = true;
 	if (file_contents) {
-		buffer->lines = calloc(1, sizeof *buffer->lines); // first line
+		buffer->lines_capacity = 4;
+		buffer->lines = calloc(buffer->lines_capacity, sizeof *buffer->lines); // initial lines
 		buffer->nlines = 1;
 		size_t bytes_read = fread(file_contents, 1, file_size, fp);
 		if (bytes_read == file_size) {
@@ -119,13 +141,8 @@ Status buffer_load_file(TextBuffer *buffer, FILE *fp) {
 					}
 				}
 				if (c == U'\n') {
-					if (util_is_power_of_2(buffer->nlines)) {
-						// allocate more lines
-						buffer->lines = realloc(buffer->lines, buffer->nlines * 2 * sizeof *buffer->lines);
-						// zero new lines
-						memset(buffer->lines + buffer->nlines, 0, buffer->nlines * sizeof *buffer->lines);
-					}
-					++buffer->nlines;
+					if (buffer_lines_grow(buffer, buffer->nlines + 1))
+						++buffer->nlines;
 				} else {
 					u32 line_idx = buffer->nlines - 1;
 					Line *line = &buffer->lines[line_idx];
@@ -484,19 +501,46 @@ static void buffer_scroll_to_cursor(TextBuffer *buffer) {
 	buffer_correct_scroll(buffer); // it's possible that min/max_scroll_x/y go too far
 }
 
-void buffer_insert_text_at_cursor(TextBuffer *buffer, char32_t const *text, size_t len) {
+// insert `number` empty lines starting at index `where`.
+static void buffer_insert_lines(TextBuffer *buffer, u32 where, u32 number) {
+	u32 old_nlines = buffer->nlines;
+	u32 new_nlines = old_nlines + number;
+	if (buffer_lines_grow(buffer, new_nlines)) {
+		assert(where <= old_nlines);
+		// make space for new lines
+		memmove(buffer->lines + where + (new_nlines - old_nlines),
+			buffer->lines + where,
+			(old_nlines - where) * sizeof *buffer->lines);
+		// zero new lines
+		util_zero_memory(buffer->lines + where, number * sizeof *buffer->lines);
+	}
+}
+
+void buffer_insert_text_at_cursor(TextBuffer *buffer, String32 str) {
 	u32 cur_line_idx = buffer->cursor_pos.line;
 	u32 cur_index = buffer->cursor_pos.index;
-	char32_t const *end = text + len;
+	Line *cur_line = &buffer->lines[cur_line_idx];
 
 	// `text` could consist of multiple lines, e.g. U"line 1\nline 2",
 	// so we need to go through them one by one
-	while (text != end) {
-		char32_t const *end_of_line = util_mem32chr_const(text, U'\n', len);
-		if (!end_of_line) end_of_line = end;
+	u32 n_added_lines = (u32)str32_count_char(str, U'\n');
+	buffer_insert_lines(buffer, cur_line_idx + 1, n_added_lines);
+	if (n_added_lines) {
+		// move any text past the cursor on this line to the last added line.
+		Line *last_line = &buffer->lines[cur_line_idx + n_added_lines];
+		u32 chars_moved = cur_line->len - cur_index;
+		if (chars_moved) {
+			if (buffer_line_grow(buffer, last_line, chars_moved)) {
+				memcpy(last_line->str, cur_line->str + cur_index, chars_moved * sizeof(char32_t));
+				cur_line->len  -= chars_moved;
+				last_line->len += chars_moved;
+			}
+		}
+	}
 
-		u32 text_line_len = (u32)(end_of_line - text);
-		Line *cur_line = &buffer->lines[cur_line_idx];
+
+	while (str.len) {
+		u32 text_line_len = (u32)str32chr(str, U'\n');
 		u32 old_len = cur_line->len;
 		u32 new_len = old_len + text_line_len;
 		if (new_len > old_len) { // handles both overflow and empty text lines
@@ -504,33 +548,43 @@ void buffer_insert_text_at_cursor(TextBuffer *buffer, char32_t const *text, size
 				// make space for text
 				memmove(cur_line->str + cur_index + (new_len - old_len),
 					cur_line->str + cur_index,
-					(old_len - cur_index) * sizeof *text);
+					(old_len - cur_index) * sizeof(char32_t));
 				// insert text
-				memcpy(cur_line->str + cur_index, text, text_line_len * sizeof *text);
+				memcpy(cur_line->str + cur_index, str.str, text_line_len * sizeof(char32_t));
 				
 				cur_line->len = new_len;
 			}
 
-			text += text_line_len;
-			len  -= text_line_len;
-			cur_index = buffer->cursor_pos.index += text_line_len;
+			str.str += text_line_len;
+			str.len -= text_line_len;
+			cur_index += text_line_len;
 		}
-
-		// @TODO: deal with multiple lines
+		if (str.len) {
+			// we've got a newline.
+			cur_line_idx += 1;
+			cur_index = 0;
+			++cur_line;
+			++str.str;
+			--str.len;
+		}
 	}
+
+	buffer->cursor_pos.line = cur_line_idx;
+	buffer->cursor_pos.index = cur_index;
 
 	buffer_scroll_to_cursor(buffer);
 }
 
 void buffer_insert_char_at_cursor(TextBuffer *buffer, char32_t c) {
-	buffer_insert_text_at_cursor(buffer, &c, 1);
+	String32 s = {1, &c};
+	buffer_insert_text_at_cursor(buffer, s);
 }
 
 void buffer_insert_utf8_at_cursor(TextBuffer *buffer, char const *utf8) {
-	String32 s32 = s32_from_utf8(utf8);
+	String32 s32 = str32_from_utf8(utf8);
 	if (s32.str) {
-		buffer_insert_text_at_cursor(buffer, s32.str, s32.len);
-		s32_free(&s32);
+		buffer_insert_text_at_cursor(buffer, s32);
+		str32_free(&s32);
 	}
 }
 
