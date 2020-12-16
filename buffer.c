@@ -28,6 +28,25 @@ typedef struct {
 	Line *lines;
 } TextBuffer;
 
+// for debugging
+#if DEBUG
+static void buffer_pos_check_valid(TextBuffer *buffer, BufferPos p) {
+	assert(p.line < buffer->nlines);
+	assert(p.index <= buffer->lines[p.line].len);
+}
+
+// perform a series of checks to make sure the buffer doesn't have any invalid values
+static void buffer_check_valid(TextBuffer *buffer) {
+	assert(buffer->nlines);
+	buffer_pos_check_valid(buffer, buffer->cursor_pos);
+}
+#else
+static void buffer_check_valid(TextBuffer *buffer) {
+	(void)buffer;
+}
+#endif
+
+
 void buffer_create(TextBuffer *buffer, Font *font) {
 	util_zero_memory(buffer, sizeof *buffer);
 	buffer->font = font;
@@ -84,12 +103,16 @@ static void buffer_line_append_char(TextBuffer *buffer, Line *line, char32_t c) 
 		line->str[line->len++] = c;
 }
 
+static void buffer_line_free(Line *line) {
+	free(line->str);
+}
+
 // Does not free the pointer `buffer` (buffer might not have even been allocated with malloc)
 void buffer_free(TextBuffer *buffer) {
 	Line *lines = buffer->lines;
 	u32 nlines = buffer->nlines;
 	for (u32 i = 0; i < nlines; ++i) {
-		free(lines[i].str);
+		buffer_line_free(&lines[i]);
 	}
 	free(lines);
 	buffer->nlines = 0;
@@ -513,6 +536,7 @@ static void buffer_insert_lines(TextBuffer *buffer, u32 where, u32 number) {
 			(old_nlines - where) * sizeof *buffer->lines);
 		// zero new lines
 		util_zero_memory(buffer->lines + where, number * sizeof *buffer->lines);
+		buffer->nlines = new_nlines;
 	}
 }
 
@@ -525,8 +549,8 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 	// `text` could consist of multiple lines, e.g. U"line 1\nline 2",
 	// so we need to go through them one by one
 	u32 n_added_lines = (u32)str32_count_char(str, U'\n');
-	buffer_insert_lines(buffer, line_idx + 1, n_added_lines);
 	if (n_added_lines) {
+		buffer_insert_lines(buffer, line_idx + 1, n_added_lines);
 		// move any text past the cursor on this line to the last added line.
 		Line *last_line = &buffer->lines[line_idx + n_added_lines];
 		u32 chars_moved = line->len - index;
@@ -593,9 +617,62 @@ void buffer_insert_utf8_at_cursor(TextBuffer *buffer, char const *utf8) {
 	}
 }
 
-void buffer_delete_chars_at_cursor(TextBuffer *buffer, u32 nchars) {
-	// @TODO
-	(void)buffer, (void)nchars;
+static void buffer_shorten_line(Line *line, u32 new_len) {
+	assert(line->len >= new_len);
+	line->len = new_len; // @OPTIMIZE(memory): decrease line capacity
+}
+
+// decrease the number of lines in the buffer.
+// DOES NOT DO ANYTHING TO THE LINES REMOVED! YOU NEED TO FREE THEM YOURSELF!
+static void buffer_shorten(TextBuffer *buffer, u32 new_nlines) {
+	buffer->nlines = new_nlines; // @OPTIMIZE(memory): decrease lines capacity
+}
+
+void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, u64 nchars) {
+	u32 line_idx = pos.line;
+	u32 index = pos.index;
+	Line *line = &buffer->lines[line_idx], *lines_end = &buffer->lines[buffer->nlines];
+	if (nchars + index > line->len) {
+		// delete rest of line
+		buffer_shorten_line(line, index);
+		nchars -= line->len - index + 1; // +1 for the newline that got deleted
+		Line *last_line; // last line in lines deleted
+		for (last_line = line + 1; last_line < lines_end && nchars > last_line->len; ++last_line) {
+			nchars -= last_line->len+1;
+		}
+		if (last_line == lines_end) {
+			// @TODO: test this
+			// delete everything to the end of the file
+			for (u32 idx = line_idx + 1; idx < buffer->nlines; ++idx) {
+				buffer_line_free(&buffer->lines[idx]);
+			}
+			buffer_shorten(buffer, line_idx + 1);
+		} else {
+			// join last_line to line.
+			u32 last_line_chars_left = (u32)(last_line->len - nchars);
+			if (buffer_line_grow(buffer, line, line->len + last_line_chars_left)) {
+				memcpy(line->str + line->len, last_line->str, last_line_chars_left * sizeof(char32_t));
+				line->len += last_line_chars_left;
+			}
+			// remove all lines between line + 1 and last_line (inclusive).
+			for (Line *l = line + 1; l <= last_line; ++l) {
+				buffer_line_free(l);
+			}
+			// @TODO: test with removing more than one line
+			memmove(line + 1, last_line + 1, (size_t)(lines_end - (last_line + 1)) * sizeof *line);
+			u32 lines_removed = (u32)(last_line - line);
+			buffer_shorten(buffer, buffer->nlines - lines_removed);
+		}
+	} else {
+		// just delete characters from this line
+		memmove(line->str + index, line->str + index + nchars, (size_t)(line->len - (nchars + index)) * sizeof(char32_t));
+		line->len -= (u32)nchars;
+	}
+
+}
+
+void buffer_delete_chars_at_cursor(TextBuffer *buffer, u64 nchars) {
+	buffer_delete_chars_at_pos(buffer, buffer->cursor_pos, nchars);
 }
 
 bool buffer_cursor_move_left(TextBuffer *buffer) {

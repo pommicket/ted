@@ -69,7 +69,7 @@ int main(void) {
 	buffer_create(&text_buffer, font);
 
 	{
-		FILE *fp = fopen("main.c", "rb");
+		FILE *fp = fopen("test.txt", "rb");
 		assert(fp);
 		bool success = buffer_load_file(&text_buffer, fp);
 		fclose(fp);
@@ -121,6 +121,9 @@ int main(void) {
 					break;
 				case SDLK_TAB:
 					buffer_insert_char_at_cursor(&text_buffer, U'\t');
+					break;
+				case SDLK_DELETE:
+					buffer_delete_chars_at_cursor(&text_buffer, 1);
 					break;
 				}
 			} break;
@@ -182,6 +185,7 @@ int main(void) {
 		}
 
 		//buffer_print_debug(&text_buffer);
+		buffer_check_valid(&text_buffer);
 
 		SDL_GL_SwapWindow(window);
 	}
