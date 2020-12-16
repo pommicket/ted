@@ -516,23 +516,24 @@ static void buffer_insert_lines(TextBuffer *buffer, u32 where, u32 number) {
 	}
 }
 
-void buffer_insert_text_at_cursor(TextBuffer *buffer, String32 str) {
-	u32 cur_line_idx = buffer->cursor_pos.line;
-	u32 cur_index = buffer->cursor_pos.index;
-	Line *cur_line = &buffer->lines[cur_line_idx];
+// inserts the given text, returning the position of the end of the text
+BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 str) {
+	u32 line_idx = pos.line;
+	u32 index = pos.index;
+	Line *line = &buffer->lines[line_idx];
 
 	// `text` could consist of multiple lines, e.g. U"line 1\nline 2",
 	// so we need to go through them one by one
 	u32 n_added_lines = (u32)str32_count_char(str, U'\n');
-	buffer_insert_lines(buffer, cur_line_idx + 1, n_added_lines);
+	buffer_insert_lines(buffer, line_idx + 1, n_added_lines);
 	if (n_added_lines) {
 		// move any text past the cursor on this line to the last added line.
-		Line *last_line = &buffer->lines[cur_line_idx + n_added_lines];
-		u32 chars_moved = cur_line->len - cur_index;
+		Line *last_line = &buffer->lines[line_idx + n_added_lines];
+		u32 chars_moved = line->len - index;
 		if (chars_moved) {
 			if (buffer_line_grow(buffer, last_line, chars_moved)) {
-				memcpy(last_line->str, cur_line->str + cur_index, chars_moved * sizeof(char32_t));
-				cur_line->len  -= chars_moved;
+				memcpy(last_line->str, line->str + index, chars_moved * sizeof(char32_t));
+				line->len  -= chars_moved;
 				last_line->len += chars_moved;
 			}
 		}
@@ -541,37 +542,41 @@ void buffer_insert_text_at_cursor(TextBuffer *buffer, String32 str) {
 
 	while (str.len) {
 		u32 text_line_len = (u32)str32chr(str, U'\n');
-		u32 old_len = cur_line->len;
+		u32 old_len = line->len;
 		u32 new_len = old_len + text_line_len;
 		if (new_len > old_len) { // handles both overflow and empty text lines
-			if (buffer_line_grow(buffer, cur_line, new_len)) {
+			if (buffer_line_grow(buffer, line, new_len)) {
 				// make space for text
-				memmove(cur_line->str + cur_index + (new_len - old_len),
-					cur_line->str + cur_index,
-					(old_len - cur_index) * sizeof(char32_t));
+				memmove(line->str + index + (new_len - old_len),
+					line->str + index,
+					(old_len - index) * sizeof(char32_t));
 				// insert text
-				memcpy(cur_line->str + cur_index, str.str, text_line_len * sizeof(char32_t));
+				memcpy(line->str + index, str.str, text_line_len * sizeof(char32_t));
 				
-				cur_line->len = new_len;
+				line->len = new_len;
 			}
 
 			str.str += text_line_len;
 			str.len -= text_line_len;
-			cur_index += text_line_len;
+			index += text_line_len;
 		}
 		if (str.len) {
 			// we've got a newline.
-			cur_line_idx += 1;
-			cur_index = 0;
-			++cur_line;
+			line_idx += 1;
+			index = 0;
+			++line;
 			++str.str;
 			--str.len;
 		}
 	}
 
-	buffer->cursor_pos.line = cur_line_idx;
-	buffer->cursor_pos.index = cur_index;
+	BufferPos b = {.line = line_idx, .index = index};
+	return b;
+}
+	
 
+void buffer_insert_text_at_cursor(TextBuffer *buffer, String32 str) {
+	buffer->cursor_pos = buffer_insert_text_at_pos(buffer, buffer->cursor_pos, str);
 	buffer_scroll_to_cursor(buffer);
 }
 
@@ -586,6 +591,11 @@ void buffer_insert_utf8_at_cursor(TextBuffer *buffer, char const *utf8) {
 		buffer_insert_text_at_cursor(buffer, s32);
 		str32_free(&s32);
 	}
+}
+
+void buffer_delete_chars_at_cursor(TextBuffer *buffer, u32 nchars) {
+	// @TODO
+	(void)buffer, (void)nchars;
 }
 
 bool buffer_cursor_move_left(TextBuffer *buffer) {
