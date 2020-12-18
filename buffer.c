@@ -471,6 +471,40 @@ static void buffer_pos_validate(TextBuffer *buffer, BufferPos *p) {
 		p->index = line_len;
 }
 
+static bool buffer_pos_valid(TextBuffer *buffer, BufferPos p) {
+	return p.line < buffer->nlines && p.index <= buffer->lines[p.line].len;
+}
+
+// returns "p2 - p1", that is, the number of characters between p1 and p2.
+static i64 buffer_pos_diff(TextBuffer *buffer, BufferPos p1, BufferPos p2) {
+	assert(buffer_pos_valid(buffer, p1));
+	assert(buffer_pos_valid(buffer, p2));
+
+	if (p1.line == p2.line) {
+		// p1 and p2 are in the same line
+		return (i64)p2.index - p1.index;
+	}
+	i64 factor = 1;
+	if (p1.line > p2.line) {
+		// switch positions so p2 has the later line
+		BufferPos tmp = p1;
+		p1 = p2;
+		p2 = tmp;
+		factor = -1;
+	}
+
+	assert(p2.line > p1.line);
+	i64 chars_at_end_of_p1_line = buffer->lines[p1.line].len - p1.index + 1; // + 1 for newline
+	i64 chars_at_start_of_p2_line = p2.index;
+	i64 chars_in_lines_in_between = 0;
+	// now we need to add up the lengths of the lines between p1 and p2
+	for (Line *line = buffer->lines + (p1.line + 1), *end = buffer->lines + p2.line; line != end; ++line) {
+		chars_in_lines_in_between += line->len;
+	}
+	i64 total = chars_at_end_of_p1_line + chars_in_lines_in_between + chars_at_start_of_p2_line;
+	return total * factor;
+}
+
 // move left (if `by` is negative) or right (if `by` is positive) by the specified amount.
 // returns the signed number of characters successfully moved (it could be less in magnitude than `by` if the beginning of the file is reached)
 i64 buffer_pos_move_horizontally(TextBuffer *buffer, BufferPos *p, i64 by) {
@@ -772,7 +806,6 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 	return b;
 }
 	
-
 void buffer_insert_text_at_cursor(TextBuffer *buffer, String32 str) {
 	buffer->cursor_pos = buffer_insert_text_at_pos(buffer, buffer->cursor_pos, str);
 	buffer_scroll_to_cursor(buffer);
@@ -815,7 +848,6 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars) {
 			nchars -= last_line->len+1;
 		}
 		if (last_line == lines_end) {
-			// @TODO: test this
 			// delete everything to the end of the file
 			for (u32 idx = line_idx + 1; idx < buffer->nlines; ++idx) {
 				buffer_line_free(&buffer->lines[idx]);
@@ -842,16 +874,54 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars) {
 		memmove(line->str + index, line->str + index + nchars, (size_t)(line->len - (nchars + index)) * sizeof(char32_t));
 		line->len -= (u32)nchars;
 	}
+}
 
+// Delete characters between the given buffer positions.
+void buffer_delete_chars_between(TextBuffer *buffer, BufferPos p1, BufferPos p2) {
+	buffer_pos_validate(buffer, &p1);
+	buffer_pos_validate(buffer, &p2);
+	i64 nchars = buffer_pos_diff(buffer, p1, p2);
+	if (nchars < 0) {
+		// swap positions if p1 comes after p2
+		nchars = -nchars;
+		BufferPos tmp = p1;
+		p1 = p2;
+		p2 = tmp;
+	}
+	buffer_delete_chars_at_pos(buffer, p1, nchars);
 }
 
 void buffer_delete_chars_at_cursor(TextBuffer *buffer, i64 nchars) {
 	buffer_delete_chars_at_pos(buffer, buffer->cursor_pos, nchars);
 }
 
-// returns number of characters backspaced
-i64 buffer_backspace(TextBuffer *buffer, i64 ntimes) {
-	i64 n = buffer_cursor_move_left(buffer, ntimes);
-	buffer_delete_chars_at_cursor(buffer, n);
+i64 buffer_backspace_at_pos(TextBuffer *buffer, BufferPos *pos, i64 ntimes) {
+	i64 n = buffer_pos_move_left(buffer, pos, ntimes);
+	buffer_delete_chars_at_pos(buffer, *pos, n);
 	return n;
+}
+
+// returns number of characters backspaced
+i64 buffer_backspace_at_cursor(TextBuffer *buffer, i64 ntimes) {
+	return buffer_backspace_at_pos(buffer, &buffer->cursor_pos, ntimes);
+}
+
+void buffer_delete_words_at_pos(TextBuffer *buffer, BufferPos pos, i64 nwords) {
+	BufferPos pos2 = pos;
+	buffer_pos_move_right_words(buffer, &pos2, nwords);
+	buffer_delete_chars_between(buffer, pos, pos2);
+}
+
+void buffer_delete_words_at_cursor(TextBuffer *buffer, i64 nwords) {
+	buffer_delete_words_at_pos(buffer, buffer->cursor_pos, nwords);
+}
+
+void buffer_backspace_words_at_pos(TextBuffer *buffer, BufferPos *pos, i64 nwords) {
+	BufferPos pos2 = *pos;
+	buffer_pos_move_left_words(buffer, pos, nwords);
+	buffer_delete_chars_between(buffer, pos2, *pos);
+}
+
+void buffer_backspace_words_at_cursor(TextBuffer *buffer, i64 nwords) {
+	buffer_backspace_words_at_pos(buffer, &buffer->cursor_pos, nwords);
 }

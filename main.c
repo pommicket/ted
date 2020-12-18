@@ -130,10 +130,16 @@ int main(void) {
 					buffer_insert_char_at_cursor(&text_buffer, U'\t');
 					break;
 				case SDLK_DELETE:
-					buffer_delete_chars_at_cursor(&text_buffer, 1);
+					if (ctrl)
+						buffer_delete_words_at_cursor(&text_buffer, 1);
+					else
+						buffer_delete_chars_at_cursor(&text_buffer, 1);
 					break;
 				case SDLK_BACKSPACE:
-					buffer_backspace(&text_buffer, 1);
+					if (ctrl)
+						buffer_backspace_words_at_cursor(&text_buffer, 1);
+					else
+						buffer_backspace_at_cursor(&text_buffer, 1);
 					break;
 				}
 			} break;
