@@ -105,16 +105,16 @@ int main(void) {
 					buffer_scroll(&text_buffer, 0, +buffer_display_rows(&text_buffer));
 					break;
 				case SDLK_RIGHT:
-					buffer_cursor_move_right(&text_buffer);
+					buffer_cursor_move_right(&text_buffer, 1);
 					break;
 				case SDLK_LEFT:
-					buffer_cursor_move_left(&text_buffer);
+					buffer_cursor_move_left(&text_buffer, 1);
 					break;
 				case SDLK_UP:
-					buffer_cursor_move_up(&text_buffer);
+					buffer_cursor_move_up(&text_buffer, 1);
 					break;
 				case SDLK_DOWN:
-					buffer_cursor_move_down(&text_buffer);
+					buffer_cursor_move_down(&text_buffer, 1);
 					break;
 				case SDLK_RETURN:
 					buffer_insert_char_at_cursor(&text_buffer, U'\n');
@@ -124,6 +124,9 @@ int main(void) {
 					break;
 				case SDLK_DELETE:
 					buffer_delete_chars_at_cursor(&text_buffer, 1);
+					break;
+				case SDLK_BACKSPACE:
+					buffer_backspace(&text_buffer, 1);
 					break;
 				}
 			} break;

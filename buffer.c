@@ -433,69 +433,112 @@ BufferPos buffer_end_pos(TextBuffer *buffer) {
 	return (BufferPos){.line = buffer->nlines - 1, .index = buffer->lines[buffer->nlines-1].len};
 }
 
-// returns true if p could move left (i.e. if it's not the very first position in the file)
-bool buffer_pos_move_left(TextBuffer *buffer, BufferPos *p) {
-	if (p->line >= buffer->nlines)
-		*p = buffer_end_pos(buffer); // invalid position; move to end of buffer
-	if (p->index == 0) {
-		// first column; move to previous line
-		if (p->line == 0)
-			return false;
-		--p->line;
-		p->index = buffer->lines[p->line].len;
-	} else {
-		--p->index;
-	}
-	return true;
-}
-
-bool buffer_pos_move_right(TextBuffer *buffer, BufferPos *p) {
-	if (p->line >= buffer->nlines)
-		*p = buffer_end_pos(buffer); // invalid position; move to end of buffer
-	Line *line = &buffer->lines[p->line];
-	if (p->index >= line->len) {
-		// last column; move to next line
-		if (p->line >= buffer->nlines - 1) {
-			// last line
-			*p = buffer_end_pos(buffer);
-			return false;
-		} else {
-			p->index = 0;
-			++p->line;
+// move left (if `by` is negative) or right (if `by` is positive) by the specified amount.
+// returns the signed number of characters successfully moved (it could be less in magnitude than `by` if the beginning of the file is reached)
+i64 buffer_pos_move_horizontally(TextBuffer *buffer, BufferPos *p, i64 by) {
+	if (by < 0) {
+		by = -by;
+		i64 by_start = by;
+		if (p->line >= buffer->nlines)
+			*p = buffer_end_pos(buffer); // invalid position; move to end of buffer
+		
+		while (by > 0) {
+			if (by <= p->index) {
+				// no need to go to the previous line
+				p->index -= (u32)by;
+				by = 0;
+			} else {
+				by -= p->index;
+				p->index = 0;
+				if (p->line == 0) {
+					// beginning of file reached
+					return -(by_start - by);
+				}
+				--by; // count newline as a character
+				// previous line
+				--p->line;
+				p->index = buffer->lines[p->line].len;
+			}
 		}
-	} else {
-		++p->index;
+		return -by_start;
+	} else if (by > 0) {
+		i64 by_start = by;
+		if (p->line >= buffer->nlines)
+			*p = buffer_end_pos(buffer); // invalid position; move to end of buffer
+		Line *line = &buffer->lines[p->line];
+		while (by > 0) {
+			if (by <= line->len - p->index) {
+				p->index += (u32)by;
+				by = 0;
+			} else {
+				by -= line->len - p->index;
+				p->index = line->len;
+				if (p->line >= buffer->nlines - 1) {
+					// end of file reached
+					return by_start - by;
+				}
+				--by;
+				++p->line;
+				p->index = 0;
+			}
+		}
+		return by_start;
 	}
-	return true;
+	return 0;
 }
 
-bool buffer_pos_move_up(TextBuffer *buffer, BufferPos *pos) {
-	(void)buffer;
-	if (pos->line == 0)
-		return false;
+// same as buffer_pos_move_horizontally, but for up and down.
+i64 buffer_pos_move_vertically(TextBuffer *buffer, BufferPos *pos, i64 by) {
 	// moving up/down should preserve the column, not the index.
 	// consider:
 	// tab|hello world
 	// tab|tab|more text
 	// the character above the 'm' is the 'o', not the 'e'
-	u32 column = buffer_index_to_column(buffer, pos->line, pos->index);
-	--pos->line;
-	pos->index = buffer_column_to_index(buffer, pos->line, column);
-	u32 line_len = buffer->lines[pos->line].len;
-	if (pos->index >= line_len) pos->index = line_len;
-	return true;
+	if (by < 0) {
+		by = -by;
+		u32 column = buffer_index_to_column(buffer, pos->line, pos->index);
+		if (pos->line < by) {
+			i64 ret = pos->line;
+			pos->line = 0;
+			return -ret;
+		}
+		pos->line -= (u32)by;
+		pos->index = buffer_column_to_index(buffer, pos->line, column);
+		u32 line_len = buffer->lines[pos->line].len;
+		if (pos->index >= line_len) pos->index = line_len;
+		return -by;
+	} else if (by > 0) {
+		u32 column = buffer_index_to_column(buffer, pos->line, pos->index);
+		if (pos->line + by >= buffer->nlines) {
+			i64 ret = buffer->nlines-1 - pos->line;
+			pos->line = buffer->nlines-1;
+			return ret;
+		}
+		pos->line += (u32)by;
+		pos->index = buffer_column_to_index(buffer, pos->line, column);
+		u32 line_len = buffer->lines[pos->line].len;
+		if (pos->index >= line_len) pos->index = line_len;
+		return by;
+	}
+	return 0;
 }
 
-bool buffer_pos_move_down(TextBuffer *buffer, BufferPos *pos) {
-	if (pos->line >= buffer->nlines-1)
-		return false;
-	u32 column = buffer_index_to_column(buffer, pos->line, pos->index);
-	++pos->line;
-	pos->index = buffer_column_to_index(buffer, pos->line, column);
-	u32 line_len = buffer->lines[pos->line].len;
-	if (pos->index >= line_len) pos->index = line_len;
-	return true;
+i64 buffer_pos_move_left(TextBuffer *buffer, BufferPos *pos, i64 by) {
+	return -buffer_pos_move_horizontally(buffer, pos, -by);
 }
+
+i64 buffer_pos_move_right(TextBuffer *buffer, BufferPos *pos, i64 by) {
+	return +buffer_pos_move_horizontally(buffer, pos, +by);
+}
+
+i64 buffer_pos_move_up(TextBuffer *buffer, BufferPos *pos, i64 by) {
+	return -buffer_pos_move_vertically(buffer, pos, -by);
+}
+
+i64 buffer_pos_move_down(TextBuffer *buffer, BufferPos *pos, i64 by) {
+	return +buffer_pos_move_vertically(buffer, pos, +by);
+}
+
 
 // if the cursor is offscreen, this will scroll to make it onscreen.
 static void buffer_scroll_to_cursor(TextBuffer *buffer) {
@@ -628,7 +671,32 @@ static void buffer_shorten(TextBuffer *buffer, u32 new_nlines) {
 	buffer->nlines = new_nlines; // @OPTIMIZE(memory): decrease lines capacity
 }
 
-void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, u64 nchars) {
+i64 buffer_cursor_move_left(TextBuffer *buffer, i64 by) {
+	i64 ret = buffer_pos_move_left(buffer, &buffer->cursor_pos, by);
+	buffer_scroll_to_cursor(buffer);
+	return ret;
+}
+
+i64 buffer_cursor_move_right(TextBuffer *buffer, i64 by) {
+	i64 ret = buffer_pos_move_right(buffer, &buffer->cursor_pos, by);
+	buffer_scroll_to_cursor(buffer);
+	return ret;
+}
+
+i64 buffer_cursor_move_up(TextBuffer *buffer, i64 by) {
+	i64 ret = buffer_pos_move_up(buffer, &buffer->cursor_pos, by);
+	buffer_scroll_to_cursor(buffer);
+	return ret;
+}
+
+i64 buffer_cursor_move_down(TextBuffer *buffer, i64 by) {
+	i64 ret = buffer_pos_move_down(buffer, &buffer->cursor_pos, by);
+	buffer_scroll_to_cursor(buffer);
+	return ret;
+}
+
+
+void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars) {
 	u32 line_idx = pos.line;
 	u32 index = pos.index;
 	Line *line = &buffer->lines[line_idx], *lines_end = &buffer->lines[buffer->nlines];
@@ -671,39 +739,13 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, u64 nchars) {
 
 }
 
-void buffer_delete_chars_at_cursor(TextBuffer *buffer, u64 nchars) {
+void buffer_delete_chars_at_cursor(TextBuffer *buffer, i64 nchars) {
 	buffer_delete_chars_at_pos(buffer, buffer->cursor_pos, nchars);
 }
 
-bool buffer_cursor_move_left(TextBuffer *buffer) {
-	if (buffer_pos_move_left(buffer, &buffer->cursor_pos)) {
-		buffer_scroll_to_cursor(buffer);
-		return true;
-	}
-	return false;
+// returns number of characters backspaced
+i64 buffer_backspace(TextBuffer *buffer, i64 ntimes) {
+	i64 n = buffer_cursor_move_left(buffer, ntimes);
+	buffer_delete_chars_at_cursor(buffer, n);
+	return n;
 }
-
-bool buffer_cursor_move_right(TextBuffer *buffer) {
-	if (buffer_pos_move_right(buffer, &buffer->cursor_pos)) {
-		buffer_scroll_to_cursor(buffer);
-		return true;
-	}
-	return false;
-}
-
-bool buffer_cursor_move_up(TextBuffer *buffer) {
-	if (buffer_pos_move_up(buffer, &buffer->cursor_pos)) {
-		buffer_scroll_to_cursor(buffer);
-		return true;
-	}
-	return false;
-}
-
-bool buffer_cursor_move_down(TextBuffer *buffer) {
-	if (buffer_pos_move_down(buffer, &buffer->cursor_pos)) {
-		buffer_scroll_to_cursor(buffer);
-		return true;
-	}
-	return false;
-}
-
