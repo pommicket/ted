@@ -82,7 +82,8 @@ int main(void) {
 
 	while (!quit) {
 		SDL_Event event;
-			
+		Uint8 const *keyboard_state = SDL_GetKeyboardState(NULL);
+		bool ctrl = keyboard_state[SDL_SCANCODE_LCTRL] || keyboard_state[SDL_SCANCODE_RCTRL];
 
 		while (SDL_PollEvent(&event)) {
 			// @TODO: make a function to handle text buffer events
@@ -105,10 +106,16 @@ int main(void) {
 					buffer_scroll(&text_buffer, 0, +buffer_display_rows(&text_buffer));
 					break;
 				case SDLK_RIGHT:
-					buffer_cursor_move_right(&text_buffer, 1);
+					if (ctrl)
+						buffer_cursor_move_right_words(&text_buffer, 1);
+					else
+						buffer_cursor_move_right(&text_buffer, 1);
 					break;
 				case SDLK_LEFT:
-					buffer_cursor_move_left(&text_buffer, 1);
+					if (ctrl)
+						buffer_cursor_move_left_words(&text_buffer, 1);
+					else
+						buffer_cursor_move_left(&text_buffer, 1);
 					break;
 				case SDLK_UP:
 					buffer_cursor_move_up(&text_buffer, 1);
@@ -137,9 +144,6 @@ int main(void) {
 			}
 		}
 
-		Uint8 const *keyboard_state = SDL_GetKeyboardState(NULL);
-		bool control_key_down = keyboard_state[SDL_SCANCODE_LCTRL] || keyboard_state[SDL_SCANCODE_RCTRL];
-
 		double frame_dt;
 		{
 			Uint32 time_this_frame = SDL_GetTicks();
@@ -147,7 +151,7 @@ int main(void) {
 			time_at_last_frame = time_this_frame;
 		}
 
-		if (control_key_down) {
+		if (ctrl) {
 			// control + arrow keys to scroll
 			double scroll_speed = 20.0;
 			double scroll_amount_x = scroll_speed * frame_dt * 1.5; // characters are taller than they are wide
