@@ -68,14 +68,8 @@ int main(void) {
 	TextBuffer text_buffer;
 	buffer_create(&text_buffer, font);
 
-	{
-		FILE *fp = fopen("test.txt", "rb");
-		assert(fp);
-		bool success = buffer_load_file(&text_buffer, fp);
-		fclose(fp);
-		if (!success)
-			die("Error loading file.");
-	}
+	if (!buffer_load_file(&text_buffer, "test.txt"))
+		die("Error loading file: %s", buffer_geterr(&text_buffer));
 
 
 	Uint32 time_at_last_frame = SDL_GetTicks();
@@ -140,6 +134,13 @@ int main(void) {
 						buffer_backspace_words_at_cursor(&text_buffer, 1);
 					else
 						buffer_backspace_at_cursor(&text_buffer, 1);
+					break;
+				case SDLK_s:
+					if (ctrl) {
+						if (!buffer_save(&text_buffer)) {
+							printf("Error saving: %s.", buffer_geterr(&text_buffer));
+						}
+					}
 					break;
 				}
 			} break;

@@ -18,15 +18,16 @@ typedef struct {
 } Line;
 
 typedef struct {
+	char const *filename;
 	double scroll_x, scroll_y; // number of characters scrolled in the x/y direction
 	Font *font;
 	BufferPos cursor_pos;
 	u8 tab_width;
-	bool out_of_mem; // set to true if an allocation fails
 	float x1, y1, x2, y2;
 	u32 nlines;
 	u32 lines_capacity;
 	Line *lines;
+	char error[128];
 } TextBuffer;
 
 // for debugging
@@ -54,6 +55,24 @@ void buffer_create(TextBuffer *buffer, Font *font) {
 	buffer->tab_width = 4;
 }
 
+// this is a macro so we get -Wformat warnings
+#define buffer_seterr(buffer, fmt, ...) \
+	snprintf(buffer->error, sizeof buffer->error - 1, fmt, ##__VA_ARGS__)
+
+bool buffer_haserr(TextBuffer *buffer) {
+	return buffer->error[0] != '\0';
+}
+
+// returns the buffer's last error
+char const *buffer_geterr(TextBuffer *buffer) {
+	return buffer->error;
+}
+
+// set the buffer's error to indicate that we're out of memory
+static void buffer_out_of_mem(TextBuffer *buffer) {
+	buffer_seterr(buffer, "Out of memory.");
+}
+
 // grow capacity of line to at least minimum_capacity
 // returns true if allocation was succesful
 static Status buffer_line_grow(TextBuffer *buffer, Line *line, u32 minimum_capacity) {
@@ -61,15 +80,14 @@ static Status buffer_line_grow(TextBuffer *buffer, Line *line, u32 minimum_capac
 		// double capacity of line
 		u32 new_capacity = line->capacity == 0 ? 4 : line->capacity * 2;
 		if (new_capacity < line->capacity) {
-			// overflow. this could only happen with an extremely long line, so we
-			// treat it as 
-			buffer->out_of_mem = true;
+			// this could only happen if line->capacity * 2 overflows.
+			buffer_seterr(buffer, "Line %td is too large.", line - buffer->lines);
 			return false;
 		}
 		char32_t *new_str = realloc(line->str, new_capacity * sizeof *line->str);
 		if (!new_str) {
 			// allocation failed ):
-			buffer->out_of_mem = true;
+			buffer_out_of_mem(buffer);
 			return false;
 		}
 		// allocation successful
@@ -92,7 +110,7 @@ static Status buffer_lines_grow(TextBuffer *buffer, u32 minimum_capacity) {
 			// zero new lines
 			memset(buffer->lines + buffer->nlines, 0, (new_capacity - buffer->nlines) * sizeof *buffer->lines);
 		} else {
-			buffer->out_of_mem = true;
+			buffer_out_of_mem(buffer);
 			return false;
 		}
 	}
@@ -110,79 +128,121 @@ static void buffer_line_free(Line *line) {
 
 // Does not free the pointer `buffer` (buffer might not have even been allocated with malloc)
 void buffer_free(TextBuffer *buffer) {
+
 	Line *lines = buffer->lines;
 	u32 nlines = buffer->nlines;
 	for (u32 i = 0; i < nlines; ++i) {
 		buffer_line_free(&lines[i]);
 	}
 	free(lines);
-	buffer->nlines = 0;
-	buffer->lines = NULL;
+
+	// zero buffer, except for error
+	char error[sizeof buffer->error];
+	memcpy(error, buffer->error, sizeof error);
+	memset(buffer, 0, sizeof *buffer);
+	memcpy(buffer->error, error, sizeof error);
 }
 
 
-// fp should be a binary file
-Status buffer_load_file(TextBuffer *buffer, FILE *fp) {
-	assert(fp);
-	fseek(fp, 0, SEEK_END);
-	size_t file_size = (size_t)ftell(fp);
-	fseek(fp, 0, SEEK_SET);
-	if (file_size > 10L<<20) {
-		// @EVENTUALLY: better handling
-		printf("File too big.\n");
-		return false;
-	}
+// filename must be around for at least as long as the buffer is.
+Status buffer_load_file(TextBuffer *buffer, char const *filename) {
+	buffer->filename = filename;
+	FILE *fp = fopen(filename, "rb");
+	if (fp) {
+		fseek(fp, 0, SEEK_END);
+		size_t file_size = (size_t)ftell(fp);
+		fseek(fp, 0, SEEK_SET);
+		if (file_size > 10L<<20) {
+			buffer_seterr(buffer, "File too big (size: %zu).", file_size);
+			return false;
+		}
 
-	u8 *file_contents = malloc(file_size);
-	bool success = true;
-	if (file_contents) {
-		buffer->lines_capacity = 4;
-		buffer->lines = calloc(buffer->lines_capacity, sizeof *buffer->lines); // initial lines
-		buffer->nlines = 1;
-		size_t bytes_read = fread(file_contents, 1, file_size, fp);
-		if (bytes_read == file_size) {
-			char32_t c = 0;
-			mbstate_t mbstate = {0};
-			for (u8 *p = file_contents, *end = p + file_size; p != end; ) {
-				if (*p == '\r' && p != end-1 && p[1] == '\n') {
-					// CRLF line endings
-					p += 2;
-					c = U'\n';
-				} else {
-					size_t n = mbrtoc32(&c, (char *)p, (size_t)(end - p), &mbstate);
-					if (n == 0) {
-						// null character
-						c = 0;
-						++p;
-					} else if (n == (size_t)(-3)) {
-						// no bytes consumed, but a character was produced
-					} else if (n == (size_t)(-2) || n == (size_t)(-1)) {
-						// incomplete character at end of file or invalid UTF-8 respectively; just treat it as a byte
-						c = *p;
-						++p;
+		u8 *file_contents = malloc(file_size);
+		bool success = true;
+		if (file_contents) {
+			buffer->lines_capacity = 4;
+			buffer->lines = calloc(buffer->lines_capacity, sizeof *buffer->lines); // initial lines
+			buffer->nlines = 1;
+			size_t bytes_read = fread(file_contents, 1, file_size, fp);
+			if (bytes_read == file_size) {
+				char32_t c = 0;
+				mbstate_t mbstate = {0};
+				for (u8 *p = file_contents, *end = p + file_size; p != end; ) {
+					if (*p == '\r' && p != end-1 && p[1] == '\n') {
+						// CRLF line endings
+						p += 2;
+						c = U'\n';
 					} else {
-						p += n;
+						size_t n = mbrtoc32(&c, (char *)p, (size_t)(end - p), &mbstate);
+						if (n == 0) {
+							// null character
+							c = 0;
+							++p;
+						} else if (n == (size_t)(-3)) {
+							// no bytes consumed, but a character was produced
+						} else if (n == (size_t)(-2) || n == (size_t)(-1)) {
+							// incomplete character at end of file or invalid UTF-8 respectively; fail
+							success = false;
+							buffer_seterr(buffer, "Invalid UTF-8 (position: %td).", p - file_contents);
+							break;
+						} else {
+							p += n;
+						}
+					}
+					if (c == U'\n') {
+						if (buffer_lines_grow(buffer, buffer->nlines + 1))
+							++buffer->nlines;
+					} else {
+						u32 line_idx = buffer->nlines - 1;
+						Line *line = &buffer->lines[line_idx];
+
+						buffer_line_append_char(buffer, line, c);
 					}
 				}
-				if (c == U'\n') {
-					if (buffer_lines_grow(buffer, buffer->nlines + 1))
-						++buffer->nlines;
-				} else {
-					u32 line_idx = buffer->nlines - 1;
-					Line *line = &buffer->lines[line_idx];
+			}
+			free(file_contents);
+		}
+		if (ferror(fp)) {	
+			buffer_seterr(buffer, "Error reading from file.");
+			success = false;
+		}
+		if (fclose(fp) != 0) {
+			buffer_seterr(buffer, "Error closing file.");
+			success = false;
+		}
+		if (!success) {
+			buffer_free(buffer);
+		}
+		return success;
+	} else {
+		buffer_seterr(buffer, "File %s does not exist.", filename);
+		return false;
+	}
+}
 
-					buffer_line_append_char(buffer, line, c);
-				}
+Status buffer_save(TextBuffer *buffer) {
+	FILE *out = fopen(buffer->filename, "wb");
+	if (out) {
+		bool success = true;
+		for (Line *line = buffer->lines, *end = line + buffer->nlines; line != end; ++line) {
+			mbstate_t state = {0};
+			for (char32_t *p = line->str, *p_end = p + line->len; p != p_end; ++p) {
+				char utf8[MB_LEN_MAX] = {0};
+				size_t bytes = c32rtomb(utf8, *p, &state);
+				fwrite(utf8, 1, bytes, out);
+			}
+
+			if (line != end-1) {
+				putc('\n', out);
 			}
 		}
-		free(file_contents);
+		if (ferror(out)) success = false;
+		if (fclose(out) != 0) success = false;
+		return success;
+	} else {
+		buffer_seterr(buffer, "Couldn't create file %s.", buffer->filename);
+		return false;
 	}
-	if (ferror(fp)) success = false;
-	if (!success) {
-		buffer_free(buffer);
-	}
-	return success;
-
 }
 
 // print the contents of a buffer to stdout
