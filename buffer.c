@@ -17,6 +17,21 @@ typedef struct {
 	char32_t *str;
 } Line;
 
+typedef enum {
+	BUFFER_EDIT_DELETE_LINE, // line = line #, prev_str = contents of line before it was deleted
+	BUFFER_EDIT_INSERT_LINE, // line = line #
+	BUFFER_EDIT_CHANGE_LINE  // line = line #, prev_str = contents of line before change
+} BufferEditType;
+
+typedef struct BufferEdit {
+	u8 type;
+	bool join_with_next;
+	u32 prev_str_len;
+	u32 line;
+	struct BufferEdit *next;
+	char32_t prev_str[];
+} BufferEdit;
+
 typedef struct {
 	char const *filename;
 	double scroll_x, scroll_y; // number of characters scrolled in the x/y direction
@@ -28,7 +43,11 @@ typedef struct {
 	u32 lines_capacity;
 	Line *lines;
 	char error[128];
+	BufferEdit *undo_history;
+	BufferEdit *redo_history;
 } TextBuffer;
+
+
 
 // for debugging
 #if DEBUG
@@ -47,7 +66,6 @@ static void buffer_check_valid(TextBuffer *buffer) {
 	(void)buffer;
 }
 #endif
-
 
 void buffer_create(TextBuffer *buffer, Font *font) {
 	util_zero_memory(buffer, sizeof *buffer);
@@ -73,6 +91,32 @@ static void buffer_out_of_mem(TextBuffer *buffer) {
 	buffer_seterr(buffer, "Out of memory.");
 }
 
+static void buffer_append_edit(TextBuffer *buffer, BufferEdit *edit) {
+	edit->next = buffer->undo_history;
+	buffer->undo_history = edit;
+}
+
+static void *buffer_calloc(TextBuffer *buffer, size_t n, size_t size) {
+	void *ret = calloc(n, size);
+	if (!ret) buffer_out_of_mem(buffer);
+	return ret;
+}
+
+static void *buffer_realloc(TextBuffer *buffer, void *p, size_t new_size) {
+	void *ret = realloc(p, new_size);
+	if (!ret) buffer_out_of_mem(buffer);
+	return ret;
+}
+
+static WarnUnusedResult BufferEdit *buffer_edit_delete_line(TextBuffer *buffer, u32 line, bool join_with_next) {
+	BufferEdit *e = buffer_calloc(buffer, 1, sizeof *e);
+	if (e) {
+		e->type = BUFFER_EDIT_DELETE_LINE;
+		e->line = line;
+		e->join_with_next = join_with_next;
+	}
+	return e;
+}
 // grow capacity of line to at least minimum_capacity
 // returns true if allocation was succesful
 static Status buffer_line_grow(TextBuffer *buffer, Line *line, u32 minimum_capacity) {
@@ -84,10 +128,9 @@ static Status buffer_line_grow(TextBuffer *buffer, Line *line, u32 minimum_capac
 			buffer_seterr(buffer, "Line %td is too large.", line - buffer->lines);
 			return false;
 		}
-		char32_t *new_str = realloc(line->str, new_capacity * sizeof *line->str);
+		char32_t *new_str = buffer_realloc(buffer, line->str, new_capacity * sizeof *line->str);
 		if (!new_str) {
 			// allocation failed ):
-			buffer_out_of_mem(buffer);
 			return false;
 		}
 		// allocation successful
@@ -103,14 +146,13 @@ static Status buffer_lines_grow(TextBuffer *buffer, u32 minimum_capacity) {
 	while (minimum_capacity >= buffer->lines_capacity) {
 		// allocate more lines
 		u32 new_capacity = buffer->lines_capacity * 2;
-		Line *new_lines = realloc(buffer->lines, new_capacity * sizeof *buffer->lines);
+		Line *new_lines = buffer_realloc(buffer, buffer->lines, new_capacity * sizeof *buffer->lines);
 		if (new_lines) {
 			buffer->lines = new_lines;
 			buffer->lines_capacity = new_capacity;
 			// zero new lines
 			memset(buffer->lines + buffer->nlines, 0, (new_capacity - buffer->nlines) * sizeof *buffer->lines);
 		} else {
-			buffer_out_of_mem(buffer);
 			return false;
 		}
 	}
@@ -157,46 +199,48 @@ Status buffer_load_file(TextBuffer *buffer, char const *filename) {
 			return false;
 		}
 
-		u8 *file_contents = malloc(file_size);
+		u8 *file_contents = buffer_calloc(buffer, 1, file_size);
 		bool success = true;
 		if (file_contents) {
 			buffer->lines_capacity = 4;
-			buffer->lines = calloc(buffer->lines_capacity, sizeof *buffer->lines); // initial lines
-			buffer->nlines = 1;
-			size_t bytes_read = fread(file_contents, 1, file_size, fp);
-			if (bytes_read == file_size) {
-				char32_t c = 0;
-				mbstate_t mbstate = {0};
-				for (u8 *p = file_contents, *end = p + file_size; p != end; ) {
-					if (*p == '\r' && p != end-1 && p[1] == '\n') {
-						// CRLF line endings
-						p += 2;
-						c = U'\n';
-					} else {
-						size_t n = mbrtoc32(&c, (char *)p, (size_t)(end - p), &mbstate);
-						if (n == 0) {
-							// null character
-							c = 0;
-							++p;
-						} else if (n == (size_t)(-3)) {
-							// no bytes consumed, but a character was produced
-						} else if (n == (size_t)(-2) || n == (size_t)(-1)) {
-							// incomplete character at end of file or invalid UTF-8 respectively; fail
-							success = false;
-							buffer_seterr(buffer, "Invalid UTF-8 (position: %td).", p - file_contents);
-							break;
+			buffer->lines = buffer_calloc(buffer, buffer->lines_capacity, sizeof *buffer->lines); // initial lines
+			if (buffer->lines) {
+				buffer->nlines = 1;
+				size_t bytes_read = fread(file_contents, 1, file_size, fp);
+				if (bytes_read == file_size) {
+					char32_t c = 0;
+					mbstate_t mbstate = {0};
+					for (u8 *p = file_contents, *end = p + file_size; p != end; ) {
+						if (*p == '\r' && p != end-1 && p[1] == '\n') {
+							// CRLF line endings
+							p += 2;
+							c = U'\n';
 						} else {
-							p += n;
+							size_t n = mbrtoc32(&c, (char *)p, (size_t)(end - p), &mbstate);
+							if (n == 0) {
+								// null character
+								c = 0;
+								++p;
+							} else if (n == (size_t)(-3)) {
+								// no bytes consumed, but a character was produced
+							} else if (n == (size_t)(-2) || n == (size_t)(-1)) {
+								// incomplete character at end of file or invalid UTF-8 respectively; fail
+								success = false;
+								buffer_seterr(buffer, "Invalid UTF-8 (position: %td).", p - file_contents);
+								break;
+							} else {
+								p += n;
+							}
 						}
-					}
-					if (c == U'\n') {
-						if (buffer_lines_grow(buffer, buffer->nlines + 1))
-							++buffer->nlines;
-					} else {
-						u32 line_idx = buffer->nlines - 1;
-						Line *line = &buffer->lines[line_idx];
+						if (c == U'\n') {
+							if (buffer_lines_grow(buffer, buffer->nlines + 1))
+								++buffer->nlines;
+						} else {
+							u32 line_idx = buffer->nlines - 1;
+							Line *line = &buffer->lines[line_idx];
 
-						buffer_line_append_char(buffer, line, c);
+							buffer_line_append_char(buffer, line, c);
+						}
 					}
 				}
 			}
@@ -985,3 +1029,26 @@ void buffer_backspace_words_at_pos(TextBuffer *buffer, BufferPos *pos, i64 nword
 void buffer_backspace_words_at_cursor(TextBuffer *buffer, i64 nwords) {
 	buffer_backspace_words_at_pos(buffer, &buffer->cursor_pos, nwords);
 }
+
+static void buffer_undo(TextBuffer *buffer, i64 ntimes) {
+	for (i64 i = 0; i < ntimes; ++i) {
+		BufferEdit *edit = buffer->undo_history;
+		BufferEdit *inverse = NULL;
+		switch (edit->type) {
+		case BUFFER_EDIT_DELETE_LINE: {
+			// let's re-insert that line
+			buffer_insert_lines(buffer, edit->line, 1);
+			BufferPos pos = {.line = edit->line, .index = 0};
+			String32 str = {edit->prev_str_len, edit->prev_str};
+			buffer_insert_text_at_pos(buffer, pos, str);
+			inverse = buffer_calloc(buffer, 1, sizeof *inverse);
+
+		} break;
+		}
+		assert(inverse);
+		buffer->undo_history = edit->next;
+		inverse->next = buffer->redo_history;
+		buffer->redo_history = inverse;
+	}
+}
+
