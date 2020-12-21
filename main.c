@@ -146,9 +146,9 @@ int main(void) {
 				case SDLK_z:
 					if (ctrl) {
 						if (shift) {
-							buffer_undo(&text_buffer, 1);
-						} else {
 							buffer_redo(&text_buffer, 1);
+						} else {
+							buffer_undo(&text_buffer, 1);
 						}
 					}
 					break;

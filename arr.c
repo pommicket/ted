@@ -166,8 +166,13 @@ static inline void arr_set_len_(void **arr, size_t member_size, size_t n) {
 #define arr_cast_typeof(a)
 #endif
 
+#define arr__join2(a,b) a##b
+#define arr__join(a,b) arr__join2(a,b) // macro used internally
+
 // if the array is not NULL, free it and set it to NULL
 #define arr_free(a) do { if (a) { free(arr_hdr_(a)); (a) = NULL; } } while (0)
+// a nice alias
+#define arr_clear(a) arr_free(a)
 // add an item to the array - if allocation fails, the array will be freed and set to NULL.
 // (how this works: if we can successfully grow the array, increase the length and add the item.)
 #define arr_add(a, x) do { if (((a) = arr_cast_typeof(a) arr_grow1_((a), sizeof *(a)))) ((a)[arr_hdr_(a)->len++] = (x)); } while (0)
@@ -181,8 +186,17 @@ static inline void arr_set_len_(void **arr, size_t member_size, size_t n) {
 #define arr_pop_last(a) ((a)[--arr_hdr_(a)->len])
 #define arr_size_in_bytes(a) (arr_len(a) * sizeof *(a))
 #define arr_lastp(a) ((a) ? &(a)[arr_len(a)-1] : NULL)
-#define arr_shrink(a, n) ((void)((a) && (arr_hdr_(a)->len -= (n))))
-#define arr_foreach_backwards(a, var) for (var = arr_lastp(a); var; var = var == (a) ? NULL : var-1)
+#define arr_foreach_ptr_end(a, type, var, end) type *end = (a) + arr_len(a); \
+	for (type *var = (a); var != end; ++var)
+// Iterate through each element of the array, setting var to a pointer to the element.
+// You can't use this like, e.g.:
+// if (something)
+//   arr_foreach_ptr(a, int, i);
+// You'll get an error. You will need to use braces because it expands to multiple statements.
+// (we need to name the end pointer something unique, which is why there's that arr__join thing
+// we can't just declare it inside the for loop, because type could be something like char *.)
+#define arr_foreach_ptr(a, type, var) arr_foreach_ptr_end(a, type, var, arr__join(_foreach_end,__LINE__))
+
 #define arr_reverse(a, type) do { \
 	u64 _i, _len = arr_len(a); \
 	for (_i = 0; 2*_i < _len; ++_i) { \

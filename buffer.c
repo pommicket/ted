@@ -37,6 +37,7 @@ typedef struct {
 	Font *font;
 	BufferPos cursor_pos;
 	u8 tab_width;
+	bool store_undo_events; // set to false to disable undo events
 	float x1, y1, x2, y2;
 	u32 nlines;
 	u32 lines_capacity;
@@ -70,6 +71,7 @@ void buffer_create(TextBuffer *buffer, Font *font) {
 	util_zero_memory(buffer, sizeof *buffer);
 	buffer->font = font;
 	buffer->tab_width = 4;
+	buffer->store_undo_events = true;
 }
 
 // this is a macro so we get -Wformat warnings
@@ -90,8 +92,23 @@ static void buffer_out_of_mem(TextBuffer *buffer) {
 	buffer_seterr(buffer, "Out of memory.");
 }
 
+
+static void buffer_edit_free(BufferEdit *edit) {
+	free(edit->text);
+}
+
+static void buffer_clear_redo_history(TextBuffer *buffer) {
+	arr_foreach_ptr(buffer->redo_history, BufferEdit, edit) {
+		buffer_edit_free(edit);
+	}
+	arr_clear(buffer->redo_history);
+}
+
 // add this edit to the undo history
 static void buffer_append_edit(TextBuffer *buffer, BufferEdit const *edit) {
+	// whenever an edit is made, clear the redo history
+	buffer_clear_redo_history(buffer);
+	
 	arr_add(buffer->undo_history, *edit);
 	if (!buffer->undo_history) buffer_out_of_mem(buffer);
 }
@@ -189,16 +206,20 @@ static Status buffer_create_edit_insert_text(TextBuffer *buffer, BufferEdit *edi
 }
 
 static void buffer_edit_delete_text(TextBuffer *buffer, BufferPos start, size_t len) {
-	BufferEdit edit = {0};
-	if (buffer_create_edit_delete_text(buffer, &edit, start, len)) {
-		buffer_append_edit(buffer, &edit);
+	if (buffer->store_undo_events) {
+		BufferEdit edit = {0};
+		if (buffer_create_edit_delete_text(buffer, &edit, start, len)) {
+			buffer_append_edit(buffer, &edit);
+		}
 	}
 }
 
 static void buffer_edit_insert_text(TextBuffer *buffer, BufferPos start, size_t len) {
-	BufferEdit edit = {0};
-	if (buffer_create_edit_insert_text(buffer, &edit, start, len)) {
-		buffer_append_edit(buffer, &edit);
+	if (buffer->store_undo_events) {
+		BufferEdit edit = {0};
+		if (buffer_create_edit_insert_text(buffer, &edit, start, len)) {
+			buffer_append_edit(buffer, &edit);
+		}
 	}
 }
 
@@ -1123,25 +1144,35 @@ void buffer_backspace_words_at_cursor(TextBuffer *buffer, i64 nwords) {
 
 // returns the inverse edit
 static Status buffer_undo_edit(TextBuffer *buffer, BufferEdit const *edit, BufferEdit *inverse) {
+	bool success = false;
+	bool prev_store_undo_events = buffer->store_undo_events;
+	// temporarily disable saving of undo events so we don't add the inverse edit
+	// to the undo history
+	buffer->store_undo_events = false;
+
 	switch (edit->type) {
 	case BUFFER_EDIT_INSERT_TEXT:
 		// the inverse edit is the deletion of this text
-		if (!buffer_create_edit_delete_text(buffer, inverse, edit->pos, edit->text_len))
-			return false;
-		// delete the text
-		buffer_delete_chars_at_pos(buffer, edit->pos, (i64)edit->text_len);
+		if (buffer_create_edit_delete_text(buffer, inverse, edit->pos, edit->text_len)) {
+			// delete the text
+			buffer_delete_chars_at_pos(buffer, edit->pos, (i64)edit->text_len);
+			
+			success = true;
+		}
 		break;
 	case BUFFER_EDIT_DELETE_TEXT: {
 		// the inverse edit is the insertion of this text
-		if (!buffer_create_edit_insert_text(buffer, inverse, edit->pos, edit->text_len))
-			return false;
-		// insert the text
-		String32 str = {edit->text_len, edit->text};
-		buffer_insert_text_at_pos(buffer, edit->pos, str);
+		if (buffer_create_edit_insert_text(buffer, inverse, edit->pos, edit->text_len)) {
+			// insert the text
+			String32 str = {edit->text_len, edit->text};
+			buffer_insert_text_at_pos(buffer, edit->pos, str);
+
+			success = true;
+		}
 	} break;
 	}
-
-	return true;
+	buffer->store_undo_events = prev_store_undo_events;
+	return success;
 }
 
 void buffer_undo(TextBuffer *buffer, i64 ntimes) {
@@ -1150,7 +1181,11 @@ void buffer_undo(TextBuffer *buffer, i64 ntimes) {
 		if (edit) {
 			BufferEdit inverse = {0};
 			if (buffer_undo_edit(buffer, edit, &inverse)) {
+				buffer->cursor_pos = edit->pos; // put cursor where edit happened
+				buffer_scroll_to_cursor(buffer);
+
 				buffer_append_redo(buffer, &inverse);
+				buffer_edit_free(edit);
 				arr_remove_last(buffer->undo_history);
 			}
 		}
@@ -1163,7 +1198,14 @@ void buffer_redo(TextBuffer *buffer, i64 ntimes) {
 		if (edit) {
 			BufferEdit inverse = {0};
 			if (buffer_undo_edit(buffer, edit, &inverse)) {
-				buffer_append_edit(buffer, &inverse);
+				buffer->cursor_pos = edit->pos; // put cursor where edit happened
+				buffer_scroll_to_cursor(buffer);
+				
+				// NOTE: we can't just use buffer_append_edit, because that clears the redo history
+				arr_add(buffer->undo_history, inverse);
+				if (!buffer->undo_history) buffer_out_of_mem(buffer);
+
+				buffer_edit_free(edit);
 				arr_remove_last(buffer->redo_history);
 			}
 		}
