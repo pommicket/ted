@@ -78,6 +78,7 @@ int main(void) {
 		SDL_Event event;
 		Uint8 const *keyboard_state = SDL_GetKeyboardState(NULL);
 		bool ctrl = keyboard_state[SDL_SCANCODE_LCTRL] || keyboard_state[SDL_SCANCODE_RCTRL];
+		bool shift = keyboard_state[SDL_SCANCODE_LSHIFT] || keyboard_state[SDL_SCANCODE_RSHIFT];
 
 		while (SDL_PollEvent(&event)) {
 			// @TODO: make a function to handle text buffer events
@@ -139,6 +140,15 @@ int main(void) {
 					if (ctrl) {
 						if (!buffer_save(&text_buffer)) {
 							printf("Error saving: %s.", buffer_geterr(&text_buffer));
+						}
+					}
+					break;
+				case SDLK_z:
+					if (ctrl) {
+						if (shift) {
+							buffer_undo(&text_buffer, 1);
+						} else {
+							buffer_redo(&text_buffer, 1);
 						}
 					}
 					break;

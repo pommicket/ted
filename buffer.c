@@ -4,6 +4,7 @@
 #include "util.c"
 #include "text.h"
 #include "string32.c"
+#include "arr.c"
 
 // a position in the buffer
 typedef struct {
@@ -19,16 +20,15 @@ typedef struct {
 
 typedef enum {
 	BUFFER_EDIT_DELETE_TEXT, // text = deleted text, text_len = length of text deleted, pos = where text was deleted (first character)
-	BUFFER_EDIT_INSERT_TEXT // text unused, text_len = length of text inserted, pos = where text was inserted (first character)
+	BUFFER_EDIT_INSERT_TEXT // text = NULL, text_len = length of text inserted, pos = where text was inserted (first character)
 	// (we don't need to know what text was inserted for BUFFER_EDIT_INSERT_TEXT, since it'll be right there)
 } BufferEditType;
 
 typedef struct BufferEdit {
-	struct BufferEdit *next;
 	BufferEditType type;
 	BufferPos pos;
-	u32 text_len;
-	char32_t text[];
+	size_t text_len;
+	char32_t *text;
 } BufferEdit;
 
 typedef struct {
@@ -42,8 +42,8 @@ typedef struct {
 	u32 lines_capacity;
 	Line *lines;
 	char error[128];
-	BufferEdit *undo_history;
-	BufferEdit *redo_history;
+	BufferEdit *undo_history; // dynamic array of undo history
+	BufferEdit *redo_history; // dynamic array of redo history
 } TextBuffer;
 
 
@@ -91,15 +91,15 @@ static void buffer_out_of_mem(TextBuffer *buffer) {
 }
 
 // add this edit to the undo history
-static void buffer_append_edit(TextBuffer *buffer, BufferEdit *edit) {
-	edit->next = buffer->undo_history;
-	buffer->undo_history = edit;
+static void buffer_append_edit(TextBuffer *buffer, BufferEdit const *edit) {
+	arr_add(buffer->undo_history, *edit);
+	if (!buffer->undo_history) buffer_out_of_mem(buffer);
 }
 
 // add this edit to the redo history
-static void buffer_append_redo(TextBuffer *buffer, BufferEdit *edit) {
-	edit->next = buffer->redo_history;
-	buffer->redo_history = edit;
+static void buffer_append_redo(TextBuffer *buffer, BufferEdit const *edit) {
+	arr_add(buffer->redo_history, *edit);
+	if (!buffer->redo_history) buffer_out_of_mem(buffer);
 }
 
 
@@ -130,12 +130,12 @@ static bool buffer_pos_valid(TextBuffer *buffer, BufferPos p) {
 
 
 // get some number of characters of text from the given position in the buffer.
-static Status buffer_get_text_at_pos(TextBuffer *buffer, BufferPos pos, char32_t *text, u32 nchars) {
+static Status buffer_get_text_at_pos(TextBuffer *buffer, BufferPos pos, char32_t *text, size_t nchars) {
 	if (!buffer_pos_valid(buffer, pos)) {
 		return false;
 	}
 	char32_t *p = text;
-	u32 chars_left = nchars;
+	size_t chars_left = nchars;
 	Line *line = &buffer->lines[pos.line], *end = buffer->lines + buffer->nlines;
 	u32 index = pos.index;
 	while (chars_left) {
@@ -154,7 +154,7 @@ static Status buffer_get_text_at_pos(TextBuffer *buffer, BufferPos pos, char32_t
 		++line;
 		if (chars_left && line == end) {
 			// reached end of file before getting full text... this isn't good
-			buffer_seterr(buffer, "Failed to fetch " U32_FMT " characters at " U32_FMT ":" U32_FMT ".", nchars, pos.line+1, pos.index+1);
+			buffer_seterr(buffer, "Failed to fetch %zu characters at " U32_FMT ":" U32_FMT ".", nchars, pos.line+1, pos.index+1);
 			return false;
 		}
 	}
@@ -163,32 +163,44 @@ static Status buffer_get_text_at_pos(TextBuffer *buffer, BufferPos pos, char32_t
 
 // functions for creating buffer edits:
 // call these before you make an edit to create an undo event
-static WarnUnusedResult BufferEdit *buffer_create_edit_delete_text(TextBuffer *buffer, BufferPos start, u32 len) {
-	BufferEdit *e = buffer_calloc(buffer, 1, sizeof *e + len * sizeof *e->text);
-	if (e) {
-		e->type = BUFFER_EDIT_DELETE_TEXT;
-		e->pos = start;
-		e->text_len = len;
-		if (!buffer_get_text_at_pos(buffer, start, e->text, len)) {
-			free(e);
-			e = NULL;
+static Status buffer_create_edit_delete_text(TextBuffer *buffer, BufferEdit *edit, BufferPos start, size_t len) {
+	edit->text = calloc(1, len * sizeof *edit->text);
+	if (edit->text) {
+		edit->type = BUFFER_EDIT_DELETE_TEXT;
+		edit->pos = start;
+		edit->text_len = len;
+		if (!buffer_get_text_at_pos(buffer, start, edit->text, len)) {
+			free(edit->text);
+			return false;
 		}
+		return true;
+	} else {
+		return false;
 	}
-	return e;
 }
 
-static WarnUnusedResult BufferEdit *buffer_create_edit_insert_text(TextBuffer *buffer, BufferPos start, u32 len) {
-	if (!buffer_pos_valid(buffer, start)) return NULL;
-	BufferEdit *e = buffer_calloc(buffer, 1, sizeof *e);
-	if (e) {
-		e->type = BUFFER_EDIT_INSERT_TEXT;
-		e->pos = start;
-		e->text_len = len;
-	}
-	return e;
+static Status buffer_create_edit_insert_text(TextBuffer *buffer, BufferEdit *edit, BufferPos start, size_t len) {
+	if (!buffer_pos_valid(buffer, start)) return false;
+	edit->type = BUFFER_EDIT_INSERT_TEXT;
+	edit->pos = start;
+	edit->text_len = len;
+	edit->text = NULL;
+	return true;
 }
 
+static void buffer_edit_delete_text(TextBuffer *buffer, BufferPos start, size_t len) {
+	BufferEdit edit = {0};
+	if (buffer_create_edit_delete_text(buffer, &edit, start, len)) {
+		buffer_append_edit(buffer, &edit);
+	}
+}
 
+static void buffer_edit_insert_text(TextBuffer *buffer, BufferPos start, size_t len) {
+	BufferEdit edit = {0};
+	if (buffer_create_edit_insert_text(buffer, &edit, start, len)) {
+		buffer_append_edit(buffer, &edit);
+	}
+}
 
 // grow capacity of line to at least minimum_capacity
 // returns true if allocation was succesful
@@ -250,6 +262,9 @@ void buffer_free(TextBuffer *buffer) {
 		buffer_line_free(&lines[i]);
 	}
 	free(lines);
+
+	arr_free(buffer->undo_history);
+	arr_free(buffer->redo_history);
 
 	// zero buffer, except for error
 	char error[sizeof buffer->error];
@@ -913,6 +928,8 @@ static void buffer_insert_lines(TextBuffer *buffer, u32 where, u32 number) {
 
 // inserts the given text, returning the position of the end of the text
 BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 str) {
+	buffer_edit_insert_text(buffer, pos, str.len);
+
 	u32 line_idx = pos.line;
 	u32 index = pos.index;
 	Line *line = &buffer->lines[line_idx];
@@ -1012,6 +1029,11 @@ void buffer_delete_lines(TextBuffer *buffer, u32 first_line_idx, u32 nlines) {
 }
 
 void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars) {
+	assert(nchars >= 0);
+	if (nchars <= 0) return;
+
+	buffer_edit_delete_text(buffer, pos, (size_t)nchars);
+
 	u32 line_idx = pos.line;
 	u32 index = pos.index;
 	Line *line = &buffer->lines[line_idx], *lines_end = &buffer->lines[buffer->nlines];
@@ -1099,31 +1121,51 @@ void buffer_backspace_words_at_cursor(TextBuffer *buffer, i64 nwords) {
 	buffer_backspace_words_at_pos(buffer, &buffer->cursor_pos, nwords);
 }
 
+// returns the inverse edit
+static Status buffer_undo_edit(TextBuffer *buffer, BufferEdit const *edit, BufferEdit *inverse) {
+	switch (edit->type) {
+	case BUFFER_EDIT_INSERT_TEXT:
+		// the inverse edit is the deletion of this text
+		if (!buffer_create_edit_delete_text(buffer, inverse, edit->pos, edit->text_len))
+			return false;
+		// delete the text
+		buffer_delete_chars_at_pos(buffer, edit->pos, (i64)edit->text_len);
+		break;
+	case BUFFER_EDIT_DELETE_TEXT: {
+		// the inverse edit is the insertion of this text
+		if (!buffer_create_edit_insert_text(buffer, inverse, edit->pos, edit->text_len))
+			return false;
+		// insert the text
+		String32 str = {edit->text_len, edit->text};
+		buffer_insert_text_at_pos(buffer, edit->pos, str);
+	} break;
+	}
+
+	return true;
+}
+
 void buffer_undo(TextBuffer *buffer, i64 ntimes) {
 	for (i64 i = 0; i < ntimes; ++i) {
-		BufferEdit *edit = buffer->undo_history;
-		BufferEdit *inverse = NULL;
-		
-		switch (edit->type) {
-		case BUFFER_EDIT_INSERT_TEXT:
-			// the inverse edit is the deletion of this text
-			inverse = buffer_create_edit_delete_text(buffer, edit->pos, edit->text_len);
-			// delete the text
-			buffer_delete_chars_at_pos(buffer, edit->pos, edit->text_len);
-			break;
-		case BUFFER_EDIT_DELETE_TEXT: {
-			// the inverse edit is the insertion of this text
-			inverse = buffer_create_edit_insert_text(buffer, edit->pos, edit->text_len);
-			// insert the text
-			String32 str = {edit->text_len, edit->text};
-			buffer_insert_text_at_pos(buffer, edit->pos, str);
-		} break;
+		BufferEdit *edit = arr_lastp(buffer->undo_history);
+		if (edit) {
+			BufferEdit inverse = {0};
+			if (buffer_undo_edit(buffer, edit, &inverse)) {
+				buffer_append_redo(buffer, &inverse);
+				arr_remove_last(buffer->undo_history);
+			}
 		}
+	}
+}
 
-		if (inverse) {
-			buffer_append_redo(buffer, inverse);
+void buffer_redo(TextBuffer *buffer, i64 ntimes) {
+	for (i64 i = 0; i < ntimes; ++i) {
+		BufferEdit *edit = arr_lastp(buffer->redo_history);
+		if (edit) {
+			BufferEdit inverse = {0};
+			if (buffer_undo_edit(buffer, edit, &inverse)) {
+				buffer_append_edit(buffer, &inverse);
+				arr_remove_last(buffer->redo_history);
+			}
 		}
-
-		free(edit);
 	}
 }
