@@ -18,18 +18,17 @@ typedef struct {
 } Line;
 
 typedef enum {
-	BUFFER_EDIT_DELETE_LINE, // line = line #, prev_str = contents of line before it was deleted
-	BUFFER_EDIT_INSERT_LINE, // line = line #
-	BUFFER_EDIT_CHANGE_LINE  // line = line #, prev_str = contents of line before change
+	BUFFER_EDIT_DELETE_TEXT, // text = deleted text, text_len = length of text deleted, pos = where text was deleted (first character)
+	BUFFER_EDIT_INSERT_TEXT // text unused, text_len = length of text inserted, pos = where text was inserted (first character)
+	// (we don't need to know what text was inserted for BUFFER_EDIT_INSERT_TEXT, since it'll be right there)
 } BufferEditType;
 
 typedef struct BufferEdit {
-	u8 type;
-	bool join_with_next;
-	u32 prev_str_len;
-	u32 line;
 	struct BufferEdit *next;
-	char32_t prev_str[];
+	BufferEditType type;
+	BufferPos pos;
+	u32 text_len;
+	char32_t text[];
 } BufferEdit;
 
 typedef struct {
@@ -74,8 +73,8 @@ void buffer_create(TextBuffer *buffer, Font *font) {
 }
 
 // this is a macro so we get -Wformat warnings
-#define buffer_seterr(buffer, fmt, ...) \
-	snprintf(buffer->error, sizeof buffer->error - 1, fmt, ##__VA_ARGS__)
+#define buffer_seterr(buffer, ...) \
+	snprintf(buffer->error, sizeof buffer->error - 1, __VA_ARGS__)
 
 bool buffer_haserr(TextBuffer *buffer) {
 	return buffer->error[0] != '\0';
@@ -108,43 +107,17 @@ static void *buffer_realloc(TextBuffer *buffer, void *p, size_t new_size) {
 	return ret;
 }
 
-static WarnUnusedResult BufferEdit *buffer_edit_delete_line(TextBuffer *buffer, u32 line, char32_t const *prev_str, u32 prev_str_len, bool join_with_next) {
-	BufferEdit *e = buffer_calloc(buffer, 1, sizeof *e + prev_str_len * sizeof *prev_str);
-	if (e) {
-		e->type = BUFFER_EDIT_DELETE_LINE;
-		e->line = line;
-		e->join_with_next = join_with_next;
-		e->prev_str_len = prev_str_len;
-		memcpy(e->prev_str, prev_str, prev_str_len * sizeof *prev_str);
-	}
-	return e;
+// functions for creating buffer edits:
+// call these before you make an edit to keep an undo event
+static WarnUnusedResult BufferEdit *buffer_edit_delete_text(TextBuffer *buffer, BufferPos start, u32 len) {
+	// @TODO
 }
 
-static WarnUnusedResult BufferEdit *buffer_edit_insert_line(TextBuffer *buffer, u32 line, bool join_with_next) {
-	BufferEdit *e = buffer_calloc(buffer, 1, sizeof *e);
-	if (e) {
-		e->type = BUFFER_EDIT_INSERT_LINE;
-		e->line = line;
-		e->join_with_next = join_with_next;
-	}
-	return e;
-}
 
-static WarnUnusedResult BufferEdit *buffer_edit_change_line(TextBuffer *buffer, u32 line, char32_t const *prev_str, u32 prev_str_len, bool join_with_next) {
-	BufferEdit *e = buffer_calloc(buffer, 1, sizeof *e + prev_str_len * sizeof *prev_str);
-	if (e) {
-		e->type = BUFFER_EDIT_CHANGE_LINE;
-		e->line = line;
-		e->join_with_next = join_with_next;
-		e->prev_str_len = prev_str_len;
-		memcpy(e->prev_str, prev_str, prev_str_len * sizeof *prev_str);
-	}
-	return e;
-}
 
 // grow capacity of line to at least minimum_capacity
 // returns true if allocation was succesful
-static Status buffer_line_grow(TextBuffer *buffer, Line *line, u32 minimum_capacity) {
+static Status buffer_line_set_min_capacity(TextBuffer *buffer, Line *line, u32 minimum_capacity) {
 	while (line->capacity < minimum_capacity) {
 		// double capacity of line
 		u32 new_capacity = line->capacity == 0 ? 4 : line->capacity * 2;
@@ -167,7 +140,7 @@ static Status buffer_line_grow(TextBuffer *buffer, Line *line, u32 minimum_capac
 
 // grow capacity of buffer->lines array
 // returns true if successful
-static Status buffer_lines_grow(TextBuffer *buffer, u32 minimum_capacity) {
+static Status buffer_lines_set_min_capacity(TextBuffer *buffer, u32 minimum_capacity) {
 	while (minimum_capacity >= buffer->lines_capacity) {
 		// allocate more lines
 		u32 new_capacity = buffer->lines_capacity * 2;
@@ -185,7 +158,7 @@ static Status buffer_lines_grow(TextBuffer *buffer, u32 minimum_capacity) {
 }
 
 static void buffer_line_append_char(TextBuffer *buffer, Line *line, char32_t c) {
-	if (buffer_line_grow(buffer, line, line->len + 1))
+	if (buffer_line_set_min_capacity(buffer, line, line->len + 1))
 		line->str[line->len++] = c;
 }
 
@@ -258,7 +231,7 @@ Status buffer_load_file(TextBuffer *buffer, char const *filename) {
 							}
 						}
 						if (c == U'\n') {
-							if (buffer_lines_grow(buffer, buffer->nlines + 1))
+							if (buffer_lines_set_min_capacity(buffer, buffer->nlines + 1))
 								++buffer->nlines;
 						} else {
 							u32 line_idx = buffer->nlines - 1;
@@ -865,7 +838,7 @@ i64 buffer_cursor_move_right_words(TextBuffer *buffer, i64 nwords) {
 static void buffer_insert_lines(TextBuffer *buffer, u32 where, u32 number) {
 	u32 old_nlines = buffer->nlines;
 	u32 new_nlines = old_nlines + number;
-	if (buffer_lines_grow(buffer, new_nlines)) {
+	if (buffer_lines_set_min_capacity(buffer, new_nlines)) {
 		assert(where <= old_nlines);
 		// make space for new lines
 		memmove(buffer->lines + where + (new_nlines - old_nlines),
@@ -892,7 +865,7 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 		Line *last_line = &buffer->lines[line_idx + n_added_lines];
 		u32 chars_moved = line->len - index;
 		if (chars_moved) {
-			if (buffer_line_grow(buffer, last_line, chars_moved)) {
+			if (buffer_line_set_min_capacity(buffer, last_line, chars_moved)) {
 				memcpy(last_line->str, line->str + index, chars_moved * sizeof(char32_t));
 				line->len  -= chars_moved;
 				last_line->len += chars_moved;
@@ -906,7 +879,7 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 		u32 old_len = line->len;
 		u32 new_len = old_len + text_line_len;
 		if (new_len > old_len) { // handles both overflow and empty text lines
-			if (buffer_line_grow(buffer, line, new_len)) {
+			if (buffer_line_set_min_capacity(buffer, line, new_len)) {
 				// make space for text
 				memmove(line->str + index + (new_len - old_len),
 					line->str + index,
@@ -967,7 +940,7 @@ static void buffer_shorten(TextBuffer *buffer, u32 new_nlines) {
 // delete `nlines` lines starting from index `first_line_idx`
 void buffer_delete_lines(TextBuffer *buffer, u32 first_line_idx, u32 nlines) {
 	assert(first_line_idx < buffer->nlines);
-	assert(first_line_idx+nlines < buffer->nlines);
+	assert(first_line_idx+nlines <= buffer->nlines);
 	Line *first_line = &buffer->lines[first_line_idx];
 	Line *end = first_line + nlines;
 
@@ -998,7 +971,7 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars) {
 		} else {
 			// join last_line to line.
 			u32 last_line_chars_left = (u32)(last_line->len - nchars);
-			if (buffer_line_grow(buffer, line, line->len + last_line_chars_left)) {
+			if (buffer_line_set_min_capacity(buffer, line, line->len + last_line_chars_left)) {
 				memcpy(line->str + line->len, last_line->str, last_line_chars_left * sizeof(char32_t));
 				line->len += last_line_chars_left;
 			}
@@ -1063,47 +1036,5 @@ void buffer_backspace_words_at_pos(TextBuffer *buffer, BufferPos *pos, i64 nword
 
 void buffer_backspace_words_at_cursor(TextBuffer *buffer, i64 nwords) {
 	buffer_backspace_words_at_pos(buffer, &buffer->cursor_pos, nwords);
-}
-
-static void buffer_undo(TextBuffer *buffer, i64 ntimes) {
-	for (i64 i = 0; i < ntimes; ++i) {
-		bool join_with_next;
-		do {
-			BufferEdit *edit = buffer->undo_history;
-			join_with_next = edit->join_with_next; // should the next edit be undone along with this one?
-			BufferEdit *inverse = NULL;
-			switch (edit->type) {
-			case BUFFER_EDIT_DELETE_LINE: {
-				// let's re-insert that line
-				buffer_insert_lines(buffer, edit->line, 1);
-				BufferPos pos = {.line = edit->line, .index = 0};
-				String32 str = {edit->prev_str_len, edit->prev_str};
-				buffer_insert_text_at_pos(buffer, pos, str);
-				inverse = buffer_edit_insert_line(buffer, edit->line, join_with_next);
-			} break;
-			case BUFFER_EDIT_INSERT_LINE: {
-				Line *line = &buffer->lines[edit->line];
-				inverse = buffer_edit_delete_line(buffer, edit->line, line->str, line->len, join_with_next);
-				// delete that line
-				buffer_delete_lines(buffer, edit->line, 1);
-			} break;
-			case BUFFER_EDIT_CHANGE_LINE: {
-				Line *line = &buffer->lines[edit->line];
-				inverse = buffer_edit_change_line(buffer, edit->line, line->str, line->len, join_with_next);
-				if (buffer_line_grow(buffer, line, edit->prev_str_len)) {
-					line->len = edit->prev_str_len;
-					memcpy(line->str, edit->prev_str, edit->prev_str_len * sizeof(char32_t));
-				}
-			} break;
-			}
-			
-			assert(inverse);
-			buffer->undo_history = edit->next;
-			inverse->next = buffer->redo_history;
-			buffer->redo_history = inverse;
-
-			free(edit);
-		} while (join_with_next);
-	}
 }
 
