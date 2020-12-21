@@ -10,7 +10,7 @@
 #endif
 
 #include <stdbool.h>
-#include <stdint.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <stddef.h>
 #include <stdarg.h>
@@ -24,10 +24,16 @@ typedef uint16_t u16;
 typedef uint32_t u32;
 typedef uint64_t u64;
 
+#define U32_FMT "%" PRIu32
+#define U64_FMT "%" PRIu64
+
 typedef int8_t  i8;
 typedef int16_t i16;
 typedef int32_t i32;
 typedef int64_t i64;
+
+#define I32_FMT "%" PRId32
+#define I64_FMT "%" PRId64
 
 typedef unsigned int  uint;
 typedef unsigned long ulong;

@@ -90,10 +90,18 @@ static void buffer_out_of_mem(TextBuffer *buffer) {
 	buffer_seterr(buffer, "Out of memory.");
 }
 
+// add this edit to the undo history
 static void buffer_append_edit(TextBuffer *buffer, BufferEdit *edit) {
 	edit->next = buffer->undo_history;
 	buffer->undo_history = edit;
 }
+
+// add this edit to the redo history
+static void buffer_append_redo(TextBuffer *buffer, BufferEdit *edit) {
+	edit->next = buffer->redo_history;
+	buffer->redo_history = edit;
+}
+
 
 static void *buffer_calloc(TextBuffer *buffer, size_t n, size_t size) {
 	void *ret = calloc(n, size);
@@ -107,10 +115,77 @@ static void *buffer_realloc(TextBuffer *buffer, void *p, size_t new_size) {
 	return ret;
 }
 
+// ensures that `p` refers to a valid position.
+static void buffer_pos_validate(TextBuffer *buffer, BufferPos *p) {
+	if (p->line >= buffer->nlines)
+		p->line = buffer->nlines - 1;
+	u32 line_len = buffer->lines[p->line].len;
+	if (p->index > line_len)
+		p->index = line_len;
+}
+
+static bool buffer_pos_valid(TextBuffer *buffer, BufferPos p) {
+	return p.line < buffer->nlines && p.index <= buffer->lines[p.line].len;
+}
+
+
+// get some number of characters of text from the given position in the buffer.
+static Status buffer_get_text_at_pos(TextBuffer *buffer, BufferPos pos, char32_t *text, u32 nchars) {
+	if (!buffer_pos_valid(buffer, pos)) {
+		return false;
+	}
+	char32_t *p = text;
+	u32 chars_left = nchars;
+	Line *line = &buffer->lines[pos.line], *end = buffer->lines + buffer->nlines;
+	u32 index = pos.index;
+	while (chars_left) {
+		u32 chars_from_this_line = line->len - index;
+		if (chars_left <= chars_from_this_line) {
+			memcpy(p, line->str, chars_left);
+			chars_left = 0;
+		} else {
+			memcpy(p, line->str, chars_from_this_line);
+			p += chars_from_this_line;
+			*p++ = U'\n';
+			chars_left -= chars_from_this_line+1;
+		}
+		
+		index = 0;
+		++line;
+		if (chars_left && line == end) {
+			// reached end of file before getting full text... this isn't good
+			buffer_seterr(buffer, "Failed to fetch " U32_FMT " characters at " U32_FMT ":" U32_FMT ".", nchars, pos.line+1, pos.index+1);
+			return false;
+		}
+	}
+	return true;
+}
+
 // functions for creating buffer edits:
-// call these before you make an edit to keep an undo event
-static WarnUnusedResult BufferEdit *buffer_edit_delete_text(TextBuffer *buffer, BufferPos start, u32 len) {
-	// @TODO
+// call these before you make an edit to create an undo event
+static WarnUnusedResult BufferEdit *buffer_create_edit_delete_text(TextBuffer *buffer, BufferPos start, u32 len) {
+	BufferEdit *e = buffer_calloc(buffer, 1, sizeof *e + len * sizeof *e->text);
+	if (e) {
+		e->type = BUFFER_EDIT_DELETE_TEXT;
+		e->pos = start;
+		e->text_len = len;
+		if (!buffer_get_text_at_pos(buffer, start, e->text, len)) {
+			free(e);
+			e = NULL;
+		}
+	}
+	return e;
+}
+
+static WarnUnusedResult BufferEdit *buffer_create_edit_insert_text(TextBuffer *buffer, BufferPos start, u32 len) {
+	if (!buffer_pos_valid(buffer, start)) return NULL;
+	BufferEdit *e = buffer_calloc(buffer, 1, sizeof *e);
+	if (e) {
+		e->type = BUFFER_EDIT_INSERT_TEXT;
+		e->pos = start;
+		e->text_len = len;
+	}
+	return e;
 }
 
 
@@ -561,20 +636,6 @@ static void buffer_scroll_to_cursor(TextBuffer *buffer) {
 	buffer->scroll_x = scroll_x;
 	buffer->scroll_y = scroll_y;
 	buffer_correct_scroll(buffer); // it's possible that min/max_scroll_x/y go too far
-}
-
-
-// ensures that `p` refers to a valid position.
-static void buffer_pos_validate(TextBuffer *buffer, BufferPos *p) {
-	if (p->line >= buffer->nlines)
-		p->line = buffer->nlines - 1;
-	u32 line_len = buffer->lines[p->line].len;
-	if (p->index > line_len)
-		p->index = line_len;
-}
-
-static bool buffer_pos_valid(TextBuffer *buffer, BufferPos p) {
-	return p.line < buffer->nlines && p.index <= buffer->lines[p.line].len;
 }
 
 // returns "p2 - p1", that is, the number of characters between p1 and p2.
@@ -1038,3 +1099,31 @@ void buffer_backspace_words_at_cursor(TextBuffer *buffer, i64 nwords) {
 	buffer_backspace_words_at_pos(buffer, &buffer->cursor_pos, nwords);
 }
 
+void buffer_undo(TextBuffer *buffer, i64 ntimes) {
+	for (i64 i = 0; i < ntimes; ++i) {
+		BufferEdit *edit = buffer->undo_history;
+		BufferEdit *inverse = NULL;
+		
+		switch (edit->type) {
+		case BUFFER_EDIT_INSERT_TEXT:
+			// the inverse edit is the deletion of this text
+			inverse = buffer_create_edit_delete_text(buffer, edit->pos, edit->text_len);
+			// delete the text
+			buffer_delete_chars_at_pos(buffer, edit->pos, edit->text_len);
+			break;
+		case BUFFER_EDIT_DELETE_TEXT: {
+			// the inverse edit is the insertion of this text
+			inverse = buffer_create_edit_insert_text(buffer, edit->pos, edit->text_len);
+			// insert the text
+			String32 str = {edit->text_len, edit->text};
+			buffer_insert_text_at_pos(buffer, edit->pos, str);
+		} break;
+		}
+
+		if (inverse) {
+			buffer_append_redo(buffer, inverse);
+		}
+
+		free(edit);
+	}
+}
