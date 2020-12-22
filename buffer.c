@@ -145,6 +145,32 @@ static bool buffer_pos_valid(TextBuffer *buffer, BufferPos p) {
 	return p.line < buffer->nlines && p.index <= buffer->lines[p.line].len;
 }
 
+// code point at position.
+// returns 0 if the position is invalid. note that it can also return 0 for a valid position, if there's a null character there
+char32_t buffer_char_at_pos(TextBuffer *buffer, BufferPos p) {
+	if (p.line >= buffer->nlines)
+		return 0; // invalid (line too large)
+	
+	Line *line = &buffer->lines[p.line];
+	if (p.index < line->len) {
+		return line->str[p.index];
+	} else if (p.index > line->len) {
+		// invalid (col too large)
+		return 0;
+	} else {
+		return U'\n';
+	}
+}
+
+BufferPos buffer_start_pos(TextBuffer *buffer) {
+	(void)buffer;
+	return (BufferPos){.line = 0, .index = 0};
+}
+
+BufferPos buffer_end_pos(TextBuffer *buffer) {
+	return (BufferPos){.line = buffer->nlines - 1, .index = buffer->lines[buffer->nlines-1].len};
+}
+
 
 // get some number of characters of text from the given position in the buffer.
 static Status buffer_get_text_at_pos(TextBuffer *buffer, BufferPos pos, char32_t *text, size_t nchars) {
@@ -176,6 +202,57 @@ static Status buffer_get_text_at_pos(TextBuffer *buffer, BufferPos pos, char32_t
 		}
 	}
 	return true;
+}
+
+static BufferPos buffer_pos_advance(TextBuffer *buffer, BufferPos pos, size_t nchars) {
+	buffer_pos_validate(buffer, &pos);
+	size_t chars_left = nchars;
+	Line *line = &buffer->lines[pos.line], *end = buffer->lines + buffer->nlines;
+	u32 index = pos.index;
+	while (chars_left && line != end) {
+		u32 chars_from_this_line = line->len - index;
+		if (chars_left <= chars_from_this_line) {
+			index += chars_left;
+			pos.index = index;
+			pos.line = (u32)(line - buffer->lines);
+			return pos;
+		}
+		chars_left -= chars_from_this_line+1; // +1 for newline
+		index = 0;
+		++line;
+	}
+	return buffer_end_pos(buffer);
+}
+
+
+// returns "p2 - p1", that is, the number of characters between p1 and p2.
+static i64 buffer_pos_diff(TextBuffer *buffer, BufferPos p1, BufferPos p2) {
+	assert(buffer_pos_valid(buffer, p1));
+	assert(buffer_pos_valid(buffer, p2));
+
+	if (p1.line == p2.line) {
+		// p1 and p2 are in the same line
+		return (i64)p2.index - p1.index;
+	}
+	i64 factor = 1;
+	if (p1.line > p2.line) {
+		// switch positions so p2 has the later line
+		BufferPos tmp = p1;
+		p1 = p2;
+		p2 = tmp;
+		factor = -1;
+	}
+
+	assert(p2.line > p1.line);
+	i64 chars_at_end_of_p1_line = buffer->lines[p1.line].len - p1.index + 1; // + 1 for newline
+	i64 chars_at_start_of_p2_line = p2.index;
+	i64 chars_in_lines_in_between = 0;
+	// now we need to add up the lengths of the lines between p1 and p2
+	for (Line *line = buffer->lines + (p1.line + 1), *end = buffer->lines + p2.line; line != end; ++line) {
+		chars_in_lines_in_between += line->len;
+	}
+	i64 total = chars_at_end_of_p1_line + chars_in_lines_in_between + chars_at_start_of_p2_line;
+	return total * factor;
 }
 
 // functions for creating buffer edits:
@@ -216,6 +293,12 @@ static void buffer_edit_delete_text(TextBuffer *buffer, BufferPos start, size_t 
 
 static void buffer_edit_insert_text(TextBuffer *buffer, BufferPos start, size_t len) {
 	if (buffer->store_undo_events) {
+		BufferEdit *last_edit = buffer->undo_history;
+		i64 where_in_last_edit = buffer_pos_diff(buffer, last_edit->pos, start);
+		if (where_in_last_edit >= 0 && where_in_last_edit < (i64)last_edit->text_len) {
+			// @TODO
+		}
+
 		BufferEdit edit = {0};
 		if (buffer_create_edit_insert_text(buffer, &edit, start, len)) {
 			buffer_append_edit(buffer, &edit);
@@ -621,32 +704,6 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 	}
 }
 
-// code point at position.
-// returns 0 if the position is invalid. note that it can also return 0 for a valid position, if there's a null character there
-char32_t buffer_char_at_pos(TextBuffer *buffer, BufferPos p) {
-	if (p.line >= buffer->nlines)
-		return 0; // invalid (line too large)
-	
-	Line *line = &buffer->lines[p.line];
-	if (p.index < line->len) {
-		return line->str[p.index];
-	} else if (p.index > line->len) {
-		// invalid (col too large)
-		return 0;
-	} else {
-		return U'\n';
-	}
-}
-
-BufferPos buffer_start_pos(TextBuffer *buffer) {
-	(void)buffer;
-	return (BufferPos){.line = 0, .index = 0};
-}
-
-BufferPos buffer_end_pos(TextBuffer *buffer) {
-	return (BufferPos){.line = buffer->nlines - 1, .index = buffer->lines[buffer->nlines-1].len};
-}
-
 // if the cursor is offscreen, this will scroll to make it onscreen.
 static void buffer_scroll_to_cursor(TextBuffer *buffer) {
 	i64 cursor_line = buffer->cursor_pos.line;
@@ -672,36 +729,6 @@ static void buffer_scroll_to_cursor(TextBuffer *buffer) {
 	buffer->scroll_x = scroll_x;
 	buffer->scroll_y = scroll_y;
 	buffer_correct_scroll(buffer); // it's possible that min/max_scroll_x/y go too far
-}
-
-// returns "p2 - p1", that is, the number of characters between p1 and p2.
-static i64 buffer_pos_diff(TextBuffer *buffer, BufferPos p1, BufferPos p2) {
-	assert(buffer_pos_valid(buffer, p1));
-	assert(buffer_pos_valid(buffer, p2));
-
-	if (p1.line == p2.line) {
-		// p1 and p2 are in the same line
-		return (i64)p2.index - p1.index;
-	}
-	i64 factor = 1;
-	if (p1.line > p2.line) {
-		// switch positions so p2 has the later line
-		BufferPos tmp = p1;
-		p1 = p2;
-		p2 = tmp;
-		factor = -1;
-	}
-
-	assert(p2.line > p1.line);
-	i64 chars_at_end_of_p1_line = buffer->lines[p1.line].len - p1.index + 1; // + 1 for newline
-	i64 chars_at_start_of_p2_line = p2.index;
-	i64 chars_in_lines_in_between = 0;
-	// now we need to add up the lengths of the lines between p1 and p2
-	for (Line *line = buffer->lines + (p1.line + 1), *end = buffer->lines + p2.line; line != end; ++line) {
-		chars_in_lines_in_between += line->len;
-	}
-	i64 total = chars_at_end_of_p1_line + chars_in_lines_in_between + chars_at_start_of_p2_line;
-	return total * factor;
 }
 
 // move left (if `by` is negative) or right (if `by` is positive) by the specified amount.
