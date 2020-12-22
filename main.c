@@ -8,7 +8,12 @@ no_warn_start
 no_warn_end
 #include <GL/gl.h>
 #include <locale.h>
+#include <wctype.h>
+#include "unicode.h"
+#include "util.c"
 #include "text.h"
+#include "string32.c"
+#include "arr.c"
 #include "buffer.c"
 
 static void die(char const *fmt, ...) {

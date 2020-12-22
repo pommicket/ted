@@ -24,16 +24,26 @@ typedef uint16_t u16;
 typedef uint32_t u32;
 typedef uint64_t u64;
 
+// (for u8 and u16, you can use %u)
 #define U32_FMT "%" PRIu32
 #define U64_FMT "%" PRIu64
+#define U8_MAX  0xff
+#define U16_MAX 0xffff
+#define U32_MAX 0xffffffff
+#define U64_MAX 0xffffffffffffffff
 
 typedef int8_t  i8;
 typedef int16_t i16;
 typedef int32_t i32;
 typedef int64_t i64;
 
+// (for i8 and i16, you can use %d)
 #define I32_FMT "%" PRId32
 #define I64_FMT "%" PRId64
+#define I8_MAX  0x7f
+#define I16_MAX 0x7fff
+#define I32_MAX 0x7fffffff
+#define I64_MAX 0x7fffffffffffffff
 
 typedef unsigned int  uint;
 typedef unsigned long ulong;

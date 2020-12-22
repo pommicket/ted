@@ -1,10 +1,4 @@
 // Text buffers - These store the contents of a file.
-#include <wctype.h>
-#include "unicode.h"
-#include "util.c"
-#include "text.h"
-#include "string32.c"
-#include "arr.c"
 
 // a position in the buffer
 typedef struct {
@@ -21,9 +15,10 @@ typedef struct {
 // this refers to replacing prev_len characters (found in prev_text) at pos with new_len characters
 typedef struct BufferEdit {
 	BufferPos pos;
-	size_t new_len;
-	size_t prev_len;
+	u32 new_len;
+	u32 prev_len;
 	char32_t *prev_text;
+	struct timespec time;
 } BufferEdit;
 
 typedef struct {
@@ -167,10 +162,13 @@ BufferPos buffer_end_pos(TextBuffer *buffer) {
 }
 
 
-// get some number of characters of text from the given position in the buffer.
-static Status buffer_get_text_at_pos(TextBuffer *buffer, BufferPos pos, char32_t *text, size_t nchars) {
+// Get some number of characters of text from the given position in the buffer.
+// Returns the number of characters gotten.
+// You can pass NULL for text if you just want to know how many characters *could* be accessed before the
+// end of the file.
+static size_t buffer_get_text_at_pos(TextBuffer *buffer, BufferPos pos, char32_t *text, size_t nchars) {
 	if (!buffer_pos_valid(buffer, pos)) {
-		return false;
+		return 0; // invalid position. no chars for you!
 	}
 	char32_t *p = text;
 	size_t chars_left = nchars;
@@ -179,24 +177,25 @@ static Status buffer_get_text_at_pos(TextBuffer *buffer, BufferPos pos, char32_t
 	while (chars_left) {
 		u32 chars_from_this_line = line->len - index;
 		if (chars_left <= chars_from_this_line) {
-			memcpy(p, line->str, chars_left * sizeof *p);
+			if (p) memcpy(p, line->str, chars_left * sizeof *p);
 			chars_left = 0;
 		} else {
-			memcpy(p, line->str, chars_from_this_line * sizeof *p);
-			p += chars_from_this_line;
-			*p++ = U'\n';
+			if (p) {
+				memcpy(p, line->str, chars_from_this_line * sizeof *p);
+				p += chars_from_this_line;
+				*p++ = U'\n';
+			}
 			chars_left -= chars_from_this_line+1;
 		}
 		
 		index = 0;
 		++line;
 		if (chars_left && line == end) {
-			// reached end of file before getting full text... this isn't good
-			buffer_seterr(buffer, "Failed to fetch %zu characters at " U32_FMT ":" U32_FMT ".", nchars, pos.line+1, pos.index+1);
-			return false;
+			// reached end of file before getting full text
+			break;
 		}
 	}
-	return true;
+	return nchars - chars_left;
 }
 
 static BufferPos buffer_pos_advance(TextBuffer *buffer, BufferPos pos, size_t nchars) {
@@ -250,7 +249,7 @@ static i64 buffer_pos_diff(TextBuffer *buffer, BufferPos p1, BufferPos p2) {
 	return total * factor;
 }
 
-static Status buffer_create_edit(TextBuffer *buffer, BufferEdit *edit, BufferPos start, size_t prev_len, size_t new_len) {
+static Status buffer_create_edit(TextBuffer *buffer, BufferEdit *edit, BufferPos start, u32 prev_len, u32 new_len) {
 	if (prev_len == 0)
 		edit->prev_text = NULL; // if there's no previous text, don't allocate anything
 	else
@@ -260,10 +259,8 @@ static Status buffer_create_edit(TextBuffer *buffer, BufferEdit *edit, BufferPos
 		edit->prev_len = prev_len;
 		edit->new_len = new_len;
 		if (prev_len) {
-			if (!buffer_get_text_at_pos(buffer, start, edit->prev_text, prev_len)) {
-				buffer_edit_free(edit);
-				return false;
-			}
+			size_t chars_gotten = buffer_get_text_at_pos(buffer, start, edit->prev_text, prev_len);
+			edit->prev_len = (u32)chars_gotten; // update the previous length, in case it went past the end of the file
 		}
 		return true;
 	} else {
@@ -273,7 +270,7 @@ static Status buffer_create_edit(TextBuffer *buffer, BufferEdit *edit, BufferPos
 
 // add this edit to the undo history
 // call this before actually changing buffer
-static void buffer_edit(TextBuffer *buffer, BufferPos start, size_t prev_len, size_t new_len) {
+static void buffer_edit(TextBuffer *buffer, BufferPos start, u32 prev_len, u32 new_len) {
 	BufferEdit edit = {0};
 	if (buffer_create_edit(buffer, &edit, start, prev_len, new_len)) {
 		buffer_append_edit(buffer, &edit);
@@ -950,6 +947,12 @@ static void buffer_insert_lines(TextBuffer *buffer, u32 where, u32 number) {
 
 // inserts the given text, returning the position of the end of the text
 BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 str) {
+	if (str.len > U32_MAX) {
+		buffer_seterr(buffer, "Inserting too much text (length: %zu).", str.len);
+		BufferPos ret = {0,0};
+		return ret;
+	}
+
 	if (buffer->store_undo_events) {
 		BufferEdit *last_edit = buffer->undo_history;
 		i64 where_in_last_edit = last_edit ? buffer_pos_diff(buffer, last_edit->pos, pos) : -1;
@@ -958,7 +961,7 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 			last_edit->new_len += str.len;
 		} else {
 			// create a new edit for this insertion
-			buffer_edit(buffer, pos, 0, str.len);
+			buffer_edit(buffer, pos, 0, (u32)str.len);
 		}
 
 	}
@@ -1062,18 +1065,52 @@ static void buffer_delete_lines(TextBuffer *buffer, u32 first_line_idx, u32 nlin
 	memmove(first_line, end, (size_t)(buffer->lines + buffer->nlines - end) * sizeof(Line));
 }
 
-void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars) {
-	assert(nchars >= 0);
-	if (nchars <= 0) return;
+void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) {
+	if (nchars_ < 0) {
+		buffer_seterr(buffer, "Deleting negative characters (specifically, " I64_FMT ").", nchars_);
+		return;
+	}
+	if (nchars_ <= 0) return;
+	if (nchars_ > U32_MAX) nchars_ = U32_MAX;
+	u32 nchars = (u32)nchars_;
+
+	// Correct nchars in case it goes past the end of the file.
+	// Why do we need to correct it?
+	// When generating undo events, we allocate the given number of characters,
+	// even if that's not necessary (also see the allocating of `temp` below).
+	nchars = (u32)buffer_get_text_at_pos(buffer, pos, NULL, nchars);
 
 	if (buffer->store_undo_events) {
 		BufferEdit *last_edit = buffer->undo_history;
 		i64 where_in_last_edit = last_edit ? buffer_pos_diff(buffer, last_edit->pos, pos) : -1;
 		if (where_in_last_edit >= 0 && where_in_last_edit <= (i64)last_edit->new_len) {
+
 			// merge this edit into the last one.
+		#if 0
+			// ah this doesn't work
+			// some of the deleted text might be inside the edit.
+			// this is gonna be annoying
+
+			char32_t *temp = calloc(nchars, sizeof *temp);
+			if (temp) {
+				buffer_get_text_at_pos(buffer, pos, temp, nchars);
+				char32_t *prev_text = buffer_realloc(buffer, last_edit->prev_text,
+					(last_edit->prev_len + nchars) * sizeof *prev_text);
+				if (prev_text) {
+					// make space for our text
+					memmove(prev_text + where_in_last_edit + nchars, prev_text + where_in_last_edit, 
+						last_edit->prev_len - (where_in_last_edit + nchars) * sizeof *prev_text);
+					// insert our text into new_text
+					memcpy(prev_text + where_in_last_edit, temp, nchars * sizeof *prev_text);
+					last_edit->prev_len += nchars;
+					last_edit->prev_text = prev_text;
+				}
+				free(temp);
+			}
+		#endif
 		} else {
 			// create a new edit
-			buffer_edit(buffer, pos, (size_t)nchars, 0);
+			buffer_edit(buffer, pos, nchars, 0);
 		}
 	}
 
@@ -1090,12 +1127,9 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars) {
 			nchars -= last_line->len+1;
 		}
 		if (last_line == lines_end) {
-			// delete everything to the end of the file
-			for (u32 idx = line_idx + 1; idx < buffer->nlines; ++idx) {
-				buffer_line_free(&buffer->lines[idx]);
-			}
-			buffer_shorten(buffer, line_idx + 1);
-		} else {
+			assert(nchars == 0); // we already shortened nchars to go no further than the end of the file
+		}
+		{
 			// join last_line to line.
 			u32 last_line_chars_left = (u32)(last_line->len - nchars);
 			if (buffer_line_set_min_capacity(buffer, line, line->len + last_line_chars_left)) {
@@ -1111,7 +1145,7 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars) {
 	} else {
 		// just delete characters from this line
 		memmove(line->str + index, line->str + index + nchars, (size_t)(line->len - (nchars + index)) * sizeof(char32_t));
-		line->len -= (u32)nchars;
+		line->len -= nchars;
 	}
 }
 
