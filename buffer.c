@@ -18,17 +18,12 @@ typedef struct {
 	char32_t *str;
 } Line;
 
-typedef enum {
-	BUFFER_EDIT_DELETE_TEXT, // text = deleted text, text_len = length of text deleted, pos = where text was deleted (first character)
-	BUFFER_EDIT_INSERT_TEXT // text = NULL, text_len = length of text inserted, pos = where text was inserted (first character)
-	// (we don't need to know what text was inserted for BUFFER_EDIT_INSERT_TEXT, since it'll be right there)
-} BufferEditType;
-
+// this refers to replacing prev_len characters (found in prev_text) at pos with new_len characters
 typedef struct BufferEdit {
-	BufferEditType type;
 	BufferPos pos;
-	size_t text_len;
-	char32_t *text;
+	size_t new_len;
+	size_t prev_len;
+	char32_t *prev_text;
 } BufferEdit;
 
 typedef struct {
@@ -94,7 +89,7 @@ static void buffer_out_of_mem(TextBuffer *buffer) {
 
 
 static void buffer_edit_free(BufferEdit *edit) {
-	free(edit->text);
+	free(edit->prev_text);
 }
 
 static void buffer_clear_redo_history(TextBuffer *buffer) {
@@ -184,10 +179,10 @@ static Status buffer_get_text_at_pos(TextBuffer *buffer, BufferPos pos, char32_t
 	while (chars_left) {
 		u32 chars_from_this_line = line->len - index;
 		if (chars_left <= chars_from_this_line) {
-			memcpy(p, line->str, chars_left);
+			memcpy(p, line->str, chars_left * sizeof *p);
 			chars_left = 0;
 		} else {
-			memcpy(p, line->str, chars_from_this_line);
+			memcpy(p, line->str, chars_from_this_line * sizeof *p);
 			p += chars_from_this_line;
 			*p++ = U'\n';
 			chars_left -= chars_from_this_line+1;
@@ -209,7 +204,7 @@ static BufferPos buffer_pos_advance(TextBuffer *buffer, BufferPos pos, size_t nc
 	size_t chars_left = nchars;
 	Line *line = &buffer->lines[pos.line], *end = buffer->lines + buffer->nlines;
 	u32 index = pos.index;
-	while (chars_left && line != end) {
+	while (line != end) {
 		u32 chars_from_this_line = line->len - index;
 		if (chars_left <= chars_from_this_line) {
 			index += chars_left;
@@ -255,17 +250,20 @@ static i64 buffer_pos_diff(TextBuffer *buffer, BufferPos p1, BufferPos p2) {
 	return total * factor;
 }
 
-// functions for creating buffer edits:
-// call these before you make an edit to create an undo event
-static Status buffer_create_edit_delete_text(TextBuffer *buffer, BufferEdit *edit, BufferPos start, size_t len) {
-	edit->text = calloc(1, len * sizeof *edit->text);
-	if (edit->text) {
-		edit->type = BUFFER_EDIT_DELETE_TEXT;
+static Status buffer_create_edit(TextBuffer *buffer, BufferEdit *edit, BufferPos start, size_t prev_len, size_t new_len) {
+	if (prev_len == 0)
+		edit->prev_text = NULL; // if there's no previous text, don't allocate anything
+	else
+		edit->prev_text = calloc(1, prev_len * sizeof *edit->prev_text);
+	if (prev_len == 0 || edit->prev_text) {
 		edit->pos = start;
-		edit->text_len = len;
-		if (!buffer_get_text_at_pos(buffer, start, edit->text, len)) {
-			free(edit->text);
-			return false;
+		edit->prev_len = prev_len;
+		edit->new_len = new_len;
+		if (prev_len) {
+			if (!buffer_get_text_at_pos(buffer, start, edit->prev_text, prev_len)) {
+				buffer_edit_free(edit);
+				return false;
+			}
 		}
 		return true;
 	} else {
@@ -273,36 +271,12 @@ static Status buffer_create_edit_delete_text(TextBuffer *buffer, BufferEdit *edi
 	}
 }
 
-static Status buffer_create_edit_insert_text(TextBuffer *buffer, BufferEdit *edit, BufferPos start, size_t len) {
-	if (!buffer_pos_valid(buffer, start)) return false;
-	edit->type = BUFFER_EDIT_INSERT_TEXT;
-	edit->pos = start;
-	edit->text_len = len;
-	edit->text = NULL;
-	return true;
-}
-
-static void buffer_edit_delete_text(TextBuffer *buffer, BufferPos start, size_t len) {
-	if (buffer->store_undo_events) {
-		BufferEdit edit = {0};
-		if (buffer_create_edit_delete_text(buffer, &edit, start, len)) {
-			buffer_append_edit(buffer, &edit);
-		}
-	}
-}
-
-static void buffer_edit_insert_text(TextBuffer *buffer, BufferPos start, size_t len) {
-	if (buffer->store_undo_events) {
-		BufferEdit *last_edit = buffer->undo_history;
-		i64 where_in_last_edit = buffer_pos_diff(buffer, last_edit->pos, start);
-		if (where_in_last_edit >= 0 && where_in_last_edit < (i64)last_edit->text_len) {
-			// @TODO
-		}
-
-		BufferEdit edit = {0};
-		if (buffer_create_edit_insert_text(buffer, &edit, start, len)) {
-			buffer_append_edit(buffer, &edit);
-		}
+// add this edit to the undo history
+// call this before actually changing buffer
+static void buffer_edit(TextBuffer *buffer, BufferPos start, size_t prev_len, size_t new_len) {
+	BufferEdit edit = {0};
+	if (buffer_create_edit(buffer, &edit, start, prev_len, new_len)) {
+		buffer_append_edit(buffer, &edit);
 	}
 }
 
@@ -976,7 +950,18 @@ static void buffer_insert_lines(TextBuffer *buffer, u32 where, u32 number) {
 
 // inserts the given text, returning the position of the end of the text
 BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 str) {
-	buffer_edit_insert_text(buffer, pos, str.len);
+	if (buffer->store_undo_events) {
+		BufferEdit *last_edit = buffer->undo_history;
+		i64 where_in_last_edit = last_edit ? buffer_pos_diff(buffer, last_edit->pos, pos) : -1;
+		if (where_in_last_edit >= 0 && where_in_last_edit <= (i64)last_edit->new_len) {
+			// merge this edit into the previous one.
+			last_edit->new_len += str.len;
+		} else {
+			// create a new edit for this insertion
+			buffer_edit(buffer, pos, 0, str.len);
+		}
+
+	}
 
 	u32 line_idx = pos.line;
 	u32 index = pos.index;
@@ -987,6 +972,7 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 	u32 n_added_lines = (u32)str32_count_char(str, U'\n');
 	if (n_added_lines) {
 		buffer_insert_lines(buffer, line_idx + 1, n_added_lines);
+		line = &buffer->lines[line_idx]; // fix pointer
 		// move any text past the cursor on this line to the last added line.
 		Line *last_line = &buffer->lines[line_idx + n_added_lines];
 		u32 chars_moved = line->len - index;
@@ -1064,7 +1050,7 @@ static void buffer_shorten(TextBuffer *buffer, u32 new_nlines) {
 }
 
 // delete `nlines` lines starting from index `first_line_idx`
-void buffer_delete_lines(TextBuffer *buffer, u32 first_line_idx, u32 nlines) {
+static void buffer_delete_lines(TextBuffer *buffer, u32 first_line_idx, u32 nlines) {
 	assert(first_line_idx < buffer->nlines);
 	assert(first_line_idx+nlines <= buffer->nlines);
 	Line *first_line = &buffer->lines[first_line_idx];
@@ -1080,15 +1066,25 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars) {
 	assert(nchars >= 0);
 	if (nchars <= 0) return;
 
-	buffer_edit_delete_text(buffer, pos, (size_t)nchars);
+	if (buffer->store_undo_events) {
+		BufferEdit *last_edit = buffer->undo_history;
+		i64 where_in_last_edit = last_edit ? buffer_pos_diff(buffer, last_edit->pos, pos) : -1;
+		if (where_in_last_edit >= 0 && where_in_last_edit <= (i64)last_edit->new_len) {
+			// merge this edit into the last one.
+		} else {
+			// create a new edit
+			buffer_edit(buffer, pos, (size_t)nchars, 0);
+		}
+	}
 
 	u32 line_idx = pos.line;
 	u32 index = pos.index;
 	Line *line = &buffer->lines[line_idx], *lines_end = &buffer->lines[buffer->nlines];
 	if (nchars + index > line->len) {
 		// delete rest of line
-		buffer_shorten_line(line, index);
 		nchars -= line->len - index + 1; // +1 for the newline that got deleted
+		buffer_shorten_line(line, index);
+
 		Line *last_line; // last line in lines deleted
 		for (last_line = line + 1; last_line < lines_end && nchars > last_line->len; ++last_line) {
 			nchars -= last_line->len+1;
@@ -1103,7 +1099,7 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars) {
 			// join last_line to line.
 			u32 last_line_chars_left = (u32)(last_line->len - nchars);
 			if (buffer_line_set_min_capacity(buffer, line, line->len + last_line_chars_left)) {
-				memcpy(line->str + line->len, last_line->str, last_line_chars_left * sizeof(char32_t));
+				memcpy(line->str + line->len, last_line->str + nchars, last_line_chars_left * sizeof(char32_t));
 				line->len += last_line_chars_left;
 			}
 			// remove all lines between line + 1 and last_line (inclusive).
@@ -1169,7 +1165,7 @@ void buffer_backspace_words_at_cursor(TextBuffer *buffer, i64 nwords) {
 	buffer_backspace_words_at_pos(buffer, &buffer->cursor_pos, nwords);
 }
 
-// returns the inverse edit
+// puts the inverse edit into `inverse`
 static Status buffer_undo_edit(TextBuffer *buffer, BufferEdit const *edit, BufferEdit *inverse) {
 	bool success = false;
 	bool prev_store_undo_events = buffer->store_undo_events;
@@ -1177,29 +1173,21 @@ static Status buffer_undo_edit(TextBuffer *buffer, BufferEdit const *edit, Buffe
 	// to the undo history
 	buffer->store_undo_events = false;
 
-	switch (edit->type) {
-	case BUFFER_EDIT_INSERT_TEXT:
-		// the inverse edit is the deletion of this text
-		if (buffer_create_edit_delete_text(buffer, inverse, edit->pos, edit->text_len)) {
-			// delete the text
-			buffer_delete_chars_at_pos(buffer, edit->pos, (i64)edit->text_len);
-			
-			success = true;
-		}
-		break;
-	case BUFFER_EDIT_DELETE_TEXT: {
-		// the inverse edit is the insertion of this text
-		if (buffer_create_edit_insert_text(buffer, inverse, edit->pos, edit->text_len)) {
-			// insert the text
-			String32 str = {edit->text_len, edit->text};
-			buffer_insert_text_at_pos(buffer, edit->pos, str);
-
-			success = true;
-		}
-	} break;
+	// create inverse edit
+	if (buffer_create_edit(buffer, inverse, edit->pos, edit->new_len, edit->prev_len)) {
+		buffer_delete_chars_at_pos(buffer, edit->pos, (i64)edit->new_len);
+		String32 str = {edit->prev_len, edit->prev_text};
+		buffer_insert_text_at_pos(buffer, edit->pos, str);
+		success = true;
 	}
+
+
 	buffer->store_undo_events = prev_store_undo_events;
 	return success;
+}
+
+static void buffer_cursor_to_edit(TextBuffer *buffer, BufferEdit *edit) {
+	buffer->cursor_pos = buffer_pos_advance(buffer, edit->pos, edit->prev_len);
 }
 
 void buffer_undo(TextBuffer *buffer, i64 ntimes) {
@@ -1208,8 +1196,10 @@ void buffer_undo(TextBuffer *buffer, i64 ntimes) {
 		if (edit) {
 			BufferEdit inverse = {0};
 			if (buffer_undo_edit(buffer, edit, &inverse)) {
-				buffer->cursor_pos = edit->pos; // put cursor where edit happened
-				buffer_scroll_to_cursor(buffer);
+				if (i == ntimes - 1) {
+					// if we're on the last undo, put cursor where edit is
+					buffer_cursor_to_edit(buffer, edit);
+				}
 
 				buffer_append_redo(buffer, &inverse);
 				buffer_edit_free(edit);
@@ -1225,8 +1215,8 @@ void buffer_redo(TextBuffer *buffer, i64 ntimes) {
 		if (edit) {
 			BufferEdit inverse = {0};
 			if (buffer_undo_edit(buffer, edit, &inverse)) {
-				buffer->cursor_pos = edit->pos; // put cursor where edit happened
-				buffer_scroll_to_cursor(buffer);
+				if (i == ntimes - 1)
+					buffer_cursor_to_edit(buffer, edit);
 				
 				// NOTE: we can't just use buffer_append_edit, because that clears the redo history
 				arr_add(buffer->undo_history, inverse);
