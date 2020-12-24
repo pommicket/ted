@@ -249,6 +249,27 @@ static i64 buffer_pos_diff(TextBuffer *buffer, BufferPos p1, BufferPos p2) {
 	return total * factor;
 }
 
+// returns:
+// -1 if p1 comes before p2
+// +1 if p1 comes after p2
+// 0  if p1 = p2
+// faster than buffer_pos_diff (constant time)
+static int buffer_pos_cmp(BufferPos p1, BufferPos p2) {
+	if (p1.line < p2.line) {
+		return -1;
+	} else if (p1.line > p2.line) {
+		return +1;
+	} else {
+		if (p1.index < p2.index) {
+			return -1;
+		} else if (p1.index > p2.index) {
+			return +1;
+		} else {
+			return 0;
+		}
+	}
+}
+
 static Status buffer_create_edit(TextBuffer *buffer, BufferEdit *edit, BufferPos start, u32 prev_len, u32 new_len) {
 	if (prev_len == 0)
 		edit->prev_text = NULL; // if there's no previous text, don't allocate anything
@@ -275,6 +296,23 @@ static void buffer_edit(TextBuffer *buffer, BufferPos start, u32 prev_len, u32 n
 	if (buffer_create_edit(buffer, &edit, start, prev_len, new_len)) {
 		buffer_append_edit(buffer, &edit);
 	}
+}
+
+// change the capacity of edit->prev_text
+static Status buffer_edit_resize_prev_text(TextBuffer *buffer, BufferEdit *edit, u32 new_capacity) {
+	assert(edit->prev_len <= new_capacity);
+	if (new_capacity == 0) {
+		free(edit->prev_text);
+		edit->prev_text = NULL;
+	} else {
+		char32_t *new_text = buffer_realloc(buffer, edit->prev_text, new_capacity * sizeof *new_text);
+		if (new_text) {
+			edit->prev_text = new_text;
+		} else {
+			return false;
+		}
+	}
+	return true;
 }
 
 // grow capacity of line to at least minimum_capacity
@@ -1076,41 +1114,47 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 
 	// Correct nchars in case it goes past the end of the file.
 	// Why do we need to correct it?
-	// When generating undo events, we allocate the given number of characters,
-	// even if that's not necessary (also see the allocating of `temp` below).
+	// When generating undo events, we allocate nchars characters of memory (see buffer_edit below).
+	// Not doing this might also cause other bugs, best to keep it here just in case.
 	nchars = (u32)buffer_get_text_at_pos(buffer, pos, NULL, nchars);
 
 	if (buffer->store_undo_events) {
 		BufferEdit *last_edit = buffer->undo_history;
-		i64 where_in_last_edit = last_edit ? buffer_pos_diff(buffer, last_edit->pos, pos) : -1;
-		if (where_in_last_edit >= 0 && where_in_last_edit <= (i64)last_edit->new_len) {
+		BufferPos edit_start = last_edit->pos,
+			edit_end = buffer_pos_advance(buffer, edit_start, last_edit->prev_len);
+		BufferPos del_start = pos, del_end = buffer_pos_advance(buffer, del_start, nchars);
 
-			// merge this edit into the last one.
-		#if 0
-			// ah this doesn't work
-			// some of the deleted text might be inside the edit.
-			// this is gonna be annoying
-
-			char32_t *temp = calloc(nchars, sizeof *temp);
-			if (temp) {
-				buffer_get_text_at_pos(buffer, pos, temp, nchars);
-				char32_t *prev_text = buffer_realloc(buffer, last_edit->prev_text,
-					(last_edit->prev_len + nchars) * sizeof *prev_text);
-				if (prev_text) {
-					// make space for our text
-					memmove(prev_text + where_in_last_edit + nchars, prev_text + where_in_last_edit, 
-						last_edit->prev_len - (where_in_last_edit + nchars) * sizeof *prev_text);
-					// insert our text into new_text
-					memcpy(prev_text + where_in_last_edit, temp, nchars * sizeof *prev_text);
-					last_edit->prev_len += nchars;
-					last_edit->prev_text = prev_text;
-				}
-				free(temp);
-			}
-		#endif
-		} else {
+		if (buffer_pos_cmp(del_end, edit_start) > 0 || // if delete does not overlap last_edit
+			buffer_pos_cmp(edit_end, del_start) < 0) {
 			// create a new edit
 			buffer_edit(buffer, pos, nchars, 0);
+		} else {
+			if (buffer_pos_cmp(del_start, edit_start) < 0) {
+				// if we delete characters before the last edit, add them onto the start of prev_text.
+				i64 chars_before_edit = buffer_pos_diff(buffer, del_start, edit_start);
+				assert(chars_before_edit > 0);
+				u32 updated_prev_len = (u32)(chars_before_edit + last_edit->prev_len);
+				if (buffer_edit_resize_prev_text(buffer, last_edit, updated_prev_len)) {
+					// make space
+					memmove(last_edit->prev_text + chars_before_edit, last_edit->prev_text, last_edit->prev_len);
+					// prepend these chracters to the edit's text
+					buffer_get_text_at_pos(buffer, del_start, last_edit->prev_text, (size_t)chars_before_edit);
+
+					last_edit->prev_len = updated_prev_len;
+				}
+			}
+			if (buffer_pos_cmp(del_end, edit_end) > 0) {
+				// if we delete characters after the last edit, add them onto the end of prev_text.
+				i64 chars_after_edit = buffer_pos_diff(buffer, del_end, edit_end);
+				assert(chars_after_edit > 0);
+				u32 updated_prev_len = (u32)(chars_after_edit + last_edit->prev_len);
+				if (buffer_edit_resize_prev_text(buffer, last_edit, updated_prev_len)) {
+					// append these characters to the edit's text
+					buffer_get_text_at_pos(buffer, del_end, last_edit->prev_text + last_edit->prev_len, (size_t)chars_after_edit);
+					last_edit->prev_len = updated_prev_len;
+				}
+			}
+			// @TODO: delete text in the edit
 		}
 	}
 
@@ -1200,6 +1244,7 @@ void buffer_backspace_words_at_cursor(TextBuffer *buffer, i64 nwords) {
 }
 
 // puts the inverse edit into `inverse`
+// @TODO: check if the edit actually did anything; return something based on that?
 static Status buffer_undo_edit(TextBuffer *buffer, BufferEdit const *edit, BufferEdit *inverse) {
 	bool success = false;
 	bool prev_store_undo_events = buffer->store_undo_events;
