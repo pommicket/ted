@@ -215,6 +215,8 @@ int main(void) {
 
 		//buffer_print_debug(&text_buffer);
 		buffer_check_valid(&text_buffer);
+		printf("\033[H\033[2J"); fflush(stdout);
+		buffer_print_undo_history(&text_buffer);
 
 		SDL_GL_SwapWindow(window);
 	}
