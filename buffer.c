@@ -243,7 +243,7 @@ static i64 buffer_pos_diff(TextBuffer *buffer, BufferPos p1, BufferPos p2) {
 	i64 chars_in_lines_in_between = 0;
 	// now we need to add up the lengths of the lines between p1 and p2
 	for (Line *line = buffer->lines + (p1.line + 1), *end = buffer->lines + p2.line; line != end; ++line) {
-		chars_in_lines_in_between += line->len;
+		chars_in_lines_in_between += line->len + 1; // +1 for newline
 	}
 	i64 total = chars_at_end_of_p1_line + chars_in_lines_in_between + chars_at_start_of_p2_line;
 	return total * factor;
