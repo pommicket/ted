@@ -11,6 +11,8 @@ no_warn_end
 #include <wctype.h>
 #include "unicode.h"
 #include "util.c"
+#define MATH_GL
+#include "math.c"
 #include "text.h"
 #include "string32.c"
 #include "arr.c"

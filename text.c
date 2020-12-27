@@ -176,7 +176,7 @@ void text_chars_end(Font *font) {
 	font->curr_page = -1;
 }
 
-void text_render_char(Font *font, char32_t c, TextRenderState *state) {
+void text_render_char(Font *font, TextRenderState *state, char32_t c) {
 	if (c >= 0x30000 && c < 0xE0000){
 		// these Unicode code points are currently unassigned. replace them with a Unicode box.
 		// (specifically, we don't want to use extra memory for pages which
@@ -227,33 +227,40 @@ void text_render_char(Font *font, char32_t c, TextRenderState *state) {
 	}
 }
 
-static void text_render_internal(Font *font, char const *text, float *x, float *y) {
-	mbstate_t mbstate = {0};
-	TextRenderState render_state = {.x = *x, .y = *y, .min_x = -FLT_MAX, .max_x = FLT_MAX, .min_y = -FLT_MAX, .max_y = FLT_MAX};
+void text_render_with_state(Font *font, TextRenderState *render_state, char const *text, float x, float y) {
 	text_chars_begin(font);
+	render_state->x = x;
+	render_state->y = y;
 	char32_t c = 0;
+	mbstate_t mbstate = {0};
 	char const *end = text + strlen(text);
 	while (text != end) {
 		size_t ret = mbrtoc32(&c, text, (size_t)(end - text), &mbstate);
 		if (ret == 0) break;
 		if (ret == (size_t)(-2)) { // incomplete multi-byte character
-			text_render_char(font, '?', &render_state);
+			text_render_char(font, render_state, U'?');
 			text = end; // done reading text
 		} else if (ret == (size_t)(-1)) {
 			// invalid UTF-8; skip this byte
-			text_render_char(font, '?', &render_state);
+			text_render_char(font, render_state, U'?');
 			++text;
 		} else {
 			if (ret != (size_t)(-3))
 				text += ret; // character consists of `ret` bytes
 			switch (c) {
 			default:
-				text_render_char(font, (char32_t)c, &render_state);
+				text_render_char(font, render_state, c);
 				break;
 			}
 		}
 	}
 	text_chars_end(font);
+	
+}
+
+static void text_render_internal(Font *font, char const *text, float *x, float *y) {
+	TextRenderState render_state = {.x = 0, .y = 0, .min_x = -FLT_MAX, .max_x = FLT_MAX, .min_y = -FLT_MAX, .max_y = FLT_MAX};
+	text_render_with_state(font, &render_state, text, *x, *y);
 	*x = render_state.x;
 	*y = render_state.y;
 }

@@ -161,6 +161,19 @@ BufferPos buffer_end_pos(TextBuffer *buffer) {
 	return (BufferPos){.line = buffer->nlines - 1, .index = buffer->lines[buffer->nlines-1].len};
 }
 
+// Returns a simple checksum of the buffer.
+// This is only used for testing, and shouldn't be relied on.
+static u64 buffer_checksum(TextBuffer *buffer) {
+	u64 sum = 0x40fdd49b58ee4b15; // some random prime number
+	for (Line *line = buffer->lines, *end = line + buffer->nlines; line != end; ++line) {
+		for (char32_t *p = line->str, *p_end = p + line->len; p != p_end; ++p) {
+			sum += *p;
+			sum *= 0xf033ae1b58e6562f; // another random prime number
+			sum += 0x6fcc63c3d38a2bb9; // another random prime number
+		}
+	}
+	return sum;
+}
 
 // Get some number of characters of text from the given position in the buffer.
 // Returns the number of characters gotten.
@@ -660,13 +673,17 @@ static bool buffer_clip_rect(TextBuffer *buffer, float *x1, float *y1, float *x2
 // Render the text buffer in the given rectangle
 // NOTE: also corrects scroll
 void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
-	buffer->x1 = x1; buffer->y1 = y1; buffer->x2 = x2; buffer->y2 = y2;
 	Font *font = buffer->font;
 	u32 nlines = buffer->nlines;
 	Line *lines = buffer->lines;
 	float char_width = text_font_char_width(font),
 		char_height = text_font_char_height(font);
-	glColor3f(0.5f,0.5f,0.5f);
+	float header_height = char_height;
+
+	u32 border_color = 0x7f7f7fff; // color of border around buffer
+
+	// bounding box around buffer & header
+	gl_color_rgba(border_color);
 	glBegin(GL_LINE_STRIP);
 	glVertex2f(x1,y1);
 	glVertex2f(x1,y2);
@@ -675,19 +692,55 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 	glVertex2f(x1-1,y1);
 	glEnd();
 
+	TextRenderState text_state = {
+		.x = 0, .y = 0,
+		.min_x = x1, .min_y = y1,
+		.max_x = x2, .max_y = y2
+	};
+
+
+	{ // header
+		glColor3f(1,1,1);
+		float x = x1, y = y1 + char_height * 0.8f;
+		text_render_with_state(font, &text_state, buffer->filename, x, y);
+	#if DEBUG
+		// show checksum
+		char checksum[32] = {0};
+		snprintf(checksum, sizeof checksum - 1, "%08llx", (ullong)buffer_checksum(buffer));
+		gl_color1f(0.5f);
+		float checksum_w = 0;
+		text_get_size(font, checksum, &checksum_w, NULL);
+		x = x2 - checksum_w;
+		text_render_with_state(font, &text_state, checksum, x, y);
+	#endif
+	}
+	
+	y1 += header_height;
+
+	buffer->x1 = x1; buffer->y1 = y1; buffer->x2 = x2; buffer->y2 = y2;
+	// line separating header from buffer proper
+	glBegin(GL_LINES);
+	gl_color_rgba(border_color);
+	glVertex2f(x1, y1);
+	glVertex2f(x2, y1);
+	glEnd();
+
+	
+
 	glColor3f(1,1,1);
 	text_chars_begin(font);
+
 
 	// what x coordinate to start rendering the text from
 	float render_start_x = x1 - (float)buffer->scroll_x * char_width;
 
-	u32 column = 0;
-
-	TextRenderState text_state = {
+	text_state = (TextRenderState){
 		.x = render_start_x, .y = y1 + text_font_char_height(font),
 		.min_x = x1, .min_y = y1,
 		.max_x = x2, .max_y = y2
 	};
+
+	u32 column = 0;
 
 	// @TODO: make this better (we should figure out where to start rendering, etc.)
 	text_state.y -= (float)buffer->scroll_y * char_height;
@@ -702,12 +755,12 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 			case U'\r': break; // for CRLF line endings
 			case U'\t':
 				do {
-					text_render_char(font, U' ', &text_state);
+					text_render_char(font, &text_state, U' ');
 					++column;
 				} while (column % buffer->tab_width);
 				break;
 			default:
-				text_render_char(font, c, &text_state);
+				text_render_char(font, &text_state, c);
 				++column;
 				break;
 			}
@@ -1354,3 +1407,4 @@ void buffer_redo(TextBuffer *buffer, i64 ntimes) {
 		}
 	}
 }
+

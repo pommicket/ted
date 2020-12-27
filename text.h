@@ -32,12 +32,14 @@ extern float text_font_char_width(Font *font);
 extern void text_render(Font *font, char const *text, float x, float y);
 // Get the dimensions of some text.
 extern void text_get_size(Font *font, char const *text, float *width, float *height);
+// Write text, but using a state, starting at (x, y) -- state->x and state->y are ignored. This allows you to control min/max_x/y.
+extern void text_render_with_state(Font *font, TextRenderState *state, char const *text, float x, float y);
 // Begin writing characters.
 extern void text_chars_begin(Font *font);
 // Finish writing characters.
 extern void text_chars_end(Font *font);
 // Render a single character.
-extern void text_render_char(Font *font, char32_t c, TextRenderState *state);
+extern void text_render_char(Font *font, TextRenderState *state, char32_t c);
 // Free memory used by font.
 extern void text_font_free(Font *font);
 

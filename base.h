@@ -48,6 +48,9 @@ typedef int64_t i64;
 typedef unsigned int  uint;
 typedef unsigned long ulong;
 
+typedef long long llong;
+typedef unsigned long long ullong;
+
 #ifdef __GNUC__
 #define WarnUnusedResult __attribute__((warn_unused_result))
 #else
