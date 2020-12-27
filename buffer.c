@@ -352,6 +352,36 @@ static Status buffer_edit_resize_prev_text(TextBuffer *buffer, BufferEdit *edit,
 	return true;
 }
 
+// does this edit actually make a difference to the buffer?
+static bool buffer_edit_does_anything(TextBuffer *buffer, BufferEdit *edit) {
+	if (edit->prev_len == edit->new_len) {
+		// @OPTIMIZE: compare directly to the buffer contents, rather than extracting them temporarily
+		// into new_text.
+		char32_t *new_text = buffer_calloc(buffer, edit->new_len, sizeof *new_text);
+		if (new_text) {
+			size_t len = buffer_get_text_at_pos(buffer, edit->pos, new_text, edit->new_len);
+			assert(len == edit->new_len);
+			int cmp = memcmp(edit->prev_text, new_text, len * sizeof *new_text);
+			free(new_text);
+			return cmp != 0;
+		} else {
+			return false;
+		}
+	} else {
+		return true;
+	}
+}
+
+// removes the last edit in the undo history if it doesn't do anything
+static void buffer_remove_last_edit_if_empty(TextBuffer *buffer) {
+	if (buffer->store_undo_events) {
+		BufferEdit *last_edit = arr_lastp(buffer->undo_history);
+		if (last_edit && !buffer_edit_does_anything(buffer, last_edit)) {
+			arr_remove_last(buffer->undo_history);
+		}
+	}
+}
+
 // grow capacity of line to at least minimum_capacity
 // returns true if allocation was succesful
 static Status buffer_line_set_min_capacity(TextBuffer *buffer, Line *line, u32 minimum_capacity) {
@@ -1134,6 +1164,9 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 		}
 	}
 
+	// We need to put this after the end so the emptiness-checking is done after the edit is made.
+	buffer_remove_last_edit_if_empty(buffer);
+
 	BufferPos b = {.line = line_idx, .index = index};
 	return b;
 }
@@ -1252,6 +1285,7 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 			// shrink length to get rid of that text
 			last_edit->new_len -= new_text_del_end - new_text_del_start;
 		}
+
 	}
 
 	u32 line_idx = pos.line;
@@ -1291,6 +1325,8 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 		memmove(line->str + index, line->str + index + nchars, (size_t)(line->len - (nchars + index)) * sizeof(char32_t));
 		line->len -= nchars;
 	}
+
+	buffer_remove_last_edit_if_empty(buffer);
 }
 
 // Delete characters between the given buffer positions.
@@ -1344,7 +1380,6 @@ void buffer_backspace_words_at_cursor(TextBuffer *buffer, i64 nwords) {
 }
 
 // puts the inverse edit into `inverse`
-// @TODO: check if the edit actually did anything; return something based on that?
 static Status buffer_undo_edit(TextBuffer *buffer, BufferEdit const *edit, BufferEdit *inverse) {
 	bool success = false;
 	bool prev_store_undo_events = buffer->store_undo_events;
