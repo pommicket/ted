@@ -76,13 +76,17 @@ int main(void) {
 	TextBuffer text_buffer;
 	buffer_create(&text_buffer, font);
 
-	if (!buffer_load_file(&text_buffer, "test.txt"))
+	if (!buffer_load_file(&text_buffer, "buffer.c"))
 		die("Error loading file: %s", buffer_geterr(&text_buffer));
 
 
 	Uint32 time_at_last_frame = SDL_GetTicks();
 
 	while (!quit) {
+	#if DEBUG
+		printf("\033[H\033[2J"); fflush(stdout);
+	#endif
+
 		SDL_Event event;
 		Uint8 const *keyboard_state = SDL_GetKeyboardState(NULL);
 		bool ctrl = keyboard_state[SDL_SCANCODE_LCTRL] || keyboard_state[SDL_SCANCODE_RCTRL];
@@ -216,10 +220,11 @@ int main(void) {
 			}
 		}
 
+	#if DEBUG
 		//buffer_print_debug(&text_buffer);
 		buffer_check_valid(&text_buffer);
-		printf("\033[H\033[2J"); fflush(stdout);
 		buffer_print_undo_history(&text_buffer);
+	#endif
 
 		SDL_GL_SwapWindow(window);
 	}

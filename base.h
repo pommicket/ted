@@ -77,19 +77,20 @@ typedef unsigned long long ullong;
 
 #if DEBUG
 #if __unix__
-#define debug_println(...) printf(__VA_ARGS__), printf("\n")
+#define debug_print(...) printf(__VA_ARGS__)
 #else // __unix__
-static void debug_println(char const *fmt, ...) {
+static void debug_print(char const *fmt, ...) {
 	char buf[256];
 	va_list args;
 	va_start(args, fmt);
 	vsprintf_s(buf, sizeof buf, fmt, args);
 	va_end(args);
 	OutputDebugStringA(buf);
-	OutputDebugStringA("\n");
 }
 #endif // __unix__
+#define debug_println(...) debug_print(__VA_ARGS__), debug_print("\n")
 #else // DEBUG
+#define debug_print(...)
 #define debug_println(...)
 #endif
 

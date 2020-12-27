@@ -787,10 +787,12 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 
 	u32 column = 0;
 
-	// @TODO: make this better (we should figure out where to start rendering, etc.)
-	text_state.y -= (float)buffer->scroll_y * char_height;
+	u32 start_line = (u32)buffer->scroll_y; // line to start rendering from
+	text_state.y -= (float)(buffer->scroll_y - start_line) * char_height;
 
-	for (u32 line_idx = 0; line_idx < nlines; ++line_idx) {
+	//debug_print("Rendering from " U32_FMT, start_line);
+
+	for (u32 line_idx = start_line; line_idx < nlines; ++line_idx) {
 		Line *line = &lines[line_idx];
 		for (char32_t *p = line->str, *end = p + line->len; p != end; ++p) {
 			char32_t c = *p;
@@ -813,9 +815,16 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 
 		// next line
 		text_state.x = render_start_x;
+		if (text_state.y > text_state.max_y) {
+			// made it to the bottom of the buffer view.
+			//debug_println(" to " U32_FMT ".", line_idx);
+			break;
+		}
 		text_state.y += text_font_char_height(font);
 		column = 0;
 	}
+	
+
 	text_chars_end(font);
 
 	{ // render cursor
