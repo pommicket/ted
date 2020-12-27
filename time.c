@@ -1,16 +1,19 @@
 #include <time.h>
 #include <errno.h>
 #include <sys/stat.h>
+#if _WIN32
+#include <sysinfoapi.h>
+#endif
 
 static struct timespec time_last_modified(char const *filename) {
 #if __unix__
-	struct stat statbuf = {};
+	struct stat statbuf = {0};
 	stat(filename, &statbuf);
 	return statbuf.st_mtim;
 #else
 	// windows' _stat does not have st_mtim
-	struct _stat statbuf = {};
-	struct timespec ts = {};
+	struct _stat statbuf = {0};
+	struct timespec ts = {0};
 	_stat(filename, &statbuf);
 	ts.tv_sec = statbuf.st_mtime;
 	return ts;
@@ -33,10 +36,29 @@ static struct timespec timespec_max(struct timespec a, struct timespec b) {
 	return timespec_cmp(a, b) < 0 ? b : a;
 }
 
+static double timespec_to_seconds(struct timespec ts) {
+	return (double)ts.tv_sec
+		+ (double)ts.tv_nsec * 0.000000001;
+}
+
+static struct timespec time_get(void) {
+	struct timespec ts = {0};
+#if _WIN32
+	timespec_get(&ts, TIME_UTC);
+#else
+	clock_gettime(CLOCK_REALTIME, &ts);
+#endif
+	return ts;
+}
+
+static double time_get_seconds(void) {
+	return timespec_to_seconds(time_get());
+}
+
 // sleep for a certain number of nanoseconds
 static void sleep_ns(u64 ns) {
 #if __unix__
-	struct timespec rem = {}, req = {
+	struct timespec rem = {0}, req = {
 		(time_t)(ns / 1000000000),
 		(long)(ns % 1000000000)
 	};

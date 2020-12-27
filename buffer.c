@@ -18,7 +18,7 @@ typedef struct BufferEdit {
 	u32 new_len;
 	u32 prev_len;
 	char32_t *prev_text;
-	double time; // time in seconds since epoch
+	double time; // time at start of edit (i.e. the time just before the edit), in seconds since epoch
 } BufferEdit;
 
 typedef struct {
@@ -288,6 +288,7 @@ static void buffer_pos_print(BufferPos p) {
 }
 
 static Status buffer_edit_create(TextBuffer *buffer, BufferEdit *edit, BufferPos start, u32 prev_len, u32 new_len) {
+	edit->time = time_get_seconds();
 	if (prev_len == 0)
 		edit->prev_text = NULL; // if there's no previous text, don't allocate anything
 	else
@@ -370,6 +371,15 @@ static bool buffer_edit_does_anything(TextBuffer *buffer, BufferEdit *edit) {
 	} else {
 		return true;
 	}
+}
+
+// has enough time passed since the last edit that we should create a new one?
+static bool buffer_edit_split(TextBuffer *buffer) {
+	double curr_time = time_get_seconds();
+	double undo_time_cutoff = 6.0; // only keep around edits for this long (in seconds). @SETTINGS
+	BufferEdit *last_edit = arr_lastp(buffer->undo_history);
+	if (!last_edit) return true;
+	return curr_time - last_edit->time > undo_time_cutoff;
 }
 
 // removes the last edit in the undo history if it doesn't do anything
@@ -1106,12 +1116,16 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 	if (buffer->store_undo_events) {
 		BufferEdit *last_edit = arr_lastp(buffer->undo_history);
 		i64 where_in_last_edit = last_edit ? buffer_pos_diff(buffer, last_edit->pos, pos) : -1;
-		if (where_in_last_edit >= 0 && where_in_last_edit <= (i64)last_edit->new_len) {
-			// merge this edit into the previous one.
-			last_edit->new_len += str.len;
-		} else {
+		// create a new edit, rather than adding to the old one if:
+		bool create_new_edit = where_in_last_edit < 0 || where_in_last_edit > last_edit->new_len // insertion is happening outside the previous edit,
+			|| buffer_edit_split(buffer); // or enough time has elapsed to warrant a new one.
+
+		if (create_new_edit) {
 			// create a new edit for this insertion
 			buffer_edit(buffer, pos, 0, (u32)str.len);
+		} else {
+			// merge this edit into the previous one.
+			last_edit->new_len += str.len;
 		}
 
 	}
@@ -1249,7 +1263,9 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 		bool create_new_edit = 
 			!last_edit || // if there is no previous edit to combine it with
 			buffer_pos_cmp(del_end, edit_start) < 0 || // or if delete does not overlap last_edit
-			buffer_pos_cmp(del_start, edit_end) > 0;
+			buffer_pos_cmp(del_start, edit_end) > 0 ||
+			buffer_edit_split(buffer); // or if enough time has passed to warrant a new edit
+
 		if (create_new_edit) {
 			// create a new edit
 			buffer_edit(buffer, pos, nchars, 0);
@@ -1261,7 +1277,7 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 				u32 updated_prev_len = (u32)(chars_before_edit + last_edit->prev_len);
 				if (buffer_edit_resize_prev_text(buffer, last_edit, updated_prev_len)) {
 					// make space
-					memmove(last_edit->prev_text + chars_before_edit, last_edit->prev_text, last_edit->prev_len);
+					memmove(last_edit->prev_text + chars_before_edit, last_edit->prev_text, last_edit->prev_len * sizeof(char32_t));
 					// prepend these chracters to the edit's text
 					buffer_get_text_at_pos(buffer, del_start, last_edit->prev_text, (size_t)chars_before_edit);
 
@@ -1287,8 +1303,10 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 			if (new_text_del_start < 0) new_text_del_start = 0;
 			i64 new_text_del_end = buffer_pos_diff(buffer, edit_start, del_end);
 			if (new_text_del_end > last_edit->new_len) new_text_del_end = last_edit->new_len;
-			// shrink length to get rid of that text
-			last_edit->new_len -= new_text_del_end - new_text_del_start;
+			if (new_text_del_end > new_text_del_start) {
+				// shrink length to get rid of that text
+				last_edit->new_len -= new_text_del_end - new_text_del_start;
+			}
 		}
 
 	}

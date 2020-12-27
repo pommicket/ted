@@ -9,6 +9,7 @@ no_warn_end
 #include <GL/gl.h>
 #include <locale.h>
 #include <wctype.h>
+#include "time.c"
 #include "unicode.h"
 #include "util.c"
 #define MATH_GL
