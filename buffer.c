@@ -377,6 +377,7 @@ static void buffer_remove_last_edit_if_empty(TextBuffer *buffer) {
 	if (buffer->store_undo_events) {
 		BufferEdit *last_edit = arr_lastp(buffer->undo_history);
 		if (last_edit && !buffer_edit_does_anything(buffer, last_edit)) {
+			buffer_edit_free(last_edit);
 			arr_remove_last(buffer->undo_history);
 		}
 	}
@@ -435,13 +436,17 @@ static void buffer_line_free(Line *line) {
 
 // Does not free the pointer `buffer` (buffer might not have even been allocated with malloc)
 void buffer_free(TextBuffer *buffer) {
-
 	Line *lines = buffer->lines;
 	u32 nlines = buffer->nlines;
 	for (u32 i = 0; i < nlines; ++i) {
 		buffer_line_free(&lines[i]);
 	}
 	free(lines);
+
+	arr_foreach_ptr(buffer->undo_history, BufferEdit, edit)
+		buffer_edit_free(edit);
+	arr_foreach_ptr(buffer->redo_history, BufferEdit, edit)
+		buffer_edit_free(edit);
 
 	arr_free(buffer->undo_history);
 	arr_free(buffer->redo_history);
