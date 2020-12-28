@@ -26,6 +26,8 @@ typedef struct {
 	double scroll_x, scroll_y; // number of characters scrolled in the x/y direction
 	Font *font;
 	BufferPos cursor_pos;
+	BufferPos selection_pos; // if selection is true, the text between selection_pos and cursor_pos is selected.
+	bool selection;
 	u8 tab_width;
 	bool store_undo_events; // set to false to disable undo events
 	float x1, y1, x2, y2;
@@ -38,24 +40,6 @@ typedef struct {
 } TextBuffer;
 
 
-
-// for debugging
-#if DEBUG
-static void buffer_pos_check_valid(TextBuffer *buffer, BufferPos p) {
-	assert(p.line < buffer->nlines);
-	assert(p.index <= buffer->lines[p.line].len);
-}
-
-// perform a series of checks to make sure the buffer doesn't have any invalid values
-static void buffer_check_valid(TextBuffer *buffer) {
-	assert(buffer->nlines);
-	buffer_pos_check_valid(buffer, buffer->cursor_pos);
-}
-#else
-static void buffer_check_valid(TextBuffer *buffer) {
-	(void)buffer;
-}
-#endif
 
 void buffer_create(TextBuffer *buffer, Font *font) {
 	util_zero_memory(buffer, sizeof *buffer);
@@ -695,19 +679,21 @@ void buffer_scroll(TextBuffer *buffer, double dx, double dy) {
 	buffer_correct_scroll(buffer);
 }
 
-// sets *x and *y to the position of the character at the given position in the buffer.
-// x/y can be NULL.
-void buffer_pos_to_pixels(TextBuffer *buffer, BufferPos pos, float *x, float *y) {
+// returns the position of the character at the given position in the buffer.
+v2 buffer_pos_to_pixels(TextBuffer *buffer, BufferPos pos) {
 	u32 line = pos.line, index = pos.index;
-	u32 col = buffer_index_to_column(buffer, line, index);
 	// we need to convert the index to a column
-	if (x) *x = (float)((double)col  - buffer->scroll_x) * text_font_char_width(buffer->font) + buffer->x1;
-	if (y) *y = (float)((double)line - buffer->scroll_y) * text_font_char_height(buffer->font) + buffer->y1;
+	u32 col = buffer_index_to_column(buffer, line, index);
+	float x = (float)((double)col  - buffer->scroll_x) * text_font_char_width(buffer->font) + buffer->x1;
+	float y = (float)((double)line - buffer->scroll_y) * text_font_char_height(buffer->font) + buffer->y1
+			+ text_font_char_height(buffer->font) * 0.2f; // slightly nudge
+	return V2(x, y);
 }
 
 // convert pixel coordinates to a position in the buffer, selecting the closest character.
 // returns false if the position is not inside the buffer.
-bool buffer_pixels_to_pos(TextBuffer *buffer, float x, float y, BufferPos *pos) {
+bool buffer_pixels_to_pos(TextBuffer *buffer, v2 pixel_coords, BufferPos *pos) {
+	float x = pixel_coords.x, y = pixel_coords.y;
 	pos->line = pos->index = 0;
 
 	x -= buffer->x1;
@@ -731,161 +717,21 @@ bool buffer_pixels_to_pos(TextBuffer *buffer, float x, float y, BufferPos *pos) 
 }
 
 // clip the rectangle so it's all inside the buffer. returns true if there's any rectangle left.
-static bool buffer_clip_rect(TextBuffer *buffer, float *x1, float *y1, float *x2, float *y2) {
-	if (*x1 > buffer->x2 || *y1 > buffer->y2 || *x2 < buffer->x1 || *y2 < buffer->y1) {
-		*x1 = *y1 = *x2 = *y2 = 0;
+static bool buffer_clip_rect(TextBuffer *buffer, Rect *r) {
+	float x1, y1, x2, y2;
+	rect_coords(*r, &x1, &y1, &x2, &y2);
+	if (x1 > buffer->x2 || y1 > buffer->y2 || x2 < buffer->x1 || y2 < buffer->y1) {
+		r->pos = r->size = V2(0, 0);
 		return false;
 	}
-	if (*x1 < buffer->x1) *x1 = buffer->x1;
-	if (*y1 < buffer->y1) *y1 = buffer->y1;
-	if (*x2 > buffer->x2) *x2 = buffer->x2;
-	if (*y2 > buffer->y2) *y2 = buffer->y2;
+	if (x1 < buffer->x1) x1 = buffer->x1;
+	if (y1 < buffer->y1) y1 = buffer->y1;
+	if (x2 > buffer->x2) x2 = buffer->x2;
+	if (y2 > buffer->y2) y2 = buffer->y2;
+	*r = rect4(x1, y1, x2, y2);
 	return true;
 }
 
-// Render the text buffer in the given rectangle
-// NOTE: also corrects scroll
-void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
-	Font *font = buffer->font;
-	u32 nlines = buffer->nlines;
-	Line *lines = buffer->lines;
-	float char_width = text_font_char_width(font),
-		char_height = text_font_char_height(font);
-	float header_height = char_height;
-
-	// get screen coordinates of cursor
-	float cur_x1 = 0, cur_y1 = 0;
-	buffer_pos_to_pixels(buffer, buffer->cursor_pos, &cur_x1, &cur_y1);
-	cur_y1 += 0.2f * char_height;
-
-	u32 border_color = 0x7f7f7fff; // color of border around buffer
-
-	// bounding box around buffer & header
-	gl_color_rgba(border_color);
-	glBegin(GL_LINE_STRIP);
-	glVertex2f(x1,y1);
-	glVertex2f(x1,y2);
-	glVertex2f(x2,y2);
-	glVertex2f(x2,y1);
-	glVertex2f(x1-1,y1);
-	glEnd();
-
-	TextRenderState text_state = {
-		.x = 0, .y = 0,
-		.min_x = x1, .min_y = y1,
-		.max_x = x2, .max_y = y2
-	};
-
-
-	{ // header
-		glColor3f(1,1,1);
-		float x = x1, y = y1 + char_height * 0.8f;
-		text_render_with_state(font, &text_state, buffer->filename, x, y);
-	#if DEBUG
-		// show checksum
-		char checksum[32] = {0};
-		snprintf(checksum, sizeof checksum - 1, "%08llx", (ullong)buffer_checksum(buffer));
-		gl_color1f(0.5f);
-		float checksum_w = 0;
-		text_get_size(font, checksum, &checksum_w, NULL);
-		x = x2 - checksum_w;
-		text_render_with_state(font, &text_state, checksum, x, y);
-	#endif
-	}
-	
-	y1 += header_height;
-
-	buffer->x1 = x1; buffer->y1 = y1; buffer->x2 = x2; buffer->y2 = y2;
-	// line separating header from buffer proper
-	glBegin(GL_LINES);
-	gl_color_rgba(border_color);
-	glVertex2f(x1, y1);
-	glVertex2f(x2, y1);
-	glEnd();
-
-	
-	// highlight line cursor is on
-	{
-		gl_color1f(0.2f); // @SETTINGS
-		glBegin(GL_QUADS);
-		float line_y1 = cur_y1;
-		float line_y2 = cur_y1 + char_height;
-		glVertex2f(x1, line_y1);
-		glVertex2f(x2, line_y1);
-		glVertex2f(x2, line_y2);
-		glVertex2f(x1, line_y2);
-		glEnd();
-	}
-
-
-	glColor3f(1,1,1);
-	text_chars_begin(font);
-
-
-	// what x coordinate to start rendering the text from
-	float render_start_x = x1 - (float)buffer->scroll_x * char_width;
-
-	text_state = (TextRenderState){
-		.x = render_start_x, .y = y1 + text_font_char_height(font),
-		.min_x = x1, .min_y = y1,
-		.max_x = x2, .max_y = y2
-	};
-
-	u32 column = 0;
-
-	u32 start_line = (u32)buffer->scroll_y; // line to start rendering from
-	text_state.y -= (float)(buffer->scroll_y - start_line) * char_height;
-
-	//debug_print("Rendering from " U32_FMT, start_line);
-
-	for (u32 line_idx = start_line; line_idx < nlines; ++line_idx) {
-		Line *line = &lines[line_idx];
-		for (char32_t *p = line->str, *end = p + line->len; p != end; ++p) {
-			char32_t c = *p;
-
-			switch (c) {
-			case U'\n': assert(0);
-			case U'\r': break; // for CRLF line endings
-			case U'\t':
-				do {
-					text_render_char(font, &text_state, U' ');
-					++column;
-				} while (column % buffer->tab_width);
-				break;
-			default:
-				text_render_char(font, &text_state, c);
-				++column;
-				break;
-			}
-		}
-
-		// next line
-		text_state.x = render_start_x;
-		if (text_state.y > text_state.max_y) {
-			// made it to the bottom of the buffer view.
-			//debug_println(" to " U32_FMT ".", line_idx);
-			break;
-		}
-		text_state.y += text_font_char_height(font);
-		column = 0;
-	}
-	
-
-	text_chars_end(font);
-
-	{ // render cursor
-		float cur_x2 = cur_x1 + 1.0f, cur_y2 = cur_y1 + char_height;
-		if (buffer_clip_rect(buffer, &cur_x1, &cur_y1, &cur_x2, &cur_y2)) {
-			glColor3f(0,1,1);
-			glBegin(GL_QUADS);
-			glVertex2f(cur_x1,cur_y1);
-			glVertex2f(cur_x2,cur_y1);
-			glVertex2f(cur_x2,cur_y2);
-			glVertex2f(cur_x1,cur_y2);
-			glEnd();
-		}
-	}
-}
 
 // if the cursor is offscreen, this will scroll to make it onscreen.
 static void buffer_scroll_to_cursor(TextBuffer *buffer) {
@@ -1279,6 +1125,35 @@ void buffer_insert_utf8_at_cursor(TextBuffer *buffer, char const *utf8) {
 	}
 }
 
+// like shift+right in most editors, move cursor n chars to the right, selecting everything in between
+void buffer_select_right(TextBuffer *buffer, i64 n) {
+	if (!buffer->selection)
+		buffer->selection_pos = buffer->cursor_pos;
+	if (buffer_cursor_move_right(buffer, n)) // if we actually moved at all
+		buffer->selection = true;
+}
+
+void buffer_select_left(TextBuffer *buffer, i64 n) {
+	if (!buffer->selection)
+		buffer->selection_pos = buffer->cursor_pos;
+	if (buffer_cursor_move_left(buffer, n))
+		buffer->selection = true;
+}
+
+void buffer_select_down(TextBuffer *buffer, i64 n) {
+	if (!buffer->selection)
+		buffer->selection_pos = buffer->cursor_pos;
+	if (buffer_cursor_move_down(buffer, n))
+		buffer->selection = true;
+}
+
+void buffer_select_up(TextBuffer *buffer, i64 n) {
+	if (!buffer->selection)
+		buffer->selection_pos = buffer->cursor_pos;
+	if (buffer_cursor_move_up(buffer, n))
+		buffer->selection = true;
+}
+
 static void buffer_shorten_line(Line *line, u32 new_len) {
 	assert(line->len >= new_len);
 	line->len = new_len; // @OPTIMIZE(memory): decrease line capacity
@@ -1534,6 +1409,206 @@ void buffer_redo(TextBuffer *buffer, i64 ntimes) {
 				buffer_edit_free(edit);
 				arr_remove_last(buffer->redo_history);
 			}
+		}
+	}
+}
+
+// for debugging
+#if DEBUG
+static void buffer_pos_check_valid(TextBuffer *buffer, BufferPos p) {
+	assert(p.line < buffer->nlines);
+	assert(p.index <= buffer->lines[p.line].len);
+}
+
+// perform a series of checks to make sure the buffer doesn't have any invalid values
+void buffer_check_valid(TextBuffer *buffer) {
+	assert(buffer->nlines);
+	buffer_pos_check_valid(buffer, buffer->cursor_pos);
+	if (buffer->selection) {
+		buffer_pos_check_valid(buffer, buffer->selection_pos);
+		// you shouldn't be able to select nothing
+		assert(buffer_pos_cmp(buffer->cursor_pos, buffer->selection_pos) != 0);
+	}
+}
+#else
+void buffer_check_valid(TextBuffer *buffer) {
+	(void)buffer;
+}
+#endif
+
+// Render the text buffer in the given rectangle
+void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
+	Font *font = buffer->font;
+	u32 nlines = buffer->nlines;
+	Line *lines = buffer->lines;
+	float char_width = text_font_char_width(font),
+		char_height = text_font_char_height(font);
+	float header_height = char_height;
+
+	// get screen coordinates of cursor
+	v2 cursor_display_pos = buffer_pos_to_pixels(buffer, buffer->cursor_pos);
+	// the rectangle that the cursor is rendered as
+	Rect cursor_rect = rect(cursor_display_pos, V2(1.0f, char_height)); // @SETTINGS: cursor width
+
+	u32 border_color = 0x7f7f7fff; // color of border around buffer
+
+	// bounding box around buffer & header
+	gl_color_rgba(border_color);
+	glBegin(GL_LINE_STRIP);
+	glVertex2f(x1,y1);
+	glVertex2f(x1,y2);
+	glVertex2f(x2,y2);
+	glVertex2f(x2,y1);
+	glVertex2f(x1-1,y1);
+	glEnd();
+
+	TextRenderState text_state = {
+		.x = 0, .y = 0,
+		.min_x = x1, .min_y = y1,
+		.max_x = x2, .max_y = y2
+	};
+
+
+	{ // header
+		glColor3f(1,1,1);
+		float x = x1, y = y1 + char_height * 0.8f;
+		text_render_with_state(font, &text_state, buffer->filename, x, y);
+	#if DEBUG
+		// show checksum
+		char checksum[32] = {0};
+		snprintf(checksum, sizeof checksum - 1, "%08llx", (ullong)buffer_checksum(buffer));
+		gl_color1f(0.5f);
+		float checksum_w = 0;
+		text_get_size(font, checksum, &checksum_w, NULL);
+		x = x2 - checksum_w;
+		text_render_with_state(font, &text_state, checksum, x, y);
+	#endif
+	}
+	
+	y1 += header_height;
+
+	buffer->x1 = x1; buffer->y1 = y1; buffer->x2 = x2; buffer->y2 = y2;
+	// line separating header from buffer proper
+	glBegin(GL_LINES);
+	gl_color_rgba(border_color);
+	glVertex2f(x1, y1);
+	glVertex2f(x2, y1);
+	glEnd();
+
+	
+	// highlight line cursor is on
+	{
+		gl_color1f(0.15f); // @SETTINGS
+		glBegin(GL_QUADS);
+		Rect hl_rect = rect(V2(x1, cursor_display_pos.y), V2(x2-x1-1, char_height));
+		buffer_clip_rect(buffer, &hl_rect);
+		rect_render(hl_rect);
+		glEnd();
+	}
+
+
+	// what x coordinate to start rendering the text from
+	float render_start_x = x1 - (float)buffer->scroll_x * char_width;
+	u32 column = 0;
+
+	u32 start_line = (u32)buffer->scroll_y; // line to start rendering from
+	//debug_print("Rendering from " U32_FMT, start_line);
+
+	if (buffer->selection) { // draw selection
+		glBegin(GL_QUADS);
+		gl_color_rgba(0x3366aa88); // @SETTINGS
+		BufferPos sel_start = {0}, sel_end = {0};
+		int cmp = buffer_pos_cmp(buffer->cursor_pos, buffer->selection_pos);
+		if (cmp < 0) {
+			// cursor_pos comes first
+			sel_start = buffer->cursor_pos;
+			sel_end   = buffer->selection_pos;
+		} else if (cmp > 0) {
+			// selection_pos comes first
+			sel_end   = buffer->cursor_pos;
+			sel_start = buffer->selection_pos;
+		} else assert(0);
+
+		u32 index1 = sel_start.index;
+		for (u32 line_idx = maxu32(sel_start.line, start_line); line_idx <= sel_end.line; ++line_idx) {
+			Line *line = &buffer->lines[line_idx];
+			u32 index2 = line_idx == sel_end.line ? sel_end.index : line->len;
+			assert(index2 >= index1);
+
+			// highlight everything from index1 to index2
+			u32 n_columns_highlighted = buffer_index_to_column(buffer, line_idx, index2)
+				- buffer_index_to_column(buffer, line_idx, index1);
+
+			if (n_columns_highlighted) {
+				BufferPos p1 = {.line = line_idx, .index = index1};
+				v2 hl_p1 = buffer_pos_to_pixels(buffer, p1);
+				Rect hl_rect = rect(
+					hl_p1,
+					V2((float)n_columns_highlighted * char_width, char_height)
+				);
+				buffer_clip_rect(buffer, &hl_rect);
+				rect_render(hl_rect);
+			}
+			index1 = 0;
+		}
+
+		glEnd();
+	}
+	
+
+	text_chars_begin(font);
+	glColor3f(1,1,1);
+
+	text_state = (TextRenderState){
+		.x = render_start_x, .y = y1 + text_font_char_height(font),
+		.min_x = x1, .min_y = y1,
+		.max_x = x2, .max_y = y2
+	};
+
+	text_state.y -= (float)(buffer->scroll_y - start_line) * char_height;
+
+
+	for (u32 line_idx = start_line; line_idx < nlines; ++line_idx) {
+		Line *line = &lines[line_idx];
+		for (char32_t *p = line->str, *end = p + line->len; p != end; ++p) {
+			char32_t c = *p;
+
+			switch (c) {
+			case U'\n': assert(0);
+			case U'\r': break; // for CRLF line endings
+			case U'\t':
+				do {
+					text_render_char(font, &text_state, U' ');
+					++column;
+				} while (column % buffer->tab_width);
+				break;
+			default:
+				text_render_char(font, &text_state, c);
+				++column;
+				break;
+			}
+		}
+
+		// next line
+		text_state.x = render_start_x;
+		if (text_state.y > text_state.max_y) {
+			// made it to the bottom of the buffer view.
+			//debug_println(" to " U32_FMT ".", line_idx);
+			break;
+		}
+		text_state.y += text_font_char_height(font);
+		column = 0;
+	}
+	
+
+	text_chars_end(font);
+
+	{ // render cursor
+		if (buffer_clip_rect(buffer, &cursor_rect)) {
+			glColor3f(0,1,1);
+			glBegin(GL_QUADS);
+			rect_render(cursor_rect);
+			glEnd();
 		}
 	}
 }

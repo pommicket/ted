@@ -66,6 +66,14 @@ static float maxf(float a, float b) {
 	return a > b ? a : b;
 }
 
+static u32 minu32(u32 a, u32 b) {
+	return a < b ? a : b;
+}
+
+static u32 maxu32(u32 a, u32 b) {
+	return a > b ? a : b;
+}
+
 static float sgnf(float x) {
 	if (x < 0) return -1;
 	if (x > 0) return +1;
