@@ -84,7 +84,7 @@ int main(void) {
 
 	while (!quit) {
 	#if DEBUG
-		printf("\033[H\033[2J"); fflush(stdout);
+		printf("\033[H\033[2J");
 	#endif
 
 		SDL_Event event;

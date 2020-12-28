@@ -753,6 +753,11 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 		char_height = text_font_char_height(font);
 	float header_height = char_height;
 
+	// get screen coordinates of cursor
+	float cur_x1 = 0, cur_y1 = 0;
+	buffer_pos_to_pixels(buffer, buffer->cursor_pos, &cur_x1, &cur_y1);
+	cur_y1 += 0.2f * char_height;
+
 	u32 border_color = 0x7f7f7fff; // color of border around buffer
 
 	// bounding box around buffer & header
@@ -799,6 +804,19 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 	glEnd();
 
 	
+	// highlight line cursor is on
+	{
+		gl_color1f(0.2f); // @SETTINGS
+		glBegin(GL_QUADS);
+		float line_y1 = cur_y1;
+		float line_y2 = cur_y1 + char_height;
+		glVertex2f(x1, line_y1);
+		glVertex2f(x2, line_y1);
+		glVertex2f(x2, line_y2);
+		glVertex2f(x1, line_y2);
+		glEnd();
+	}
+
 
 	glColor3f(1,1,1);
 	text_chars_begin(font);
@@ -856,9 +874,6 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 	text_chars_end(font);
 
 	{ // render cursor
-		float cur_x1, cur_y1;
-		buffer_pos_to_pixels(buffer, buffer->cursor_pos, &cur_x1, &cur_y1);
-		cur_y1 += 0.25f * char_height;
 		float cur_x2 = cur_x1 + 1.0f, cur_y2 = cur_y1 + char_height;
 		if (buffer_clip_rect(buffer, &cur_x1, &cur_y1, &cur_x2, &cur_y2)) {
 			glColor3f(0,1,1);
@@ -899,12 +914,18 @@ static void buffer_scroll_to_cursor(TextBuffer *buffer) {
 	buffer_correct_scroll(buffer); // it's possible that min/max_scroll_x/y go too far
 }
 
-// @TODO
-#if 0
 // scroll so that the cursor is in the center of the screen
-void buffer_center_cursor(){
+void buffer_center_cursor(TextBuffer *buffer) {
+	i64 cursor_line = buffer->cursor_pos.line;
+	i64 cursor_col  = buffer_index_to_column(buffer, (u32)cursor_line, buffer->cursor_pos.index);
+	i64 display_lines = buffer_display_lines(buffer);
+	i64 display_cols = buffer_display_cols(buffer);
+	
+	buffer->scroll_x = (double)(cursor_col - display_cols / 2);
+	buffer->scroll_y = (double)(cursor_line - display_lines / 2);
+
+	buffer_correct_scroll(buffer);
 }
-#endif
 
 // move left (if `by` is negative) or right (if `by` is positive) by the specified amount.
 // returns the signed number of characters successfully moved (it could be less in magnitude than `by` if the beginning of the file is reached)
@@ -1468,7 +1489,6 @@ static Status buffer_undo_edit(TextBuffer *buffer, BufferEdit const *edit, Buffe
 		success = true;
 	}
 
-
 	buffer->store_undo_events = prev_store_undo_events;
 	return success;
 }
@@ -1476,6 +1496,7 @@ static Status buffer_undo_edit(TextBuffer *buffer, BufferEdit const *edit, Buffe
 static void buffer_cursor_to_edit(TextBuffer *buffer, BufferEdit *edit) {
 	buffer_cursor_move_to_pos(buffer,
 		buffer_pos_advance(buffer, edit->pos, edit->prev_len));
+	buffer_center_cursor(buffer); // whenever we undo an edit, put the cursor in the center, to make it clear where the undo happened
 }
 
 void buffer_undo(TextBuffer *buffer, i64 ntimes) {
