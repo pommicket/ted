@@ -92,6 +92,7 @@ int main(void) {
 		Uint8 const *keyboard_state = SDL_GetKeyboardState(NULL);
 		bool ctrl = keyboard_state[SDL_SCANCODE_LCTRL] || keyboard_state[SDL_SCANCODE_RCTRL];
 		bool shift = keyboard_state[SDL_SCANCODE_LSHIFT] || keyboard_state[SDL_SCANCODE_RSHIFT];
+		bool alt = keyboard_state[SDL_SCANCODE_LALT] || keyboard_state[SDL_SCANCODE_RALT];
 
 		while (SDL_PollEvent(&event)) {
 			// @TODO: make a function to handle text buffer events
@@ -123,26 +124,64 @@ int main(void) {
 					buffer_scroll(buffer, 0, +buffer_display_lines(buffer));
 					break;
 				case SDLK_RIGHT:
-					if (shift) {
-						buffer_select_right(buffer, 1);
-					} else {
-						if (ctrl)
-							buffer_cursor_move_right_words(buffer, 1);
-						else
-							buffer_cursor_move_right(buffer, 1);
+					if (!alt) {
+						if (shift) {
+							if (ctrl)
+								buffer_select_right_words(buffer, 1);
+							else
+								buffer_select_right(buffer, 1);
+						} else {
+							if (ctrl)
+								buffer_cursor_move_right_words(buffer, 1);
+							else
+								buffer_cursor_move_right(buffer, 1);
+						}
 					}
 					break;
 				case SDLK_LEFT:
-					if (ctrl)
-						buffer_cursor_move_left_words(buffer, 1);
-					else
-						buffer_cursor_move_left(buffer, 1);
+					if (!alt) {
+						if (shift) {
+							if (ctrl)
+								buffer_select_left_words(buffer, 1);
+							else
+								buffer_select_left(buffer, 1);
+						} else {
+							if (ctrl)
+								buffer_cursor_move_left_words(buffer, 1);
+							else
+								buffer_cursor_move_left(buffer, 1);
+						}
+					}
 					break;
 				case SDLK_UP:
-					buffer_cursor_move_up(buffer, 1);
+					if (!alt) {
+						if (shift) {
+							if (ctrl)
+								buffer_select_up(buffer, 10);
+							else
+								buffer_select_up(buffer, 1);
+						} else {
+							if (ctrl)
+								buffer_cursor_move_up(buffer, 10);
+							else
+								buffer_cursor_move_up(buffer, 1);
+						}
+					}
 					break;
 				case SDLK_DOWN:
-					buffer_cursor_move_down(buffer, 1);
+					if (!alt) {
+						if (shift) {
+							if (ctrl)
+								buffer_select_down(buffer, 10);
+							else
+								buffer_select_down(buffer, 1);
+						} else {
+							if (ctrl)
+								buffer_cursor_move_down(buffer, 10);
+							else
+								buffer_cursor_move_down(buffer, 1);
+						}
+					}
 					break;
 				case SDLK_RETURN:
 					buffer_insert_char_at_cursor(buffer, U'\n');
@@ -194,8 +233,8 @@ int main(void) {
 			time_at_last_frame = time_this_frame;
 		}
 
-		if (ctrl) {
-			// control + arrow keys to scroll
+		if (alt) {
+			// alt + arrow keys to scroll
 			double scroll_speed = 20.0;
 			double scroll_amount_x = scroll_speed * frame_dt * 1.5; // characters are taller than they are wide
 			double scroll_amount_y = scroll_speed * frame_dt;

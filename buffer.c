@@ -879,36 +879,50 @@ i64 buffer_pos_move_down(TextBuffer *buffer, BufferPos *pos, i64 by) {
 	return +buffer_pos_move_vertically(buffer, pos, +by);
 }
 
-i64 buffer_cursor_move_left(TextBuffer *buffer, i64 by) {
-	i64 ret = buffer_pos_move_left(buffer, &buffer->cursor_pos, by);
+void buffer_cursor_move_to_pos(TextBuffer *buffer, BufferPos pos) {
+	buffer_pos_validate(buffer, &pos);
+	buffer->cursor_pos = pos;
+	buffer->selection = false;
 	buffer_scroll_to_cursor(buffer);
+}
+
+i64 buffer_cursor_move_left(TextBuffer *buffer, i64 by) {
+	BufferPos cur_pos = buffer->cursor_pos;
+	i64 ret = buffer_pos_move_left(buffer, &cur_pos, by);
+	buffer_cursor_move_to_pos(buffer, cur_pos);
 	return ret;
 }
 
 i64 buffer_cursor_move_right(TextBuffer *buffer, i64 by) {
-	i64 ret = buffer_pos_move_right(buffer, &buffer->cursor_pos, by);
-	buffer_scroll_to_cursor(buffer);
+	BufferPos cur_pos = buffer->cursor_pos;
+	i64 ret = buffer_pos_move_right(buffer, &cur_pos, by);
+	buffer_cursor_move_to_pos(buffer, cur_pos);
 	return ret;
 }
 
 i64 buffer_cursor_move_up(TextBuffer *buffer, i64 by) {
-	i64 ret = buffer_pos_move_up(buffer, &buffer->cursor_pos, by);
-	buffer_scroll_to_cursor(buffer);
+	BufferPos cur_pos = buffer->cursor_pos;
+	i64 ret = buffer_pos_move_up(buffer, &cur_pos, by);
+	buffer_cursor_move_to_pos(buffer, cur_pos);
 	return ret;
 }
 
 i64 buffer_cursor_move_down(TextBuffer *buffer, i64 by) {
-	i64 ret = buffer_pos_move_down(buffer, &buffer->cursor_pos, by);
-	buffer_scroll_to_cursor(buffer);
+	BufferPos cur_pos = buffer->cursor_pos;
+	i64 ret = buffer_pos_move_down(buffer, &cur_pos, by);
+	buffer_cursor_move_to_pos(buffer, cur_pos);
 	return ret;
 }
 
-void buffer_cursor_move_to_pos(TextBuffer *buffer, BufferPos pos) {
-	buffer_pos_validate(buffer, &pos);
-	buffer->cursor_pos = pos;
-	buffer_scroll_to_cursor(buffer);
+// Is this character a "word" character?
+// This determines how buffer_pos_move_words (i.e. ctrl+left/right) works
+static bool is_word(char32_t c) {
+	return c > WCHAR_MAX || c == U'_' || iswalnum((wint_t)c);
 }
 
+static bool is_space(char32_t c) {
+	return c > WCHAR_MAX || iswspace((wint_t)c);
+}
 
 // move left / right by the specified number of words
 // returns the number of words successfully moved forward
@@ -930,13 +944,13 @@ i64 buffer_pos_move_words(TextBuffer *buffer, BufferPos *pos, i64 nwords) {
 				}
 			} else {
 				// move past any whitespace before the word
-				while (index < line->len && iswspace(str[index]))
+				while (index < line->len && is_space(str[index]))
 					++index;
 				
-				bool starting_alnum = iswalnum(str[index]) != 0;
-				for (; index < line->len && !iswspace(str[index]); ++index) {
-					bool this_alnum = iswalnum(str[index]) != 0;
-					if (this_alnum != starting_alnum) {
+				bool starting_isword = is_word(str[index]) != 0;
+				for (; index < line->len && !is_space(str[index]); ++index) {
+					bool this_isword = is_word(str[index]) != 0;
+					if (this_isword != starting_isword) {
 						// either the position *was* on an alphanumeric character and now it's not
 						// or it wasn't and now it is.
 						break;
@@ -944,7 +958,7 @@ i64 buffer_pos_move_words(TextBuffer *buffer, BufferPos *pos, i64 nwords) {
 				}
 				
 				// move past any whitespace after the word
-				while (index < line->len && iswspace(str[index]))
+				while (index < line->len && is_space(str[index]))
 					++index;
 				pos->index = index;
 			}
@@ -968,17 +982,20 @@ i64 buffer_pos_move_words(TextBuffer *buffer, BufferPos *pos, i64 nwords) {
 			} else {
 				--index;
 
-				while (index > 0 && iswspace(str[index]))
+				while (index > 0 && is_space(str[index])) // skip whitespace after word
 					--index;
-				bool starting_alnum = iswalnum(str[index]) != 0;
-				for (; index > 0 && !iswspace(str[index]); --index) {
-					bool this_alnum = iswalnum(str[index]) != 0;
-					if (this_alnum != starting_alnum) {
-						break;
+				if (index > 0) {
+					bool starting_isword = is_word(str[index]) != 0;
+					while (true) {
+						bool this_isword = is_word(str[index]) != 0;
+						if (is_space(str[index]) || this_isword != starting_isword) {
+							++index;
+							break;
+						}
+						if (index == 0) break;
+						--index;
 					}
 				}
-				if (iswspace(str[index]))
-					++index;
 				pos->index = index;
 			}
 		}
@@ -995,14 +1012,16 @@ i64 buffer_pos_move_right_words(TextBuffer *buffer, BufferPos *pos, i64 nwords) 
 }
 
 i64 buffer_cursor_move_left_words(TextBuffer *buffer, i64 nwords) {
-	i64 ret = buffer_pos_move_left_words(buffer, &buffer->cursor_pos, nwords);
-	buffer_scroll_to_cursor(buffer);
+	BufferPos cur_pos = buffer->cursor_pos;
+	i64 ret = buffer_pos_move_left_words(buffer, &cur_pos, nwords);
+	buffer_cursor_move_to_pos(buffer, cur_pos);
 	return ret;
 }
 
 i64 buffer_cursor_move_right_words(TextBuffer *buffer, i64 nwords) {
-	i64 ret = buffer_pos_move_right_words(buffer, &buffer->cursor_pos, nwords);
-	buffer_scroll_to_cursor(buffer);
+	BufferPos cur_pos = buffer->cursor_pos;
+	i64 ret = buffer_pos_move_right_words(buffer, &cur_pos, nwords);
+	buffer_cursor_move_to_pos(buffer, cur_pos);
 	return ret;
 }
 
@@ -1125,33 +1144,47 @@ void buffer_insert_utf8_at_cursor(TextBuffer *buffer, char const *utf8) {
 	}
 }
 
-// like shift+right in most editors, move cursor n chars to the right, selecting everything in between
-void buffer_select_right(TextBuffer *buffer, i64 n) {
+// like shift+left in most editors, move cursor nchars chars to the left, selecting everything in between
+void buffer_select_left(TextBuffer *buffer, i64 nchars) {
 	if (!buffer->selection)
 		buffer->selection_pos = buffer->cursor_pos;
-	if (buffer_cursor_move_right(buffer, n)) // if we actually moved at all
-		buffer->selection = true;
+	buffer_cursor_move_left(buffer, nchars);
+	buffer->selection = buffer_pos_cmp(buffer->cursor_pos, buffer->selection_pos) != 0; // disable selection if cursor_pos = selection_pos.
 }
 
-void buffer_select_left(TextBuffer *buffer, i64 n) {
+void buffer_select_right(TextBuffer *buffer, i64 nchars) {
 	if (!buffer->selection)
 		buffer->selection_pos = buffer->cursor_pos;
-	if (buffer_cursor_move_left(buffer, n))
-		buffer->selection = true;
+	buffer_cursor_move_right(buffer, nchars);
+	buffer->selection = buffer_pos_cmp(buffer->cursor_pos, buffer->selection_pos) != 0;
 }
 
-void buffer_select_down(TextBuffer *buffer, i64 n) {
+void buffer_select_down(TextBuffer *buffer, i64 nchars) {
 	if (!buffer->selection)
 		buffer->selection_pos = buffer->cursor_pos;
-	if (buffer_cursor_move_down(buffer, n))
-		buffer->selection = true;
+	buffer_cursor_move_down(buffer, nchars);
+	buffer->selection = buffer_pos_cmp(buffer->cursor_pos, buffer->selection_pos) != 0;
 }
 
-void buffer_select_up(TextBuffer *buffer, i64 n) {
+void buffer_select_up(TextBuffer *buffer, i64 nchars) {
 	if (!buffer->selection)
 		buffer->selection_pos = buffer->cursor_pos;
-	if (buffer_cursor_move_up(buffer, n))
-		buffer->selection = true;
+	buffer_cursor_move_up(buffer, nchars);
+	buffer->selection = buffer_pos_cmp(buffer->cursor_pos, buffer->selection_pos) != 0;
+}
+
+void buffer_select_left_words(TextBuffer *buffer, i64 nwords) {
+	if (!buffer->selection)
+		buffer->selection_pos = buffer->cursor_pos;
+	buffer_cursor_move_left_words(buffer, nwords);
+	buffer->selection = buffer_pos_cmp(buffer->cursor_pos, buffer->selection_pos) != 0;
+}
+
+void buffer_select_right_words(TextBuffer *buffer, i64 nwords) {
+	if (!buffer->selection)
+		buffer->selection_pos = buffer->cursor_pos;
+	buffer_cursor_move_right_words(buffer, nwords);
+	buffer->selection = buffer_pos_cmp(buffer->cursor_pos, buffer->selection_pos) != 0;
 }
 
 static void buffer_shorten_line(Line *line, u32 new_len) {
@@ -1529,9 +1562,9 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 			sel_start = buffer->selection_pos;
 		} else assert(0);
 
-		u32 index1 = sel_start.index;
 		for (u32 line_idx = maxu32(sel_start.line, start_line); line_idx <= sel_end.line; ++line_idx) {
 			Line *line = &buffer->lines[line_idx];
+			u32 index1 = line_idx == sel_start.line ? sel_start.index : 0;
 			u32 index2 = line_idx == sel_end.line ? sel_end.index : line->len;
 			assert(index2 >= index1);
 
