@@ -104,13 +104,22 @@ int main(void) {
 				double scroll_speed = 2.5;
 				buffer_scroll(&text_buffer, dx * scroll_speed, dy * scroll_speed);
 			} break;
+			case SDL_MOUSEBUTTONDOWN:
+				switch (event.button.button) {
+				case SDL_BUTTON_LEFT: {
+					BufferPos pos;
+					if (buffer_pixels_to_pos(&text_buffer, (float)event.button.x, (float)event.button.y, &pos))
+						buffer_cursor_move_to_pos(&text_buffer, pos);
+				} break;
+				}
+				break;
 			case SDL_KEYDOWN: {
 				switch (event.key.keysym.sym) {
 				case SDLK_PAGEUP:
-					buffer_scroll(&text_buffer, 0, -buffer_display_rows(&text_buffer));
+					buffer_scroll(&text_buffer, 0, -buffer_display_lines(&text_buffer));
 					break;
 				case SDLK_PAGEDOWN:
-					buffer_scroll(&text_buffer, 0, +buffer_display_rows(&text_buffer));
+					buffer_scroll(&text_buffer, 0, +buffer_display_lines(&text_buffer));
 					break;
 				case SDLK_RIGHT:
 					if (ctrl)

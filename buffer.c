@@ -608,6 +608,10 @@ static u32 buffer_index_to_column(TextBuffer *buffer, u32 line, u32 index) {
 }
 
 static u32 buffer_column_to_index(TextBuffer *buffer, u32 line, u32 column) {
+	if (line >= buffer->nlines) {
+		assert(0);
+		return 0;
+	}
 	char32_t *str = buffer->lines[line].str;
 	u32 len = buffer->lines[line].len;
 	u32 col = 0;
@@ -653,7 +657,7 @@ void buffer_text_dimensions(TextBuffer *buffer, u32 *lines, u32 *columns) {
 
 
 // returns the number of rows of text that can fit in the buffer, rounded down.
-int buffer_display_rows(TextBuffer *buffer) {
+int buffer_display_lines(TextBuffer *buffer) {
 	return (int)((buffer->y2 - buffer->y1) / text_font_char_height(buffer->font));
 }
 
@@ -671,7 +675,7 @@ static void buffer_correct_scroll(TextBuffer *buffer) {
 	u32 nlines, ncols;
 	buffer_text_dimensions(buffer, &nlines, &ncols);
 	double max_scroll_x = (double)ncols  - buffer_display_cols(buffer);
-	double max_scroll_y = (double)nlines - buffer_display_rows(buffer);
+	double max_scroll_y = (double)nlines - buffer_display_lines(buffer);
 	if (max_scroll_x <= 0) {
 		buffer->scroll_x = 0;
 	} else if (buffer->scroll_x > max_scroll_x) {
@@ -691,7 +695,7 @@ void buffer_scroll(TextBuffer *buffer, double dx, double dy) {
 	buffer_correct_scroll(buffer);
 }
 
-// returns the position of the character at the given position in the buffer.
+// sets *x and *y to the position of the character at the given position in the buffer.
 // x/y can be NULL.
 void buffer_pos_to_pixels(TextBuffer *buffer, BufferPos pos, float *x, float *y) {
 	u32 line = pos.line, index = pos.index;
@@ -701,6 +705,30 @@ void buffer_pos_to_pixels(TextBuffer *buffer, BufferPos pos, float *x, float *y)
 	if (y) *y = (float)((double)line - buffer->scroll_y) * text_font_char_height(buffer->font) + buffer->y1;
 }
 
+// convert pixel coordinates to a position in the buffer, selecting the closest character.
+// returns false if the position is not inside the buffer.
+bool buffer_pixels_to_pos(TextBuffer *buffer, float x, float y, BufferPos *pos) {
+	pos->line = pos->index = 0;
+
+	x -= buffer->x1;
+	y -= buffer->y1;
+	x /= text_font_char_width(buffer->font);
+	y /= text_font_char_height(buffer->font);
+	double display_col = (double)x;
+	if (display_col < 0 || display_col >= buffer_display_cols(buffer))
+		return false;
+	double display_line = (double)y;
+	if (display_line < 0 || display_line >= buffer_display_lines(buffer))
+		return false;
+	
+	u32 column = (u32)round(display_col + buffer->scroll_x);
+	u32 line = (u32)floor(display_line + buffer->scroll_y);
+	u32 index = buffer_column_to_index(buffer, line, column);
+	pos->line = line;
+	pos->index = index;
+	
+	return true;
+}
 
 // clip the rectangle so it's all inside the buffer. returns true if there's any rectangle left.
 static bool buffer_clip_rect(TextBuffer *buffer, float *x1, float *y1, float *x2, float *y2) {
@@ -848,7 +876,7 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 static void buffer_scroll_to_cursor(TextBuffer *buffer) {
 	i64 cursor_line = buffer->cursor_pos.line;
 	i64 cursor_col  = buffer_index_to_column(buffer, (u32)cursor_line, buffer->cursor_pos.index);
-	i64 display_lines = buffer_display_rows(buffer);
+	i64 display_lines = buffer_display_lines(buffer);
 	i64 display_cols = buffer_display_cols(buffer);
 	double scroll_x = buffer->scroll_x, scroll_y = buffer->scroll_y;
 	i64 scroll_padding = 5;
@@ -870,6 +898,13 @@ static void buffer_scroll_to_cursor(TextBuffer *buffer) {
 	buffer->scroll_y = scroll_y;
 	buffer_correct_scroll(buffer); // it's possible that min/max_scroll_x/y go too far
 }
+
+// @TODO
+#if 0
+// scroll so that the cursor is in the center of the screen
+void buffer_center_cursor(){
+}
+#endif
 
 // move left (if `by` is negative) or right (if `by` is positive) by the specified amount.
 // returns the signed number of characters successfully moved (it could be less in magnitude than `by` if the beginning of the file is reached)
@@ -999,6 +1034,12 @@ i64 buffer_cursor_move_down(TextBuffer *buffer, i64 by) {
 	i64 ret = buffer_pos_move_down(buffer, &buffer->cursor_pos, by);
 	buffer_scroll_to_cursor(buffer);
 	return ret;
+}
+
+void buffer_cursor_move_to_pos(TextBuffer *buffer, BufferPos pos) {
+	buffer_pos_validate(buffer, &pos);
+	buffer->cursor_pos = pos;
+	buffer_scroll_to_cursor(buffer);
 }
 
 
@@ -1200,8 +1241,8 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 }
 	
 void buffer_insert_text_at_cursor(TextBuffer *buffer, String32 str) {
-	buffer->cursor_pos = buffer_insert_text_at_pos(buffer, buffer->cursor_pos, str);
-	buffer_scroll_to_cursor(buffer);
+	BufferPos endpos = buffer_insert_text_at_pos(buffer, buffer->cursor_pos, str);
+	buffer_cursor_move_to_pos(buffer, endpos);
 }
 
 void buffer_insert_char_at_cursor(TextBuffer *buffer, char32_t c) {
@@ -1433,7 +1474,8 @@ static Status buffer_undo_edit(TextBuffer *buffer, BufferEdit const *edit, Buffe
 }
 
 static void buffer_cursor_to_edit(TextBuffer *buffer, BufferEdit *edit) {
-	buffer->cursor_pos = buffer_pos_advance(buffer, edit->pos, edit->prev_len);
+	buffer_cursor_move_to_pos(buffer,
+		buffer_pos_advance(buffer, edit->pos, edit->prev_len));
 }
 
 void buffer_undo(TextBuffer *buffer, i64 ntimes) {
