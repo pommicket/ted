@@ -267,6 +267,18 @@ static int buffer_pos_cmp(BufferPos p1, BufferPos p2) {
 	}
 }
 
+static bool buffer_pos_eq(BufferPos p1, BufferPos p2) {
+	return p1.line == p2.line && p1.index == p2.index;
+}
+
+static BufferPos buffer_pos_min(BufferPos p1, BufferPos p2) {
+	return buffer_pos_cmp(p1, p2) < 0 ? p1 : p2;
+}
+
+static BufferPos buffer_pos_max(BufferPos p1, BufferPos p2) {
+	return buffer_pos_cmp(p1, p2) > 0 ? p1 : p2;
+}
+
 static void buffer_pos_print(BufferPos p) {
 	printf("[" U32_FMT ":" U32_FMT "]", p.line, p.index);
 }
@@ -1126,65 +1138,47 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 	return b;
 }
 	
-void buffer_insert_text_at_cursor(TextBuffer *buffer, String32 str) {
-	BufferPos endpos = buffer_insert_text_at_pos(buffer, buffer->cursor_pos, str);
-	buffer_cursor_move_to_pos(buffer, endpos);
-}
-
-void buffer_insert_char_at_cursor(TextBuffer *buffer, char32_t c) {
-	String32 s = {1, &c};
-	buffer_insert_text_at_cursor(buffer, s);
-}
-
-void buffer_insert_utf8_at_cursor(TextBuffer *buffer, char const *utf8) {
-	String32 s32 = str32_from_utf8(utf8);
-	if (s32.str) {
-		buffer_insert_text_at_cursor(buffer, s32);
-		str32_free(&s32);
-	}
-}
-
 // like shift+left in most editors, move cursor nchars chars to the left, selecting everything in between
 void buffer_select_left(TextBuffer *buffer, i64 nchars) {
 	if (!buffer->selection)
 		buffer->selection_pos = buffer->cursor_pos;
 	buffer_cursor_move_left(buffer, nchars);
-	buffer->selection = buffer_pos_cmp(buffer->cursor_pos, buffer->selection_pos) != 0; // disable selection if cursor_pos = selection_pos.
+	buffer->selection = !buffer_pos_eq(buffer->cursor_pos, buffer->selection_pos); // disable selection if cursor_pos = selection_pos.
 }
 
 void buffer_select_right(TextBuffer *buffer, i64 nchars) {
 	if (!buffer->selection)
 		buffer->selection_pos = buffer->cursor_pos;
 	buffer_cursor_move_right(buffer, nchars);
-	buffer->selection = buffer_pos_cmp(buffer->cursor_pos, buffer->selection_pos) != 0;
+	buffer->selection = !buffer_pos_eq(buffer->cursor_pos, buffer->selection_pos);
 }
 
 void buffer_select_down(TextBuffer *buffer, i64 nchars) {
 	if (!buffer->selection)
 		buffer->selection_pos = buffer->cursor_pos;
 	buffer_cursor_move_down(buffer, nchars);
-	buffer->selection = buffer_pos_cmp(buffer->cursor_pos, buffer->selection_pos) != 0;
+	buffer->selection = !buffer_pos_eq(buffer->cursor_pos, buffer->selection_pos);
 }
 
 void buffer_select_up(TextBuffer *buffer, i64 nchars) {
 	if (!buffer->selection)
 		buffer->selection_pos = buffer->cursor_pos;
 	buffer_cursor_move_up(buffer, nchars);
-	buffer->selection = buffer_pos_cmp(buffer->cursor_pos, buffer->selection_pos) != 0;
+	buffer->selection = !buffer_pos_eq(buffer->cursor_pos, buffer->selection_pos);
 }
 
 void buffer_select_left_words(TextBuffer *buffer, i64 nwords) {
 	if (!buffer->selection)
 		buffer->selection_pos = buffer->cursor_pos;
 	buffer_cursor_move_left_words(buffer, nwords);
-	buffer->selection = buffer_pos_cmp(buffer->cursor_pos, buffer->selection_pos) != 0;
+	buffer->selection = !buffer_pos_eq(buffer->cursor_pos, buffer->selection_pos);
 }
 
 void buffer_select_right_words(TextBuffer *buffer, i64 nwords) {
 	if (!buffer->selection)
 		buffer->selection_pos = buffer->cursor_pos;
 	buffer_cursor_move_right_words(buffer, nwords);
-	buffer->selection = buffer_pos_cmp(buffer->cursor_pos, buffer->selection_pos) != 0;
+	buffer->selection = !buffer_pos_eq(buffer->cursor_pos, buffer->selection_pos);
 }
 
 static void buffer_shorten_line(Line *line, u32 new_len) {
@@ -1331,8 +1325,8 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 	buffer_remove_last_edit_if_empty(buffer);
 }
 
-// Delete characters between the given buffer positions.
-void buffer_delete_chars_between(TextBuffer *buffer, BufferPos p1, BufferPos p2) {
+// Delete characters between the given buffer positions. Returns number of characters deleted.
+i64 buffer_delete_chars_between(TextBuffer *buffer, BufferPos p1, BufferPos p2) {
 	buffer_pos_validate(buffer, &p1);
 	buffer_pos_validate(buffer, &p2);
 	i64 nchars = buffer_pos_diff(buffer, p1, p2);
@@ -1344,10 +1338,44 @@ void buffer_delete_chars_between(TextBuffer *buffer, BufferPos p1, BufferPos p2)
 		p2 = tmp;
 	}
 	buffer_delete_chars_at_pos(buffer, p1, nchars);
+	return nchars;
+}
+
+// Delete the current buffer selection. Returns the number of characters deleted.
+i64 buffer_delete_selection(TextBuffer *buffer) {
+	i64 ret = 0;
+	if (buffer->selection) {
+		ret = buffer_delete_chars_between(buffer, buffer->selection_pos, buffer->cursor_pos);
+		buffer_cursor_move_to_pos(buffer, buffer_pos_min(buffer->selection_pos, buffer->cursor_pos)); // move cursor to whichever endpoint comes first
+		buffer->selection = false;
+	}
+	return ret;
+}
+
+void buffer_insert_text_at_cursor(TextBuffer *buffer, String32 str) {
+	buffer_delete_selection(buffer); // delete any selected text
+	BufferPos endpos = buffer_insert_text_at_pos(buffer, buffer->cursor_pos, str);
+	buffer_cursor_move_to_pos(buffer, endpos);
+}
+
+void buffer_insert_char_at_cursor(TextBuffer *buffer, char32_t c) {
+	String32 s = {1, &c};
+	buffer_insert_text_at_cursor(buffer, s);
+}
+
+void buffer_insert_utf8_at_cursor(TextBuffer *buffer, char const *utf8) {
+	String32 s32 = str32_from_utf8(utf8);
+	if (s32.str) {
+		buffer_insert_text_at_cursor(buffer, s32);
+		str32_free(&s32);
+	}
 }
 
 void buffer_delete_chars_at_cursor(TextBuffer *buffer, i64 nchars) {
-	buffer_delete_chars_at_pos(buffer, buffer->cursor_pos, nchars);
+	if (buffer->selection)
+		buffer_delete_selection(buffer);
+	else
+		buffer_delete_chars_at_pos(buffer, buffer->cursor_pos, nchars);
 }
 
 i64 buffer_backspace_at_pos(TextBuffer *buffer, BufferPos *pos, i64 ntimes) {
@@ -1358,7 +1386,10 @@ i64 buffer_backspace_at_pos(TextBuffer *buffer, BufferPos *pos, i64 ntimes) {
 
 // returns number of characters backspaced
 i64 buffer_backspace_at_cursor(TextBuffer *buffer, i64 ntimes) {
-	return buffer_backspace_at_pos(buffer, &buffer->cursor_pos, ntimes);
+	if (buffer->selection)
+		return buffer_delete_selection(buffer);
+	else
+		return buffer_backspace_at_pos(buffer, &buffer->cursor_pos, ntimes);
 }
 
 void buffer_delete_words_at_pos(TextBuffer *buffer, BufferPos pos, i64 nwords) {
@@ -1368,7 +1399,10 @@ void buffer_delete_words_at_pos(TextBuffer *buffer, BufferPos pos, i64 nwords) {
 }
 
 void buffer_delete_words_at_cursor(TextBuffer *buffer, i64 nwords) {
-	buffer_delete_words_at_pos(buffer, buffer->cursor_pos, nwords);
+	if (buffer->selection)
+		buffer_delete_selection(buffer);
+	else
+		buffer_delete_words_at_pos(buffer, buffer->cursor_pos, nwords);
 }
 
 void buffer_backspace_words_at_pos(TextBuffer *buffer, BufferPos *pos, i64 nwords) {
@@ -1378,7 +1412,10 @@ void buffer_backspace_words_at_pos(TextBuffer *buffer, BufferPos *pos, i64 nword
 }
 
 void buffer_backspace_words_at_cursor(TextBuffer *buffer, i64 nwords) {
-	buffer_backspace_words_at_pos(buffer, &buffer->cursor_pos, nwords);
+	if (buffer->selection)
+		buffer_delete_selection(buffer);
+	else
+		buffer_backspace_words_at_pos(buffer, &buffer->cursor_pos, nwords);
 }
 
 // puts the inverse edit into `inverse`
@@ -1402,6 +1439,7 @@ static Status buffer_undo_edit(TextBuffer *buffer, BufferEdit const *edit, Buffe
 }
 
 static void buffer_cursor_to_edit(TextBuffer *buffer, BufferEdit *edit) {
+	buffer->selection = false;
 	buffer_cursor_move_to_pos(buffer,
 		buffer_pos_advance(buffer, edit->pos, edit->prev_len));
 	buffer_center_cursor(buffer); // whenever we undo an edit, put the cursor in the center, to make it clear where the undo happened
@@ -1460,7 +1498,7 @@ void buffer_check_valid(TextBuffer *buffer) {
 	if (buffer->selection) {
 		buffer_pos_check_valid(buffer, buffer->selection_pos);
 		// you shouldn't be able to select nothing
-		assert(buffer_pos_cmp(buffer->cursor_pos, buffer->selection_pos) != 0);
+		assert(!buffer_pos_eq(buffer->cursor_pos, buffer->selection_pos));
 	}
 }
 #else
