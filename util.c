@@ -42,3 +42,7 @@ static char32_t const *util_mem32chr_const(char32_t const *s, char32_t c, size_t
 static bool streq(char const *a, char const *b) {
 	return strcmp(a, b) == 0;
 }
+
+static bool util_is_prefix(char const *str, char const *prefix) {
+	return strncmp(str, prefix, strlen(prefix)) == 0;
+}

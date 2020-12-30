@@ -6,6 +6,10 @@ typedef struct {
 #define SCANCODE_COUNT 0x120 // SDL scancodes should be less than this value.
 // a "key combo" is some subset of {control, shift, alt} + some key.
 #define KEY_COMBO_COUNT (SCANCODE_COUNT << 3)
+#define KEY_MODIFIER_CTRL 1
+#define KEY_MODIFIER_SHIFT 2
+#define KEY_MODIFIER_ALT 4
+// ctrl+alt+c is encoded as SDL_SCANCODE_C << 3 | KEY_MODIFIER_CTRL | KEY_MODIFIER_ALT
 
 typedef struct {
 	TextBuffer *active_buffer;

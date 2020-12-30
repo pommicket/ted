@@ -67,6 +67,7 @@ typedef unsigned long long ullong;
 
 #define Status bool WarnUnusedResult // false = error, true = success
 
+#define arr_count(a) (sizeof (a) / sizeof *(a))
 
 #ifdef __GNUC__
 #define no_warn_start _Pragma("GCC diagnostic push") \
