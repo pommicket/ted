@@ -66,6 +66,14 @@ static float maxf(float a, float b) {
 	return a > b ? a : b;
 }
 
+static double maxd(double a, double b) {
+	return a > b ? a : b;
+}
+
+static double mind(double a, double b) {
+	return a < b ? a : b;
+}
+
 static u32 minu32(u32 a, u32 b) {
 	return a < b ? a : b;
 }

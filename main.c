@@ -9,6 +9,8 @@ no_warn_end
 #include <GL/gl.h>
 #include <locale.h>
 #include <wctype.h>
+
+#include "command.h"
 #include "time.c"
 #include "unicode.h"
 #include "util.c"
@@ -18,6 +20,23 @@ no_warn_end
 #include "string32.c"
 #include "arr.c"
 #include "buffer.c"
+
+typedef struct {
+	Command cmd;
+	i64 argument;
+} KeyAction;
+
+#define SCANCODE_COUNT 0x120 // SDL scancodes should be less than this value.
+// a "key combo" is some subset of {control, shift, alt} + some key.
+#define KEY_COMBO_COUNT (SCANCODE_COUNT << 3)
+
+typedef struct {
+	TextBuffer *active_buffer;
+	KeyAction key_actions[KEY_COMBO_COUNT];
+	char error[256];
+} Ted;
+
+#include "command.c"
 
 static void die(char const *fmt, ...) {
 	char buf[256] = {0};
@@ -84,7 +103,7 @@ int main(void) {
 	Uint32 time_at_last_frame = SDL_GetTicks();
 
 	while (!quit) {
-	#if DEBUG
+	#if DEBUG&&0
 		printf("\033[H\033[2J");
 	#endif
 
@@ -116,7 +135,8 @@ int main(void) {
 				}
 				break;
 			case SDL_KEYDOWN: {
-				switch (event.key.keysym.sym) {
+				SDL_Keycode keycode = event.key.keysym.sym;
+				switch (keycode) {
 				case SDLK_PAGEUP:
 					buffer_scroll(buffer, 0, -buffer_display_lines(buffer));
 					break;
@@ -306,7 +326,7 @@ int main(void) {
 	#if DEBUG
 		//buffer_print_debug(buffer);
 		buffer_check_valid(buffer);
-		buffer_print_undo_history(buffer);
+		//buffer_print_undo_history(buffer);
 	#endif
 
 		SDL_GL_SwapWindow(window);

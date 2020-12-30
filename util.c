@@ -1,8 +1,3 @@
-#ifndef UTIL_C_
-#define UTIL_C_
-
-#include "base.h"
-
 static u32 util_popcount(u64 x) {
 #ifdef __GNUC__
 	return (u32)__builtin_popcountll(x);
@@ -25,14 +20,6 @@ static void util_zero_memory(void *mem, size_t size) {
 	memset(mem, 0, size);
 }
 
-static double util_maxd(double a, double b) {
-	return a > b ? a : b;
-}
-
-static double util_mind(double a, double b) {
-	return a < b ? a : b;
-}
-
 // for finding a character in a char32 string
 static char32_t *util_mem32chr(char32_t *s, char32_t c, size_t n) {
 	for (size_t i = 0; i < n; ++i) {
@@ -52,4 +39,6 @@ static char32_t const *util_mem32chr_const(char32_t const *s, char32_t c, size_t
 	return NULL;
 }
 
-#endif
+static bool streq(char const *a, char const *b) {
+	return strcmp(a, b) == 0;
+}

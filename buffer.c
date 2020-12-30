@@ -542,7 +542,7 @@ Status buffer_load_file(TextBuffer *buffer, char const *filename) {
 	}
 }
 
-Status buffer_save(TextBuffer *buffer) {
+bool buffer_save(TextBuffer *buffer) {
 	FILE *out = fopen(buffer->filename, "wb");
 	if (out) {
 		bool success = true;
@@ -755,16 +755,16 @@ static void buffer_scroll_to_cursor(TextBuffer *buffer) {
 
 	// scroll left if cursor is off screen in that direction
 	double max_scroll_x = (double)(cursor_col - scroll_padding);
-	scroll_x = util_mind(scroll_x, max_scroll_x);
+	scroll_x = mind(scroll_x, max_scroll_x);
 	// scroll right
 	double min_scroll_x = (double)(cursor_col - display_cols + scroll_padding);
-	scroll_x = util_maxd(scroll_x, min_scroll_x);
+	scroll_x = maxd(scroll_x, min_scroll_x);
 	// scroll up
 	double max_scroll_y = (double)(cursor_line - scroll_padding);
-	scroll_y = util_mind(scroll_y, max_scroll_y);
+	scroll_y = mind(scroll_y, max_scroll_y);
 	// scroll down
 	double min_scroll_y = (double)(cursor_line - display_lines + scroll_padding);
-	scroll_y = util_maxd(scroll_y, min_scroll_y);
+	scroll_y = maxd(scroll_y, min_scroll_y);
 
 	buffer->scroll_x = scroll_x;
 	buffer->scroll_y = scroll_y;
