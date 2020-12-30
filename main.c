@@ -20,23 +20,9 @@ no_warn_end
 #include "string32.c"
 #include "arr.c"
 #include "buffer.c"
-
-typedef struct {
-	Command cmd;
-	i64 argument;
-} KeyAction;
-
-#define SCANCODE_COUNT 0x120 // SDL scancodes should be less than this value.
-// a "key combo" is some subset of {control, shift, alt} + some key.
-#define KEY_COMBO_COUNT (SCANCODE_COUNT << 3)
-
-typedef struct {
-	TextBuffer *active_buffer;
-	KeyAction key_actions[KEY_COMBO_COUNT];
-	char error[256];
-} Ted;
-
+#include "ted-base.c"
 #include "command.c"
+#include "config.c"
 
 static void die(char const *fmt, ...) {
 	char buf[256] = {0};
@@ -91,7 +77,16 @@ int main(void) {
 		die("Couldn't load font: %s", text_get_err());
 	}
 	
-	bool quit = false;
+	Ted *ted = calloc(1, sizeof *ted);
+	if (!ted) {
+		die("Not enough memory available to run ted.");
+	}
+
+	config_read(ted, "ted.cfg");
+	if (ted_haserr(ted)) {
+		die("Error reading config: %s", ted_geterr(ted));
+	}
+
 	TextBuffer text_buffer;
 	TextBuffer *buffer = &text_buffer;
 	buffer_create(buffer, font);
@@ -102,9 +97,10 @@ int main(void) {
 
 	Uint32 time_at_last_frame = SDL_GetTicks();
 
+	bool quit = false;
 	while (!quit) {
-	#if DEBUG&&0
-		printf("\033[H\033[2J");
+	#if DEBUG
+		//printf("\033[H\033[2J");
 	#endif
 
 		SDL_Event event;

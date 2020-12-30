@@ -92,6 +92,11 @@ static void buffer_append_redo(TextBuffer *buffer, BufferEdit const *edit) {
 	if (!buffer->redo_history) buffer_out_of_mem(buffer);
 }
 
+static void *buffer_malloc(TextBuffer *buffer, size_t size) {
+	void *ret = malloc(size);
+	if (!ret) buffer_out_of_mem(buffer);
+	return ret;
+}
 
 static void *buffer_calloc(TextBuffer *buffer, size_t n, size_t size) {
 	void *ret = calloc(n, size);
