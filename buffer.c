@@ -40,7 +40,6 @@ typedef struct {
 } TextBuffer;
 
 
-
 void buffer_create(TextBuffer *buffer, Font *font) {
 	util_zero_memory(buffer, sizeof *buffer);
 	buffer->font = font;
@@ -136,12 +135,12 @@ char32_t buffer_char_at_pos(TextBuffer *buffer, BufferPos p) {
 	}
 }
 
-BufferPos buffer_start_pos(TextBuffer *buffer) {
+BufferPos buffer_pos_start_of_file(TextBuffer *buffer) {
 	(void)buffer;
 	return (BufferPos){.line = 0, .index = 0};
 }
 
-BufferPos buffer_end_pos(TextBuffer *buffer) {
+BufferPos buffer_pos_end_of_file(TextBuffer *buffer) {
 	return (BufferPos){.line = buffer->nlines - 1, .index = buffer->lines[buffer->nlines-1].len};
 }
 
@@ -212,7 +211,7 @@ static BufferPos buffer_pos_advance(TextBuffer *buffer, BufferPos pos, size_t nc
 		index = 0;
 		++line;
 	}
-	return buffer_end_pos(buffer);
+	return buffer_pos_end_of_file(buffer);
 }
 
 
@@ -815,7 +814,7 @@ i64 buffer_pos_move_horizontally(TextBuffer *buffer, BufferPos *p, i64 by) {
 	} else if (by > 0) {
 		i64 by_start = by;
 		if (p->line >= buffer->nlines)
-			*p = buffer_end_pos(buffer); // invalid position; move to end of buffer
+			*p = buffer_pos_end_of_file(buffer); // invalid position; move to end of buffer
 		Line *line = &buffer->lines[p->line];
 		while (by > 0) {
 			if (by <= line->len - p->index) {
@@ -1037,6 +1036,39 @@ i64 buffer_cursor_move_right_words(TextBuffer *buffer, i64 nwords) {
 	return ret;
 }
 
+// Returns the position corresponding to the start of the given line.
+BufferPos buffer_pos_start_of_line(TextBuffer *buffer, u32 line) {
+	(void)buffer;
+	return (BufferPos){
+		.line = line,
+		.index = 0
+	};
+}
+
+BufferPos buffer_pos_end_of_line(TextBuffer *buffer, u32 line) {
+	return (BufferPos){
+		.line = line,
+		.index = buffer->lines[line].len
+	};
+}
+
+void buffer_cursor_move_to_start_of_line(TextBuffer *buffer) {
+	buffer_cursor_move_to_pos(buffer, buffer_pos_start_of_line(buffer, buffer->cursor_pos.line));
+}
+
+void buffer_cursor_move_to_end_of_line(TextBuffer *buffer) {
+	buffer_cursor_move_to_pos(buffer, buffer_pos_end_of_line(buffer, buffer->cursor_pos.line));
+}
+
+void buffer_cursor_move_to_start_of_file(TextBuffer *buffer) {
+	buffer_cursor_move_to_pos(buffer, buffer_pos_start_of_file(buffer));
+}
+
+void buffer_cursor_move_to_end_of_file(TextBuffer *buffer) {
+	buffer_cursor_move_to_pos(buffer, buffer_pos_end_of_file(buffer));
+}
+
+
 // insert `number` empty lines starting at index `where`.
 static void buffer_insert_lines(TextBuffer *buffer, u32 where, u32 number) {
 	u32 old_nlines = buffer->nlines;
@@ -1137,49 +1169,68 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 	BufferPos b = {.line = line_idx, .index = index};
 	return b;
 }
-	
-// like shift+left in most editors, move cursor nchars chars to the left, selecting everything in between
-void buffer_select_left(TextBuffer *buffer, i64 nchars) {
+
+// Select (or add to selection) everything between the cursor and pos, and move the cursor to pos
+void buffer_select_to_pos(TextBuffer *buffer, BufferPos pos) {
 	if (!buffer->selection)
 		buffer->selection_pos = buffer->cursor_pos;
-	buffer_cursor_move_left(buffer, nchars);
+	buffer_cursor_move_to_pos(buffer, pos);
 	buffer->selection = !buffer_pos_eq(buffer->cursor_pos, buffer->selection_pos); // disable selection if cursor_pos = selection_pos.
 }
 
+// Like shift+left in most editors, move cursor nchars chars to the left, selecting everything in between
+void buffer_select_left(TextBuffer *buffer, i64 nchars) {
+	BufferPos cpos = buffer->cursor_pos;
+	buffer_pos_move_left(buffer, &cpos, nchars);
+	buffer_select_to_pos(buffer, cpos);
+}
+
 void buffer_select_right(TextBuffer *buffer, i64 nchars) {
-	if (!buffer->selection)
-		buffer->selection_pos = buffer->cursor_pos;
-	buffer_cursor_move_right(buffer, nchars);
-	buffer->selection = !buffer_pos_eq(buffer->cursor_pos, buffer->selection_pos);
+	BufferPos cpos = buffer->cursor_pos;
+	buffer_pos_move_right(buffer, &cpos, nchars);
+	buffer_select_to_pos(buffer, cpos);
 }
 
 void buffer_select_down(TextBuffer *buffer, i64 nchars) {
-	if (!buffer->selection)
-		buffer->selection_pos = buffer->cursor_pos;
-	buffer_cursor_move_down(buffer, nchars);
-	buffer->selection = !buffer_pos_eq(buffer->cursor_pos, buffer->selection_pos);
+	BufferPos cpos = buffer->cursor_pos;
+	buffer_pos_move_down(buffer, &cpos, nchars);
+	buffer_select_to_pos(buffer, cpos);
 }
 
 void buffer_select_up(TextBuffer *buffer, i64 nchars) {
-	if (!buffer->selection)
-		buffer->selection_pos = buffer->cursor_pos;
-	buffer_cursor_move_up(buffer, nchars);
-	buffer->selection = !buffer_pos_eq(buffer->cursor_pos, buffer->selection_pos);
+	BufferPos cpos = buffer->cursor_pos;
+	buffer_pos_move_up(buffer, &cpos, nchars);
+	buffer_select_to_pos(buffer, cpos);
 }
 
 void buffer_select_left_words(TextBuffer *buffer, i64 nwords) {
-	if (!buffer->selection)
-		buffer->selection_pos = buffer->cursor_pos;
-	buffer_cursor_move_left_words(buffer, nwords);
-	buffer->selection = !buffer_pos_eq(buffer->cursor_pos, buffer->selection_pos);
+	BufferPos cpos = buffer->cursor_pos;
+	buffer_pos_move_left_words(buffer, &cpos, nwords);
+	buffer_select_to_pos(buffer, cpos);
 }
 
 void buffer_select_right_words(TextBuffer *buffer, i64 nwords) {
-	if (!buffer->selection)
-		buffer->selection_pos = buffer->cursor_pos;
-	buffer_cursor_move_right_words(buffer, nwords);
-	buffer->selection = !buffer_pos_eq(buffer->cursor_pos, buffer->selection_pos);
+	BufferPos cpos = buffer->cursor_pos;
+	buffer_pos_move_right_words(buffer, &cpos, nwords);
+	buffer_select_to_pos(buffer, cpos);
 }
+
+void buffer_select_to_start_of_line(TextBuffer *buffer) {
+	buffer_select_to_pos(buffer, buffer_pos_start_of_line(buffer, buffer->cursor_pos.line));
+}
+
+void buffer_select_to_end_of_line(TextBuffer *buffer) {
+	buffer_select_to_pos(buffer, buffer_pos_end_of_line(buffer, buffer->cursor_pos.line));
+}
+
+void buffer_select_to_start_of_file(TextBuffer *buffer) {
+	buffer_select_to_pos(buffer, buffer_pos_start_of_file(buffer));
+}
+
+void buffer_select_to_end_of_file(TextBuffer *buffer) {
+	buffer_select_to_pos(buffer, buffer_pos_end_of_file(buffer));
+}
+
 
 static void buffer_shorten_line(Line *line, u32 new_len) {
 	assert(line->len >= new_len);
@@ -1609,6 +1660,9 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 			// highlight everything from index1 to index2
 			u32 n_columns_highlighted = buffer_index_to_column(buffer, line_idx, index2)
 				- buffer_index_to_column(buffer, line_idx, index1);
+			if (line_idx != sel_end.line) {
+				++n_columns_highlighted; // highlight the newline (otherwise empty higlighted lines wouldn't be highlighted at all).
+			}
 
 			if (n_columns_highlighted) {
 				BufferPos p1 = {.line = line_idx, .index = index1};

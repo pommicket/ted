@@ -217,6 +217,36 @@ int main(void) {
 						}
 					}
 					break;
+				case SDLK_HOME:
+					if (ctrl) {
+						if (shift) {
+							buffer_select_to_start_of_file(buffer);
+						} else {
+							buffer_cursor_move_to_start_of_file(buffer);
+						}
+					} else {
+						if (shift) {
+							buffer_select_to_start_of_line(buffer);
+						} else {
+							buffer_cursor_move_to_start_of_line(buffer);
+						}
+					}
+					break;
+				case SDLK_END:
+					if (ctrl) {
+						if (shift) {
+							buffer_select_to_end_of_file(buffer);
+						} else {
+							buffer_cursor_move_to_end_of_file(buffer);
+						}
+					} else {
+						if (shift) {
+							buffer_select_to_end_of_line(buffer);
+						} else {
+							buffer_cursor_move_to_end_of_line(buffer);
+						}
+					}
+					break;
 				}
 			} break;
 			case SDL_TEXTINPUT: {
