@@ -1,4 +1,3 @@
-// @TODO: page up, page down (buffer_page_up, buffer_page_down)
 #include "base.h"
 no_warn_start
 #if _WIN32
@@ -14,8 +13,14 @@ no_warn_end
 #include "command.h"
 #include "util.c"
 #include "colors.c"
+// @TODO:
+// - blinking cursor (cursor-blink-time)
+// - text size
 typedef struct {
 	u32 colors[COLOR_COUNT];
+	u8 tab_width;
+	u8 cursor_width;
+	u8 undo_save_time;
 } Settings;
 #include "time.c"
 #include "unicode.h"

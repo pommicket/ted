@@ -9,6 +9,7 @@
 
 typedef enum {
 	SECTION_NONE,
+	SECTION_CORE,
 	SECTION_KEYBOARD,
 	SECTION_COLORS
 } Section;
@@ -179,6 +180,8 @@ void config_read(Ted *ted, char const *filename) {
 								section = SECTION_KEYBOARD;
 							} else if (streq(section_name, "colors")) {
 								section = SECTION_COLORS;
+							} else if (streq(section_name, "core")) {
+								section = SECTION_CORE;
 							} else {
 								config_err(cfg, "Unrecognized section: [%s].", section_name);
 							}
@@ -251,6 +254,32 @@ void config_read(Ted *ted, char const *filename) {
 										config_err(cfg, "Expected ':' for key action. This line should look something like: %s = :command.", key);
 									}
 								} break;
+								case SECTION_CORE:
+									if (streq(key, "tab-width")) {
+										int n = atoi(value);
+										if (n > 0 && n < 100) {
+											settings->tab_width = (u8)n;
+										} else {
+											config_err(cfg, "Invalid tab width: %s.", value);
+										}
+									} else if (streq(key, "cursor-width")) {
+										int n = atoi(value);
+										if (n > 0 && n < 100) {
+											settings->cursor_width = (u8)n;
+										} else {
+											config_err(cfg, "Invalid cursor width: %s.", value);
+										}
+									} else if (streq(key, "undo-save-time")) {
+										int n = atoi(value);
+										if (n > 0 && n < 200) {
+											settings->undo_save_time = (u8)n;
+										} else {
+											config_err(cfg, "Invalid undo save time: %s.", value);
+										}
+									} else {
+										config_err(cfg, "Unrecognized core setting: %s.", key);
+									}
+									break;
 								}
 							}
 						} else {

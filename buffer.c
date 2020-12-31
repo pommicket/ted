@@ -3,7 +3,7 @@
 // a position in the buffer
 typedef struct {
 	u32 line;
-	u32 index; // index of character in line (not the same as column, since a tab is buffer->tab_size columns)
+	u32 index; // index of character in line (not the same as column, since a tab is settings->tab_width columns)
 } BufferPos;
 
 typedef struct {
@@ -29,7 +29,6 @@ typedef struct {
 	BufferPos cursor_pos;
 	BufferPos selection_pos; // if selection is true, the text between selection_pos and cursor_pos is selected.
 	bool selection;
-	u8 tab_width;
 	bool store_undo_events; // set to false to disable undo events
 	float x1, y1, x2, y2;
 	u32 nlines;
@@ -44,7 +43,6 @@ typedef struct {
 void buffer_create(TextBuffer *buffer, Font *font, Settings *settings) {
 	util_zero_memory(buffer, sizeof *buffer);
 	buffer->font = font;
-	buffer->tab_width = 4;
 	buffer->store_undo_events = true;
 	buffer->settings = settings;
 }
@@ -382,7 +380,7 @@ static bool buffer_edit_does_anything(TextBuffer *buffer, BufferEdit *edit) {
 // has enough time passed since the last edit that we should create a new one?
 static bool buffer_edit_split(TextBuffer *buffer) {
 	double curr_time = time_get_seconds();
-	double undo_time_cutoff = 6.0; // only keep around edits for this long (in seconds). @SETTINGS
+	double undo_time_cutoff = buffer->settings->undo_save_time; // only keep around edits for this long (in seconds).
 	BufferEdit *last_edit = arr_lastp(buffer->undo_history);
 	if (!last_edit) return true;
 	return curr_time - last_edit->time > undo_time_cutoff;
@@ -600,11 +598,12 @@ static u32 buffer_index_to_column(TextBuffer *buffer, u32 line, u32 index) {
 	u32 col = 0;
 	for (u32 i = 0; i < index; ++i) {
 		switch (str[i]) {
-		case U'\t':
+		case U'\t': {
+			uint tab_width = buffer->settings->tab_width;
 			do
 				++col;
-			while (col % buffer->tab_width);
-			break;
+			while (col % tab_width);
+		} break;
 		default:
 			++col;
 			break;
@@ -623,13 +622,14 @@ static u32 buffer_column_to_index(TextBuffer *buffer, u32 line, u32 column) {
 	u32 col = 0;
 	for (u32 i = 0; i < len; ++i) {
 		switch (str[i]) {
-		case U'\t':
+		case U'\t': {
+			uint tab_width = buffer->settings->tab_width;
 			do {
 				if (col == column)
 					return i;
 				++col;
-			} while (col % buffer->tab_width);
-			break;
+			} while (col % tab_width);
+		} break;
 		default:
 			if (col == column)
 				return i;
@@ -1591,7 +1591,7 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 	// get screen coordinates of cursor
 	v2 cursor_display_pos = buffer_pos_to_pixels(buffer, buffer->cursor_pos);
 	// the rectangle that the cursor is rendered as
-	Rect cursor_rect = rect(cursor_display_pos, V2(1.0f, char_height)); // @SETTINGS: cursor width
+	Rect cursor_rect = rect(cursor_display_pos, V2(settings->cursor_width, char_height));
 
 	u32 border_color = colors[COLOR_BORDER]; // color of border around buffer
 
@@ -1722,12 +1722,13 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 			switch (c) {
 			case U'\n': assert(0);
 			case U'\r': break; // for CRLF line endings
-			case U'\t':
+			case U'\t': {
+				uint tab_width = buffer->settings->tab_width;
 				do {
 					text_render_char(font, &text_state, U' ');
 					++column;
-				} while (column % buffer->tab_width);
-				break;
+				} while (column % tab_width);
+			} break;
 			default:
 				text_render_char(font, &text_state, c);
 				++column;
