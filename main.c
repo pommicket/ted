@@ -1,3 +1,4 @@
+// @TODO: page up, page down (buffer_page_up, buffer_page_down)
 #include "base.h"
 no_warn_start
 #if _WIN32
@@ -90,6 +91,7 @@ int main(void) {
 	TextBuffer text_buffer;
 	TextBuffer *buffer = &text_buffer;
 	buffer_create(buffer, font);
+	ted->active_buffer = buffer;
 
 	if (!buffer_load_file(buffer, "buffer.c"))
 		die("Error loading file: %s", buffer_geterr(buffer));
@@ -108,6 +110,8 @@ int main(void) {
 		bool ctrl = keyboard_state[SDL_SCANCODE_LCTRL] || keyboard_state[SDL_SCANCODE_RCTRL];
 		bool shift = keyboard_state[SDL_SCANCODE_LSHIFT] || keyboard_state[SDL_SCANCODE_RSHIFT];
 		bool alt = keyboard_state[SDL_SCANCODE_LALT] || keyboard_state[SDL_SCANCODE_RALT];
+
+		(void)ctrl; (void)shift; (void)alt;
 
 		while (SDL_PollEvent(&event)) {
 			// @TODO: make a function to handle text buffer events
@@ -131,138 +135,24 @@ int main(void) {
 				}
 				break;
 			case SDL_KEYDOWN: {
-				SDL_Keycode keycode = event.key.keysym.sym;
-				switch (keycode) {
-				case SDLK_PAGEUP:
-					buffer_scroll(buffer, 0, -buffer_display_lines(buffer));
-					break;
-				case SDLK_PAGEDOWN:
-					buffer_scroll(buffer, 0, +buffer_display_lines(buffer));
-					break;
-				case SDLK_RIGHT:
-					if (!alt) {
-						if (shift) {
-							if (ctrl)
-								buffer_select_right_words(buffer, 1);
-							else
-								buffer_select_right(buffer, 1);
-						} else {
-							if (ctrl)
-								buffer_cursor_move_right_words(buffer, 1);
-							else
-								buffer_cursor_move_right(buffer, 1);
-						}
+				SDL_Scancode scancode = event.key.keysym.scancode;
+				SDL_Keymod modifier = event.key.keysym.mod;
+				u32 key_combo = (u32)scancode << 3 |
+					(u32)((modifier & (KMOD_LCTRL|KMOD_RCTRL)) != 0) << KEY_MODIFIER_CTRL_BIT |
+					(u32)((modifier & (KMOD_LSHIFT|KMOD_RSHIFT)) != 0) << KEY_MODIFIER_SHIFT_BIT |
+					(u32)((modifier & (KMOD_LALT|KMOD_RALT)) != 0) << KEY_MODIFIER_ALT_BIT;
+				if (key_combo < KEY_COMBO_COUNT) {
+					KeyAction *action = &ted->key_actions[key_combo];
+					if (action->command) {
+						command_execute(ted, action->command, action->argument);
+					} else switch (event.key.keysym.sym) {
+						case SDLK_RETURN:
+							buffer_insert_char_at_cursor(buffer, U'\n');
+							break;
+						case SDLK_TAB:
+							buffer_insert_char_at_cursor(buffer, U'\t');
+							break;
 					}
-					break;
-				case SDLK_LEFT:
-					if (!alt) {
-						if (shift) {
-							if (ctrl)
-								buffer_select_left_words(buffer, 1);
-							else
-								buffer_select_left(buffer, 1);
-						} else {
-							if (ctrl)
-								buffer_cursor_move_left_words(buffer, 1);
-							else
-								buffer_cursor_move_left(buffer, 1);
-						}
-					}
-					break;
-				case SDLK_UP:
-					if (!alt) {
-						if (shift) {
-							if (ctrl)
-								buffer_select_up(buffer, 10);
-							else
-								buffer_select_up(buffer, 1);
-						} else {
-							if (ctrl)
-								buffer_cursor_move_up(buffer, 10);
-							else
-								buffer_cursor_move_up(buffer, 1);
-						}
-					}
-					break;
-				case SDLK_DOWN:
-					if (!alt) {
-						if (shift) {
-							if (ctrl)
-								buffer_select_down(buffer, 10);
-							else
-								buffer_select_down(buffer, 1);
-						} else {
-							if (ctrl)
-								buffer_cursor_move_down(buffer, 10);
-							else
-								buffer_cursor_move_down(buffer, 1);
-						}
-					}
-					break;
-				case SDLK_RETURN:
-					buffer_insert_char_at_cursor(buffer, U'\n');
-					break;
-				case SDLK_TAB:
-					buffer_insert_char_at_cursor(buffer, U'\t');
-					break;
-				case SDLK_DELETE:
-					if (ctrl)
-						buffer_delete_words_at_cursor(buffer, 1);
-					else
-						buffer_delete_chars_at_cursor(buffer, 1);
-					break;
-				case SDLK_BACKSPACE:
-					if (ctrl)
-						buffer_backspace_words_at_cursor(buffer, 1);
-					else
-						buffer_backspace_at_cursor(buffer, 1);
-					break;
-				case SDLK_s:
-					if (ctrl) {
-						if (!buffer_save(buffer)) {
-							printf("Error saving: %s.", buffer_geterr(buffer));
-						}
-					}
-					break;
-				case SDLK_z:
-					if (ctrl) {
-						if (shift) {
-							buffer_redo(buffer, 1);
-						} else {
-							buffer_undo(buffer, 1);
-						}
-					}
-					break;
-				case SDLK_HOME:
-					if (ctrl) {
-						if (shift) {
-							buffer_select_to_start_of_file(buffer);
-						} else {
-							buffer_cursor_move_to_start_of_file(buffer);
-						}
-					} else {
-						if (shift) {
-							buffer_select_to_start_of_line(buffer);
-						} else {
-							buffer_cursor_move_to_start_of_line(buffer);
-						}
-					}
-					break;
-				case SDLK_END:
-					if (ctrl) {
-						if (shift) {
-							buffer_select_to_end_of_file(buffer);
-						} else {
-							buffer_cursor_move_to_end_of_file(buffer);
-						}
-					} else {
-						if (shift) {
-							buffer_select_to_end_of_line(buffer);
-						} else {
-							buffer_cursor_move_to_end_of_line(buffer);
-						}
-					}
-					break;
 				}
 			} break;
 			case SDL_TEXTINPUT: {

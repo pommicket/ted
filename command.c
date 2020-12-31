@@ -94,15 +94,21 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 	case CMD_DELETE:
 		buffer_delete_chars_at_cursor(buffer, argument);
 		break;
-	case CMD_BACKSPACE_WORDS:
+	case CMD_BACKSPACE_WORD:
 		buffer_backspace_words_at_cursor(buffer, argument);
 		break;
-	case CMD_DELETE_WORDS:
+	case CMD_DELETE_WORD:
 		buffer_delete_words_at_cursor(buffer, argument);
 		break;
 	
 	case CMD_SAVE:
 		buffer_save(buffer);
+		break;
+	case CMD_UNDO:
+		buffer_undo(buffer, argument);
+		break;
+	case CMD_REDO:
+		buffer_redo(buffer, argument);
 		break;
 	}
 }

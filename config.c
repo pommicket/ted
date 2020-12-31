@@ -14,12 +14,14 @@ typedef enum {
 
 // all worth it for the -Wformat warnings
 #define config_err(cfg, ...) snprintf((cfg)->ted->error, sizeof (cfg)->ted->error - 1, "%s:%u: ",  (cfg)->filename, (cfg)->line_number), \
-	snprintf((cfg)->ted->error + strlen((cfg)->ted->error), strlen((cfg)->ted->error) - sizeof (cfg)->ted->error - 1, __VA_ARGS__)
+	snprintf((cfg)->ted->error + strlen((cfg)->ted->error), strlen((cfg)->ted->error) - sizeof (cfg)->ted->error - 1, __VA_ARGS__), \
+	(cfg)->error = true
 
 typedef struct {
 	Ted *ted;
 	char const *filename;
 	u32 line_number; // currently processing this line number
+	bool error;
 } ConfigReader;
 
 // Returns the key combination described by str.
@@ -140,7 +142,8 @@ void config_read(Ted *ted, char const *filename) {
 	ConfigReader cfg_reader = {
 		.ted = ted,
 		.filename = filename,
-		.line_number = 1
+		.line_number = 1,
+		.error = false
 	};
 	ConfigReader *cfg = &cfg_reader;
 	FILE *fp = fopen(filename, "rb");
@@ -155,8 +158,6 @@ void config_read(Ted *ted, char const *filename) {
 				if (newline || feof(fp)) {
 					if (newline) *newline = '\0';
 
-					bool error = false;
-
 					// ok, we've now read a line.
 					switch (line[0]) {
 					case '#': // comment
@@ -167,10 +168,8 @@ void config_read(Ted *ted, char const *filename) {
 						char *closing = strchr(line, ']');
 						if (!closing) {
 							config_err(cfg, "Unmatched [. " SECTION_HEADER_HELP);
-							error = true;
 						} else if (closing[1] != '\0') {
 							config_err(cfg, "Text after section. " SECTION_HEADER_HELP);
-							error = true;
 						} else {
 							*closing = '\0';
 							char *section_name = line + 1;
@@ -178,7 +177,6 @@ void config_read(Ted *ted, char const *filename) {
 								section = SECTION_KEYBOARD;
 							} else {
 								config_err(cfg, "Unrecognized section: [%s].", section_name);
-								error = true;
 							}
 						}
 					} break;
@@ -245,7 +243,7 @@ void config_read(Ted *ted, char const *filename) {
 					} break;
 					}
 
-					if (error) break;
+					if (cfg->error) break;
 
 					++cfg->line_number;
 				} else {

@@ -1,15 +1,18 @@
 typedef struct {
 	u32 line_number; // config line number where this was set
-	Command command;
+	Command command; // this will be 0 (COMMAND_UNKNOWN) if there's no action for the key
 	i64 argument;
 } KeyAction;
 
 #define SCANCODE_COUNT 0x120 // SDL scancodes should be less than this value.
 // a "key combo" is some subset of {control, shift, alt} + some key.
 #define KEY_COMBO_COUNT (SCANCODE_COUNT << 3)
-#define KEY_MODIFIER_CTRL 1
-#define KEY_MODIFIER_SHIFT 2
-#define KEY_MODIFIER_ALT 4
+#define KEY_MODIFIER_CTRL_BIT 0
+#define KEY_MODIFIER_SHIFT_BIT 1
+#define KEY_MODIFIER_ALT_BIT 2
+#define KEY_MODIFIER_CTRL (1<<KEY_MODIFIER_CTRL_BIT)
+#define KEY_MODIFIER_SHIFT (1<<KEY_MODIFIER_SHIFT_BIT)
+#define KEY_MODIFIER_ALT (1<<KEY_MODIFIER_ALT_BIT)
 // ctrl+alt+c is encoded as SDL_SCANCODE_C << 3 | KEY_MODIFIER_CTRL | KEY_MODIFIER_ALT
 
 typedef struct {

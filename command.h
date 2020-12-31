@@ -26,10 +26,12 @@ ENUM_U16 {
 	// deletion
 	CMD_BACKSPACE,
 	CMD_DELETE,
-	CMD_BACKSPACE_WORDS,
-	CMD_DELETE_WORDS,
+	CMD_BACKSPACE_WORD,
+	CMD_DELETE_WORD,
 
 	CMD_SAVE,
+	CMD_UNDO,
+	CMD_REDO,
 
 	CMD_COUNT
 } ENUM_U16_END(Command);
@@ -64,8 +66,10 @@ static CommandName const command_names[CMD_COUNT] = {
 	{"select-end-of-file", CMD_SELECT_END_OF_FILE},
 	{"backspace", CMD_BACKSPACE},
 	{"delete", CMD_DELETE},
-	{"backspace-words", CMD_BACKSPACE},
-	{"delete-words", CMD_DELETE},
-	{"save", CMD_SAVE}
+	{"backspace-word", CMD_BACKSPACE_WORD},
+	{"delete-word", CMD_DELETE_WORD},
+	{"save", CMD_SAVE},
+	{"undo", CMD_UNDO},
+	{"redo", CMD_REDO}
 };
 
