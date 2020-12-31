@@ -1,5 +1,6 @@
 typedef struct {
-	Command cmd;
+	u32 line_number; // config line number where this was set
+	Command command;
 	i64 argument;
 } KeyAction;
 

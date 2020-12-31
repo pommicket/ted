@@ -12,28 +12,38 @@ typedef enum {
 	SECTION_KEYBOARD
 } Section;
 
-// Returns the key combination described by str. filename and line_number should be passed inm to generate nice errors.
-static u32 config_parse_key_combo(Ted *ted, char const *str, char const *filename, uint line_number) {
+// all worth it for the -Wformat warnings
+#define config_err(cfg, ...) snprintf((cfg)->ted->error, sizeof (cfg)->ted->error - 1, "%s:%u: ",  (cfg)->filename, (cfg)->line_number), \
+	snprintf((cfg)->ted->error + strlen((cfg)->ted->error), strlen((cfg)->ted->error) - sizeof (cfg)->ted->error - 1, __VA_ARGS__)
+
+typedef struct {
+	Ted *ted;
+	char const *filename;
+	u32 line_number; // currently processing this line number
+} ConfigReader;
+
+// Returns the key combination described by str.
+static u32 config_parse_key_combo(ConfigReader *cfg, char const *str) {
 	u32 modifier = 0;
 	// read modifier
 	while (true) {
 		if (util_is_prefix(str, "Ctrl+")) {
 			if (modifier & KEY_MODIFIER_CTRL) {
-				ted_seterr(ted, "%s:%u: Ctrl+ written twice", filename, line_number);
+				config_err(cfg, "Ctrl+ written twice");
 				return 0;
 			}
 			modifier |= KEY_MODIFIER_CTRL;
 			str += strlen("Ctrl+");
 		} else if (util_is_prefix(str, "Shift+")) {
 			if (modifier & KEY_MODIFIER_SHIFT) {
-				ted_seterr(ted, "%s:%u: Shift+ written twice", filename, line_number);
+				config_err(cfg, "Shift+ written twice");
 				return 0;
 			}
 			modifier |= KEY_MODIFIER_SHIFT;
 			str += strlen("Shift+");
 		} else if (util_is_prefix(str, "Alt+")) {
 			if (modifier & KEY_MODIFIER_ALT) {
-				ted_seterr(ted, "%s:%u: Alt+ written twice", filename, line_number);
+				config_err(cfg, "Alt+ written twice");
 				return 0;
 			}
 			modifier |= KEY_MODIFIER_ALT;
@@ -99,7 +109,7 @@ static u32 config_parse_key_combo(Ted *ted, char const *str, char const *filenam
 				scancode = k->scancode;
 				if (k->shift) {
 					if (modifier & KEY_MODIFIER_SHIFT) {
-						ted_seterr(ted, "%s:%u: Shift+%s is redundant.", filename, line_number, str);
+						config_err(cfg, "Shift+%s is redundant.", str);
 						return 0;
 					}
 					modifier |= KEY_MODIFIER_SHIFT;
@@ -114,11 +124,11 @@ static u32 config_parse_key_combo(Ted *ted, char const *str, char const *filenam
 				if (*endp == '\0' && n > 0 && n < SCANCODE_COUNT) {
 					scancode = (SDL_Scancode)n;
 				} else {
-					ted_seterr(ted, "%s:%u: Invalid scancode number: %s", filename, line_number, str);
+					config_err(cfg, "Invalid scancode number: %s", str);
 					return 0;
 				}
 			} else {
-				ted_seterr(ted, "%s:%u: Unrecognized key name: %s.", filename, line_number, str);
+				config_err(cfg, "Unrecognized key name: %s.", str);
 				return 0;
 			}
 		}
@@ -127,9 +137,14 @@ static u32 config_parse_key_combo(Ted *ted, char const *str, char const *filenam
 }
 
 void config_read(Ted *ted, char const *filename) {
+	ConfigReader cfg_reader = {
+		.ted = ted,
+		.filename = filename,
+		.line_number = 1
+	};
+	ConfigReader *cfg = &cfg_reader;
 	FILE *fp = fopen(filename, "rb");
 	if (fp) {
-		uint line_number = 1;
 		int line_cap = 4096;
 		char *line = ted_malloc(ted, (size_t)line_cap);
 		if (line) {
@@ -151,10 +166,10 @@ void config_read(Ted *ted, char const *filename) {
 					#define SECTION_HEADER_HELP "Section headers should look like this: [section-name]"
 						char *closing = strchr(line, ']');
 						if (!closing) {
-							ted_seterr(ted, "%s:%u: Unmatched [. " SECTION_HEADER_HELP, filename, line_number);
+							config_err(cfg, "Unmatched [. " SECTION_HEADER_HELP);
 							error = true;
 						} else if (closing[1] != '\0') {
-							ted_seterr(ted, "%s:%u: Text after section. " SECTION_HEADER_HELP, filename, line_number);
+							config_err(cfg, "Text after section. " SECTION_HEADER_HELP);
 							error = true;
 						} else {
 							*closing = '\0';
@@ -162,7 +177,7 @@ void config_read(Ted *ted, char const *filename) {
 							if (streq(section_name, "keyboard")) {
 								section = SECTION_KEYBOARD;
 							} else {
-								ted_seterr(ted, "%s:%u: Unrecognized section: [%s].", filename, line_number, section_name);
+								config_err(cfg, "Unrecognized section: [%s].", section_name);
 								error = true;
 							}
 						}
@@ -172,7 +187,7 @@ void config_read(Ted *ted, char const *filename) {
 						if (equals) {
 							char *key = line;
 							*equals = '\0';
-							char *value = key + 1;
+							char *value = equals + 1;
 							while (isspace(*key)) ++key;
 							while (isspace(*value)) ++value;
 							if (equals != line) {
@@ -183,31 +198,58 @@ void config_read(Ted *ted, char const *filename) {
 								}
 							}
 							if (key[0] == '\0') {
-								ted_seterr(ted, "%s:%u: Empty property name. This line should look like: key = value", filename, line_number);
+								config_err(cfg, "Empty property name. This line should look like: key = value");
 							} else {
 								switch (section) {
 								case SECTION_NONE:
-									ted_seterr(ted, "%s:%u: Line outside of any section."
-										"Try putting a section header, e.g. [keyboard] before this line?", filename, line_number);
+									config_err(cfg, "Line outside of any section."
+										"Try putting a section header, e.g. [keyboard] before this line?");
 									break;
 								case SECTION_KEYBOARD: {
-									u32 key_combo = config_parse_key_combo(ted, key, filename, line_number);
-									(void)key_combo; // @TODO
+									// lines like Ctrl+Down = 10 :down
+									u32 key_combo = config_parse_key_combo(cfg, key);
+									KeyAction *action = &ted->key_actions[key_combo];
+									llong argument = 1;
+									if (isdigit(*value)) {
+										// read the argument
+										char *endp;
+										argument = strtoll(value, &endp, 10);
+										value = endp;
+										while (isspace(*value)) ++value; // skip past space following number
+									}
+									if (*value == ':') {
+										// read the command
+										Command command = command_from_str(value + 1);
+										if (command != CMD_UNKNOWN) {
+											if (action->command) {
+												config_err(cfg, "Key binding for %s set twice (first time was on line " U32_FMT ").",
+													key, action->line_number);
+											} else {
+												action->command = command;
+												action->argument = argument;
+												action->line_number = cfg->line_number;
+											}
+										} else {
+											config_err(cfg, "Unrecognized command %s", value);
+										}
+									} else {
+										config_err(cfg, "Expected ':' for key action. This line should look something like: %s = :command.", key);
+									}
 								} break;
 								}
 							}
 						} else {
-							ted_seterr(ted, "%s:%u: Invalid line syntax."
-								"Lines should either look like [section-name] or key = value", filename, line_number);
+							config_err(cfg, "Invalid line syntax."
+								"Lines should either look like [section-name] or key = value");
 						}
 					} break;
 					}
 
 					if (error) break;
 
-					++line_number;
+					++cfg->line_number;
 				} else {
-					ted_seterr(ted, "%s:%u: Line is too long.", filename, line_number);
+					config_err(cfg, "Line is too long.");
 					break;
 				}
 			}
