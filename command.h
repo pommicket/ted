@@ -23,6 +23,10 @@ ENUM_U16 {
 	CMD_SELECT_START_OF_FILE,
 	CMD_SELECT_END_OF_FILE,
 
+	// scrolling
+	CMD_PAGE_UP,
+	CMD_PAGE_DOWN,
+
 	// deletion
 	CMD_BACKSPACE,
 	CMD_DELETE,
@@ -40,7 +44,6 @@ typedef struct {
 	char const *name;
 	Command cmd;
 } CommandName;
-
 static CommandName const command_names[CMD_COUNT] = {
 	{"unknown", CMD_UNKNOWN},
 	{"noop", CMD_NOOP},
@@ -64,12 +67,14 @@ static CommandName const command_names[CMD_COUNT] = {
 	{"end-of-file", CMD_END_OF_FILE},
 	{"select-start-of-file", CMD_SELECT_START_OF_FILE},
 	{"select-end-of-file", CMD_SELECT_END_OF_FILE},
+	{"page-up", CMD_PAGE_UP},
+	{"page-down", CMD_PAGE_DOWN},
 	{"backspace", CMD_BACKSPACE},
 	{"delete", CMD_DELETE},
 	{"backspace-word", CMD_BACKSPACE_WORD},
 	{"delete-word", CMD_DELETE_WORD},
 	{"save", CMD_SAVE},
 	{"undo", CMD_UNDO},
-	{"redo", CMD_REDO}
+	{"redo", CMD_REDO},
 };
 

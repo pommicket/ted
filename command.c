@@ -100,6 +100,13 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 	case CMD_DELETE_WORD:
 		buffer_delete_words_at_cursor(buffer, argument);
 		break;
+
+	case CMD_PAGE_DOWN:
+		buffer_page_down(buffer, argument);
+		break;
+	case CMD_PAGE_UP:
+		buffer_page_up(buffer, argument);
+		break;
 	
 	case CMD_SAVE:
 		buffer_save(buffer);
