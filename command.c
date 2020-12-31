@@ -118,4 +118,8 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		buffer_redo(buffer, argument);
 		break;
 	}
+	if (buffer_haserr(buffer)) {
+		strncpy(ted->error, buffer_geterr(buffer), sizeof ted->error - 1);
+		buffer_clearerr(buffer);
+	}
 }

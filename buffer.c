@@ -60,6 +60,10 @@ char const *buffer_geterr(TextBuffer *buffer) {
 	return buffer->error;
 }
 
+void buffer_clearerr(TextBuffer *buffer) {
+	*buffer->error = '\0';
+}
+
 // set the buffer's error to indicate that we're out of memory
 static void buffer_out_of_mem(TextBuffer *buffer) {
 	buffer_seterr(buffer, "Out of memory.");
