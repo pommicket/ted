@@ -4,6 +4,10 @@ typedef struct {
 	i64 argument;
 } KeyAction;
 
+typedef struct {
+	u32 colors[COLOR_COUNT];
+} Settings;
+
 #define SCANCODE_COUNT 0x120 // SDL scancodes should be less than this value.
 // a "key combo" is some subset of {control, shift, alt} + some key.
 #define KEY_COMBO_COUNT (SCANCODE_COUNT << 3)
