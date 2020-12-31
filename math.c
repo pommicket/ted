@@ -700,6 +700,13 @@ static void gl_color2f(float v, float a) {
 	glColor4f(v,v,v,a);
 }
 
+static void rgba_u32_to_floats(u32 rgba, float floats[static 4]) {
+	floats[0] = (float)(rgba >> 24) / 255.f;
+	floats[1] = (float)(rgba >> 16) / 255.f;
+	floats[2] = (float)(rgba >>  8) / 255.f;
+	floats[3] = (float)(rgba >>  0) / 255.f;
+}
+
 // color is 0xRRGGBBAA
 static void gl_color_rgba(u32 color) {
 	glColor4ub((u8)(color >> 24), (u8)(color >> 16), (u8)(color >> 8), (u8)color);

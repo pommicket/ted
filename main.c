@@ -14,6 +14,9 @@ no_warn_end
 #include "command.h"
 #include "util.c"
 #include "colors.c"
+typedef struct {
+	u32 colors[COLOR_COUNT];
+} Settings;
 #include "time.c"
 #include "unicode.h"
 #define MATH_GL
@@ -84,6 +87,8 @@ int main(void) {
 		die("Not enough memory available to run ted.");
 	}
 
+	Settings *settings = &ted->settings;
+
 	config_read(ted, "ted.cfg");
 	if (ted_haserr(ted)) {
 		die("Error reading config: %s", ted_geterr(ted));
@@ -91,7 +96,7 @@ int main(void) {
 
 	TextBuffer text_buffer;
 	TextBuffer *buffer = &text_buffer;
-	buffer_create(buffer, font);
+	buffer_create(buffer, font, settings);
 	ted->active_buffer = buffer;
 
 	if (!buffer_load_file(buffer, "buffer.c"))
@@ -198,7 +203,11 @@ int main(void) {
 		glLoadIdentity();
 		// pixel coordinates; down is positive y
 		glOrtho(0, window_width, window_height, 0, -1, +1);
-		glClearColor(0, 0, 0, 1);
+		{ // clear (background)
+			float bg_color[4];
+			rgba_u32_to_floats(settings->colors[COLOR_BG], bg_color);
+			glClearColor(bg_color[0], bg_color[1], bg_color[2], bg_color[3]);
+		}
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		{
@@ -224,6 +233,7 @@ int main(void) {
 	SDL_Quit();
 	buffer_free(buffer);
 	text_font_free(font);
+	free(ted);
 
 	return 0;
 }

@@ -7,7 +7,6 @@ ENUM_U16 {
 	COLOR_BORDER,
 	COLOR_TEXT,
 	COLOR_SELECTION_BG,
-	COLOR_SELECTION_TEXT,
 
 	COLOR_COUNT
 } ENUM_U16_END(ColorSetting);
@@ -24,8 +23,7 @@ static ColorName const color_names[COLOR_COUNT] = {
 	{COLOR_CURSOR_LINE_BG, "cursor-line-bg"},
 	{COLOR_BORDER, "border"},
 	{COLOR_TEXT, "text"},
-	{COLOR_SELECTION_BG, "selection-bg"},
-	{COLOR_SELECTION_TEXT, "selection-text"}
+	{COLOR_SELECTION_BG, "selection-bg"}
 };
 
 static ColorSetting color_setting_from_str(char const *str) {
@@ -50,15 +48,31 @@ static char const *color_setting_to_str(ColorSetting s) {
 // converts #rrggbb/#rrggbbaa to a color. returns false if it's not in the right format.
 static Status color_from_str(char const *str, u32 *color) {
 	uint r = 0, g = 0, b = 0, a = 0xff;
-	size_t len = strlen(str);
-	if (len == 7) {
-		sscanf(str, "#%02x%02x%02x", &r, &g, &b);
-	} else if (len == 9) {
-		sscanf(str, "#%02x%02x%02x%02x", &r, &g, &b, &a);
-	} else {
-		return false;
+	bool success = false;
+	switch (strlen(str)) {
+	case 4:
+		success = sscanf(str, "#%01x%01x%01x", &r, &g, &b) == 3;
+		// extend single hex digit to double hex digit
+		r |= r << 4;
+		g |= g << 4;
+		b |= b << 4;
+		break;
+	case 5:
+		success = sscanf(str, "#%01x%01x%01x%01x", &r, &g, &b, &a) == 4;
+		r |= r << 4;
+		g |= g << 4;
+		b |= b << 4;
+		a |= a << 4;
+		break;
+	case 7:
+		success = sscanf(str, "#%02x%02x%02x", &r, &g, &b) == 3;
+		break;
+	case 9:
+		success = sscanf(str, "#%02x%02x%02x%02x", &r, &g, &b, &a) == 4;
+		break;
 	}
-	if (r > 0xff || g > 0xff || b > 0xff) return false;
+	if (!success || r > 0xff || g > 0xff || b > 0xff || a > 0xff)
+		return false;
 	if (color)
 		*color = (u32)r << 24 | (u32)g << 16 | (u32)b << 8 | (u32)a;
 	return true;

@@ -23,6 +23,7 @@ typedef struct BufferEdit {
 
 typedef struct {
 	char const *filename;
+	Settings *settings;
 	double scroll_x, scroll_y; // number of characters scrolled in the x/y direction
 	Font *font;
 	BufferPos cursor_pos;
@@ -40,11 +41,12 @@ typedef struct {
 } TextBuffer;
 
 
-void buffer_create(TextBuffer *buffer, Font *font) {
+void buffer_create(TextBuffer *buffer, Font *font, Settings *settings) {
 	util_zero_memory(buffer, sizeof *buffer);
 	buffer->font = font;
 	buffer->tab_width = 4;
 	buffer->store_undo_events = true;
+	buffer->settings = settings;
 }
 
 // this is a macro so we get -Wformat warnings
@@ -1583,13 +1585,15 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 	float char_width = text_font_char_width(font),
 		char_height = text_font_char_height(font);
 	float header_height = char_height;
+	Settings *settings = buffer->settings;
+	u32 *colors = settings->colors;
 
 	// get screen coordinates of cursor
 	v2 cursor_display_pos = buffer_pos_to_pixels(buffer, buffer->cursor_pos);
 	// the rectangle that the cursor is rendered as
 	Rect cursor_rect = rect(cursor_display_pos, V2(1.0f, char_height)); // @SETTINGS: cursor width
 
-	u32 border_color = 0x7f7f7fff; // color of border around buffer
+	u32 border_color = colors[COLOR_BORDER]; // color of border around buffer
 
 	// bounding box around buffer & header
 	gl_color_rgba(border_color);
@@ -1637,7 +1641,7 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 	
 	// highlight line cursor is on
 	{
-		gl_color1f(0.15f); // @SETTINGS
+		gl_color_rgba(colors[COLOR_CURSOR_LINE_BG]);
 		glBegin(GL_QUADS);
 		Rect hl_rect = rect(V2(x1, cursor_display_pos.y), V2(x2-x1-1, char_height));
 		buffer_clip_rect(buffer, &hl_rect);
@@ -1655,7 +1659,7 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 
 	if (buffer->selection) { // draw selection
 		glBegin(GL_QUADS);
-		gl_color_rgba(0x3366aa88); // @SETTINGS
+		gl_color_rgba(colors[COLOR_SELECTION_BG]);
 		BufferPos sel_start = {0}, sel_end = {0};
 		int cmp = buffer_pos_cmp(buffer->cursor_pos, buffer->selection_pos);
 		if (cmp < 0) {
@@ -1699,7 +1703,6 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 	
 
 	text_chars_begin(font);
-	glColor3f(1,1,1);
 
 	text_state = (TextRenderState){
 		.x = render_start_x, .y = y1 + text_font_char_height(font),
@@ -1709,6 +1712,7 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 
 	text_state.y -= (float)(buffer->scroll_y - start_line) * char_height;
 
+	gl_color_rgba(colors[COLOR_TEXT]);
 
 	for (u32 line_idx = start_line; line_idx < nlines; ++line_idx) {
 		Line *line = &lines[line_idx];
@@ -1747,7 +1751,7 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 
 	{ // render cursor
 		if (buffer_clip_rect(buffer, &cursor_rect)) {
-			glColor3f(0,1,1);
+			gl_color_rgba(colors[COLOR_CURSOR]);
 			glBegin(GL_QUADS);
 			rect_render(cursor_rect);
 			glEnd();

@@ -9,7 +9,8 @@
 
 typedef enum {
 	SECTION_NONE,
-	SECTION_KEYBOARD
+	SECTION_KEYBOARD,
+	SECTION_COLORS
 } Section;
 
 // all worth it for the -Wformat warnings
@@ -146,6 +147,7 @@ void config_read(Ted *ted, char const *filename) {
 		.error = false
 	};
 	ConfigReader *cfg = &cfg_reader;
+	Settings *settings = &ted->settings;
 	FILE *fp = fopen(filename, "rb");
 	if (fp) {
 		int line_cap = 4096;
@@ -175,6 +177,8 @@ void config_read(Ted *ted, char const *filename) {
 							char *section_name = line + 1;
 							if (streq(section_name, "keyboard")) {
 								section = SECTION_KEYBOARD;
+							} else if (streq(section_name, "colors")) {
+								section = SECTION_COLORS;
 							} else {
 								config_err(cfg, "Unrecognized section: [%s].", section_name);
 							}
@@ -203,6 +207,19 @@ void config_read(Ted *ted, char const *filename) {
 									config_err(cfg, "Line outside of any section."
 										"Try putting a section header, e.g. [keyboard] before this line?");
 									break;
+								case SECTION_COLORS: {
+									ColorSetting setting = color_setting_from_str(key);
+									if (setting != COLOR_UNKNOWN) {
+										u32 color = 0;
+										if (color_from_str(value, &color)) {
+											settings->colors[setting] = color;
+										} else {
+											config_err(cfg, "'%s' is not a valid color. Colors should look like #rgb, #rgba, #rrggbb, or #rrggbbaa.", value);
+										}
+									} else {
+										config_err(cfg, "No such color option: %s", key);
+									}
+								} break;
 								case SECTION_KEYBOARD: {
 									// lines like Ctrl+Down = 10 :down
 									u32 key_combo = config_parse_key_combo(cfg, key);
