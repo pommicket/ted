@@ -144,12 +144,12 @@ char32_t buffer_char_at_pos(TextBuffer *buffer, BufferPos p) {
 	}
 }
 
-BufferPos buffer_pos_start_of_file(TextBuffer *buffer) {
+BufferPos buffer_start_of_file(TextBuffer *buffer) {
 	(void)buffer;
 	return (BufferPos){.line = 0, .index = 0};
 }
 
-BufferPos buffer_pos_end_of_file(TextBuffer *buffer) {
+BufferPos buffer_end_of_file(TextBuffer *buffer) {
 	return (BufferPos){.line = buffer->nlines - 1, .index = buffer->lines[buffer->nlines-1].len};
 }
 
@@ -220,7 +220,7 @@ static BufferPos buffer_pos_advance(TextBuffer *buffer, BufferPos pos, size_t nc
 		index = 0;
 		++line;
 	}
-	return buffer_pos_end_of_file(buffer);
+	return buffer_end_of_file(buffer);
 }
 
 
@@ -834,7 +834,7 @@ i64 buffer_pos_move_horizontally(TextBuffer *buffer, BufferPos *p, i64 by) {
 	} else if (by > 0) {
 		i64 by_start = by;
 		if (p->line >= buffer->nlines)
-			*p = buffer_pos_end_of_file(buffer); // invalid position; move to end of buffer
+			*p = buffer_end_of_file(buffer); // invalid position; move to end of buffer
 		Line *line = &buffer->lines[p->line];
 		while (by > 0) {
 			if (by <= line->len - p->index) {
@@ -1081,11 +1081,11 @@ void buffer_cursor_move_to_end_of_line(TextBuffer *buffer) {
 }
 
 void buffer_cursor_move_to_start_of_file(TextBuffer *buffer) {
-	buffer_cursor_move_to_pos(buffer, buffer_pos_start_of_file(buffer));
+	buffer_cursor_move_to_pos(buffer, buffer_start_of_file(buffer));
 }
 
 void buffer_cursor_move_to_end_of_file(TextBuffer *buffer) {
-	buffer_cursor_move_to_pos(buffer, buffer_pos_end_of_file(buffer));
+	buffer_cursor_move_to_pos(buffer, buffer_end_of_file(buffer));
 }
 
 // insert `number` empty lines starting at index `where`.
@@ -1243,11 +1243,11 @@ void buffer_select_to_end_of_line(TextBuffer *buffer) {
 }
 
 void buffer_select_to_start_of_file(TextBuffer *buffer) {
-	buffer_select_to_pos(buffer, buffer_pos_start_of_file(buffer));
+	buffer_select_to_pos(buffer, buffer_start_of_file(buffer));
 }
 
 void buffer_select_to_end_of_file(TextBuffer *buffer) {
-	buffer_select_to_pos(buffer, buffer_pos_end_of_file(buffer));
+	buffer_select_to_pos(buffer, buffer_end_of_file(buffer));
 }
 
 // select the word the cursor is inside of
@@ -1269,6 +1269,10 @@ void buffer_select_line(TextBuffer *buffer) {
 	buffer_select_to_pos(buffer, buffer_pos_start_of_line(buffer, line));
 }
 
+void buffer_select_all(TextBuffer *buffer) {
+	buffer_cursor_move_to_pos(buffer, buffer_start_of_file(buffer));
+	buffer_select_to_pos(buffer, buffer_end_of_file(buffer));
+}
 
 static void buffer_shorten_line(Line *line, u32 new_len) {
 	assert(line->len >= new_len);

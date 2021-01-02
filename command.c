@@ -87,6 +87,9 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 	case CMD_SELECT_END_OF_FILE:
 		buffer_select_to_end_of_file(buffer);
 		break;
+	case CMD_SELECT_ALL:
+		buffer_select_all(buffer);
+		break;
 
 	case CMD_BACKSPACE:
 		buffer_backspace_at_cursor(buffer, argument);

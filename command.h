@@ -1,7 +1,7 @@
 ENUM_U16 {
 	CMD_UNKNOWN,
 	CMD_NOOP,
-	// movement commands
+	// movement and selection commands
 	CMD_LEFT,
 	CMD_RIGHT,
 	CMD_UP,
@@ -22,6 +22,7 @@ ENUM_U16 {
 	CMD_END_OF_FILE,
 	CMD_SELECT_START_OF_FILE,
 	CMD_SELECT_END_OF_FILE,
+	CMD_SELECT_ALL,
 
 	// scrolling
 	CMD_PAGE_UP,
@@ -67,6 +68,7 @@ static CommandName const command_names[CMD_COUNT] = {
 	{"end-of-file", CMD_END_OF_FILE},
 	{"select-start-of-file", CMD_SELECT_START_OF_FILE},
 	{"select-end-of-file", CMD_SELECT_END_OF_FILE},
+	{"select-all", CMD_SELECT_ALL},
 	{"page-up", CMD_PAGE_UP},
 	{"page-down", CMD_PAGE_DOWN},
 	{"backspace", CMD_BACKSPACE},
