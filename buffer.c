@@ -737,8 +737,9 @@ bool buffer_pixels_to_pos(TextBuffer *buffer, v2 pixel_coords, BufferPos *pos) {
 	if (display_line < 0 || display_line >= buffer_display_lines(buffer))
 		return false;
 	
-	u32 column = (u32)round(display_col + buffer->scroll_x);
 	u32 line = (u32)floor(display_line + buffer->scroll_y);
+	if (line >= buffer->nlines) line = buffer->nlines - 1;
+	u32 column = (u32)round(display_col + buffer->scroll_x);
 	u32 index = buffer_column_to_index(buffer, line, column);
 	pos->line = line;
 	pos->index = index;
@@ -1087,7 +1088,6 @@ void buffer_cursor_move_to_end_of_file(TextBuffer *buffer) {
 	buffer_cursor_move_to_pos(buffer, buffer_pos_end_of_file(buffer));
 }
 
-
 // insert `number` empty lines starting at index `where`.
 static void buffer_insert_lines(TextBuffer *buffer, u32 where, u32 number) {
 	u32 old_nlines = buffer->nlines;
@@ -1248,6 +1248,25 @@ void buffer_select_to_start_of_file(TextBuffer *buffer) {
 
 void buffer_select_to_end_of_file(TextBuffer *buffer) {
 	buffer_select_to_pos(buffer, buffer_pos_end_of_file(buffer));
+}
+
+// select the word the cursor is inside of
+void buffer_select_word(TextBuffer *buffer) {
+	BufferPos start_pos = buffer->cursor_pos, end_pos = buffer->cursor_pos;
+	buffer_pos_move_left_words(buffer, &start_pos, 1);
+	buffer_pos_move_right_words(buffer, &end_pos, 1);
+	buffer_cursor_move_to_pos(buffer, end_pos);
+	buffer_select_to_pos(buffer, start_pos);
+}
+
+// select the line the cursor is currently on
+void buffer_select_line(TextBuffer *buffer) {
+	u32 line = buffer->cursor_pos.line;
+	if (line == buffer->nlines - 1)
+		buffer_cursor_move_to_pos(buffer, buffer_pos_end_of_line(buffer, line));
+	else
+		buffer_cursor_move_to_pos(buffer, buffer_pos_start_of_line(buffer, line + 1));
+	buffer_select_to_pos(buffer, buffer_pos_start_of_line(buffer, line));
 }
 
 

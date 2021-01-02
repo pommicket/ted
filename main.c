@@ -1,3 +1,7 @@
+// @TODO:
+// - select all (:select-all)
+// - blinking cursor (cursor-blink-time)
+// - text size (text-size, :increase-text-size, :decrease-text-size)
 #include "base.h"
 no_warn_start
 #if _WIN32
@@ -13,9 +17,6 @@ no_warn_end
 #include "command.h"
 #include "util.c"
 #include "colors.c"
-// @TODO:
-// - blinking cursor (cursor-blink-time)
-// - text size
 typedef struct {
 	u32 colors[COLOR_COUNT];
 	u8 tab_width;
@@ -142,10 +143,20 @@ int main(void) {
 				case SDL_BUTTON_LEFT: {
 					BufferPos pos = {0};
 					if (buffer_pixels_to_pos(buffer, V2((float)event.button.x, (float)event.button.y), &pos)) {
-						if (key_modifier == KEY_MODIFIER_SHIFT)
+						if (key_modifier == KEY_MODIFIER_SHIFT) {
 							buffer_select_to_pos(buffer, pos);
-						else if (key_modifier == 0)
+						} else if (key_modifier == 0) {
 							buffer_cursor_move_to_pos(buffer, pos);
+							switch ((event.button.clicks - 1) % 3) {
+							case 0: break; // single-click
+							case 1: // double-click: select word
+								buffer_select_word(buffer);
+								break;
+							case 2: // triple-click: select line
+								buffer_select_line(buffer);
+								break;
+							}
+						}
 					}
 				} break;
 				}
