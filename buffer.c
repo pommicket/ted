@@ -1774,11 +1774,23 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 	text_chars_end(font);
 
 	{ // render cursor
-		if (buffer_clip_rect(buffer, &cursor_rect)) {
-			gl_color_rgba(colors[COLOR_CURSOR]);
-			glBegin(GL_QUADS);
-			rect_render(cursor_rect);
-			glEnd();
+		float time_on = settings->cursor_blink_time_on;
+		float time_off = settings->cursor_blink_time_off;
+		bool is_on = true;
+		if (time_off > 0) {
+			double absolute_time = time_get_seconds();
+			float period = time_on + time_off;
+			// time in period
+			double t = fmod(absolute_time, period);
+			is_on = t < time_on; // are we in the "on" part of the period?
+		}
+		if (is_on) {
+			if (buffer_clip_rect(buffer, &cursor_rect)) {
+				gl_color_rgba(colors[COLOR_CURSOR]);
+				glBegin(GL_QUADS);
+				rect_render(cursor_rect);
+				glEnd();
+			}
 		}
 	}
 }

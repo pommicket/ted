@@ -1,6 +1,4 @@
 // @TODO:
-// - select all (:select-all)
-// - blinking cursor (cursor-blink-time)
 // - text size (text-size, :increase-text-size, :decrease-text-size)
 #include "base.h"
 no_warn_start
@@ -18,6 +16,7 @@ no_warn_end
 #include "util.c"
 #include "colors.c"
 typedef struct {
+	float cursor_blink_time_on, cursor_blink_time_off;
 	u32 colors[COLOR_COUNT];
 	u8 tab_width;
 	u8 cursor_width;

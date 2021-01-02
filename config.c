@@ -190,9 +190,9 @@ void config_read(Ted *ted, char const *filename) {
 					default: {
 						char *equals = strchr(line, '=');
 						if (equals) {
-							char *key = line;
+							char const *key = line;
 							*equals = '\0';
-							char *value = equals + 1;
+							char const *value = equals + 1;
 							while (isspace(*key)) ++key;
 							while (isspace(*value)) ++value;
 							if (equals != line) {
@@ -254,32 +254,47 @@ void config_read(Ted *ted, char const *filename) {
 										config_err(cfg, "Expected ':' for key action. This line should look something like: %s = :command.", key);
 									}
 								} break;
-								case SECTION_CORE:
+								case SECTION_CORE: {
+									char const *endptr;
+									long long const integer = strtoll(value, (char **)&endptr, 10);
+									bool const is_integer = *endptr == '\0';
+									double const floating = strtod(value, (char **)&endptr);
+									bool const is_floating = *endptr == '\0';
+
 									if (streq(key, "tab-width")) {
-										int n = atoi(value);
-										if (n > 0 && n < 100) {
-											settings->tab_width = (u8)n;
+										if (is_integer && integer > 0 && integer < 100) {
+											settings->tab_width = (u8)integer;
 										} else {
 											config_err(cfg, "Invalid tab width: %s.", value);
 										}
 									} else if (streq(key, "cursor-width")) {
-										int n = atoi(value);
-										if (n > 0 && n < 100) {
-											settings->cursor_width = (u8)n;
+										if (is_integer && integer > 0 && integer < 100) {
+											settings->cursor_width = (u8)integer;
 										} else {
 											config_err(cfg, "Invalid cursor width: %s.", value);
 										}
 									} else if (streq(key, "undo-save-time")) {
-										int n = atoi(value);
-										if (n > 0 && n < 200) {
-											settings->undo_save_time = (u8)n;
+										if (is_integer && integer > 0 && integer < 200) {
+											settings->undo_save_time = (u8)integer;
 										} else {
 											config_err(cfg, "Invalid undo save time: %s.", value);
+										}
+									} else if (streq(key, "cursor-blink-time-on")) {
+										if (is_floating && floating >= 0 && floating < 1000) {
+											settings->cursor_blink_time_on = (float)floating;
+										} else {
+											config_err(cfg, "Invalid cursor blink time: %s.", value);
+										}
+									} else if (streq(key, "cursor-blink-time-off")) {
+										if (is_floating && floating >= 0 && floating < 1000) {
+											settings->cursor_blink_time_off = (float)floating;
+										} else {
+											config_err(cfg, "Invalid cursor blink time: %s.", value);
 										}
 									} else {
 										config_err(cfg, "Unrecognized core setting: %s.", key);
 									}
-									break;
+								} break;
 								}
 							}
 						} else {
