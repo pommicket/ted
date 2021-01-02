@@ -118,11 +118,12 @@ int main(void) {
 
 		SDL_Event event;
 		Uint8 const *keyboard_state = SDL_GetKeyboardState(NULL);
-		bool ctrl = keyboard_state[SDL_SCANCODE_LCTRL] || keyboard_state[SDL_SCANCODE_RCTRL];
-		bool shift = keyboard_state[SDL_SCANCODE_LSHIFT] || keyboard_state[SDL_SCANCODE_RSHIFT];
-		bool alt = keyboard_state[SDL_SCANCODE_LALT] || keyboard_state[SDL_SCANCODE_RALT];
-
-		(void)ctrl; (void)shift; (void)alt;
+		bool ctrl_down = keyboard_state[SDL_SCANCODE_LCTRL] || keyboard_state[SDL_SCANCODE_RCTRL];
+		bool shift_down = keyboard_state[SDL_SCANCODE_LSHIFT] || keyboard_state[SDL_SCANCODE_RSHIFT];
+		bool alt_down = keyboard_state[SDL_SCANCODE_LALT] || keyboard_state[SDL_SCANCODE_RALT];
+		u32 key_modifier = (u32)ctrl_down << KEY_MODIFIER_CTRL_BIT
+			| (u32)shift_down << KEY_MODIFIER_SHIFT_BIT
+			| (u32)alt_down << KEY_MODIFIER_ALT_BIT;
 
 		while (SDL_PollEvent(&event)) {
 			// @TODO: make a function to handle text buffer events
@@ -139,10 +140,22 @@ int main(void) {
 			case SDL_MOUSEBUTTONDOWN:
 				switch (event.button.button) {
 				case SDL_BUTTON_LEFT: {
-					BufferPos pos;
-					if (buffer_pixels_to_pos(buffer, V2((float)event.button.x, (float)event.button.y), &pos))
-						buffer_cursor_move_to_pos(buffer, pos);
+					BufferPos pos = {0};
+					if (buffer_pixels_to_pos(buffer, V2((float)event.button.x, (float)event.button.y), &pos)) {
+						if (key_modifier == KEY_MODIFIER_SHIFT)
+							buffer_select_to_pos(buffer, pos);
+						else if (key_modifier == 0)
+							buffer_cursor_move_to_pos(buffer, pos);
+					}
 				} break;
+				}
+				break;
+			case SDL_MOUSEMOTION:
+				if (event.motion.state == SDL_BUTTON_LMASK) {
+					BufferPos pos = {0};
+					if (buffer_pixels_to_pos(buffer, V2((float)event.button.x, (float)event.button.y), &pos)) {
+						buffer_select_to_pos(buffer, pos);
+					}
 				}
 				break;
 			case SDL_KEYDOWN: {
@@ -180,7 +193,7 @@ int main(void) {
 			time_at_last_frame = time_this_frame;
 		}
 
-		if (alt) {
+		if (key_modifier == KEY_MODIFIER_ALT) {
 			// alt + arrow keys to scroll
 			double scroll_speed = 20.0;
 			double scroll_amount_x = scroll_speed * frame_dt * 1.5; // characters are taller than they are wide
