@@ -39,10 +39,111 @@ static char32_t const *util_mem32chr_const(char32_t const *s, char32_t c, size_t
 	return NULL;
 }
 
+static bool str_is_prefix(char const *str, char const *prefix) {
+	return strncmp(str, prefix, strlen(prefix)) == 0;
+}
+
 static bool streq(char const *a, char const *b) {
 	return strcmp(a, b) == 0;
 }
 
-static bool util_is_prefix(char const *str, char const *prefix) {
-	return strncmp(str, prefix, strlen(prefix)) == 0;
+// like snprintf, but not screwed up on windows
+#define str_printf(str, size, ...) (str)[(size) - 1] = '\0', snprintf((str), (size) - 1, __VA_ARGS__)
+// like snprintf, but the size is taken to be the length of the array str.
+//                              first, check that str is actually an array
+#define strbuf_printf(str, ...) assert(sizeof str != 4 && sizeof str != 8), \
+	str_printf(str, sizeof str, __VA_ARGS__)
+
+// on 16-bit systems, this is 16383. on 32/64-bit systems, this is 1073741823
+// it is unusual to have a string that long.
+#define STRLEN_SAFE_MAX (UINT_MAX >> 2)
+
+// safer version of strcat. dst_sz includes a null terminator.
+static void str_cat(char *dst, size_t dst_sz, char const *src) {
+	size_t dst_len = strlen(dst), src_len = strlen(src);
+
+	// make sure dst_len + src_len + 1 doesn't overflow
+	if (dst_len > STRLEN_SAFE_MAX || src_len > STRLEN_SAFE_MAX) {
+		assert(0);
+		return;
+	}
+
+	if (dst_len >= dst_sz) {
+		// dst doesn't actually contain a null-terminated string!
+		assert(0);
+		return;
+	}
+
+	if (dst_len + src_len + 1 > dst_sz) {
+		// number of bytes left in dst, not including null terminator
+		size_t n = dst_sz - dst_len - 1;
+		memcpy(dst + dst_len, src, n);
+		dst[dst_sz - 1] = 0; // dst_len + n == dst_sz - 1
+	} else {
+		memcpy(dst + dst_len, src, src_len);
+		dst[dst_len + src_len] = 0;
+	}
 }
+
+// safer version of strncpy. dst_sz includes a null terminator.
+static void str_cpy(char *dst, size_t dst_sz, char const *src) {
+	size_t srclen = strlen(src);
+	size_t n = srclen; // number of bytes to copy
+	
+	if (dst_sz == 0) {
+		assert(0);
+		return;
+	}
+
+	if (dst_sz-1 < n)
+		n = dst_sz-1;
+	memcpy(dst, src, n);
+	dst[n] = 0;
+}
+
+/* 
+returns the first instance of needle in haystack, ignoring the case of the characters,
+or NULL if the haystack does not contain needle
+WARNING: O(strlen(haystack) * strlen(needle))
+*/
+static char *stristr(char const *haystack, char const *needle) {
+	size_t needle_len = strlen(needle), haystack_len = strlen(haystack), i, j;
+	
+	if (needle_len > haystack_len) return NULL; // a larger string can't fit in a smaller string
+
+	for (i = 0; i <= haystack_len - needle_len; ++i) {
+		char const *p = haystack + i, *q = needle;
+		bool match = true;
+		for (j = 0; j < needle_len; ++j) {
+			if (tolower(*p) != tolower(*q)) {
+				match = false;
+				break;
+			}
+			++p;
+			++q;
+		}
+		if (match)
+			return (char *)haystack + i;
+	}
+	return NULL;
+}
+
+static void print_bytes(u8 *bytes, size_t n) {
+	u8 *b, *end;
+	for (b = bytes, end = bytes + n; b != end; ++b)
+		printf("%x ", *b);
+	printf("\n");
+}
+
+/*
+does this predicate hold for all the characters of s. predicate is int (*)(int) instead
+of bool (*)(char) so that you can pass isprint, etc. to it.
+*/
+static bool str_satisfies(char const *s, int (*predicate)(int)) {
+	char const *p;
+	for (p = s; *p; ++p)
+		if (!predicate(*p))
+			return false;
+	return true;
+}
+

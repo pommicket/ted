@@ -1,5 +1,6 @@
 // @TODO:
 // - text size (text-size, :increase-text-size, :decrease-text-size)
+// - put stuff in UserData on windows
 #include "base.h"
 no_warn_start
 #if _WIN32
@@ -11,9 +12,15 @@ no_warn_end
 #include <GL/gl.h>
 #include <locale.h>
 #include <wctype.h>
+#if _WIN32
+#include <shellapi.h>
+#endif
+
+#define TED_PATH_MAX 256
 
 #include "command.h"
 #include "util.c"
+#include "filesystem.c"
 #include "colors.c"
 typedef struct {
 	float cursor_blink_time_on, cursor_blink_time_off;
@@ -50,14 +57,98 @@ static void die(char const *fmt, ...) {
 	exit(EXIT_FAILURE);
 }
 
+// should the working directory be searched for files? set to true if the executable isn't "installed"
+static bool ted_search_cwd = false;
+#if _WIN32
+// @TODO
+#else
+static char const *const ted_global_data_dir = "/usr/share/ted";
+#endif
+
+// Check the various places a file could be, and return the full path.
+static Status ted_get_file(char const *name, char *out, size_t outsz) {
+#if _WIN32
+	#error "@TODO(windows)"
+#else
+	if (ted_search_cwd && fs_file_exists(name)) {
+		// check in current working directory
+		str_cpy(out, outsz, name);
+		return true;
+	}
+
+	char *home = getenv("HOME");
+	if (home) {
+		str_printf(out, outsz, "%s/.local/share/ted/%s", home, name);
+		if (!fs_file_exists(out)) {
+			str_printf(out, outsz, "%s/%s", ted_global_data_dir, name);
+			if (!fs_file_exists(out))
+				return false;
+		}
+	}
+	return true;
+#endif
+}
 
 #if _WIN32
 INT WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
     PSTR lpCmdLine, INT nCmdShow) {
+	int argc = 0;
+    LPWSTR* wide_argv = CommandLineToArgvW(GetCommandLineW(), &argc);
+    char** argv = malloc(argc * sizeof *argv);
+	if (!argv) {
+		die("Out of memory.");
+	}
+    for (int i = 0; i < argc; i++) {
+        LPWSTR wide_arg = wide_args[i];
+        int len = wcslen(wide_arg);
+        argv[i] = malloc(len + 1);
+		if (!argv[i]) die("Out of memory.");
+        for (int j = 0; j <= len; j++)
+            argv[i][j] = (char)wide_arg[j];
+    }
+    LocalFree(wide_args);
 #else
-int main(void) {
+int main(int argc, char **argv) {
 #endif
 	setlocale(LC_ALL, ""); // allow unicode
+
+	{ // check if this is the installed version of ted (as opposed to just running it from the directory with the source)
+		char executable_path[TED_PATH_MAX] = {0};
+	#if _WIN32
+		// @TODO(windows): GetModuleFileNameW
+	#else
+		ssize_t len = readlink("/proc/self/exe", executable_path, sizeof executable_path - 1);
+		executable_path[len] = '\0';
+		ted_search_cwd = !str_is_prefix(executable_path, "/usr");
+	#endif
+	}
+
+	Ted *ted = calloc(1, sizeof *ted);
+	if (!ted) {
+		die("Not enough memory available to run ted.");
+	}
+
+	Settings *settings = &ted->settings;
+
+	{
+		// read global configuration file first to establish defaults
+		char global_config_filename[TED_PATH_MAX];
+		strbuf_printf(global_config_filename, "%s/ted.cfg", ted_global_data_dir);
+		if (fs_file_exists(global_config_filename))
+			config_read(ted, global_config_filename);
+	}
+	{
+		// read local configuration file
+		char config_filename[TED_PATH_MAX];
+		if (ted_get_file("ted.cfg", config_filename, sizeof config_filename))
+			config_read(ted, config_filename);
+		else
+			ted_seterr(ted, "Couldn't find config file (ted.cfg), not even the backup one that should have come with ted.");
+	}
+	if (ted_haserr(ted)) {
+		die("Error reading config: %s", ted_geterr(ted));
+	}
+
 	SDL_SetHint(SDL_HINT_NO_SIGNAL_HANDLERS, "1"); // if this program is sent a SIGTERM/SIGINT, don't turn it into a quit event
 	if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER) < 0)
 		die("%s", SDL_GetError());
@@ -68,9 +159,12 @@ int main(void) {
 		die("%s", SDL_GetError());
 		
 	{ // set icon
-		SDL_Surface *icon = SDL_LoadBMP("assets/icon.bmp");
-		SDL_SetWindowIcon(window, icon);
-		SDL_FreeSurface(icon);
+		char icon_filename[TED_PATH_MAX];
+		if (ted_get_file("assets/icon.bmp", icon_filename, sizeof icon_filename)) {
+			SDL_Surface *icon = SDL_LoadBMP(icon_filename);
+			SDL_SetWindowIcon(window, icon);
+			SDL_FreeSurface(icon);
+		} // if we can't find the icon file, it's no big deal
 	}
 
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
@@ -82,30 +176,45 @@ int main(void) {
 
 	SDL_GL_SetSwapInterval(1); // vsync
 
-	Font *font = text_font_load("assets/font.ttf", 16);
-	if (!font) {
-		die("Couldn't load font: %s", text_get_err());
+	Font *font = NULL;
+	{
+		char font_filename[TED_PATH_MAX];
+		if (ted_get_file("assets/font.ttf", font_filename, sizeof font_filename)) {
+			font = text_font_load(font_filename, 16);
+			if (!font) {
+				die("Couldn't load font: %s", text_get_err());
+			}
+		} else {
+			die("Couldn't find font file. There is probably a problem with your ted installation.");
+		}
 	}
 	
-	Ted *ted = calloc(1, sizeof *ted);
-	if (!ted) {
-		die("Not enough memory available to run ted.");
-	}
-
-	Settings *settings = &ted->settings;
-
-	config_read(ted, "ted.cfg");
-	if (ted_haserr(ted)) {
-		die("Error reading config: %s", ted_geterr(ted));
-	}
-
 	TextBuffer text_buffer;
 	TextBuffer *buffer = &text_buffer;
 	buffer_create(buffer, font, settings);
 	ted->active_buffer = buffer;
 
-	if (!buffer_load_file(buffer, "buffer.c"))
-		die("Error loading file: %s", buffer_geterr(buffer));
+	char const *starting_filename = "Untitled";
+	
+	switch (argc) {
+	case 0: case 1: break;
+	case 2:
+		starting_filename = argv[1];
+		break;
+	default:	
+		die("Usage: %s [filename]", argv[0]);
+		break;
+	}
+
+	if (fs_file_exists(starting_filename)) {
+		buffer_load_file(buffer, starting_filename);
+		if (buffer_haserr(buffer))
+			die("Error loading file: %s", buffer_geterr(buffer));
+	} else {
+		buffer_new_file(buffer, starting_filename);
+		if (buffer_haserr(buffer))
+			die("Error creating file: %s", buffer_geterr(buffer));
+	}
 
 
 	Uint32 time_at_last_frame = SDL_GetTicks();
@@ -262,6 +371,11 @@ int main(void) {
 	buffer_free(buffer);
 	text_font_free(font);
 	free(ted);
+#if _WIN32
+	for (int i = 0; i < argc; ++i)
+		free(argv[i]);
+	free(argv);
+#endif
 
 	return 0;
 }

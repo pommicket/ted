@@ -31,21 +31,21 @@ static u32 config_parse_key_combo(ConfigReader *cfg, char const *str) {
 	u32 modifier = 0;
 	// read modifier
 	while (true) {
-		if (util_is_prefix(str, "Ctrl+")) {
+		if (str_is_prefix(str, "Ctrl+")) {
 			if (modifier & KEY_MODIFIER_CTRL) {
 				config_err(cfg, "Ctrl+ written twice");
 				return 0;
 			}
 			modifier |= KEY_MODIFIER_CTRL;
 			str += strlen("Ctrl+");
-		} else if (util_is_prefix(str, "Shift+")) {
+		} else if (str_is_prefix(str, "Shift+")) {
 			if (modifier & KEY_MODIFIER_SHIFT) {
 				config_err(cfg, "Shift+ written twice");
 				return 0;
 			}
 			modifier |= KEY_MODIFIER_SHIFT;
 			str += strlen("Shift+");
-		} else if (util_is_prefix(str, "Alt+")) {
+		} else if (str_is_prefix(str, "Alt+")) {
 			if (modifier & KEY_MODIFIER_ALT) {
 				config_err(cfg, "Alt+ written twice");
 				return 0;
@@ -239,14 +239,9 @@ void config_read(Ted *ted, char const *filename) {
 										// read the command
 										Command command = command_from_str(value + 1);
 										if (command != CMD_UNKNOWN) {
-											if (action->command) {
-												config_err(cfg, "Key binding for %s set twice (first time was on line " U32_FMT ").",
-													key, action->line_number);
-											} else {
-												action->command = command;
-												action->argument = argument;
-												action->line_number = cfg->line_number;
-											}
+											action->command = command;
+											action->argument = argument;
+											action->line_number = cfg->line_number;
 										} else {
 											config_err(cfg, "Unrecognized command %s", value);
 										}

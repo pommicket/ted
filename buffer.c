@@ -448,6 +448,7 @@ static void buffer_line_free(Line *line) {
 	free(line->str);
 }
 
+// Free a buffer. Once a buffer is freed, it can be used again for other purposes.
 // Does not free the pointer `buffer` (buffer might not have even been allocated with malloc)
 void buffer_free(TextBuffer *buffer) {
 	Line *lines = buffer->lines;
@@ -465,16 +466,23 @@ void buffer_free(TextBuffer *buffer) {
 	arr_free(buffer->undo_history);
 	arr_free(buffer->redo_history);
 
+	Settings *settings = buffer->settings;
+	Font *font = buffer->font;
+
 	// zero buffer, except for error
 	char error[sizeof buffer->error];
 	memcpy(error, buffer->error, sizeof error);
 	memset(buffer, 0, sizeof *buffer);
 	memcpy(buffer->error, error, sizeof error);
+
+	buffer_create(buffer, font, settings);
 }
 
 
 // filename must be around for at least as long as the buffer is.
-Status buffer_load_file(TextBuffer *buffer, char const *filename) {
+void buffer_load_file(TextBuffer *buffer, char const *filename) {
+	buffer_free(buffer);
+
 	buffer->filename = filename;
 	FILE *fp = fopen(filename, "rb");
 	if (fp) {
@@ -483,7 +491,7 @@ Status buffer_load_file(TextBuffer *buffer, char const *filename) {
 		fseek(fp, 0, SEEK_SET);
 		if (file_size > 10L<<20) {
 			buffer_seterr(buffer, "File too big (size: %zu).", file_size);
-			return false;
+			return;
 		}
 
 		u8 *file_contents = buffer_calloc(buffer, 1, file_size);
@@ -544,11 +552,18 @@ Status buffer_load_file(TextBuffer *buffer, char const *filename) {
 		if (!success) {
 			buffer_free(buffer);
 		}
-		return success;
 	} else {
 		buffer_seterr(buffer, "File %s does not exist.", filename);
-		return false;
 	}
+}
+
+void buffer_new_file(TextBuffer *buffer, char const *filename) {
+	buffer_free(buffer);
+
+	buffer->filename = filename;
+	buffer->lines_capacity = 4;
+	buffer->lines = buffer_calloc(buffer, buffer->lines_capacity, sizeof *buffer->lines);
+	buffer->nlines = 1;
 }
 
 bool buffer_save(TextBuffer *buffer) {
@@ -1743,7 +1758,7 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 			char32_t c = *p;
 
 			switch (c) {
-			case U'\n': assert(0);
+			case U'\n': assert(0); break;
 			case U'\r': break; // for CRLF line endings
 			case U'\t': {
 				uint tab_width = buffer->settings->tab_width;
