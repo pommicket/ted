@@ -18,22 +18,17 @@ no_warn_end
 
 #define TED_PATH_MAX 256
 
-#include "command.h"
+#include "text.h"
 #include "util.c"
-#include "filesystem.c"
-#include "colors.c"
-typedef struct {
-	float cursor_blink_time_on, cursor_blink_time_off;
-	u32 colors[COLOR_COUNT];
-	u8 tab_width;
-	u8 cursor_width;
-	u8 undo_save_time;
-} Settings;
-#include "time.c"
-#include "unicode.h"
 #define MATH_GL
 #include "math.c"
-#include "text.h"
+
+#include "unicode.h"
+#include "command.h"
+#include "colors.h"
+#include "ted.h"
+#include "filesystem.c"
+#include "time.c"
 #include "string32.c"
 #include "arr.c"
 #include "buffer.c"
@@ -55,38 +50,6 @@ static void die(char const *fmt, ...) {
 	}
 
 	exit(EXIT_FAILURE);
-}
-
-// should the working directory be searched for files? set to true if the executable isn't "installed"
-static bool ted_search_cwd = false;
-#if _WIN32
-// @TODO
-#else
-static char const *const ted_global_data_dir = "/usr/share/ted";
-#endif
-
-// Check the various places a file could be, and return the full path.
-static Status ted_get_file(char const *name, char *out, size_t outsz) {
-#if _WIN32
-	#error "@TODO(windows)"
-#else
-	if (ted_search_cwd && fs_file_exists(name)) {
-		// check in current working directory
-		str_cpy(out, outsz, name);
-		return true;
-	}
-
-	char *home = getenv("HOME");
-	if (home) {
-		str_printf(out, outsz, "%s/.local/share/ted/%s", home, name);
-		if (!fs_file_exists(out)) {
-			str_printf(out, outsz, "%s/%s", ted_global_data_dir, name);
-			if (!fs_file_exists(out))
-				return false;
-		}
-	}
-	return true;
-#endif
 }
 
 #if _WIN32
@@ -176,22 +139,13 @@ int main(int argc, char **argv) {
 
 	SDL_GL_SetSwapInterval(1); // vsync
 
-	Font *font = NULL;
-	{
-		char font_filename[TED_PATH_MAX];
-		if (ted_get_file("assets/font.ttf", font_filename, sizeof font_filename)) {
-			font = text_font_load(font_filename, 16);
-			if (!font) {
-				die("Couldn't load font: %s", text_get_err());
-			}
-		} else {
-			die("Couldn't find font file. There is probably a problem with your ted installation.");
-		}
-	}
+	ted_load_font(ted);
+	if (ted_haserr(ted))
+		die("Error loadng font: %s", ted_geterr(ted));
 	
 	TextBuffer text_buffer;
 	TextBuffer *buffer = &text_buffer;
-	buffer_create(buffer, font, settings);
+	buffer_create(buffer, ted);
 	ted->active_buffer = buffer;
 
 	char const *starting_filename = "Untitled";
@@ -220,6 +174,9 @@ int main(int argc, char **argv) {
 	Uint32 time_at_last_frame = SDL_GetTicks();
 
 	bool quit = false;
+	bool ctrl_down = false;
+	bool shift_down = false;
+	bool alt_down = false;
 	while (!quit) {
 	#if DEBUG
 		//printf("\033[H\033[2J");
@@ -227,14 +184,11 @@ int main(int argc, char **argv) {
 
 		SDL_Event event;
 		Uint8 const *keyboard_state = SDL_GetKeyboardState(NULL);
-		bool ctrl_down = keyboard_state[SDL_SCANCODE_LCTRL] || keyboard_state[SDL_SCANCODE_RCTRL];
-		bool shift_down = keyboard_state[SDL_SCANCODE_LSHIFT] || keyboard_state[SDL_SCANCODE_RSHIFT];
-		bool alt_down = keyboard_state[SDL_SCANCODE_LALT] || keyboard_state[SDL_SCANCODE_RALT];
-		u32 key_modifier = (u32)ctrl_down << KEY_MODIFIER_CTRL_BIT
-			| (u32)shift_down << KEY_MODIFIER_SHIFT_BIT
-			| (u32)alt_down << KEY_MODIFIER_ALT_BIT;
 
 		while (SDL_PollEvent(&event)) {
+			u32 key_modifier = (u32)ctrl_down << KEY_MODIFIER_CTRL_BIT
+				| (u32)shift_down << KEY_MODIFIER_SHIFT_BIT
+				| (u32)alt_down << KEY_MODIFIER_ALT_BIT;
 			// @TODO: make a function to handle text buffer events
 			switch (event.type) {
 			case SDL_QUIT:
@@ -279,6 +233,18 @@ int main(int argc, char **argv) {
 				break;
 			case SDL_KEYDOWN: {
 				SDL_Scancode scancode = event.key.keysym.scancode;
+				switch (scancode) {
+				case SDL_SCANCODE_LCTRL:
+				case SDL_SCANCODE_RCTRL:
+					ctrl_down = true; break;
+				case SDL_SCANCODE_LSHIFT:
+				case SDL_SCANCODE_RSHIFT:
+					shift_down = true; break;
+				case SDL_SCANCODE_LALT:
+				case SDL_SCANCODE_RALT:
+					alt_down = true; break;
+				default: break;
+				}
 				SDL_Keymod modifier = event.key.keysym.mod;
 				u32 key_combo = (u32)scancode << 3 |
 					(u32)((modifier & (KMOD_LCTRL|KMOD_RCTRL)) != 0) << KEY_MODIFIER_CTRL_BIT |
@@ -298,12 +264,36 @@ int main(int argc, char **argv) {
 					}
 				}
 			} break;
+			case SDL_KEYUP: {
+				SDL_Scancode scancode = event.key.keysym.scancode;
+				switch (scancode) {
+				case SDL_SCANCODE_LCTRL:
+				case SDL_SCANCODE_RCTRL:
+					ctrl_down = false; break;
+				case SDL_SCANCODE_LSHIFT:
+				case SDL_SCANCODE_RSHIFT:
+					shift_down = false; break;
+				case SDL_SCANCODE_LALT:
+				case SDL_SCANCODE_RALT:
+					alt_down = false; break;
+				default: break;
+				}
+			} break;
 			case SDL_TEXTINPUT: {
 				char *text = event.text.text;
-				buffer_insert_utf8_at_cursor(buffer, text);
+				if (key_modifier == 0) // unfortunately, some key combinations like ctrl+minus still register as a "-" text input event
+					buffer_insert_utf8_at_cursor(buffer, text);
 			} break;
 			}
+
+			if (ted_haserr(ted)) {
+				die("%s", ted_geterr(ted));
+			}
 		}
+
+		u32 key_modifier = (u32)ctrl_down << KEY_MODIFIER_CTRL_BIT
+			| (u32)shift_down << KEY_MODIFIER_SHIFT_BIT
+			| (u32)alt_down << KEY_MODIFIER_ALT_BIT;
 
 		double frame_dt;
 		{
@@ -351,7 +341,7 @@ int main(int argc, char **argv) {
 			float x1 = 50, y1 = 50, x2 = window_widthf-50, y2 = window_heightf-50;
 			buffer_render(buffer, x1, y1, x2, y2);
 			if (text_has_err()) {
-				debug_println("Text error: %s\n", text_get_err());
+				die("Text error: %s\n", text_get_err());
 				break;
 			}
 		}
@@ -369,7 +359,7 @@ int main(int argc, char **argv) {
 	SDL_DestroyWindow(window);
 	SDL_Quit();
 	buffer_free(buffer);
-	text_font_free(font);
+	text_font_free(ted->font);
 	free(ted);
 #if _WIN32
 	for (int i = 0; i < argc; ++i)

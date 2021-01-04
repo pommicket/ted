@@ -16,7 +16,6 @@ static bool util_is_power_of_2(u64 x) {
 }
 
 static void util_zero_memory(void *mem, size_t size) {
-	extern void *memset(void *s, int c, size_t n);
 	memset(mem, 0, size);
 }
 

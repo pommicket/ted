@@ -19,6 +19,8 @@ char const *command_to_str(Command c) {
 
 void command_execute(Ted *ted, Command c, i64 argument) {
 	TextBuffer *buffer = ted->active_buffer;
+	Settings *settings = &ted->settings;
+
 	switch (c) {
 	case CMD_UNKNOWN:
 	case CMD_COUNT:
@@ -120,7 +122,23 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 	case CMD_REDO:
 		buffer_redo(buffer, argument);
 		break;
+	
+	case CMD_TEXT_SIZE_INCREASE: {
+		i64 new_text_size = settings->text_size + argument;
+		if (new_text_size >= TEXT_SIZE_MIN && new_text_size <= TEXT_SIZE_MAX) {
+			settings->text_size = (u16)new_text_size;
+			ted_load_font(ted);
+		}
+	} break;
+	case CMD_TEXT_SIZE_DECREASE: {
+		i64 new_text_size = settings->text_size - argument;	
+		if (new_text_size >= TEXT_SIZE_MIN && new_text_size <= TEXT_SIZE_MAX) {
+			settings->text_size = (u16)new_text_size;
+			ted_load_font(ted);
+		}
+	} break;
 	}
+
 	if (buffer_haserr(buffer)) {
 		strncpy(ted->error, buffer_geterr(buffer), sizeof ted->error - 1);
 		buffer_clearerr(buffer);

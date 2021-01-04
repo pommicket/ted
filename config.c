@@ -106,7 +106,7 @@ static u32 config_parse_key_combo(ConfigReader *cfg, char const *str) {
 			{"Tilde", "~", SDL_SCANCODE_GRAVE, 1}
 		};
 
-		// @OPTIMIZE: sort key_names; do a binary search
+		// @OPTIMIZE: sort key_names (and split keyname1/2); do a binary search
 		for (size_t i = 0; i < arr_count(key_names); ++i) {
 			KeyName const *k = &key_names[i];
 			if (streq(str, k->keyname1) || (k->keyname2 && streq(str, k->keyname2))) {
@@ -285,6 +285,12 @@ void config_read(Ted *ted, char const *filename) {
 											settings->cursor_blink_time_off = (float)floating;
 										} else {
 											config_err(cfg, "Invalid cursor blink time: %s.", value);
+										}
+									} else if (streq(key, "text-size")) {
+										if (is_integer && integer >= TEXT_SIZE_MIN && integer <= TEXT_SIZE_MAX) {
+											settings->text_size = (u16)integer;
+										} else {
+											config_err(cfg, "Invalid text size: %s.", value);
 										}
 									} else {
 										config_err(cfg, "Unrecognized core setting: %s.", key);

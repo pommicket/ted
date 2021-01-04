@@ -47,10 +47,10 @@ static void text_set_err(char const *fmt, ...) {
 	}
 }
 
-static void text_load_char_page(Font *font, int page) {
+static Status text_load_char_page(Font *font, int page) {
 	if (font->char_pages[page]) {
 		// already loaded
-		return;
+		return true;
 	}
 	font->char_pages[page] = calloc(CHAR_PAGE_SIZE, sizeof *font->char_pages[page]);
 	for (int bitmap_width = 128, bitmap_height = 128; bitmap_width <= 4096; bitmap_width *= 2, bitmap_height *= 2) {
@@ -93,7 +93,9 @@ static void text_load_char_page(Font *font, int page) {
 	if (text_has_err()) {
 		free(font->char_pages[page]);
 		font->char_pages[page] = NULL;
+		return false;
 	}
+	return true;
 }
 
 Font *text_font_load(char const *ttf_filename, float font_size) {
@@ -114,8 +116,8 @@ Font *text_font_load(char const *ttf_filename, float font_size) {
 				if (bytes_read == file_size) {
 					font->char_height = font_size;
 					font->ttf_data = file_data;
-					text_load_char_page(font, 0); // load page with Latin text, etc.
-					{ // calculate width of the character 'a'
+					if (text_load_char_page(font, 0)) { // load page with Latin text, etc.
+						// calculate width of the character 'a'
 						stbtt_aligned_quad q = {0};
 						float x = 0, y = 0;
 						stbtt_GetBakedQuad(font->char_pages[0], font->tex_widths[0], font->tex_heights[0],
@@ -158,11 +160,12 @@ static void text_render_with_page(Font *font, int page) {
 			// we were rendering chars from another page.
 			glEnd(); // stop doing that
 		}
-		text_load_char_page(font, page); // load the page if necessary
-		glEnable(GL_TEXTURE_2D);
-		glBindTexture(GL_TEXTURE_2D, font->textures[page]);
+		if (text_load_char_page(font, page)) { // load the page if necessary
+			glEnable(GL_TEXTURE_2D);
+			glBindTexture(GL_TEXTURE_2D, font->textures[page]);
+			font->curr_page = page;
+		}
 		glBegin(GL_QUADS);
-		font->curr_page = page;
 	}
 }
 

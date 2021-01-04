@@ -1,50 +1,9 @@
 // Text buffers - These store the contents of a file.
 
-// a position in the buffer
-typedef struct {
-	u32 line;
-	u32 index; // index of character in line (not the same as column, since a tab is settings->tab_width columns)
-} BufferPos;
-
-typedef struct {
-	u32 len;
-	u32 capacity;
-	char32_t *str;
-} Line;
-
-// this refers to replacing prev_len characters (found in prev_text) at pos with new_len characters
-typedef struct BufferEdit {
-	BufferPos pos;
-	u32 new_len;
-	u32 prev_len;
-	char32_t *prev_text;
-	double time; // time at start of edit (i.e. the time just before the edit), in seconds since epoch
-} BufferEdit;
-
-typedef struct {
-	char const *filename;
-	Settings *settings;
-	double scroll_x, scroll_y; // number of characters scrolled in the x/y direction
-	Font *font;
-	BufferPos cursor_pos;
-	BufferPos selection_pos; // if selection is true, the text between selection_pos and cursor_pos is selected.
-	bool selection;
-	bool store_undo_events; // set to false to disable undo events
-	float x1, y1, x2, y2;
-	u32 nlines;
-	u32 lines_capacity;
-	Line *lines;
-	char error[128];
-	BufferEdit *undo_history; // dynamic array of undo history
-	BufferEdit *redo_history; // dynamic array of redo history
-} TextBuffer;
-
-
-void buffer_create(TextBuffer *buffer, Font *font, Settings *settings) {
+void buffer_create(TextBuffer *buffer, Ted *ted) {
 	util_zero_memory(buffer, sizeof *buffer);
-	buffer->font = font;
 	buffer->store_undo_events = true;
-	buffer->settings = settings;
+	buffer->ted = ted;
 }
 
 // this is a macro so we get -Wformat warnings
@@ -153,6 +112,16 @@ BufferPos buffer_end_of_file(TextBuffer *buffer) {
 	return (BufferPos){.line = buffer->nlines - 1, .index = buffer->lines[buffer->nlines-1].len};
 }
 
+// Get the font used for this buffer.
+static inline Font *buffer_font(TextBuffer *buffer) {
+	return buffer->ted->font;
+}
+
+// Get the settings used for this buffer.
+static inline Settings *buffer_settings(TextBuffer *buffer) {
+	return &buffer->ted->settings;
+}
+
 // Returns a simple checksum of the buffer.
 // This is only used for testing, and shouldn't be relied on.
 static u64 buffer_checksum(TextBuffer *buffer) {
@@ -211,7 +180,7 @@ static BufferPos buffer_pos_advance(TextBuffer *buffer, BufferPos pos, size_t nc
 	while (line != end) {
 		u32 chars_from_this_line = line->len - index;
 		if (chars_left <= chars_from_this_line) {
-			index += chars_left;
+			index += (u32)chars_left;
 			pos.index = index;
 			pos.line = (u32)(line - buffer->lines);
 			return pos;
@@ -380,7 +349,7 @@ static bool buffer_edit_does_anything(TextBuffer *buffer, BufferEdit *edit) {
 // has enough time passed since the last edit that we should create a new one?
 static bool buffer_edit_split(TextBuffer *buffer) {
 	double curr_time = time_get_seconds();
-	double undo_time_cutoff = buffer->settings->undo_save_time; // only keep around edits for this long (in seconds).
+	double undo_time_cutoff = buffer_settings(buffer)->undo_save_time; // only keep around edits for this long (in seconds).
 	BufferEdit *last_edit = arr_lastp(buffer->undo_history);
 	if (!last_edit) return true;
 	return curr_time - last_edit->time > undo_time_cutoff;
@@ -466,8 +435,7 @@ void buffer_free(TextBuffer *buffer) {
 	arr_free(buffer->undo_history);
 	arr_free(buffer->redo_history);
 
-	Settings *settings = buffer->settings;
-	Font *font = buffer->font;
+	Ted *ted = buffer->ted;
 
 	// zero buffer, except for error
 	char error[sizeof buffer->error];
@@ -475,7 +443,7 @@ void buffer_free(TextBuffer *buffer) {
 	memset(buffer, 0, sizeof *buffer);
 	memcpy(buffer->error, error, sizeof error);
 
-	buffer_create(buffer, font, settings);
+	buffer_create(buffer, ted);
 }
 
 
@@ -611,10 +579,10 @@ static void buffer_print(TextBuffer const *buffer) {
 static u32 buffer_index_to_column(TextBuffer *buffer, u32 line, u32 index) {
 	char32_t *str = buffer->lines[line].str;
 	u32 col = 0;
+	uint tab_width = buffer_settings(buffer)->tab_width;
 	for (u32 i = 0; i < index; ++i) {
 		switch (str[i]) {
 		case U'\t': {
-			uint tab_width = buffer->settings->tab_width;
 			do
 				++col;
 			while (col % tab_width);
@@ -635,10 +603,10 @@ static u32 buffer_column_to_index(TextBuffer *buffer, u32 line, u32 column) {
 	char32_t *str = buffer->lines[line].str;
 	u32 len = buffer->lines[line].len;
 	u32 col = 0;
+	uint tab_width = buffer_settings(buffer)->tab_width;
 	for (u32 i = 0; i < len; ++i) {
 		switch (str[i]) {
 		case U'\t': {
-			uint tab_width = buffer->settings->tab_width;
 			do {
 				if (col == column)
 					return i;
@@ -679,12 +647,12 @@ void buffer_text_dimensions(TextBuffer *buffer, u32 *lines, u32 *columns) {
 
 // returns the number of rows of text that can fit in the buffer, rounded down.
 int buffer_display_lines(TextBuffer *buffer) {
-	return (int)((buffer->y2 - buffer->y1) / text_font_char_height(buffer->font));
+	return (int)((buffer->y2 - buffer->y1) / text_font_char_height(buffer_font(buffer)));
 }
 
 // returns the number of columns of text that can fit in the buffer, rounded down.
 int buffer_display_cols(TextBuffer *buffer) {
-	return (int)((buffer->x2 - buffer->x1) / text_font_char_width(buffer->font));
+	return (int)((buffer->x2 - buffer->x1) / text_font_char_width(buffer_font(buffer)));
 }
 
 // make sure we don't scroll too far
@@ -729,9 +697,9 @@ v2 buffer_pos_to_pixels(TextBuffer *buffer, BufferPos pos) {
 	u32 line = pos.line, index = pos.index;
 	// we need to convert the index to a column
 	u32 col = buffer_index_to_column(buffer, line, index);
-	float x = (float)((double)col  - buffer->scroll_x) * text_font_char_width(buffer->font) + buffer->x1;
-	float y = (float)((double)line - buffer->scroll_y) * text_font_char_height(buffer->font) + buffer->y1
-			+ text_font_char_height(buffer->font) * 0.2f; // slightly nudge
+	Font *font = buffer_font(buffer);
+	float x = (float)((double)col  - buffer->scroll_x) * text_font_char_width(font) + buffer->x1;
+	float y = (float)((double)line - buffer->scroll_y + 0.2f /* nudge */) * text_font_char_height(font) + buffer->y1;
 	return V2(x, y);
 }
 
@@ -739,12 +707,13 @@ v2 buffer_pos_to_pixels(TextBuffer *buffer, BufferPos pos) {
 // returns false if the position is not inside the buffer.
 bool buffer_pixels_to_pos(TextBuffer *buffer, v2 pixel_coords, BufferPos *pos) {
 	float x = pixel_coords.x, y = pixel_coords.y;
+	Font *font = buffer_font(buffer);
 	pos->line = pos->index = 0;
 
 	x -= buffer->x1;
 	y -= buffer->y1;
-	x /= text_font_char_width(buffer->font);
-	y /= text_font_char_height(buffer->font);
+	x /= text_font_char_width(font);
+	y /= text_font_char_height(font);
 	double display_col = (double)x;
 	if (display_col < 0 || display_col >= buffer_display_cols(buffer))
 		return false;
@@ -1139,7 +1108,7 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 			buffer_edit(buffer, pos, 0, (u32)str.len);
 		} else {
 			// merge this edit into the previous one.
-			last_edit->new_len += str.len;
+			last_edit->new_len += (u32)str.len;
 		}
 
 	}
@@ -1386,7 +1355,7 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 			if (new_text_del_end > last_edit->new_len) new_text_del_end = last_edit->new_len;
 			if (new_text_del_end > new_text_del_start) {
 				// shrink length to get rid of that text
-				last_edit->new_len -= new_text_del_end - new_text_del_start;
+				last_edit->new_len -= (u32)(new_text_del_end - new_text_del_start);
 			}
 		}
 
@@ -1617,13 +1586,16 @@ void buffer_check_valid(TextBuffer *buffer) {
 
 // Render the text buffer in the given rectangle
 void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
-	Font *font = buffer->font;
+	// Correct the scroll, because the window size might have changed
+	buffer_correct_scroll(buffer);
+
+	Font *font = buffer_font(buffer);
 	u32 nlines = buffer->nlines;
 	Line *lines = buffer->lines;
 	float char_width = text_font_char_width(font),
 		char_height = text_font_char_height(font);
 	float header_height = char_height;
-	Settings *settings = buffer->settings;
+	Settings *settings = buffer_settings(buffer);
 	u32 *colors = settings->colors;
 
 	// get screen coordinates of cursor
@@ -1693,7 +1665,6 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 	u32 column = 0;
 
 	u32 start_line = (u32)buffer->scroll_y; // line to start rendering from
-	//debug_print("Rendering from " U32_FMT, start_line);
 
 	if (buffer->selection) { // draw selection
 		glBegin(GL_QUADS);
@@ -1761,7 +1732,7 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 			case U'\n': assert(0); break;
 			case U'\r': break; // for CRLF line endings
 			case U'\t': {
-				uint tab_width = buffer->settings->tab_width;
+				uint tab_width = settings->tab_width;
 				do {
 					text_render_char(font, &text_state, U' ');
 					++column;
@@ -1778,7 +1749,6 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 		text_state.x = render_start_x;
 		if (text_state.y > text_state.max_y) {
 			// made it to the bottom of the buffer view.
-			//debug_println(" to " U32_FMT ".", line_idx);
 			break;
 		}
 		text_state.y += text_font_char_height(font);
