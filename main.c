@@ -21,12 +21,18 @@ no_warn_end
 #include "util.c"
 #define MATH_GL
 #include "math.c"
+#if _WIN32
+#include "filesystem-win.c"
+#elif __unix__
+#include "filesystem-posix.c"
+#else
+#error "Unrecognized operating system."
+#endif
 
 #include "unicode.h"
 #include "command.h"
 #include "colors.h"
 #include "ted.h"
-#include "filesystem.c"
 #include "time.c"
 #include "string32.c"
 #include "arr.c"
@@ -34,6 +40,7 @@ no_warn_end
 #include "ted-base.c"
 #include "command.c"
 #include "config.c"
+#include "menu.c"
 
 static void die(char const *fmt, ...) {
 	char buf[256] = {0};
@@ -80,8 +87,12 @@ int main(int argc, char **argv) {
 		// @TODO(windows): GetModuleFileNameW
 	#else
 		ssize_t len = readlink("/proc/self/exe", executable_path, sizeof executable_path - 1);
-		executable_path[len] = '\0';
-		ted_search_cwd = !str_is_prefix(executable_path, "/usr");
+		if (len == -1) {
+			// some posix systems don't have /proc/self/exe. oh well.
+		} else {
+			executable_path[len] = '\0';
+			ted_search_cwd = !str_is_prefix(executable_path, "/usr");
+		}
 	#endif
 	}
 
@@ -173,7 +184,7 @@ int main(int argc, char **argv) {
 	}
 
 
-	u32 *colors = settings->colors;
+	u32 *colors = settings->colors; (void)colors;
 
 	Uint32 time_at_last_frame = SDL_GetTicks();
 
@@ -185,6 +196,14 @@ int main(int argc, char **argv) {
 	#if DEBUG
 		//printf("\033[H\033[2J");
 	#endif
+
+		{
+			int window_width_int = 0, window_height_int = 0;
+			SDL_GetWindowSize(window, &window_width_int, &window_height_int);
+			ted->window_width = (float)window_width_int;
+			ted->window_height = (float)window_height_int;
+		}
+		float window_width = ted->window_width, window_height = ted->window_height;
 
 		SDL_Event event;
 		Uint8 const *keyboard_state = SDL_GetKeyboardState(NULL);
@@ -338,14 +357,11 @@ int main(int argc, char **argv) {
 		}
 			
 
-		int window_width = 0, window_height = 0;
-		SDL_GetWindowSize(window, &window_width, &window_height);
-		float window_widthf = (float)window_width, window_heightf = (float)window_height;
 
 		// set up GL
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		glViewport(0, 0, window_width, window_height);
+		glViewport(0, 0, (GLsizei)window_width, (GLsizei)window_height);
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
 		// pixel coordinates; down is positive y
@@ -358,7 +374,7 @@ int main(int argc, char **argv) {
 		glClear(GL_COLOR_BUFFER_BIT);
 
 		{
-			float x1 = 50, y1 = 50, x2 = window_widthf-50, y2 = window_heightf-50;
+			float x1 = 50, y1 = 50, x2 = window_width-50, y2 = window_height-50;
 			buffer_render(&text_buffer, x1, y1, x2, y2);
 			if (text_has_err()) {
 				die("Text error: %s\n", text_get_err());
@@ -366,16 +382,9 @@ int main(int argc, char **argv) {
 			}
 		}
 
-		if (ted->menu) {
-			glBegin(GL_QUADS);
-			gl_color_rgba(colors[COLOR_MENU_BG]);
-			rect_render(rect(V2(0, 0), V2(window_widthf, window_heightf)));
-			glEnd();
-			switch (ted->menu) {
-			case MENU_NONE: assert(0); break;
-			case MENU_OPEN:
-				break;
-			}
+		Menu menu = ted->menu;
+		if (menu) {
+			menu_render(ted, menu);
 		}
 
 	#if DEBUG

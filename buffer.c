@@ -1603,9 +1603,12 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 	float char_width = text_font_char_width(font),
 		char_height = text_font_char_height(font);
 	float header_height = char_height;
+
 	Ted *ted = buffer->ted;
 	Settings *settings = buffer_settings(buffer);
 	u32 *colors = settings->colors;
+
+	float border_thickness = settings->border_thickness;
 
 	// get screen coordinates of cursor
 	v2 cursor_display_pos = buffer_pos_to_pixels(buffer, buffer->cursor_pos);
@@ -1614,15 +1617,15 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 
 	u32 border_color = colors[COLOR_BORDER]; // color of border around buffer
 
-	// bounding box around buffer & header
+	// bounding box around buffer
+	glBegin(GL_QUADS);
 	gl_color_rgba(border_color);
-	glBegin(GL_LINE_STRIP);
-	glVertex2f(x1,y1);
-	glVertex2f(x1,y2);
-	glVertex2f(x2,y2);
-	glVertex2f(x2,y1);
-	glVertex2f(x1-1,y1);
+	rect_render_border(rect4(x1, y1, x2, y2), border_thickness);
 	glEnd();
+	x1 += border_thickness * 0.5f;
+	y1 += border_thickness * 0.5f;
+	x2 -= border_thickness * 0.5f;
+	y2 -= border_thickness * 0.5f;
 
 	TextRenderState text_state = {
 		.x = 0, .y = 0,
@@ -1645,17 +1648,22 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 		x = x2 - checksum_w;
 		text_render_with_state(font, &text_state, checksum, x, y);
 	#endif
+
+		y1 += header_height + 0.5f * border_thickness;
+
+		// line separating header from buffer proper
+		glBegin(GL_QUADS);
+		gl_color_rgba(border_color);
+		glVertex2f(x1, y1 - 0.5f * border_thickness);
+		glVertex2f(x2, y1 - 0.5f * border_thickness);
+		glVertex2f(x2, y1 + 0.5f * border_thickness);
+		glVertex2f(x1, y1 + 0.5f * border_thickness);
+		glEnd();
+		y1 += 0.5f * border_thickness;
 	}
 	
-	y1 += header_height;
 
 	buffer->x1 = x1; buffer->y1 = y1; buffer->x2 = x2; buffer->y2 = y2;
-	// line separating header from buffer proper
-	glBegin(GL_LINES);
-	gl_color_rgba(border_color);
-	glVertex2f(x1, y1);
-	glVertex2f(x2, y1);
-	glEnd();
 
 	
 	// highlight line cursor is on

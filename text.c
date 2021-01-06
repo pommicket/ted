@@ -210,8 +210,8 @@ void text_render_char(Font *font, TextRenderState *state, char32_t c) {
 		}
 		if (x1 >= max_x) {
 			// right side of character is clipped
-			s1 = (max_x-x0) / (x1-x0) * (s1-s0) + s0;
-			x1 = max_x;
+			s1 = (max_x-1-x0) / (x1-x0) * (s1-s0) + s0;
+			x1 = max_x-1;
 		}
 		if (y0 < min_y) {
 			// top side of character is clipped
@@ -220,8 +220,8 @@ void text_render_char(Font *font, TextRenderState *state, char32_t c) {
 		}
 		if (y1 >= max_y) {
 			// bottom side of character is clipped
-			t1 = (max_y-y0) / (y1-y0) * (t1-t0) + t0;
-			y1 = max_y;
+			t1 = (max_y-1-y0) / (y1-y0) * (t1-t0) + t0;
+			y1 = max_y-1;
 		}
 		glTexCoord2f(s0,t0); glVertex2f(x0,y0);
 		glTexCoord2f(s0,t1); glVertex2f(x0,y1);

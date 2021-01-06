@@ -8,6 +8,7 @@ typedef struct {
 	u8 tab_width;
 	u8 cursor_width;
 	u8 undo_save_time;
+	u8 border_thickness;
 } Settings;
 
 #define SCANCODE_COUNT 0x120 // SDL scancodes should be less than this value.
@@ -77,6 +78,7 @@ typedef struct Ted {
 	// the old active buffer needs to be restored. that's what this stores.
 	TextBuffer *prev_active_buffer; 
 	Settings settings;
+	float window_width, window_height;
 	Menu menu;
 	KeyAction key_actions[KEY_COMBO_COUNT];
 	char error[256];

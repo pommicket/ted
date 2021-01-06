@@ -7,6 +7,7 @@ ENUM_U16 {
 	COLOR_BORDER,
 	COLOR_TEXT,
 	COLOR_SELECTION_BG,
+	COLOR_MENU_BACKDROP,
 	COLOR_MENU_BG,
 
 	COLOR_COUNT
@@ -25,6 +26,7 @@ static ColorName const color_names[COLOR_COUNT] = {
 	{COLOR_BORDER, "border"},
 	{COLOR_TEXT, "text"},
 	{COLOR_SELECTION_BG, "selection-bg"},
+	{COLOR_MENU_BACKDROP, "menu-backdrop"},
 	{COLOR_MENU_BG, "menu-bg"}
 };
 

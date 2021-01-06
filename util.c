@@ -146,3 +146,12 @@ static bool str_satisfies(char const *s, int (*predicate)(int)) {
 	return true;
 }
 
+// function to be passed into qsort for case insensitive sorting
+static int str_qsort_case_insensitive_cmp(const void *av, const void *bv) {
+	char const *const *a = av, *const *b = bv;
+#if _WIN32
+	return _stricmp(*a, *b);
+#else
+	return strcasecmp(*a, *b);
+#endif
+}

@@ -292,6 +292,12 @@ void config_read(Ted *ted, char const *filename) {
 										} else {
 											config_err(cfg, "Invalid text size: %s.", value);
 										}
+									} else if (streq(key, "border-thickness")) {
+										if (is_integer && integer > 0 && integer < 30) {
+											settings->border_thickness = (u8)integer;
+										} else {
+											config_err(cfg, "Invalid border thickness: %s.", value);
+										}
 									} else {
 										config_err(cfg, "Unrecognized core setting: %s.", key);
 									}

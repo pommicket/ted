@@ -655,7 +655,8 @@ static void rect_render(Rect r) {
 	glVertex2f(x1, y2);
 }
 
-static void rect_render_border(Rect r, float border_radius) {
+static void rect_render_border(Rect r, float border_thickness) {
+	float border_radius = border_thickness * 0.5f;
 	float x1 = r.pos.x, y1 = r.pos.y, x2 = x1 + r.size.x, y2 = y1 + r.size.y;
 	//float a = 0.3f; // for debugging
 
