@@ -65,10 +65,19 @@ typedef struct {
 	BufferEdit *redo_history; // dynamic array of redo history
 } TextBuffer;
 
+ENUM_U16 {
+	MENU_NONE,
+	MENU_OPEN
+} ENUM_U16_END(Menu);
+
 typedef struct Ted {
 	Font *font;
 	TextBuffer *active_buffer;
+	// while a menu or something is open, there is no active buffer. when the menu is closed,
+	// the old active buffer needs to be restored. that's what this stores.
+	TextBuffer *prev_active_buffer; 
 	Settings settings;
+	Menu menu;
 	KeyAction key_actions[KEY_COMBO_COUNT];
 	char error[256];
 } Ted;

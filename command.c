@@ -21,6 +21,7 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 	TextBuffer *buffer = ted->active_buffer;
 	Settings *settings = &ted->settings;
 
+
 	switch (c) {
 	case CMD_UNKNOWN:
 	case CMD_COUNT:
@@ -30,97 +31,100 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		break;
 	
 	case CMD_LEFT:
-		buffer_cursor_move_left(buffer, argument);
+		if (buffer) buffer_cursor_move_left(buffer, argument);
 		break;
 	case CMD_RIGHT:
-		buffer_cursor_move_right(buffer, argument);
+		if (buffer) buffer_cursor_move_right(buffer, argument);
 		break;
 	case CMD_UP:
-		buffer_cursor_move_up(buffer, argument);
+		if (buffer) buffer_cursor_move_up(buffer, argument);
 		break;
 	case CMD_DOWN:
-		buffer_cursor_move_down(buffer, argument);
+		if (buffer) buffer_cursor_move_down(buffer, argument);
 		break;
 	case CMD_SELECT_LEFT:
-		buffer_select_left(buffer, argument);
+		if (buffer) buffer_select_left(buffer, argument);
 		break;
 	case CMD_SELECT_RIGHT:
-		buffer_select_right(buffer, argument);
+		if (buffer) buffer_select_right(buffer, argument);
 		break;
 	case CMD_SELECT_UP:
-		buffer_select_up(buffer, argument);
+		if (buffer) buffer_select_up(buffer, argument);
 		break;
 	case CMD_SELECT_DOWN:
-		buffer_select_down(buffer, argument);
+		if (buffer) buffer_select_down(buffer, argument);
 		break;
 	case CMD_LEFT_WORD:
-		buffer_cursor_move_left_words(buffer, argument);
+		if (buffer) buffer_cursor_move_left_words(buffer, argument);
 		break;
 	case CMD_RIGHT_WORD:
-		buffer_cursor_move_right_words(buffer, argument);
+		if (buffer) buffer_cursor_move_right_words(buffer, argument);
 		break;
 	case CMD_SELECT_LEFT_WORD:
-		buffer_select_left_words(buffer, argument);
+		if (buffer) buffer_select_left_words(buffer, argument);
 		break;
 	case CMD_SELECT_RIGHT_WORD:
-		buffer_select_right_words(buffer, argument);
+		if (buffer) buffer_select_right_words(buffer, argument);
 		break;
 	case CMD_START_OF_LINE:
-		buffer_cursor_move_to_start_of_line(buffer);
+		if (buffer) buffer_cursor_move_to_start_of_line(buffer);
 		break;
 	case CMD_END_OF_LINE:
-		buffer_cursor_move_to_end_of_line(buffer);
+		if (buffer) buffer_cursor_move_to_end_of_line(buffer);
 		break;
 	case CMD_SELECT_START_OF_LINE:
-		buffer_select_to_start_of_line(buffer);
+		if (buffer) buffer_select_to_start_of_line(buffer);
 		break;
 	case CMD_SELECT_END_OF_LINE:
-		buffer_select_to_end_of_line(buffer);
+		if (buffer) buffer_select_to_end_of_line(buffer);
 		break;
 	case CMD_START_OF_FILE:
-		buffer_cursor_move_to_start_of_file(buffer);
+		if (buffer) buffer_cursor_move_to_start_of_file(buffer);
 		break;
 	case CMD_END_OF_FILE:
-		buffer_cursor_move_to_end_of_file(buffer);
+		if (buffer) buffer_cursor_move_to_end_of_file(buffer);
 		break;
 	case CMD_SELECT_START_OF_FILE:
-		buffer_select_to_start_of_file(buffer);
+		if (buffer) buffer_select_to_start_of_file(buffer);
 		break;
 	case CMD_SELECT_END_OF_FILE:
-		buffer_select_to_end_of_file(buffer);
+		if (buffer) buffer_select_to_end_of_file(buffer);
 		break;
 	case CMD_SELECT_ALL:
-		buffer_select_all(buffer);
+		if (buffer) buffer_select_all(buffer);
 		break;
 
 	case CMD_BACKSPACE:
-		buffer_backspace_at_cursor(buffer, argument);
+		if (buffer) buffer_backspace_at_cursor(buffer, argument);
 		break;
 	case CMD_DELETE:
-		buffer_delete_chars_at_cursor(buffer, argument);
+		if (buffer) buffer_delete_chars_at_cursor(buffer, argument);
 		break;
 	case CMD_BACKSPACE_WORD:
-		buffer_backspace_words_at_cursor(buffer, argument);
+		if (buffer) buffer_backspace_words_at_cursor(buffer, argument);
 		break;
 	case CMD_DELETE_WORD:
-		buffer_delete_words_at_cursor(buffer, argument);
+		if (buffer) buffer_delete_words_at_cursor(buffer, argument);
 		break;
 
 	case CMD_PAGE_DOWN:
-		buffer_page_down(buffer, argument);
+		if (buffer) buffer_page_down(buffer, argument);
 		break;
 	case CMD_PAGE_UP:
-		buffer_page_up(buffer, argument);
+		if (buffer) buffer_page_up(buffer, argument);
 		break;
 	
+	case CMD_OPEN:
+		ted_menu_open(ted, MENU_OPEN);
+		break;
 	case CMD_SAVE:
-		buffer_save(buffer);
+		if (buffer) buffer_save(buffer);
 		break;
 	case CMD_UNDO:
-		buffer_undo(buffer, argument);
+		if (buffer) buffer_undo(buffer, argument);
 		break;
 	case CMD_REDO:
-		buffer_redo(buffer, argument);
+		if (buffer) buffer_redo(buffer, argument);
 		break;
 	
 	case CMD_TEXT_SIZE_INCREASE: {
@@ -137,9 +141,10 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 			ted_load_font(ted);
 		}
 	} break;
+
 	}
 
-	if (buffer_haserr(buffer)) {
+	if (buffer && buffer_haserr(buffer)) {
 		strncpy(ted->error, buffer_geterr(buffer), sizeof ted->error - 1);
 		buffer_clearerr(buffer);
 	}

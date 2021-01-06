@@ -7,6 +7,7 @@ ENUM_U16 {
 	COLOR_BORDER,
 	COLOR_TEXT,
 	COLOR_SELECTION_BG,
+	COLOR_MENU_BG,
 
 	COLOR_COUNT
 } ENUM_U16_END(ColorSetting);
@@ -23,7 +24,8 @@ static ColorName const color_names[COLOR_COUNT] = {
 	{COLOR_CURSOR_LINE_BG, "cursor-line-bg"},
 	{COLOR_BORDER, "border"},
 	{COLOR_TEXT, "text"},
-	{COLOR_SELECTION_BG, "selection-bg"}
+	{COLOR_SELECTION_BG, "selection-bg"},
+	{COLOR_MENU_BG, "menu-bg"}
 };
 
 static ColorSetting color_setting_from_str(char const *str) {

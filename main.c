@@ -1,6 +1,5 @@
 // @TODO:
-// - text size (text-size, :increase-text-size, :decrease-text-size)
-// - put stuff in UserData on windows
+// - Windows installation
 #include "base.h"
 no_warn_start
 #if _WIN32
@@ -143,33 +142,38 @@ int main(int argc, char **argv) {
 	if (ted_haserr(ted))
 		die("Error loadng font: %s", ted_geterr(ted));
 	
-	TextBuffer text_buffer;
-	TextBuffer *buffer = &text_buffer;
-	buffer_create(buffer, ted);
-	ted->active_buffer = buffer;
-
-	char const *starting_filename = "Untitled";
 	
-	switch (argc) {
-	case 0: case 1: break;
-	case 2:
-		starting_filename = argv[1];
-		break;
-	default:	
-		die("Usage: %s [filename]", argv[0]);
-		break;
+	TextBuffer text_buffer;
+	{
+		TextBuffer *buffer = &text_buffer;
+		buffer_create(buffer, ted);
+		ted->active_buffer = buffer;
+
+		char const *starting_filename = "Untitled";
+		
+		switch (argc) {
+		case 0: case 1: break;
+		case 2:
+			starting_filename = argv[1];
+			break;
+		default:	
+			die("Usage: %s [filename]", argv[0]);
+			break;
+		}
+
+		if (fs_file_exists(starting_filename)) {
+			buffer_load_file(buffer, starting_filename);
+			if (buffer_haserr(buffer))
+				die("Error loading file: %s", buffer_geterr(buffer));
+		} else {
+			buffer_new_file(buffer, starting_filename);
+			if (buffer_haserr(buffer))
+				die("Error creating file: %s", buffer_geterr(buffer));
+		}
 	}
 
-	if (fs_file_exists(starting_filename)) {
-		buffer_load_file(buffer, starting_filename);
-		if (buffer_haserr(buffer))
-			die("Error loading file: %s", buffer_geterr(buffer));
-	} else {
-		buffer_new_file(buffer, starting_filename);
-		if (buffer_haserr(buffer))
-			die("Error creating file: %s", buffer_geterr(buffer));
-	}
 
+	u32 *colors = settings->colors;
 
 	Uint32 time_at_last_frame = SDL_GetTicks();
 
@@ -186,6 +190,7 @@ int main(int argc, char **argv) {
 		Uint8 const *keyboard_state = SDL_GetKeyboardState(NULL);
 
 		while (SDL_PollEvent(&event)) {
+			TextBuffer *buffer = ted->active_buffer;
 			u32 key_modifier = (u32)ctrl_down << KEY_MODIFIER_CTRL_BIT
 				| (u32)shift_down << KEY_MODIFIER_SHIFT_BIT
 				| (u32)alt_down << KEY_MODIFIER_ALT_BIT;
@@ -198,25 +203,28 @@ int main(int argc, char **argv) {
 				// scroll with mouse wheel
 				Sint32 dx = event.wheel.x, dy = -event.wheel.y;
 				double scroll_speed = 2.5;
-				buffer_scroll(buffer, dx * scroll_speed, dy * scroll_speed);
+				if (ted->active_buffer)
+					buffer_scroll(ted->active_buffer, dx * scroll_speed, dy * scroll_speed);
 			} break;
 			case SDL_MOUSEBUTTONDOWN:
 				switch (event.button.button) {
 				case SDL_BUTTON_LEFT: {
-					BufferPos pos = {0};
-					if (buffer_pixels_to_pos(buffer, V2((float)event.button.x, (float)event.button.y), &pos)) {
-						if (key_modifier == KEY_MODIFIER_SHIFT) {
-							buffer_select_to_pos(buffer, pos);
-						} else if (key_modifier == 0) {
-							buffer_cursor_move_to_pos(buffer, pos);
-							switch ((event.button.clicks - 1) % 3) {
-							case 0: break; // single-click
-							case 1: // double-click: select word
-								buffer_select_word(buffer);
-								break;
-							case 2: // triple-click: select line
-								buffer_select_line(buffer);
-								break;
+					if (buffer) {
+						BufferPos pos = {0};
+						if (buffer_pixels_to_pos(buffer, V2((float)event.button.x, (float)event.button.y), &pos)) {
+							if (key_modifier == KEY_MODIFIER_SHIFT) {
+								buffer_select_to_pos(buffer, pos);
+							} else if (key_modifier == 0) {
+								buffer_cursor_move_to_pos(buffer, pos);
+								switch ((event.button.clicks - 1) % 3) {
+								case 0: break; // single-click
+								case 1: // double-click: select word
+									buffer_select_word(buffer);
+									break;
+								case 2: // triple-click: select line
+									buffer_select_line(buffer);
+									break;
+								}
 							}
 						}
 					}
@@ -225,9 +233,11 @@ int main(int argc, char **argv) {
 				break;
 			case SDL_MOUSEMOTION:
 				if (event.motion.state == SDL_BUTTON_LMASK) {
-					BufferPos pos = {0};
-					if (buffer_pixels_to_pos(buffer, V2((float)event.button.x, (float)event.button.y), &pos)) {
-						buffer_select_to_pos(buffer, pos);
+					if (buffer) {
+						BufferPos pos = {0};
+						if (buffer_pixels_to_pos(buffer, V2((float)event.button.x, (float)event.button.y), &pos)) {
+							buffer_select_to_pos(buffer, pos);
+						}
 					}
 				}
 				break;
@@ -250,11 +260,19 @@ int main(int argc, char **argv) {
 					(u32)((modifier & (KMOD_LCTRL|KMOD_RCTRL)) != 0) << KEY_MODIFIER_CTRL_BIT |
 					(u32)((modifier & (KMOD_LSHIFT|KMOD_RSHIFT)) != 0) << KEY_MODIFIER_SHIFT_BIT |
 					(u32)((modifier & (KMOD_LALT|KMOD_RALT)) != 0) << KEY_MODIFIER_ALT_BIT;
+				if (key_combo == SDL_SCANCODE_ESCAPE << 3) {
+					// escape key
+					if (ted->menu) {
+						ted_menu_close(ted, true);
+					} else if (buffer) {
+						buffer_disable_selection(buffer);
+					}
+				}
 				if (key_combo < KEY_COMBO_COUNT) {
 					KeyAction *action = &ted->key_actions[key_combo];
 					if (action->command) {
 						command_execute(ted, action->command, action->argument);
-					} else switch (event.key.keysym.sym) {
+					} else if (buffer) switch (event.key.keysym.sym) {
 						case SDLK_RETURN:
 							buffer_insert_char_at_cursor(buffer, U'\n');
 							break;
@@ -281,7 +299,8 @@ int main(int argc, char **argv) {
 			} break;
 			case SDL_TEXTINPUT: {
 				char *text = event.text.text;
-				if (key_modifier == 0) // unfortunately, some key combinations like ctrl+minus still register as a "-" text input event
+				if (buffer
+					&& key_modifier == 0) // unfortunately, some key combinations like ctrl+minus still register as a "-" text input event
 					buffer_insert_utf8_at_cursor(buffer, text);
 			} break;
 			}
@@ -302,19 +321,20 @@ int main(int argc, char **argv) {
 			time_at_last_frame = time_this_frame;
 		}
 
-		if (key_modifier == KEY_MODIFIER_ALT) {
+		TextBuffer *active_buffer = ted->active_buffer;
+		if (active_buffer && key_modifier == KEY_MODIFIER_ALT) {
 			// alt + arrow keys to scroll
 			double scroll_speed = 20.0;
 			double scroll_amount_x = scroll_speed * frame_dt * 1.5; // characters are taller than they are wide
 			double scroll_amount_y = scroll_speed * frame_dt;
 			if (keyboard_state[SDL_SCANCODE_UP])
-				buffer_scroll(buffer, 0, -scroll_amount_y);
+				buffer_scroll(active_buffer, 0, -scroll_amount_y);
 			if (keyboard_state[SDL_SCANCODE_DOWN])
-				buffer_scroll(buffer, 0, +scroll_amount_y);
+				buffer_scroll(active_buffer, 0, +scroll_amount_y);
 			if (keyboard_state[SDL_SCANCODE_LEFT])
-				buffer_scroll(buffer, -scroll_amount_x, 0);
+				buffer_scroll(active_buffer, -scroll_amount_x, 0);
 			if (keyboard_state[SDL_SCANCODE_RIGHT])
-				buffer_scroll(buffer, +scroll_amount_x, 0);
+				buffer_scroll(active_buffer, +scroll_amount_x, 0);
 		}
 			
 
@@ -339,17 +359,27 @@ int main(int argc, char **argv) {
 
 		{
 			float x1 = 50, y1 = 50, x2 = window_widthf-50, y2 = window_heightf-50;
-			buffer_render(buffer, x1, y1, x2, y2);
+			buffer_render(&text_buffer, x1, y1, x2, y2);
 			if (text_has_err()) {
 				die("Text error: %s\n", text_get_err());
 				break;
 			}
 		}
 
+		if (ted->menu) {
+			glBegin(GL_QUADS);
+			gl_color_rgba(colors[COLOR_MENU_BG]);
+			rect_render(rect(V2(0, 0), V2(window_widthf, window_heightf)));
+			glEnd();
+			switch (ted->menu) {
+			case MENU_NONE: assert(0); break;
+			case MENU_OPEN:
+				break;
+			}
+		}
+
 	#if DEBUG
-		//buffer_print_debug(buffer);
-		buffer_check_valid(buffer);
-		//buffer_print_undo_history(buffer);
+		buffer_check_valid(&text_buffer);
 	#endif
 
 		SDL_GL_SwapWindow(window);
@@ -358,7 +388,7 @@ int main(int argc, char **argv) {
 	SDL_GL_DeleteContext(glctx);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
-	buffer_free(buffer);
+	buffer_free(&text_buffer);
 	text_font_free(ted->font);
 	free(ted);
 #if _WIN32

@@ -1258,6 +1258,14 @@ void buffer_select_all(TextBuffer *buffer) {
 	buffer_select_to_pos(buffer, buffer_end_of_file(buffer));
 }
 
+// stop selecting
+void buffer_disable_selection(TextBuffer *buffer) {
+	if (buffer->selection) {
+		buffer->cursor_pos = buffer->selection_pos;
+		buffer->selection = false;
+	}
+}
+
 static void buffer_shorten_line(Line *line, u32 new_len) {
 	assert(line->len >= new_len);
 	line->len = new_len; // @OPTIMIZE(memory): decrease line capacity
@@ -1595,6 +1603,7 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 	float char_width = text_font_char_width(font),
 		char_height = text_font_char_height(font);
 	float header_height = char_height;
+	Ted *ted = buffer->ted;
 	Settings *settings = buffer_settings(buffer);
 	u32 *colors = settings->colors;
 
@@ -1758,7 +1767,8 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 
 	text_chars_end(font);
 
-	{ // render cursor
+	if (buffer == ted->active_buffer) {
+		// render cursor
 		float time_on = settings->cursor_blink_time_on;
 		float time_off = settings->cursor_blink_time_off;
 		bool is_on = true;

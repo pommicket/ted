@@ -82,3 +82,15 @@ static void ted_load_font(Ted *ted) {
 		ted_seterr(ted, "Couldn't find font file. There is probably a problem with your ted installation.");
 	}
 }
+
+static void ted_menu_open(Ted *ted, Menu menu) {
+	ted->menu = menu;
+	ted->prev_active_buffer = ted->active_buffer;
+	ted->active_buffer = NULL;
+}
+
+static void ted_menu_close(Ted *ted, bool restore_prev_active_buffer) {
+	ted->menu = MENU_NONE;
+	if (restore_prev_active_buffer) ted->active_buffer = ted->prev_active_buffer;
+	ted->prev_active_buffer = NULL;
+}

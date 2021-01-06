@@ -34,6 +34,7 @@ ENUM_U16 {
 	CMD_BACKSPACE_WORD,
 	CMD_DELETE_WORD,
 
+	CMD_OPEN,
 	CMD_SAVE,
 	CMD_UNDO,
 	CMD_REDO,
@@ -78,6 +79,7 @@ static CommandName const command_names[CMD_COUNT] = {
 	{"delete", CMD_DELETE},
 	{"backspace-word", CMD_BACKSPACE_WORD},
 	{"delete-word", CMD_DELETE_WORD},
+	{"open", CMD_OPEN},
 	{"save", CMD_SAVE},
 	{"undo", CMD_UNDO},
 	{"redo", CMD_REDO},
