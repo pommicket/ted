@@ -12,7 +12,7 @@ static bool fs_file_exists(char const *path) {
 	return S_ISREG(statbuf.st_mode);
 }
 
-// Returns a NULL-terminated array of the files in this directory, or NULL if the directory does not exist.
+// Returns a NULL-terminated array of the files/directories in this directory, or NULL if the directory does not exist.
 // When you're done with the file names, call free on each one, then on the array.
 // NOTE: The files aren't returned in any particular order!
 static char **fs_list_directory(char const *dirname) {
@@ -29,15 +29,13 @@ static char **fs_list_directory(char const *dirname) {
 		filenames = (char **)calloc(nentries+1, sizeof *filenames);
 
 		while ((ent = readdir(dir))) {
-			if (ent->d_type == DT_REG) {
-				char const *filename = ent->d_name;
-				size_t len = strlen(filename);
-				char *filename_copy = (char *)malloc(len+1);
-				if (!filename_copy) break;
-				strcpy(filename_copy, filename);
-				if (filename_idx < nentries) // this could actually fail if someone creates files between calculating nentries and here. 
-					filenames[filename_idx++] = filename_copy;
-			}
+			char const *filename = ent->d_name;
+			size_t len = strlen(filename);
+			char *filename_copy = (char *)malloc(len+1);
+			if (!filename_copy) break;
+			strcpy(filename_copy, filename);
+			if (filename_idx < nentries) // this could actually fail if someone creates files between calculating nentries and here. 
+				filenames[filename_idx++] = filename_copy;
 		}
 		ret = filenames;
 		closedir(dir);

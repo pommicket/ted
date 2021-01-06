@@ -21,9 +21,7 @@ static char **fs_list_directory(char const *dirname) {
 		int nfiles = 1, idx = 0;
 		char **files;
 		while (FindNextFile(fhandle, &find_data))  {
-			if (!(find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
-				++nfiles;
-			}
+			++nfiles;
 		}
 		FindClose(fhandle);
 		// now, fill out files array
@@ -32,13 +30,11 @@ static char **fs_list_directory(char const *dirname) {
 			fhandle = FindFirstFileA(file_pattern, &find_data);
 			if (fhandle != INVALID_HANDLE_VALUE) {
 				do {
-					if (!(find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
-						if (idx < nfiles) {
-							char *dup = _strdup(find_data.cFileName); 
-							if (dup) {
-								files[idx++] = dup;
-							} else break; // stop now
-						}
+					if (idx < nfiles) {
+						char *dup = _strdup(find_data.cFileName); 
+						if (dup) {
+							files[idx++] = dup;
+						} else break; // stop now
 					}
 				} while (FindNextFile(fhandle, &find_data));
 				files[idx] = NULL;
