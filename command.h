@@ -1,31 +1,31 @@
 ENUM_U16 {
 	CMD_UNKNOWN,
-	CMD_NOOP,
+	CMD_NOOP, // do nothing
 	// movement and selection commands
-	CMD_LEFT,
-	CMD_RIGHT,
-	CMD_UP,
-	CMD_DOWN,
-	CMD_SELECT_LEFT,
+	CMD_LEFT, // move cursor left
+	CMD_RIGHT, // move cursor right
+	CMD_UP, // move cursor up
+	CMD_DOWN, // move cursor down
+	CMD_SELECT_LEFT, // move cursor left, and select
 	CMD_SELECT_RIGHT,
 	CMD_SELECT_UP,
 	CMD_SELECT_DOWN,
-	CMD_LEFT_WORD,
+	CMD_LEFT_WORD, // move cursor left a word
 	CMD_RIGHT_WORD,
 	CMD_SELECT_LEFT_WORD,
 	CMD_SELECT_RIGHT_WORD,
-	CMD_START_OF_LINE,
-	CMD_END_OF_LINE,
-	CMD_SELECT_START_OF_LINE,
-	CMD_SELECT_END_OF_LINE,
-	CMD_START_OF_FILE,
-	CMD_END_OF_FILE,
+	CMD_START_OF_LINE, // move cursor to start of line
+	CMD_END_OF_LINE, // move cursor to end of line
+	CMD_SELECT_START_OF_LINE, // select to start of line
+	CMD_SELECT_END_OF_LINE, // select to end of line
+	CMD_START_OF_FILE, // move cursor to start of buffer
+	CMD_END_OF_FILE, // move cursor to end of buffer
 	CMD_SELECT_START_OF_FILE,
 	CMD_SELECT_END_OF_FILE,
-	CMD_SELECT_ALL,
+	CMD_SELECT_ALL, // select entire buffer
 
 	// scrolling
-	CMD_PAGE_UP,
+	CMD_PAGE_UP, // move cursor up one page up (where one page is however tall the buffer is)
 	CMD_PAGE_DOWN,
 
 	// deletion
@@ -34,13 +34,15 @@ ENUM_U16 {
 	CMD_BACKSPACE_WORD,
 	CMD_DELETE_WORD,
 
-	CMD_OPEN,
-	CMD_SAVE,
+	CMD_OPEN, // open a file
+	CMD_SAVE, // save current buffer
 	CMD_UNDO,
 	CMD_REDO,
 
 	CMD_TEXT_SIZE_INCREASE,
 	CMD_TEXT_SIZE_DECREASE,
+
+	CMD_ESCAPE, // by default this is the escape key. closes menus, etc.
 
 	CMD_COUNT
 } ENUM_U16_END(Command);
@@ -84,6 +86,7 @@ static CommandName const command_names[CMD_COUNT] = {
 	{"undo", CMD_UNDO},
 	{"redo", CMD_REDO},
 	{"increase-text-size", CMD_TEXT_SIZE_INCREASE},
-	{"decrease-text-size", CMD_TEXT_SIZE_DECREASE}
+	{"decrease-text-size", CMD_TEXT_SIZE_DECREASE},
+	{"escape", CMD_ESCAPE}
 };
 

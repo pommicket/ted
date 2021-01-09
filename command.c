@@ -141,7 +141,14 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 			ted_load_font(ted);
 		}
 	} break;
-
+	
+	case CMD_ESCAPE:
+		if (ted->menu) {
+			ted_menu_close(ted, true);
+		} else if (buffer) {
+			buffer_disable_selection(buffer);
+		}
+		break;
 	}
 
 	if (buffer && buffer_haserr(buffer)) {

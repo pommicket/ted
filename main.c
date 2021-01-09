@@ -279,14 +279,6 @@ int main(int argc, char **argv) {
 					(u32)((modifier & (KMOD_LCTRL|KMOD_RCTRL)) != 0) << KEY_MODIFIER_CTRL_BIT |
 					(u32)((modifier & (KMOD_LSHIFT|KMOD_RSHIFT)) != 0) << KEY_MODIFIER_SHIFT_BIT |
 					(u32)((modifier & (KMOD_LALT|KMOD_RALT)) != 0) << KEY_MODIFIER_ALT_BIT;
-				if (key_combo == SDL_SCANCODE_ESCAPE << 3) {
-					// escape key
-					if (ted->menu) {
-						ted_menu_close(ted, true);
-					} else if (buffer) {
-						buffer_disable_selection(buffer);
-					}
-				}
 				if (key_combo < KEY_COMBO_COUNT) {
 					KeyAction *action = &ted->key_actions[key_combo];
 					if (action->command) {
