@@ -188,7 +188,7 @@ void text_chars_end(Font *font) {
 }
 
 void text_render_char(Font *font, TextRenderState *state, char32_t c) {
-	if (c >= 0x30000 && c < 0xE0000){
+	if (c >= 0x40000 && c < 0xE0000){
 		// these Unicode code points are currently unassigned. replace them with a Unicode box.
 		// (specifically, we don't want to use extra memory for pages which
 		// won't even have any valid characters in them)
