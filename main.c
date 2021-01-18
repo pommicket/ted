@@ -68,30 +68,57 @@ INT WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 		die("Out of memory.");
 	}
     for (int i = 0; i < argc; i++) {
-        LPWSTR wide_arg = wide_args[i];
-        int len = wcslen(wide_arg);
+        LPWSTR wide_arg = wide_argv[i];
+        int len = (int)wcslen(wide_arg);
         argv[i] = malloc(len + 1);
 		if (!argv[i]) die("Out of memory.");
         for (int j = 0; j <= len; j++)
             argv[i][j] = (char)wide_arg[j];
     }
-    LocalFree(wide_args);
+    LocalFree(wide_argv);
 #else
 int main(int argc, char **argv) {
 #endif
 	setlocale(LC_ALL, ""); // allow unicode
 
+	{ // get local data directory
+#if _WIN32
+		wchar_t *appdata = NULL;
+		KNOWNFOLDERID id = FOLDERID_LocalAppData;
+		if (SHGetKnownFolderPath(&id, 0, NULL, &appdata) == S_OK) {
+			strbuf_printf(ted_local_data_dir, "%ls" PATH_SEPARATOR "ted", appdata);
+			CoTaskMemFree(appdata);
+		}
+#else
+		char *home = getenv("HOME");
+		strbuf_printf(ted_local_data_dir, "%s/.local/share/ted", home);
+#endif
+	}
+
 	{ // check if this is the installed version of ted (as opposed to just running it from the directory with the source)
-		char executable_path[TED_PATH_MAX] = {0};
+		char executable_path[TED_PATH_MAX] = {0}, cwd[TED_PATH_MAX] = {0};
 	#if _WIN32
-		// @TODO(windows): GetModuleFileNameW
+		if (GetModuleFileNameA(NULL, executable_path, sizeof executable_path) > 0) {
+			char *last_backslash = strrchr(executable_path, '\\');
+			if (last_backslash && GetCurrentDirectory(sizeof cwd, cwd) > 0) {
+				*last_backslash = '\0';
+				ted_search_cwd = streq(cwd, executable_path);
+			}
+		}
 	#else
 		ssize_t len = readlink("/proc/self/exe", executable_path, sizeof executable_path - 1);
 		if (len == -1) {
 			// some posix systems don't have /proc/self/exe. oh well.
 		} else {
 			executable_path[len] = '\0';
-			ted_search_cwd = !str_is_prefix(executable_path, "/usr");
+			char *last_slash = strrchr(executable_path, '/');
+			if (last_slash) {
+				*last_slash = '\0';
+				if (getcwd(cwd, sizeof cwd)) {
+					// @TODO: make sure this is working
+					ted_search_cwd = streq(cwd, executable_path);
+				}
+			}
 		}
 	#endif
 	}
@@ -106,7 +133,7 @@ int main(int argc, char **argv) {
 	{
 		// read global configuration file first to establish defaults
 		char global_config_filename[TED_PATH_MAX];
-		strbuf_printf(global_config_filename, "%s/ted.cfg", ted_global_data_dir);
+		strbuf_printf(global_config_filename, "%s" PATH_SEPARATOR "ted.cfg", ted_global_data_dir);
 		if (fs_file_exists(global_config_filename))
 			config_read(ted, global_config_filename);
 	}
@@ -192,6 +219,12 @@ int main(int argc, char **argv) {
 	bool ctrl_down = false;
 	bool shift_down = false;
 	bool alt_down = false;
+	{
+		char appdata[MAX_PATH] = {0};
+		if (SHGetSpecialFolderPathA(NULL, appdata, CSIDL_LOCAL_APPDATA, false)) {
+			debug_println("%s", appdata);
+		}
+	}
 	while (!quit) {
 	#if DEBUG
 		//printf("\033[H\033[2J");

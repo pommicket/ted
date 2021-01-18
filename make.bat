@@ -4,7 +4,7 @@ if _%VCVARS% == _ (
 	call vcvarsall x64
 )
 
-SET CFLAGS=/nologo /W3 /D_CRT_SECURE_NO_WARNINGS /I SDL2/include SDL2/lib/x64/SDL2main.lib SDL2/lib/x64/SDL2.lib opengl32.lib
+SET CFLAGS=/nologo /W3 /D_CRT_SECURE_NO_WARNINGS /I SDL2/include SDL2/lib/x64/SDL2main.lib SDL2/lib/x64/SDL2.lib opengl32.lib shell32.lib ole32.lib
 rc /nologo ted.rc
 SET SOURCES=main.c text.c ted.res
 if _%1 == _ (

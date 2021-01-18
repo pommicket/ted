@@ -6,7 +6,7 @@ static bool fs_file_exists(char const *path) {
 	struct _stat statbuf = {0};
 	if (_stat(path, &statbuf) != 0)
 		return false;
-	return statbuf.st_mode == _S_IFREG;
+	return (statbuf.st_mode & _S_IFREG) != 0;
 }
 
 static char **fs_list_directory(char const *dirname) {

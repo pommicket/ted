@@ -7,6 +7,10 @@
 
 #if _WIN32
 #include <windows.h>
+#include <shlobj.h>
+#define PATH_SEPARATOR "\\"
+#else
+#define PATH_SEPARATOR "/"
 #endif
 
 #include <stdbool.h>

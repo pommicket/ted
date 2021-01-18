@@ -701,7 +701,7 @@ static void gl_color2f(float v, float a) {
 	glColor4f(v,v,v,a);
 }
 
-static void rgba_u32_to_floats(u32 rgba, float floats[static 4]) {
+static void rgba_u32_to_floats(u32 rgba, float floats[4]) {
 	floats[0] = (float)(rgba >> 24) / 255.f;
 	floats[1] = (float)(rgba >> 16) / 255.f;
 	floats[2] = (float)(rgba >>  8) / 255.f;

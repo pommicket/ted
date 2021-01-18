@@ -160,6 +160,8 @@ void config_read(Ted *ted, char const *filename) {
 				char *newline = strchr(line, '\n');
 				if (newline || feof(fp)) {
 					if (newline) *newline = '\0';
+					char *carriage_return = strchr(line, '\r');
+					if (carriage_return) *carriage_return = '\0';
 
 					// ok, we've now read a line.
 					switch (line[0]) {

@@ -1,4 +1,3 @@
-
 // this is a macro so we get -Wformat warnings
 #define ted_seterr(buffer, ...) \
 	snprintf(ted->error, sizeof ted->error - 1, __VA_ARGS__)
@@ -35,34 +34,32 @@ static void *ted_realloc(Ted *ted, void *p, size_t new_size) {
 
 // should the working directory be searched for files? set to true if the executable isn't "installed"
 static bool ted_search_cwd = false;
+static char const ted_global_data_dir[] = 
 #if _WIN32
-// @TODO
+	"C:\\Program Files\\ted";
 #else
-static char const *const ted_global_data_dir = "/usr/share/ted";
+	"/usr/share/ted";
 #endif
+static char ted_local_data_dir[TED_PATH_MAX]; // filled out in main()
 
 // Check the various places a file could be, and return the full path.
 static Status ted_get_file(char const *name, char *out, size_t outsz) {
-#if _WIN32
-	#error "@TODO(windows)"
-#else
 	if (ted_search_cwd && fs_file_exists(name)) {
 		// check in current working directory
 		str_cpy(out, outsz, name);
 		return true;
 	}
-
-	char *home = getenv("HOME");
-	if (home) {
-		str_printf(out, outsz, "%s/.local/share/ted/%s", home, name);
-		if (!fs_file_exists(out)) {
-			str_printf(out, outsz, "%s/%s", ted_global_data_dir, name);
-			if (!fs_file_exists(out))
-				return false;
-		}
+	if (*ted_local_data_dir) {
+		str_printf(out, outsz, "%s" PATH_SEPARATOR "%s", ted_local_data_dir, name);
+		if (fs_file_exists(out))
+			return true;
 	}
-	return true;
-#endif
+	if (*ted_global_data_dir) {
+		str_printf(out, outsz, "%s" PATH_SEPARATOR "%s", ted_global_data_dir, name);
+		if (fs_file_exists(out))
+			return true;
+	}
+	return false;
 }
 
 static void ted_load_font(Ted *ted) {
