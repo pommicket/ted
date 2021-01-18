@@ -1,6 +1,5 @@
 #include "base.h"
 #include "text.h"
-#include "unicode.h"
 #define STB_TRUETYPE_IMPLEMENTATION
 #define STBTT_STATIC
 no_warn_start
@@ -8,6 +7,15 @@ no_warn_start
 no_warn_end
 #include <stdlib.h>
 #include <GL/gl.h>
+
+#define UNICODE_BOX_CHARACTER 0x2610
+#define UNICODE_CODE_POINTS 0x110000 // number of Unicode code points
+
+static bool unicode_is_start_of_code_point(u8 byte) {
+	// see https://en.wikipedia.org/wiki/UTF-8#Encoding
+	// continuation bytes are of the form 10xxxxxx
+	return (byte & 0xC0) != 0x80;
+}
 
 // We split up code points into a bunch of pages, so we don't have to load all of the font at
 // once into one texture.
@@ -189,12 +197,16 @@ void text_render_char(Font *font, TextRenderState *state, char32_t c) {
 	if (c >= UNICODE_CODE_POINTS) c = UNICODE_BOX_CHARACTER; // code points this big should never appear in valid Unicode
 	uint page = c / CHAR_PAGE_SIZE;
 	uint index = c % CHAR_PAGE_SIZE;
-	text_render_with_page(font, (int)page);
+	if (state->render)
+		text_render_with_page(font, (int)page);
 	stbtt_bakedchar *char_data = font->char_pages[page];
+	float char_height = font->char_height;
 	if (char_data) { // if page was successfully loaded
 		stbtt_aligned_quad q = {0};
+		state->y += char_height * 0.75f;
 		stbtt_GetBakedQuad(char_data, font->tex_widths[page], font->tex_heights[page],
 			(int)index, &state->x, &state->y, &q, 1);
+		state->y -= char_height * 0.75f;
 		float s0 = q.s0, t0 = q.t0;
 		float s1 = q.s1, t1 = q.t1;
 		float x0 = q.x0, y0 = q.y0;
@@ -223,15 +235,17 @@ void text_render_char(Font *font, TextRenderState *state, char32_t c) {
 			t1 = (max_y-1-y0) / (y1-y0) * (t1-t0) + t0;
 			y1 = max_y-1;
 		}
-		glTexCoord2f(s0,t0); glVertex2f(x0,y0);
-		glTexCoord2f(s0,t1); glVertex2f(x0,y1);
-		glTexCoord2f(s1,t1); glVertex2f(x1,y1);
-		glTexCoord2f(s1,t0); glVertex2f(x1,y0);
+		if (state->render) {
+			glTexCoord2f(s0,t0); glVertex2f(x0,y0);
+			glTexCoord2f(s0,t1); glVertex2f(x0,y1);
+			glTexCoord2f(s1,t1); glVertex2f(x1,y1);
+			glTexCoord2f(s1,t0); glVertex2f(x1,y0);
+		}
 	}
 }
 
 void text_render_with_state(Font *font, TextRenderState *render_state, char const *text, float x, float y) {
-	text_chars_begin(font);
+	if (render_state->render) text_chars_begin(font);
 	render_state->x = x;
 	render_state->y = y;
 	char32_t c = 0;
@@ -257,26 +271,35 @@ void text_render_with_state(Font *font, TextRenderState *render_state, char cons
 			}
 		}
 	}
-	text_chars_end(font);
+	if (render_state->render) text_chars_end(font);
 	
 }
 
-static void text_render_internal(Font *font, char const *text, float *x, float *y) {
-	TextRenderState render_state = {.x = 0, .y = 0, .min_x = -FLT_MAX, .max_x = FLT_MAX, .min_y = -FLT_MAX, .max_y = FLT_MAX};
+static void text_render_internal(Font *font, char const *text, float *x, float *y, bool render) {
+	TextRenderState render_state = {.x = 0, .y = 0, .min_x = -FLT_MAX, .max_x = FLT_MAX, .min_y = -FLT_MAX, .max_y = FLT_MAX, .render = render};
 	text_render_with_state(font, &render_state, text, *x, *y);
 	*x = render_state.x;
 	*y = render_state.y;
 }
 
 void text_render(Font *font, char const *text, float x, float y) {
-	text_render_internal(font, text, &x, &y);
+	text_render_internal(font, text, &x, &y, true);
 }
 
 void text_get_size(Font *font, char const *text, float *width, float *height) {
 	float x = 0, y = 0;
-	text_render_internal(font, text, &x, &y);
+	text_render_internal(font, text, &x, &y, false);
 	if (width)  *width = x;
 	if (height) *height = y + font->char_height * (2/3.0f);
+}
+
+void text_get_size32(Font *font, char32_t const *text, u64 len, float *width, float *height) {
+	TextRenderState render_state = {.x = 0, .y = 0, .min_x = -FLT_MAX, .max_x = FLT_MAX, .min_y = -FLT_MAX, .max_y = FLT_MAX, .render = false};
+	for (u64 i = 0; i < len; ++i) {
+		text_render_char(font, &render_state, text[i]);
+	}
+	if (width) *width = render_state.x;
+	if (height) *height = render_state.y + font->char_height * (2/3.0f);
 }
 
 void text_font_free(Font *font) {
