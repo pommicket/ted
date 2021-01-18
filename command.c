@@ -115,7 +115,7 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		break;
 	
 	case CMD_OPEN:
-		ted_menu_open(ted, MENU_OPEN);
+		menu_open(ted, MENU_OPEN);
 		break;
 	case CMD_SAVE:
 		if (buffer) buffer_save(buffer);
@@ -144,9 +144,33 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 	
 	case CMD_ESCAPE:
 		if (ted->menu) {
-			ted_menu_close(ted, true);
+			menu_close(ted, true);
 		} else if (buffer) {
 			buffer_disable_selection(buffer);
+		}
+		break;
+	case CMD_SUBMIT_LINE_BUFFER:
+		if (buffer->is_line_buffer) {
+			switch (ted->menu) {
+			case MENU_NONE:
+				assert(0);
+				break;
+			case MENU_OPEN: {
+				TextBuffer *open_to = &ted->main_buffer;
+				String32 filename32 = {.str = buffer->lines[0].str, .len = buffer->lines[0].len};
+
+				char *filename_cstr = str32_to_utf8_cstr(filename32);
+				if (filename_cstr) {
+					buffer_load_file(open_to, filename_cstr);
+					buffer = open_to;
+					if (buffer_haserr(open_to)) {
+						// @TODO: something better
+					}
+					free(filename_cstr);
+					menu_close(ted, true);
+				}
+			} break;
+			}
 		}
 		break;
 	}

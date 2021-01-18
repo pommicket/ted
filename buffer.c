@@ -1,11 +1,5 @@
 // Text buffers - These store the contents of a file.
 
-void buffer_create(TextBuffer *buffer, Ted *ted) {
-	util_zero_memory(buffer, sizeof *buffer);
-	buffer->store_undo_events = true;
-	buffer->ted = ted;
-}
-
 // this is a macro so we get -Wformat warnings
 #define buffer_seterr(buffer, ...) \
 	snprintf(buffer->error, sizeof buffer->error - 1, __VA_ARGS__)
@@ -71,6 +65,27 @@ static void *buffer_realloc(TextBuffer *buffer, void *p, size_t new_size) {
 	void *ret = realloc(p, new_size);
 	if (!ret) buffer_out_of_mem(buffer);
 	return ret;
+}
+
+static char *buffer_strdup(TextBuffer *buffer, char const *src) {
+	char *dup = str_dup(src);
+	if (!dup) buffer_out_of_mem(buffer);
+	return dup;
+}
+
+void buffer_create(TextBuffer *buffer, Ted *ted) {
+	util_zero_memory(buffer, sizeof *buffer);
+	buffer->store_undo_events = true;
+	buffer->ted = ted;
+}
+
+void line_buffer_create(TextBuffer *buffer, Ted *ted) {
+	buffer_create(buffer, ted);
+	buffer->is_line_buffer = true;
+	if ((buffer->lines = buffer_calloc(buffer, 1, sizeof *buffer->lines))) {
+		buffer->nlines = 1;
+		buffer->lines_capacity = 1;
+	}
 }
 
 // ensures that `p` refers to a valid position.
@@ -417,7 +432,7 @@ static void buffer_line_free(Line *line) {
 	free(line->str);
 }
 
-// Free a buffer. Once a buffer is freed, it can be used again for other purposes.
+// Free a buffer. Once a buffer is freed, you can call buffer_create on it again.
 // Does not free the pointer `buffer` (buffer might not have even been allocated with malloc)
 void buffer_free(TextBuffer *buffer) {
 	Line *lines = buffer->lines;
@@ -426,6 +441,7 @@ void buffer_free(TextBuffer *buffer) {
 		buffer_line_free(&lines[i]);
 	}
 	free(lines);
+	free(buffer->filename);
 
 	arr_foreach_ptr(buffer->undo_history, BufferEdit, edit)
 		buffer_edit_free(edit);
@@ -434,24 +450,27 @@ void buffer_free(TextBuffer *buffer) {
 
 	arr_free(buffer->undo_history);
 	arr_free(buffer->redo_history);
-
-	Ted *ted = buffer->ted;
-
-	// zero buffer, except for error
-	char error[sizeof buffer->error];
-	memcpy(error, buffer->error, sizeof error);
-	memset(buffer, 0, sizeof *buffer);
-	memcpy(buffer->error, error, sizeof error);
-
-	buffer_create(buffer, ted);
+	util_zero_memory(buffer, sizeof *buffer);
 }
 
-
-// filename must be around for at least as long as the buffer is.
-void buffer_load_file(TextBuffer *buffer, char const *filename) {
+// clear contents, undo history, etc. of a buffer
+void buffer_clear(TextBuffer *buffer) {
+	bool is_line_buffer = buffer->is_line_buffer;
+	Ted *ted = buffer->ted;
+	char error[sizeof buffer->error];
+	memcpy(error, buffer->error, sizeof error);
 	buffer_free(buffer);
+	if (is_line_buffer) {
+		line_buffer_create(buffer, ted);
+	} else {
+		buffer_create(buffer, ted);
+	}
+}
 
-	buffer->filename = filename;
+void buffer_load_file(TextBuffer *buffer, char const *filename) {
+	buffer_clear(buffer);
+
+	buffer->filename = buffer_strdup(buffer, filename);
 	FILE *fp = fopen(filename, "rb");
 	if (fp) {
 		fseek(fp, 0, SEEK_END);
@@ -518,7 +537,7 @@ void buffer_load_file(TextBuffer *buffer, char const *filename) {
 			success = false;
 		}
 		if (!success) {
-			buffer_free(buffer);
+			buffer_clear(buffer);
 		}
 	} else {
 		buffer_seterr(buffer, "File %s does not exist.", filename);
@@ -526,35 +545,50 @@ void buffer_load_file(TextBuffer *buffer, char const *filename) {
 }
 
 void buffer_new_file(TextBuffer *buffer, char const *filename) {
-	buffer_free(buffer);
+	buffer_clear(buffer);
 
-	buffer->filename = filename;
+	buffer->filename = buffer_strdup(buffer, filename);
 	buffer->lines_capacity = 4;
 	buffer->lines = buffer_calloc(buffer, buffer->lines_capacity, sizeof *buffer->lines);
 	buffer->nlines = 1;
 }
 
 bool buffer_save(TextBuffer *buffer) {
-	FILE *out = fopen(buffer->filename, "wb");
-	if (out) {
-		bool success = true;
-		for (Line *line = buffer->lines, *end = line + buffer->nlines; line != end; ++line) {
-			mbstate_t state = {0};
-			for (char32_t *p = line->str, *p_end = p + line->len; p != p_end; ++p) {
-				char utf8[MB_LEN_MAX] = {0};
-				size_t bytes = c32rtomb(utf8, *p, &state);
-				fwrite(utf8, 1, bytes, out);
-			}
+	if (buffer->filename) {
+		FILE *out = fopen(buffer->filename, "wb");
+		if (out) {
+			bool success = true;
+			for (Line *line = buffer->lines, *end = line + buffer->nlines; line != end; ++line) {
+				mbstate_t state = {0};
+				for (char32_t *p = line->str, *p_end = p + line->len; p != p_end; ++p) {
+					char utf8[MB_LEN_MAX] = {0};
+					size_t bytes = c32rtomb(utf8, *p, &state);
+					fwrite(utf8, 1, bytes, out);
+				}
 
-			if (line != end-1) {
-				putc('\n', out);
+				if (line != end-1) {
+					putc('\n', out);
+				}
 			}
+			if (ferror(out)) success = false;
+			if (fclose(out) != 0) success = false;
+			return success;
+		} else {
+			buffer_seterr(buffer, "Couldn't create file %s.", buffer->filename);
+			return false;
 		}
-		if (ferror(out)) success = false;
-		if (fclose(out) != 0) success = false;
-		return success;
 	} else {
-		buffer_seterr(buffer, "Couldn't create file %s.", buffer->filename);
+		// user tried to save line buffer. whatever
+		return true;
+	}
+}
+
+// save, but with a different file name
+bool buffer_save_as(TextBuffer *buffer, char const *new_filename) {
+	free(buffer->filename);
+	if ((buffer->filename = buffer_strdup(buffer, new_filename))) {
+		return buffer_save(buffer);
+	} else {
 		return false;
 	}
 }
@@ -1073,7 +1107,9 @@ void buffer_cursor_move_to_end_of_file(TextBuffer *buffer) {
 }
 
 // insert `number` empty lines starting at index `where`.
-static void buffer_insert_lines(TextBuffer *buffer, u32 where, u32 number) {
+static Status buffer_insert_lines(TextBuffer *buffer, u32 where, u32 number) {
+	assert(!buffer->is_line_buffer);
+
 	u32 old_nlines = buffer->nlines;
 	u32 new_nlines = old_nlines + number;
 	if (buffer_lines_set_min_capacity(buffer, new_nlines)) {
@@ -1085,7 +1121,9 @@ static void buffer_insert_lines(TextBuffer *buffer, u32 where, u32 number) {
 		// zero new lines
 		util_zero_memory(buffer->lines + where, number * sizeof *buffer->lines);
 		buffer->nlines = new_nlines;
+		return true;
 	}
+	return false;
 }
 
 // inserts the given text, returning the position of the end of the text
@@ -1094,6 +1132,16 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 		buffer_seterr(buffer, "Inserting too much text (length: %zu).", str.len);
 		BufferPos ret = {0,0};
 		return ret;
+	}
+
+	if (buffer->is_line_buffer) {
+		// remove all the newlines from str.
+		str32_remove_all_instances_of_char(&str, U'\n');
+	}
+
+	if (str.len == 0) {
+		// no text to insert
+		return pos;
 	}
 
 	if (buffer->store_undo_events) {
@@ -1121,16 +1169,17 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 	// so we need to go through them one by one
 	u32 n_added_lines = (u32)str32_count_char(str, U'\n');
 	if (n_added_lines) {
-		buffer_insert_lines(buffer, line_idx + 1, n_added_lines);
-		line = &buffer->lines[line_idx]; // fix pointer
-		// move any text past the cursor on this line to the last added line.
-		Line *last_line = &buffer->lines[line_idx + n_added_lines];
-		u32 chars_moved = line->len - index;
-		if (chars_moved) {
-			if (buffer_line_set_min_capacity(buffer, last_line, chars_moved)) {
-				memcpy(last_line->str, line->str + index, chars_moved * sizeof(char32_t));
-				line->len  -= chars_moved;
-				last_line->len += chars_moved;
+		if (buffer_insert_lines(buffer, line_idx + 1, n_added_lines)) {
+			line = &buffer->lines[line_idx]; // fix pointer
+			// move any text past the cursor on this line to the last added line.
+			Line *last_line = &buffer->lines[line_idx + n_added_lines];
+			u32 chars_moved = line->len - index;
+			if (chars_moved) {
+				if (buffer_line_set_min_capacity(buffer, last_line, chars_moved)) {
+					memcpy(last_line->str, line->str + index, chars_moved * sizeof(char32_t));
+					line->len  -= chars_moved;
+					last_line->len += chars_moved;
+				}
 			}
 		}
 	}
@@ -1635,10 +1684,11 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 	};
 
 
-	{ // header
+	if (!buffer->is_line_buffer) { // header
 		glColor3f(1,1,1);
 		float x = x1, y = y1;
-		text_render_with_state(font, &text_state, buffer->filename, x, y);
+		if (buffer->filename)
+			text_render_with_state(font, &text_state, buffer->filename, x, y);
 	#if DEBUG
 		// show checksum
 		char checksum[32] = {0};
@@ -1799,4 +1849,3 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 		}
 	}
 }
-

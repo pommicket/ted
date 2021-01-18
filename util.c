@@ -46,6 +46,15 @@ static bool streq(char const *a, char const *b) {
 	return strcmp(a, b) == 0;
 }
 
+// duplicates a null-terminated string. the returned string should be passed to free()
+static char *str_dup(char const *src) {
+	size_t len = strlen(src);
+	char *ret = malloc(len + 1);
+	if (ret)
+		memcpy(ret, src, len + 1);
+	return ret;
+}
+
 // like snprintf, but not screwed up on windows
 #define str_printf(str, size, ...) (str)[(size) - 1] = '\0', snprintf((str), (size) - 1, __VA_ARGS__)
 // like snprintf, but the size is taken to be the length of the array str.

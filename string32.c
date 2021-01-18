@@ -48,6 +48,29 @@ String32 str32_from_utf8(char const *utf8) {
 	return string;
 }
 
+// returns a null-terminated UTF-8 string
+// the string returned should be free'd
+// this will return NULL on failure
+static char *str32_to_utf8_cstr(String32 s) {
+	char *utf8 = calloc(4 * s.len + 1, 1); // each codepoint takes up at most 4 bytes in UTF-8, + we need a terminating null byte
+	if (utf8) {
+		char *p = utf8;
+		mbstate_t mbstate; memset(&mbstate, 0, sizeof mbstate);
+		for (size_t i = 0; i < s.len; ++i) {
+			size_t bytes = c32rtomb(p, s.str[i], &mbstate);
+			if (bytes == (size_t)-1) {
+				// invalid UTF-32 character
+				free(utf8);
+				return NULL;
+			} else {
+				p += bytes;
+			}
+		}
+		*p = '\0';
+	}
+	return utf8;
+}
+
 // returns the index of the given character in the string, or the length of the string if it's not found.
 size_t str32chr(String32 s, char32_t c) {
 	for (size_t i = 0; i < s.len; ++i) {
@@ -64,4 +87,22 @@ size_t str32_count_char(String32 s, char32_t c) {
 		total += s.str[i] == c;
 	}
 	return total;
+}
+
+// returns number of characters deleted from s
+size_t str32_remove_all_instances_of_char(String32 *s, char32_t c) {
+	bool increment = true;
+	char32_t *str = s->str;
+	size_t ndeleted = 0;
+	for (size_t i = 0; i < s->len; i += increment, increment = true) {
+		if (str[i] == c) {
+			--s->len;
+			if (i < s->len) {
+				str[i] = str[i+1];
+			}
+			++ndeleted;
+			increment = false;
+		}
+	}
+	return ndeleted;
 }

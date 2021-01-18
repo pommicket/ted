@@ -44,6 +44,8 @@ ENUM_U16 {
 
 	CMD_ESCAPE, // by default this is the escape key. closes menus, etc.
 
+	CMD_SUBMIT_LINE_BUFFER, // submit "line buffer" value -- the line buffer is where you type file names when opening files, etc.
+
 	CMD_COUNT
 } ENUM_U16_END(Command);
 
@@ -87,6 +89,7 @@ static CommandName const command_names[CMD_COUNT] = {
 	{"redo", CMD_REDO},
 	{"increase-text-size", CMD_TEXT_SIZE_INCREASE},
 	{"decrease-text-size", CMD_TEXT_SIZE_DECREASE},
-	{"escape", CMD_ESCAPE}
+	{"escape", CMD_ESCAPE},
+	{"submit-line-buffer", CMD_SUBMIT_LINE_BUFFER}
 };
 

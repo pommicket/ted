@@ -1,3 +1,5 @@
+#define TED_PATH_MAX 256
+
 #define TEXT_SIZE_MIN 6
 #define TEXT_SIZE_MAX 70
 
@@ -22,7 +24,7 @@ typedef struct {
 #define KEY_MODIFIER_ALT (1<<KEY_MODIFIER_ALT_BIT)
 // ctrl+alt+c is encoded as SDL_SCANCODE_C << 3 | KEY_MODIFIER_CTRL | KEY_MODIFIER_ALT
 
-typedef struct {
+typedef struct KeyAction {
 	u32 line_number; // config line number where this was set
 	Command command; // this will be 0 (COMMAND_UNKNOWN) if there's no action for the key
 	i64 argument;
@@ -50,11 +52,12 @@ typedef struct BufferEdit {
 } BufferEdit;
 
 typedef struct {
-	char const *filename;
+	char *filename; // NULL if this buffer doesn't correspond to a file (e.g. line buffers)
 	struct Ted *ted; // we keep a back-pointer to the ted instance so we don't have to pass it in to every buffer function
 	double scroll_x, scroll_y; // number of characters scrolled in the x/y direction
 	BufferPos cursor_pos;
 	BufferPos selection_pos; // if selection is true, the text between selection_pos and cursor_pos is selected.
+	bool is_line_buffer; // "line buffers" are buffers which can only have one line of text (used for inputs)
 	bool selection;
 	bool store_undo_events; // set to false to disable undo events
 	float x1, y1, x2, y2;
@@ -80,6 +83,8 @@ typedef struct Ted {
 	Settings settings;
 	float window_width, window_height;
 	Menu menu;
+	TextBuffer line_buffer; // general-purpose line buffer for inputs -- used for menus
+	TextBuffer main_buffer;
 	KeyAction key_actions[KEY_COMBO_COUNT];
 	char error[256];
 } Ted;

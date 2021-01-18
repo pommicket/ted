@@ -15,7 +15,6 @@ no_warn_end
 #include <shellapi.h>
 #endif
 
-#define TED_PATH_MAX 256
 
 #include "text.h"
 #include "util.c"
@@ -178,12 +177,17 @@ int main(int argc, char **argv) {
 
 	ted_load_font(ted);
 	if (ted_haserr(ted))
-		die("Error loadng font: %s", ted_geterr(ted));
-	
-	
-	TextBuffer text_buffer;
+		die("Error loading font: %s", ted_geterr(ted));
 	{
-		TextBuffer *buffer = &text_buffer;
+		TextBuffer *lbuffer = &ted->line_buffer;
+		line_buffer_create(lbuffer, ted);
+		if (buffer_haserr(lbuffer))
+			die("Error creating line buffer: %s", buffer_geterr(lbuffer));
+	}
+	
+	
+	{
+		TextBuffer *buffer = &ted->main_buffer;
 		buffer_create(buffer, ted);
 		ted->active_buffer = buffer;
 
@@ -216,15 +220,6 @@ int main(int argc, char **argv) {
 	Uint32 time_at_last_frame = SDL_GetTicks();
 
 	bool quit = false;
-	bool ctrl_down = false;
-	bool shift_down = false;
-	bool alt_down = false;
-	{
-		char appdata[MAX_PATH] = {0};
-		if (SHGetSpecialFolderPathA(NULL, appdata, CSIDL_LOCAL_APPDATA, false)) {
-			debug_println("%s", appdata);
-		}
-	}
 	while (!quit) {
 	#if DEBUG
 		//printf("\033[H\033[2J");
@@ -241,12 +236,15 @@ int main(int argc, char **argv) {
 		SDL_Event event;
 		Uint8 const *keyboard_state = SDL_GetKeyboardState(NULL);
 
+		bool ctrl_down = keyboard_state[SDL_SCANCODE_LCTRL] || keyboard_state[SDL_SCANCODE_RCTRL];
+		bool shift_down = keyboard_state[SDL_SCANCODE_LSHIFT] || keyboard_state[SDL_SCANCODE_RSHIFT];
+		bool alt_down = keyboard_state[SDL_SCANCODE_LALT] || keyboard_state[SDL_SCANCODE_RALT];
+
 		while (SDL_PollEvent(&event)) {
 			TextBuffer *buffer = ted->active_buffer;
 			u32 key_modifier = (u32)ctrl_down << KEY_MODIFIER_CTRL_BIT
 				| (u32)shift_down << KEY_MODIFIER_SHIFT_BIT
 				| (u32)alt_down << KEY_MODIFIER_ALT_BIT;
-			// @TODO: make a function to handle text buffer events
 			switch (event.type) {
 			case SDL_QUIT:
 				quit = true;
@@ -295,18 +293,6 @@ int main(int argc, char **argv) {
 				break;
 			case SDL_KEYDOWN: {
 				SDL_Scancode scancode = event.key.keysym.scancode;
-				switch (scancode) {
-				case SDL_SCANCODE_LCTRL:
-				case SDL_SCANCODE_RCTRL:
-					ctrl_down = true; break;
-				case SDL_SCANCODE_LSHIFT:
-				case SDL_SCANCODE_RSHIFT:
-					shift_down = true; break;
-				case SDL_SCANCODE_LALT:
-				case SDL_SCANCODE_RALT:
-					alt_down = true; break;
-				default: break;
-				}
 				SDL_Keymod modifier = event.key.keysym.mod;
 				u32 key_combo = (u32)scancode << 3 |
 					(u32)((modifier & (KMOD_LCTRL|KMOD_RCTRL)) != 0) << KEY_MODIFIER_CTRL_BIT |
@@ -314,31 +300,22 @@ int main(int argc, char **argv) {
 					(u32)((modifier & (KMOD_LALT|KMOD_RALT)) != 0) << KEY_MODIFIER_ALT_BIT;
 				if (key_combo < KEY_COMBO_COUNT) {
 					KeyAction *action = &ted->key_actions[key_combo];
+					bool was_in_line_buffer = buffer && buffer->is_line_buffer;
 					if (action->command) {
 						command_execute(ted, action->command, action->argument);
-					} else if (buffer) switch (event.key.keysym.sym) {
-						case SDLK_RETURN:
-							buffer_insert_char_at_cursor(buffer, U'\n');
+					}
+
+					if (buffer) {
+						switch (key_combo) {
+						case SDL_SCANCODE_RETURN << 3:
+							if (!was_in_line_buffer) // make sure return to submit line buffer doesn't get added to newly-active buffer
+								buffer_insert_char_at_cursor(buffer, U'\n');
 							break;
-						case SDLK_TAB:
+						case SDL_SCANCODE_TAB << 3:
 							buffer_insert_char_at_cursor(buffer, U'\t');
 							break;
+						}
 					}
-				}
-			} break;
-			case SDL_KEYUP: {
-				SDL_Scancode scancode = event.key.keysym.scancode;
-				switch (scancode) {
-				case SDL_SCANCODE_LCTRL:
-				case SDL_SCANCODE_RCTRL:
-					ctrl_down = false; break;
-				case SDL_SCANCODE_LSHIFT:
-				case SDL_SCANCODE_RSHIFT:
-					shift_down = false; break;
-				case SDL_SCANCODE_LALT:
-				case SDL_SCANCODE_RALT:
-					alt_down = false; break;
-				default: break;
 				}
 			} break;
 			case SDL_TEXTINPUT: {
@@ -400,7 +377,7 @@ int main(int argc, char **argv) {
 
 		{
 			float x1 = 50, y1 = 50, x2 = window_width-50, y2 = window_height-50;
-			buffer_render(&text_buffer, x1, y1, x2, y2);
+			buffer_render(&ted->main_buffer, x1, y1, x2, y2);
 			if (text_has_err()) {
 				die("Text error: %s\n", text_get_err());
 				break;
@@ -413,7 +390,8 @@ int main(int argc, char **argv) {
 		}
 
 	#if DEBUG
-		buffer_check_valid(&text_buffer);
+		buffer_check_valid(&ted->main_buffer);
+		buffer_check_valid(&ted->line_buffer);
 	#endif
 
 		SDL_GL_SwapWindow(window);
@@ -422,7 +400,8 @@ int main(int argc, char **argv) {
 	SDL_GL_DeleteContext(glctx);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
-	buffer_free(&text_buffer);
+	buffer_free(&ted->main_buffer);
+	buffer_free(&ted->line_buffer);
 	text_font_free(ted->font);
 	free(ted);
 #if _WIN32
