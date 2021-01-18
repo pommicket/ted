@@ -1630,13 +1630,14 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 	TextRenderState text_state = {
 		.x = 0, .y = 0,
 		.min_x = x1, .min_y = y1,
-		.max_x = x2, .max_y = y2
+		.max_x = x2, .max_y = y2,
+		.render = true
 	};
 
 
 	{ // header
 		glColor3f(1,1,1);
-		float x = x1, y = y1 + char_height * 0.8f;
+		float x = x1, y = y1;
 		text_render_with_state(font, &text_state, buffer->filename, x, y);
 	#if DEBUG
 		// show checksum
@@ -1731,9 +1732,10 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 	text_chars_begin(font);
 
 	text_state = (TextRenderState){
-		.x = render_start_x, .y = y1 + text_font_char_height(font),
+		.x = render_start_x, .y = y1 + 0.25f * text_font_char_height(font),
 		.min_x = x1, .min_y = y1,
-		.max_x = x2, .max_y = y2
+		.max_x = x2, .max_y = y2,
+		.render = true
 	};
 
 	text_state.y -= (float)(buffer->scroll_y - start_line) * char_height;
