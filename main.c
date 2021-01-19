@@ -321,7 +321,7 @@ int main(int argc, char **argv) {
 			case SDL_TEXTINPUT: {
 				char *text = event.text.text;
 				if (buffer
-					&& key_modifier == 0) // unfortunately, some key combinations like ctrl+minus still register as a "-" text input event
+					&& (key_modifier & ~KEY_MODIFIER_SHIFT) == 0) // unfortunately, some key combinations like ctrl+minus still register as a "-" text input event
 					buffer_insert_utf8_at_cursor(buffer, text);
 			} break;
 			}

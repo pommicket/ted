@@ -31,8 +31,10 @@ static void menu_render(Ted *ted, Menu menu) {
 	gl_color_rgba(colors[COLOR_MENU_BACKDROP]);
 	rect_render(rect(V2(0, 0), V2(window_width, window_height)));
 	glEnd();
+
 	
 	if (menu == MENU_OPEN) {
+		char *search_term = str32_to_utf8_cstr(buffer_get_line(&ted->line_buffer, 0));
 		char const *directory = ".";
 		float padding = 20;
 		float menu_x1 = window_width * 0.5f - 300;
@@ -62,8 +64,21 @@ static void menu_render(Ted *ted, Menu menu) {
 
 		char **files = fs_list_directory(directory);
 		if (files) {
+
 			u32 nfiles = 0;
 			for (char **p = files; *p; ++p) ++nfiles;
+			
+			if (search_term && *search_term) {
+				// filter files based on search term
+				u32 in, out = 0;
+				for (in = 0; in < nfiles; ++in) {
+					if (stristr(files[in], search_term)) {
+						files[out++] = files[in];
+					}
+				}
+				nfiles = out;
+			}
+
 			qsort(files, nfiles, sizeof *files, str_qsort_case_insensitive_cmp);
 
 			{ // render file names
@@ -79,5 +94,7 @@ static void menu_render(Ted *ted, Menu menu) {
 			for (u32 i = 0; i < nfiles; ++i) free(files[i]);
 			free(files);
 		}
+		free(search_term);
 	}
+
 }

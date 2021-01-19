@@ -157,14 +157,12 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 				break;
 			case MENU_OPEN: {
 				TextBuffer *open_to = &ted->main_buffer;
-				String32 filename32 = {.str = buffer->lines[0].str, .len = buffer->lines[0].len};
-
-				char *filename_cstr = str32_to_utf8_cstr(filename32);
+				char *filename_cstr = str32_to_utf8_cstr(buffer_get_line(&ted->line_buffer, 0));
 				if (filename_cstr) {
 					buffer_load_file(open_to, filename_cstr);
 					buffer = open_to;
 					if (buffer_haserr(open_to)) {
-						// @TODO: something better
+						// @TODO: something
 					}
 					free(filename_cstr);
 					menu_close(ted, true);

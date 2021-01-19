@@ -91,18 +91,17 @@ size_t str32_count_char(String32 s, char32_t c) {
 
 // returns number of characters deleted from s
 size_t str32_remove_all_instances_of_char(String32 *s, char32_t c) {
-	bool increment = true;
 	char32_t *str = s->str;
 	size_t ndeleted = 0;
-	for (size_t i = 0; i < s->len; i += increment, increment = true) {
-		if (str[i] == c) {
-			--s->len;
-			if (i < s->len) {
-				str[i] = str[i+1];
-			}
+	size_t len = s->len;
+	size_t out = 0;
+	for (size_t in = 0; in < len; ++in) {
+		if (str[in] == c) {
 			++ndeleted;
-			increment = false;
+		} else {
+			str[out++] = str[in];
 		}
 	}
+	s->len = out;
 	return ndeleted;
 }

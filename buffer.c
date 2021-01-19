@@ -137,6 +137,15 @@ static inline Settings *buffer_settings(TextBuffer *buffer) {
 	return &buffer->ted->settings;
 }
 
+// NOTE: this string will be invalidated when the line is edited!!!
+// only use it briefly!!
+static String32 buffer_get_line(TextBuffer *buffer, u32 line_number) {
+	Line *line = &buffer->lines[line_number];
+	return (String32) {
+		.str = line->str, .len = line->len
+	};
+}
+
 // Returns a simple checksum of the buffer.
 // This is only used for testing, and shouldn't be relied on.
 static u64 buffer_checksum(TextBuffer *buffer) {
