@@ -156,16 +156,13 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 				assert(0);
 				break;
 			case MENU_OPEN: {
-				TextBuffer *open_to = &ted->main_buffer;
 				char *filename_cstr = str32_to_utf8_cstr(buffer_get_line(&ted->line_buffer, 0));
 				if (filename_cstr) {
-					buffer_load_file(open_to, filename_cstr);
-					buffer = open_to;
-					if (buffer_haserr(open_to)) {
-						// @TODO: something
-					}
+					buffer = ted_open_file(ted, filename_cstr);
 					free(filename_cstr);
-					menu_close(ted, true);
+					menu_close(ted, false);
+				} else {
+					ted_seterr(ted, "Out of memory.");
 				}
 			} break;
 			}
@@ -174,7 +171,7 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 	}
 
 	if (buffer && buffer_haserr(buffer)) {
-		strncpy(ted->error, buffer_geterr(buffer), sizeof ted->error - 1);
+		ted_seterr_to_buferr(ted, buffer);
 		buffer_clearerr(buffer);
 	}
 }

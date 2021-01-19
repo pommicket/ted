@@ -2,6 +2,12 @@
 #define ted_seterr(buffer, ...) \
 	snprintf(ted->error, sizeof ted->error - 1, __VA_ARGS__)
 
+void ted_seterr_to_buferr(Ted *ted, TextBuffer *buffer) {
+	size_t size = sizeof ted->error;
+	if (sizeof buffer->error < size) size = sizeof buffer->error;
+	memcpy(ted->error, buffer->error, size);
+}
+
 bool ted_haserr(Ted *ted) {
 	return ted->error[0] != '\0';
 }
@@ -77,6 +83,20 @@ static void ted_load_font(Ted *ted) {
 		}
 	} else {
 		ted_seterr(ted, "Couldn't find font file. There is probably a problem with your ted installation.");
+	}
+}
+
+// returns buffer of new file
+static TextBuffer *ted_open_file(Ted *ted, char const *filename) {
+	TextBuffer *open_to = &ted->main_buffer;
+	buffer_load_file(open_to, filename);
+	if (buffer_haserr(open_to)) {
+		// @TODO: something
+		ted_seterr_to_buferr(ted, open_to);
+		return NULL;
+	} else {
+		ted->active_buffer = open_to;
+		return open_to;
 	}
 }
 

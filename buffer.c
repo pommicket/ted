@@ -74,7 +74,7 @@ static char *buffer_strdup(TextBuffer *buffer, char const *src) {
 }
 
 void buffer_create(TextBuffer *buffer, Ted *ted) {
-	util_zero_memory(buffer, sizeof *buffer);
+	memset(buffer, 0, sizeof *buffer);
 	buffer->store_undo_events = true;
 	buffer->ted = ted;
 }
@@ -459,7 +459,7 @@ void buffer_free(TextBuffer *buffer) {
 
 	arr_free(buffer->undo_history);
 	arr_free(buffer->redo_history);
-	util_zero_memory(buffer, sizeof *buffer);
+	memset(buffer, 0, sizeof *buffer);
 }
 
 // clear contents, undo history, etc. of a buffer
@@ -474,6 +474,7 @@ void buffer_clear(TextBuffer *buffer) {
 	} else {
 		buffer_create(buffer, ted);
 	}
+	memcpy(buffer->error, error, sizeof error);
 }
 
 void buffer_load_file(TextBuffer *buffer, char const *filename) {
@@ -1128,7 +1129,7 @@ static Status buffer_insert_lines(TextBuffer *buffer, u32 where, u32 number) {
 			buffer->lines + where,
 			(old_nlines - where) * sizeof *buffer->lines);
 		// zero new lines
-		util_zero_memory(buffer->lines + where, number * sizeof *buffer->lines);
+		memset(buffer->lines + where, 0, number * sizeof *buffer->lines);
 		buffer->nlines = new_nlines;
 		return true;
 	}

@@ -82,6 +82,9 @@ typedef struct Ted {
 	TextBuffer *prev_active_buffer; 
 	Settings settings;
 	float window_width, window_height;
+	v2 mouse_pos;
+	u8 nmouse_clicks[4]; // nmouse_clicks[i] = length of mouse_clicks[i]
+	v2 mouse_clicks[4][32]; // mouse_clicks[SDL_BUTTON_RIGHT], for example, is all the right mouse-clicks that have happened this frame
 	Menu menu;
 	TextBuffer line_buffer; // general-purpose line buffer for inputs -- used for menus
 	TextBuffer main_buffer;

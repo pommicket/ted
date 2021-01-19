@@ -15,10 +15,6 @@ static bool util_is_power_of_2(u64 x) {
 	return util_popcount(x) == 1;
 }
 
-static void util_zero_memory(void *mem, size_t size) {
-	memset(mem, 0, size);
-}
-
 // for finding a character in a char32 string
 static char32_t *util_mem32chr(char32_t *s, char32_t c, size_t n) {
 	for (size_t i = 0; i < n; ++i) {

@@ -235,10 +235,17 @@ int main(int argc, char **argv) {
 
 		SDL_Event event;
 		Uint8 const *keyboard_state = SDL_GetKeyboardState(NULL);
-
+		
+		{ // get mouse position
+			int mouse_x = 0, mouse_y = 0;
+			SDL_GetMouseState(&mouse_x, &mouse_y);
+			ted->mouse_pos = V2((float)mouse_x, (float)mouse_y);
+		}
 		bool ctrl_down = keyboard_state[SDL_SCANCODE_LCTRL] || keyboard_state[SDL_SCANCODE_RCTRL];
 		bool shift_down = keyboard_state[SDL_SCANCODE_LSHIFT] || keyboard_state[SDL_SCANCODE_RSHIFT];
 		bool alt_down = keyboard_state[SDL_SCANCODE_LALT] || keyboard_state[SDL_SCANCODE_RALT];
+		
+		memset(ted->nmouse_clicks, 0, sizeof ted->nmouse_clicks);
 
 		while (SDL_PollEvent(&event)) {
 			TextBuffer *buffer = ted->active_buffer;
@@ -256,12 +263,20 @@ int main(int argc, char **argv) {
 				if (ted->active_buffer)
 					buffer_scroll(ted->active_buffer, dx * scroll_speed, dy * scroll_speed);
 			} break;
-			case SDL_MOUSEBUTTONDOWN:
-				switch (event.button.button) {
+			case SDL_MOUSEBUTTONDOWN: {
+				Uint32 button = event.button.button;
+				float x = (float)event.button.x, y = (float)event.button.y;
+				if (button < arr_count(ted->nmouse_clicks) 
+					&& ted->nmouse_clicks[button] < arr_count(ted->mouse_clicks[button])) {
+					v2 *v = &ted->mouse_clicks[button][ted->nmouse_clicks[button]++];
+					v->x = x;
+					v->y = y;
+				}
+				switch (button) {
 				case SDL_BUTTON_LEFT: {
 					if (buffer) {
 						BufferPos pos = {0};
-						if (buffer_pixels_to_pos(buffer, V2((float)event.button.x, (float)event.button.y), &pos)) {
+						if (buffer_pixels_to_pos(buffer, V2(x, y), &pos)) {
 							if (key_modifier == KEY_MODIFIER_SHIFT) {
 								buffer_select_to_pos(buffer, pos);
 							} else if (key_modifier == 0) {
@@ -280,7 +295,7 @@ int main(int argc, char **argv) {
 					}
 				} break;
 				}
-				break;
+			} break;
 			case SDL_MOUSEMOTION:
 				if (event.motion.state == SDL_BUTTON_LMASK) {
 					if (buffer) {
@@ -327,6 +342,7 @@ int main(int argc, char **argv) {
 			}
 
 			if (ted_haserr(ted)) {
+				// @TODO: better error handling
 				die("%s", ted_geterr(ted));
 			}
 		}
@@ -388,6 +404,12 @@ int main(int argc, char **argv) {
 		if (menu) {
 			menu_render(ted, menu);
 		}
+
+		if (ted_haserr(ted)) {
+			// @TODO: better error handling
+			die("%s", ted_geterr(ted));
+		}
+
 
 	#if DEBUG
 		buffer_check_valid(&ted->main_buffer);
