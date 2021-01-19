@@ -1,21 +1,26 @@
+#include "filesystem.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <dirent.h>
 #include <errno.h>
 
-// Does this file exist? Returns false for directories.
-static bool fs_file_exists(char const *path) {
+FsType fs_path_type(char const *path) {
 	struct stat statbuf = {0};
 	if (stat(path, &statbuf) != 0)
-		return false;
-	return S_ISREG(statbuf.st_mode);
+		return FS_NON_EXISTENT;
+	if (S_ISREG(statbuf.st_mode))
+		return FS_FILE;
+	if (S_ISDIR(statbuf.st_mode))
+		return FS_DIRECTORY;
+	return FS_OTHER;
 }
 
-// Returns a NULL-terminated array of the files/directories in this directory, or NULL if the directory does not exist.
-// When you're done with the file names, call free on each one, then on the array.
-// NOTE: The files aren't returned in any particular order!
-static char **fs_list_directory(char const *dirname) {
+bool fs_file_exists(char const *path) {
+	return fs_path_type(path) == FS_FILE;
+}
+
+char **fs_list_directory(char const *dirname) {
 	char **ret = NULL;
 	DIR *dir = opendir(dirname);
 	if (dir) {
@@ -43,7 +48,7 @@ static char **fs_list_directory(char const *dirname) {
 	return ret;
 }
 
-static int fs_mkdir(char const *path) {
+int fs_mkdir(char const *path) {
 	if (mkdir(path, 0755) == 0) {
 		// directory created successfully 
 		return 1;

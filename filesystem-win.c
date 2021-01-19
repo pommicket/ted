@@ -1,15 +1,23 @@
-// see filesystem-posix.c for function documentation
+#include "filesystem.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 
-static bool fs_file_exists(char const *path) {
+FsType fs_path_type(char const *path) {
 	struct _stat statbuf = {0};
 	if (_stat(path, &statbuf) != 0)
-		return false;
-	return (statbuf.st_mode & _S_IFREG) != 0;
+		return FS_NON_EXISTENT;
+	if (statbuf.st_mode & _S_IFREG)
+		return FS_FILE;
+	if (statbuf.st_mode & _S_IFDIR)
+		return FS_DIRECTORY;
+	return FS_OTHER;
 }
 
-static char **fs_list_directory(char const *dirname) {
+bool fs_file_exists(char const *path) {
+	return fs_path_type(path) == FS_FILE;
+}
+
+char **fs_list_directory(char const *dirname) {
 	char file_pattern[256] = {0};
 	char **ret = NULL;
 	WIN32_FIND_DATA find_data;
@@ -46,7 +54,7 @@ static char **fs_list_directory(char const *dirname) {
 	return ret;
 }
 
-static int fs_mkdir(char const *path) {
+int fs_mkdir(char const *path) {
 	if (CreateDirectoryA(path, NULL)) {
 		// directory created successfully
 		return 1;

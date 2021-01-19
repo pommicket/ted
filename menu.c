@@ -67,30 +67,35 @@ static void menu_render(Ted *ted, Menu menu) {
 
 		buffer_render(&ted->line_buffer, line_buffer_x1, line_buffer_y1, line_buffer_x2, line_buffer_y2);
 
-		char **files = fs_list_directory(directory);
-		if (files) {
-
-			u32 nfiles = 0;
-			for (char **p = files; *p; ++p) ++nfiles;
-			
+		char **entries = fs_list_directory(directory);
+		u32 nentries = 0;
+		if (entries) {
+			for (char **p = entries; *p; ++p)
+				++nentries;
+		}
+		FsType *entry_types = calloc(nentries, sizeof *entry_types);
+		if (entries && (entry_types || !nentries)) {
 			if (search_term && *search_term) {
-				// filter files based on search term
+				// filter entries based on search term
 				u32 in, out = 0;
-				for (in = 0; in < nfiles; ++in) {
-					if (stristr(files[in], search_term)) {
-						files[out++] = files[in];
+				for (in = 0; in < nentries; ++in) {
+					if (stristr(entries[in], search_term)) {
+						entries[out++] = entries[in];
 					}
 				}
-				nfiles = out;
+				nentries = out;
+			}
+			for (u32 i = 0; i < nentries; ++i) {
+				entry_types[i] = fs_path_type(entries[i]);
 			}
 
-			qsort(files, nfiles, sizeof *files, str_qsort_case_insensitive_cmp);
+			qsort(entries, nentries, sizeof *entries, str_qsort_case_insensitive_cmp);
 			char const *file_to_open = NULL;
 			{ // render file names
 				float start_x = menu_x1, start_y = line_buffer_y2 + inner_padding;
 				float x = start_x, y = start_y;
 				
-				for (u32 i = 0; i < nfiles; ++i) {
+				for (u32 i = 0; i < nentries; ++i) {
 					// highlight entry user is mousing over
 					if (y >= menu_y2) break;
 					Rect r = rect4(x, y, menu_x2, minf(y + char_height, menu_y2));
@@ -104,16 +109,26 @@ static void menu_render(Ted *ted, Menu menu) {
 					for (u32 c = 0; c < ted->nmouse_clicks[SDL_BUTTON_LEFT]; ++c) {
 						if (rect_contains_point(r, ted->mouse_clicks[SDL_BUTTON_LEFT][c])) {
 							// this file got clicked on!
-							file_to_open = files[i];
+							file_to_open = entries[i];
 						}
 					}
 				}
 				x = start_x, y = start_y;
 				TextRenderState text_render_state = {.min_x = menu_x1, .max_x = menu_x2, .min_y = menu_y1, .max_y = menu_y2, .render = true};
-				gl_color_rgba(colors[COLOR_TEXT]);
-				for (u32 i = 0; i < nfiles; ++i) {
+				// render file names themselves
+				for (u32 i = 0; i < nentries; ++i) {
 					if (y >= menu_y2) break;
-					text_render_with_state(font, &text_render_state, files[i], x, y);
+					switch (entry_types[i]) {
+					case FS_FILE:
+						gl_color_rgba(colors[COLOR_TEXT]);
+						break;
+					case FS_DIRECTORY:
+						gl_color_rgba(colors[COLOR_TEXT_FOLDER]);
+					default:
+						gl_color_rgba(colors[COLOR_TEXT_OTHER]);
+						break;
+					}
+					text_render_with_state(font, &text_render_state, entries[i], x, y);
 					y += char_height;
 				}
 			}
@@ -123,9 +138,10 @@ static void menu_render(Ted *ted, Menu menu) {
 				menu_close(ted, false);
 			}
 	
-			for (u32 i = 0; i < nfiles; ++i) free(files[i]);
-			free(files);
+			for (u32 i = 0; i < nentries; ++i) free(entries[i]);
 		}
+		free(entry_types);
+		free(entries);
 		free(search_term);
 	}
 }
