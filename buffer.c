@@ -413,18 +413,18 @@ static Status buffer_line_set_min_capacity(TextBuffer *buffer, Line *line, u32 m
 	return true;
 }
 
-// grow capacity of buffer->lines array
+// grow capacity of lines array
 // returns true if successful
-static Status buffer_lines_set_min_capacity(TextBuffer *buffer, u32 minimum_capacity) {
-	while (minimum_capacity >= buffer->lines_capacity) {
+static Status buffer_lines_set_min_capacity(TextBuffer *buffer, Line **lines, u32 *lines_capacity, u32 minimum_capacity) {
+	while (minimum_capacity >= *lines_capacity) {
 		// allocate more lines
-		u32 new_capacity = buffer->lines_capacity * 2;
-		Line *new_lines = buffer_realloc(buffer, buffer->lines, new_capacity * sizeof *buffer->lines);
+		u32 new_capacity = *lines_capacity * 2;
+		Line *new_lines = buffer_realloc(buffer, *lines, new_capacity * sizeof(Line));
 		if (new_lines) {
-			buffer->lines = new_lines;
-			buffer->lines_capacity = new_capacity;
+			*lines = new_lines;
 			// zero new lines
-			memset(buffer->lines + buffer->nlines, 0, (new_capacity - buffer->nlines) * sizeof *buffer->lines);
+			memset(new_lines + *lines_capacity, 0, (new_capacity - *lines_capacity) * sizeof(Line));
+			*lines_capacity = new_capacity;
 		} else {
 			return false;
 		}
@@ -477,81 +477,97 @@ void buffer_clear(TextBuffer *buffer) {
 	memcpy(buffer->error, error, sizeof error);
 }
 
-void buffer_load_file(TextBuffer *buffer, char const *filename) {
-	buffer_clear(buffer);
-
-	buffer->filename = buffer_strdup(buffer, filename);
+// if an error occurs, buffer is left untouched (except for the error field) and the function returns false.
+Status buffer_load_file(TextBuffer *buffer, char const *filename) {
 	FILE *fp = fopen(filename, "rb");
+	bool success = true;
 	if (fp) {
 		fseek(fp, 0, SEEK_END);
 		size_t file_size = (size_t)ftell(fp);
 		fseek(fp, 0, SEEK_SET);
 		if (file_size > 10L<<20) {
 			buffer_seterr(buffer, "File too big (size: %zu).", file_size);
-			return;
-		}
-
-		u8 *file_contents = buffer_calloc(buffer, 1, file_size);
-		bool success = true;
-		if (file_contents) {
-			buffer->lines_capacity = 4;
-			buffer->lines = buffer_calloc(buffer, buffer->lines_capacity, sizeof *buffer->lines); // initial lines
-			if (buffer->lines) {
-				buffer->nlines = 1;
-				size_t bytes_read = fread(file_contents, 1, file_size, fp);
-				if (bytes_read == file_size) {
-					char32_t c = 0;
-					mbstate_t mbstate = {0};
-					for (u8 *p = file_contents, *end = p + file_size; p != end; ) {
-						if (*p == '\r' && p != end-1 && p[1] == '\n') {
-							// CRLF line endings
-							p += 2;
-							c = U'\n';
-						} else {
-							size_t n = mbrtoc32(&c, (char *)p, (size_t)(end - p), &mbstate);
-							if (n == 0) {
-								// null character
-								c = 0;
-								++p;
-							} else if (n == (size_t)(-3)) {
-								// no bytes consumed, but a character was produced
-							} else if (n == (size_t)(-2) || n == (size_t)(-1)) {
-								// incomplete character at end of file or invalid UTF-8 respectively; fail
-								success = false;
-								buffer_seterr(buffer, "Invalid UTF-8 (position: %td).", p - file_contents);
-								break;
+			success = false;
+		} else {
+			u8 *file_contents = buffer_calloc(buffer, 1, file_size);
+			if (file_contents) {
+				u32 lines_capacity = 4;
+				Line *lines = buffer_calloc(buffer, lines_capacity, sizeof *buffer->lines); // initial lines
+				if (lines) {
+					u32 nlines = 1;
+					size_t bytes_read = fread(file_contents, 1, file_size, fp);
+					if (bytes_read == file_size) {
+						char32_t c = 0;
+						mbstate_t mbstate = {0};
+						for (u8 *p = file_contents, *end = p + file_size; p != end; ) {
+							if (*p == '\r' && p != end-1 && p[1] == '\n') {
+								// CRLF line endings
+								p += 2;
+								c = U'\n';
 							} else {
-								p += n;
+								size_t n = mbrtoc32(&c, (char *)p, (size_t)(end - p), &mbstate);
+								if (n == 0) {
+									// null character
+									c = 0;
+									++p;
+								} else if (n == (size_t)(-3)) {
+									// no bytes consumed, but a character was produced
+								} else if (n == (size_t)(-2) || n == (size_t)(-1)) {
+									// incomplete character at end of file or invalid UTF-8 respectively; fail
+									success = false;
+									buffer_seterr(buffer, "Invalid UTF-8 (position: %td).", p - file_contents);
+									break;
+								} else {
+									p += n;
+								}
+							}
+							if (c == U'\n') {
+								if (buffer_lines_set_min_capacity(buffer, &lines, &lines_capacity, nlines + 1))
+									++nlines;
+							} else {
+								u32 line_idx = nlines - 1;
+								Line *line = &lines[line_idx];
+								buffer_line_append_char(buffer, line, c);
 							}
 						}
-						if (c == U'\n') {
-							if (buffer_lines_set_min_capacity(buffer, buffer->nlines + 1))
-								++buffer->nlines;
-						} else {
-							u32 line_idx = buffer->nlines - 1;
-							Line *line = &buffer->lines[line_idx];
-
-							buffer_line_append_char(buffer, line, c);
+						if (success) {
+							char *filename_copy = buffer_strdup(buffer, filename);
+							if (!filename_copy) success = false;
+							if (success) {
+								// everything is good
+								buffer_clear(buffer);
+								buffer->lines = lines;
+								buffer->nlines = nlines;
+								buffer->lines_capacity = lines_capacity;
+								buffer->filename = filename_copy;
+							}
 						}
+					} else {
+						success = false;
+					}
+					if (!success) {
+						// something went wrong; we need to free all the memory we used
+						for (u32 i = 0; i < nlines; ++i)
+							buffer_line_free(&lines[i]);
+						free(lines);
 					}
 				}
+				free(file_contents);
 			}
-			free(file_contents);
-		}
-		if (ferror(fp)) {	
-			buffer_seterr(buffer, "Error reading from file.");
-			success = false;
+			if (ferror(fp)) {	
+				buffer_seterr(buffer, "Error reading from file.");
+				success = false;
+			}
 		}
 		if (fclose(fp) != 0) {
 			buffer_seterr(buffer, "Error closing file.");
 			success = false;
 		}
-		if (!success) {
-			buffer_clear(buffer);
-		}
 	} else {
 		buffer_seterr(buffer, "File %s does not exist.", filename);
+		success = false;
 	}
+	return success;
 }
 
 void buffer_new_file(TextBuffer *buffer, char const *filename) {
@@ -1122,7 +1138,7 @@ static Status buffer_insert_lines(TextBuffer *buffer, u32 where, u32 number) {
 
 	u32 old_nlines = buffer->nlines;
 	u32 new_nlines = old_nlines + number;
-	if (buffer_lines_set_min_capacity(buffer, new_nlines)) {
+	if (buffer_lines_set_min_capacity(buffer, &buffer->lines, &buffer->lines_capacity, new_nlines)) {
 		assert(where <= old_nlines);
 		// make space for new lines
 		memmove(buffer->lines + where + (new_nlines - old_nlines),

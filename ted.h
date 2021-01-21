@@ -7,10 +7,12 @@ typedef struct {
 	float cursor_blink_time_on, cursor_blink_time_off;
 	u32 colors[COLOR_COUNT];
 	u16 text_size;
+	u16 max_menu_width;
 	u8 tab_width;
 	u8 cursor_width;
 	u8 undo_save_time;
 	u8 border_thickness;
+	u8 padding;
 } Settings;
 
 #define SCANCODE_COUNT 0x120 // SDL scancodes should be less than this value.
@@ -74,6 +76,18 @@ ENUM_U16 {
 	MENU_OPEN
 } ENUM_U16_END(Menu);
 
+// file entries for menus involving a file selector
+typedef struct {
+	char *name;
+	FsType type;
+} FileEntry;
+
+typedef struct {
+	Rect bounds;
+	u32 n_entries;
+	FileEntry *entries;
+} FileSelector;
+
 typedef struct Ted {
 	Font *font;
 	TextBuffer *active_buffer;
@@ -86,6 +100,7 @@ typedef struct Ted {
 	u8 nmouse_clicks[4]; // nmouse_clicks[i] = length of mouse_clicks[i]
 	v2 mouse_clicks[4][32]; // mouse_clicks[SDL_BUTTON_RIGHT], for example, is all the right mouse-clicks that have happened this frame
 	Menu menu;
+	FileSelector file_selector;
 	TextBuffer line_buffer; // general-purpose line buffer for inputs -- used for menus
 	TextBuffer main_buffer;
 	KeyAction key_actions[KEY_COMBO_COUNT];

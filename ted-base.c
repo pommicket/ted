@@ -86,17 +86,15 @@ static void ted_load_font(Ted *ted) {
 	}
 }
 
-// returns buffer of new file
-static TextBuffer *ted_open_file(Ted *ted, char const *filename) {
+// returns buffer of new file, or NULL on failure
+static WarnUnusedResult TextBuffer *ted_open_file(Ted *ted, char const *filename) {
 	TextBuffer *open_to = &ted->main_buffer;
-	buffer_load_file(open_to, filename);
-	if (buffer_haserr(open_to)) {
-		// @TODO: something
-		ted_seterr_to_buferr(ted, open_to);
-		return NULL;
-	} else {
+	if (buffer_load_file(open_to, filename)) {
 		ted->active_buffer = open_to;
 		return open_to;
+	} else {
+		ted_seterr_to_buferr(ted, open_to);
+		return NULL;
 	}
 }
 

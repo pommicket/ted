@@ -300,6 +300,12 @@ void config_read(Ted *ted, char const *filename) {
 										} else {
 											config_err(cfg, "Invalid border thickness: %s.", value);
 										}
+									} else if (streq(key, "max-menu-width")) {
+										if (is_integer && integer >= 10 && integer < U16_MAX) {
+											settings->max_menu_width = (u16)integer;
+										} else {
+											config_err(cfg, "Invalid max menu width: %s.", value);
+										}
 									} else {
 										config_err(cfg, "Unrecognized core setting: %s.", key);
 									}

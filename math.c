@@ -738,5 +738,14 @@ static float rects_intersect(Rect r1, Rect r2) {
 	if (r2.pos.y >= r1.pos.y + r1.size.y) return false; // r2 is above r1
 	return true;
 }
+
+// returns whether or not there is any of the clipped rectangle left
+static bool rect_clip_to_rect(Rect *clipped, Rect clipper) {
+	clipped->pos.x = maxf(clipped->pos.x, clipper.pos.x);
+	clipped->pos.y = maxf(clipped->pos.y, clipper.pos.y);
+	clipped->size.x = clampf(clipped->size.x, 0, clipper.pos.x + clipper.size.x - clipped->pos.x);
+	clipped->size.y = clampf(clipped->size.y, 0, clipper.pos.y + clipper.size.y - clipped->pos.y);
+	return clipped->size.x > 0 && clipped->size.y > 0;
+}
 #endif
 

@@ -60,6 +60,7 @@ static void die(char const *fmt, ...) {
 #if _WIN32
 INT WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
     PSTR lpCmdLine, INT nCmdShow) {
+	(void)hInstance; (void)hPrevInstance; (void)lpCmdLine; (void)nCmdShow;
 	int argc = 0;
     LPWSTR* wide_argv = CommandLineToArgvW(GetCommandLineW(), &argc);
     char** argv = malloc(argc * sizeof *argv);
@@ -204,8 +205,7 @@ int main(int argc, char **argv) {
 		}
 
 		if (fs_file_exists(starting_filename)) {
-			buffer_load_file(buffer, starting_filename);
-			if (buffer_haserr(buffer))
+			if (!buffer_load_file(buffer, starting_filename))
 				die("Error loading file: %s", buffer_geterr(buffer));
 		} else {
 			buffer_new_file(buffer, starting_filename);
@@ -346,6 +346,8 @@ int main(int argc, char **argv) {
 				die("%s", ted_geterr(ted));
 			}
 		}
+		
+		menu_update(ted, ted->menu);
 
 		u32 key_modifier = (u32)ctrl_down << KEY_MODIFIER_CTRL_BIT
 			| (u32)shift_down << KEY_MODIFIER_SHIFT_BIT
