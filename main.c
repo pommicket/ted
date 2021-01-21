@@ -81,6 +81,8 @@ int main(int argc, char **argv) {
 #endif
 	setlocale(LC_ALL, ""); // allow unicode
 
+	printf("%d\n", !!stristr("foo", "x"));
+
 	{ // get local data directory
 #if _WIN32
 		wchar_t *appdata = NULL;

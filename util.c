@@ -105,29 +105,50 @@ static void str_cpy(char *dst, size_t dst_sz, char const *src) {
 	dst[n] = 0;
 }
 
+// advances str to the start of the next UTF8 character
+static void utf8_next_char_const(char const **str) {
+	if (**str) {
+		do {
+			++*str;
+		} while (((u8)(**str) & 0xC0) == 0x80); // while we are on a continuation byte
+	}
+}
+
 /* 
-returns the first instance of needle in haystack, ignoring the case of the characters,
+returns the first instance of needle in haystack, where both are UTF-8 strings, ignoring the case of the characters,
 or NULL if the haystack does not contain needle
 WARNING: O(strlen(haystack) * strlen(needle))
 */
 static char *stristr(char const *haystack, char const *needle) {
-	size_t needle_len = strlen(needle), haystack_len = strlen(haystack), i, j;
-	
-	if (needle_len > haystack_len) return NULL; // a larger string can't fit in a smaller string
+	size_t needle_bytes = strlen(needle), haystack_bytes = strlen(haystack);
 
-	for (i = 0; i <= haystack_len - needle_len; ++i) {
-		char const *p = haystack + i, *q = needle;
+	if (needle_bytes > haystack_bytes) return NULL;
+	
+	char const *haystack_end = haystack + haystack_bytes;
+	char const *needle_end = needle + needle_bytes;
+
+	for (char const *haystack_start = haystack; haystack_start + needle_bytes <= haystack_end; utf8_next_char_const(&haystack_start)) {
+		char const *p = haystack_start, *q = needle;
+		mbstate_t pstate = {0}, qstate = {0};
 		bool match = true;
-		for (j = 0; j < needle_len; ++j) {
-			if (tolower(*p) != tolower(*q)) {
-				match = false;
-				break;
-			}
-			++p;
-			++q;
+
+		// check if p matches q
+		while (q < needle_end) {
+			char32_t pchar = 0, qchar = 0;
+			size_t bytes_p = mbrtoc32(&pchar, p, (size_t)(haystack_end - p), &pstate);
+			size_t bytes_q = mbrtoc32(&qchar, q, (size_t)(needle_end - q),   &qstate);
+			if (bytes_p == (size_t)-3) bytes_p = 0;
+			if (bytes_q == (size_t)-3) bytes_q = 0;
+			if (bytes_p > (size_t)-3 || bytes_q > (size_t)-3) return NULL; // invalid UTF-8
+			bool same = pchar == qchar;
+			if (pchar < WINT_MAX && qchar < WINT_MAX) // on Windows, there is no way of finding the lower-case version of a codepoint outside the BMP. ):
+				same = towlower((wint_t)pchar) == towlower((wint_t)qchar);
+			if (!same) match = false;
+			p += bytes_p;
+			q += bytes_q;
 		}
 		if (match)
-			return (char *)haystack + i;
+			return (char *)haystack_start;
 	}
 	return NULL;
 }
@@ -151,12 +172,17 @@ static bool str_satisfies(char const *s, int (*predicate)(int)) {
 	return true;
 }
 
+
+static int strcmp_case_insensitive(char const *a, char const *b) {
+#if _WIN32
+	return _stricmp(a, b);
+#else
+	return strcasecmp(a, b);
+#endif
+}
+
 // function to be passed into qsort for case insensitive sorting
 static int str_qsort_case_insensitive_cmp(const void *av, const void *bv) {
 	char const *const *a = av, *const *b = bv;
-#if _WIN32
-	return _stricmp(*a, *b);
-#else
-	return strcasecmp(*a, *b);
-#endif
+	return strcmp_case_insensitive(*a, *b);
 }

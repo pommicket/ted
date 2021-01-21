@@ -483,9 +483,13 @@ Status buffer_load_file(TextBuffer *buffer, char const *filename) {
 	bool success = true;
 	if (fp) {
 		fseek(fp, 0, SEEK_END);
-		size_t file_size = (size_t)ftell(fp);
+		long file_pos = ftell(fp);
+		size_t file_size = (size_t)file_pos;
 		fseek(fp, 0, SEEK_SET);
-		if (file_size > 10L<<20) {
+		if (file_pos == -1 || file_pos == LONG_MAX) {
+			buffer_seterr(buffer, "Couldn't get file position. There is something wrong with the file '%s'.", filename);
+			success = false;
+		} else if (file_size > 10L<<20) {
 			buffer_seterr(buffer, "File too big (size: %zu).", file_size);
 			success = false;
 		} else {

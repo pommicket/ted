@@ -57,6 +57,18 @@ static void file_selector_free(FileSelector *fs) {
 	file_selector_clear_entries(fs);
 }
 
+static int qsort_file_entry_cmp(void const *av, void const *bv) {
+	FileEntry const *a = av, *b = bv;
+	// put directories first
+	if (a->type > b->type) {
+		return -1;
+	}
+	if (a->type < b->type) {
+		return +1;
+	}
+	return strcmp_case_insensitive(a->name, b->name);
+}
+
 // returns the entry of the selected file, or a NULL entry (check .name == NULL)
 // if none was selected
 static FileEntry file_selector_update(Ted *ted, FileSelector *fs, String32 const search_term32) {
@@ -83,16 +95,23 @@ static FileEntry file_selector_update(Ted *ted, FileSelector *fs, String32 const
 	if (files) {
 		u32 nfiles;
 		for (nfiles = 0; files[nfiles]; ++nfiles);
-		if (search_term && *search_term) {
-			// filter entries based on search term
-			u32 in, out = 0;
-			for (in = 0; in < nfiles; ++in) {
-				if (stristr(files[in], search_term)) {
-					free(files[out]);
-					files[out++] = files[in];
+
+		// filter entries
+		bool increment = true;
+		for (u32 i = 0; i < nfiles; i += increment, increment = true) {
+			// remove if the file name does not contain the search term,
+			bool remove = search_term && *search_term && !stristr(files[i], search_term);
+			// or if this is just the current directory
+			remove |= streq(files[i], ".");
+			if (remove) {
+				// remove this one
+				free(files[i]);
+				--nfiles;
+				if (nfiles) {
+					files[i] = files[nfiles];
 				}
+				increment = false;
 			}
-			nfiles = out;
 		}
 		
 		if (nfiles) {
@@ -105,6 +124,7 @@ static FileEntry file_selector_update(Ted *ted, FileSelector *fs, String32 const
 					entries[i].type = fs_path_type(files[i]);
 				}
 			}
+			qsort(entries, nfiles, sizeof *entries, qsort_file_entry_cmp);
 		}
 	} else {
 		#if DEBUG
@@ -156,6 +176,7 @@ static void file_selector_render(Ted const *ted, FileSelector const *fs) {
 			break;
 		case FS_DIRECTORY:
 			gl_color_rgba(colors[COLOR_TEXT_FOLDER]);
+			break;
 		default:
 			gl_color_rgba(colors[COLOR_TEXT_OTHER]);
 			break;
