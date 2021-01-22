@@ -131,14 +131,14 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		i64 new_text_size = settings->text_size + argument;
 		if (new_text_size >= TEXT_SIZE_MIN && new_text_size <= TEXT_SIZE_MAX) {
 			settings->text_size = (u16)new_text_size;
-			ted_load_font(ted);
+			ted_load_fonts(ted);
 		}
 	} break;
 	case CMD_TEXT_SIZE_DECREASE: {
 		i64 new_text_size = settings->text_size - argument;	
 		if (new_text_size >= TEXT_SIZE_MIN && new_text_size <= TEXT_SIZE_MAX) {
 			settings->text_size = (u16)new_text_size;
-			ted_load_font(ted);
+			ted_load_fonts(ted);
 		}
 	} break;
 	

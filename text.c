@@ -75,7 +75,7 @@ static Status text_load_char_page(Font *font, int page) {
 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 			#if DEBUG
-				debug_println("Loaded font page %d with %dx%d bitmap as texture %u.", page, bitmap_width, bitmap_height, texture);
+				debug_println("Loaded font page %p:%03d with %dx%d bitmap as texture %u.", (void *)font, page, bitmap_width, bitmap_height, texture);
 			#endif
 				font->textures[page] = texture;
 				font->tex_widths[page]  = bitmap_width;

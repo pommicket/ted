@@ -68,15 +68,17 @@ static Status ted_get_file(char const *name, char *out, size_t outsz) {
 	return false;
 }
 
-static void ted_load_font(Ted *ted) {
+// Loads font from filename into *out, freeing any font that was previously there.
+// *out is left unchanged on failure.
+static void ted_load_font(Ted *ted, char const *filename, Font **out) {
 	char font_filename[TED_PATH_MAX];
-	if (ted_get_file("assets/font.ttf", font_filename, sizeof font_filename)) {
+	if (ted_get_file(filename, font_filename, sizeof font_filename)) {
 		Font *font = text_font_load(font_filename, ted->settings.text_size);
 		if (font) {
-			if (ted->font) {
-				text_font_free(ted->font);
+			if (*out) {
+				text_font_free(*out);
 			}
-			ted->font = font;
+			*out = font;
 		} else {
 			ted_seterr(ted, "Couldn't load font: %s", text_get_err());
 			text_clear_err();
@@ -84,6 +86,13 @@ static void ted_load_font(Ted *ted) {
 	} else {
 		ted_seterr(ted, "Couldn't find font file. There is probably a problem with your ted installation.");
 	}
+	
+}
+
+// Load all the fonts ted will use.
+static void ted_load_fonts(Ted *ted) {
+	ted_load_font(ted, "assets/font.ttf", &ted->font);
+	ted_load_font(ted, "assets/font-bold.ttf", &ted->font_bold);
 }
 
 // returns buffer of new file, or NULL on failure

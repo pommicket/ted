@@ -92,7 +92,9 @@ typedef struct {
 } FileSelector;
 
 typedef struct Ted {
+	Font *font_bold;
 	Font *font;
+
 	TextBuffer *active_buffer;
 	// buffer we are currently drag-to-selecting in, if any
 	TextBuffer *drag_buffer;

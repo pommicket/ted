@@ -179,7 +179,7 @@ int main(int argc, char **argv) {
 
 	SDL_GL_SetSwapInterval(1); // vsync
 
-	ted_load_font(ted);
+	ted_load_fonts(ted);
 	if (ted_haserr(ted))
 		die("Error loading font: %s", ted_geterr(ted));
 	{
