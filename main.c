@@ -250,6 +250,8 @@ int main(int argc, char **argv) {
 
 		memset(ted->nmouse_clicks, 0, sizeof ted->nmouse_clicks);
 
+		//printf("%p\n",(void *)ted->drag_buffer);
+
 		while (SDL_PollEvent(&event)) {
 			TextBuffer *buffer = ted->active_buffer;
 			u32 key_modifier = (u32)ctrl_down << KEY_MODIFIER_CTRL_BIT
@@ -300,23 +302,18 @@ int main(int argc, char **argv) {
 				} break;
 				}
 			} break;
-			case SDL_MOUSEBUTTONUP:
-				if (event.button.button == SDL_BUTTON_LEFT)
+			case SDL_MOUSEMOTION: {
+				float x = (float)event.motion.x, y = (float)event.motion.y;
+				if (ted->drag_buffer != ted->active_buffer)
 					ted->drag_buffer = NULL;
-				break;
-			case SDL_MOUSEMOTION:
-				if (event.motion.state == SDL_BUTTON_LMASK) {
-					if (ted->drag_buffer != ted->active_buffer)
-						ted->drag_buffer = NULL;
-					if (ted->drag_buffer) {
-						BufferPos pos = {0};
-						// drag to select
-						// we don't check the return value here, because it's okay to drag off the screen.
-						buffer_pixels_to_pos(ted->drag_buffer, V2((float)event.button.x, (float)event.button.y), &pos);
-						buffer_select_to_pos(ted->drag_buffer, pos);
-					}
+				if (ted->drag_buffer) {
+					BufferPos pos = {0};
+					// drag to select
+					// we don't check the return value here, because it's okay to drag off the screen.
+					buffer_pixels_to_pos(ted->drag_buffer, V2(x, y), &pos);
+					buffer_select_to_pos(ted->drag_buffer, pos);
 				}
-				break;
+			} break;
 			case SDL_KEYDOWN: {
 				SDL_Scancode scancode = event.key.keysym.scancode;
 				SDL_Keymod modifier = event.key.keysym.mod;
@@ -358,6 +355,13 @@ int main(int argc, char **argv) {
 			}
 		}
 		
+		if (!(SDL_GetMouseState(NULL, NULL) & SDL_BUTTON_LMASK)) {
+			// originally this was done on SDL_MOUSEBUTTONUP events but for some reason
+			// I was getting a bunch of those even when I was holding down the mouse.
+			// This makes it much smoother.
+			ted->drag_buffer = NULL;
+		}
+
 		menu_update(ted, ted->menu);
 
 		u32 key_modifier = (u32)ctrl_down << KEY_MODIFIER_CTRL_BIT

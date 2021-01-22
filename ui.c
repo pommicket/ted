@@ -41,7 +41,7 @@ static int qsort_file_entry_cmp(void const *av, void const *bv) {
 }
 
 // change directory of file selector.
-void file_selector_cd(FileSelector *fs, char const *path) {
+void file_selector_cd(Ted *ted, FileSelector *fs, char const *path) {
 	// @TODO: handle .. properly
 	if (path[0] == PATH_SEPARATOR
 #if _WIN32
@@ -57,6 +57,9 @@ void file_selector_cd(FileSelector *fs, char const *path) {
 		arr_append_str(fs->cwd, PATH_SEPARATOR_STR);
 	}
 	arr_append_str(fs->cwd, path);
+
+	// clear search term
+	buffer_clear(&ted->line_buffer);
 }
 
 // returns the name of the selected file, or NULL
@@ -90,7 +93,7 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 						if (path) return str_dup(path);
 						break;
 					case FS_DIRECTORY:
-						file_selector_cd(fs, name);
+						file_selector_cd(ted, fs, name);
 						break;
 					default: break;
 					}
@@ -106,7 +109,7 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 				if (path) return str_dup(path);
 				break;
 			case FS_DIRECTORY:
-				file_selector_cd(fs, name);
+				file_selector_cd(ted, fs, name);
 				break;
 			default: break;
 			}
@@ -158,7 +161,7 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 					size_t path_size = strlen(name) + strlen(cwd) + 3;
 					char *path = ted_calloc(ted, 1, path_size);
 					if (path) {
-						snprintf(path, path_size - 1, "%s%s%s", cwd, cwd_has_path_sep ? PATH_SEPARATOR_STR : "", name);
+						snprintf(path, path_size - 1, "%s%s%s", cwd, cwd_has_path_sep ? "" : PATH_SEPARATOR_STR, name);
 						entries[i].path = path;
 						entries[i].type = fs_path_type(path);
 					} else {
