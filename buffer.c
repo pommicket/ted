@@ -768,8 +768,9 @@ v2 buffer_pos_to_pixels(TextBuffer *buffer, BufferPos pos) {
 }
 
 // convert pixel coordinates to a position in the buffer, selecting the closest character.
-// returns false if the position is not inside the buffer.
+// returns false if the position is not inside the buffer, but still sets *pos to the closest character.
 bool buffer_pixels_to_pos(TextBuffer *buffer, v2 pixel_coords, BufferPos *pos) {
+	bool ret = true;
 	float x = pixel_coords.x, y = pixel_coords.y;
 	Font *font = buffer_font(buffer);
 	pos->line = pos->index = 0;
@@ -779,11 +780,24 @@ bool buffer_pixels_to_pos(TextBuffer *buffer, v2 pixel_coords, BufferPos *pos) {
 	x /= text_font_char_width(font);
 	y /= text_font_char_height(font);
 	double display_col = (double)x;
-	if (display_col < 0 || display_col >= buffer_display_cols(buffer))
-		return false;
+	if (display_col < 0) {
+		display_col = 0;
+		ret = false;
+	}
+	int display_cols = buffer_display_cols(buffer), display_lines = buffer_display_lines(buffer);
+	if (display_col >= display_cols) {
+		display_col = display_cols - 1;
+		ret = false;
+	}
 	double display_line = (double)y;
-	if (display_line < 0 || display_line >= buffer_display_lines(buffer))
-		return false;
+	if (display_line < 0) {
+		display_line = 0;
+		ret = false;
+	}
+	if (display_line >= display_lines) {
+		display_line = display_lines - 1;
+		ret = false;
+	}
 	
 	u32 line = (u32)floor(display_line + buffer->scroll_y);
 	if (line >= buffer->nlines) line = buffer->nlines - 1;
@@ -792,7 +806,7 @@ bool buffer_pixels_to_pos(TextBuffer *buffer, v2 pixel_coords, BufferPos *pos) {
 	pos->line = line;
 	pos->index = index;
 	
-	return true;
+	return ret;
 }
 
 // clip the rectangle so it's all inside the buffer. returns true if there's any rectangle left.

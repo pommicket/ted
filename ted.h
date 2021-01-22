@@ -76,9 +76,10 @@ ENUM_U16 {
 	MENU_OPEN
 } ENUM_U16_END(Menu);
 
-// file entries for menus involving a file selector
+// file entries for file selectors
 typedef struct {
-	char *name;
+	char *name; // just the file name
+	char *path; // full path
 	FsType type;
 } FileEntry;
 
@@ -86,11 +87,15 @@ typedef struct {
 	Rect bounds;
 	u32 n_entries;
 	FileEntry *entries;
+	char *cwd; // a dynamic null-terminated array of chars representing the current directory
+	bool submitted; // set to true if the line buffer was just submitted this frame.
 } FileSelector;
 
 typedef struct Ted {
 	Font *font;
 	TextBuffer *active_buffer;
+	// buffer we are currently drag-to-selecting in, if any
+	TextBuffer *drag_buffer;
 	// while a menu or something is open, there is no active buffer. when the menu is closed,
 	// the old active buffer needs to be restored. that's what this stores.
 	TextBuffer *prev_active_buffer; 
@@ -104,5 +109,6 @@ typedef struct Ted {
 	TextBuffer line_buffer; // general-purpose line buffer for inputs -- used for menus
 	TextBuffer main_buffer;
 	KeyAction key_actions[KEY_COMBO_COUNT];
+	char cwd[TED_PATH_MAX]; // current working directory
 	char error[256];
 } Ted;

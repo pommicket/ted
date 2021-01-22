@@ -37,6 +37,7 @@ no_warn_end
 #include "arr.c"
 #include "buffer.c"
 #include "ted-base.c"
+#include "ui.c"
 #include "command.c"
 #include "config.c"
 #include "menu.c"
@@ -81,14 +82,17 @@ int main(int argc, char **argv) {
 #endif
 	setlocale(LC_ALL, ""); // allow unicode
 
-	printf("%d\n", !!stristr("foo", "x"));
+	Ted *ted = calloc(1, sizeof *ted);
+	if (!ted) {
+		die("Not enough memory available to run ted.");
+	}
 
 	{ // get local data directory
 #if _WIN32
 		wchar_t *appdata = NULL;
 		KNOWNFOLDERID id = FOLDERID_LocalAppData;
 		if (SHGetKnownFolderPath(&id, 0, NULL, &appdata) == S_OK) {
-			strbuf_printf(ted_local_data_dir, "%ls" PATH_SEPARATOR "ted", appdata);
+			strbuf_printf(ted_local_data_dir, "%ls" PATH_SEPARATOR_STR "ted", appdata);
 			CoTaskMemFree(appdata);
 		}
 #else
@@ -97,12 +101,17 @@ int main(int argc, char **argv) {
 #endif
 	}
 
+	{ // get current working directory
+		fs_get_cwd(ted->cwd, sizeof ted->cwd);
+	}
+
 	{ // check if this is the installed version of ted (as opposed to just running it from the directory with the source)
-		char executable_path[TED_PATH_MAX] = {0}, cwd[TED_PATH_MAX] = {0};
+		char executable_path[TED_PATH_MAX] = {0};
+		char const *cwd = ted->cwd;
 	#if _WIN32
 		if (GetModuleFileNameA(NULL, executable_path, sizeof executable_path) > 0) {
 			char *last_backslash = strrchr(executable_path, '\\');
-			if (last_backslash && GetCurrentDirectory(sizeof cwd, cwd) > 0) {
+			if (last_backslash) {
 				*last_backslash = '\0';
 				ted_search_cwd = streq(cwd, executable_path);
 			}
@@ -116,18 +125,10 @@ int main(int argc, char **argv) {
 			char *last_slash = strrchr(executable_path, '/');
 			if (last_slash) {
 				*last_slash = '\0';
-				if (getcwd(cwd, sizeof cwd)) {
-					// @TODO: make sure this is working
-					ted_search_cwd = streq(cwd, executable_path);
-				}
+				ted_search_cwd = streq(cwd, executable_path);
 			}
 		}
 	#endif
-	}
-
-	Ted *ted = calloc(1, sizeof *ted);
-	if (!ted) {
-		die("Not enough memory available to run ted.");
 	}
 
 	Settings *settings = &ted->settings;
@@ -135,7 +136,7 @@ int main(int argc, char **argv) {
 	{
 		// read global configuration file first to establish defaults
 		char global_config_filename[TED_PATH_MAX];
-		strbuf_printf(global_config_filename, "%s" PATH_SEPARATOR "ted.cfg", ted_global_data_dir);
+		strbuf_printf(global_config_filename, "%s" PATH_SEPARATOR_STR "ted.cfg", ted_global_data_dir);
 		if (fs_file_exists(global_config_filename))
 			config_read(ted, global_config_filename);
 	}
@@ -246,7 +247,7 @@ int main(int argc, char **argv) {
 		bool ctrl_down = keyboard_state[SDL_SCANCODE_LCTRL] || keyboard_state[SDL_SCANCODE_RCTRL];
 		bool shift_down = keyboard_state[SDL_SCANCODE_LSHIFT] || keyboard_state[SDL_SCANCODE_RSHIFT];
 		bool alt_down = keyboard_state[SDL_SCANCODE_LALT] || keyboard_state[SDL_SCANCODE_RALT];
-		
+
 		memset(ted->nmouse_clicks, 0, sizeof ted->nmouse_clicks);
 
 		while (SDL_PollEvent(&event)) {
@@ -293,18 +294,26 @@ int main(int argc, char **argv) {
 									break;
 								}
 							}
+							ted->drag_buffer = buffer;
 						}
 					}
 				} break;
 				}
 			} break;
+			case SDL_MOUSEBUTTONUP:
+				if (event.button.button == SDL_BUTTON_LEFT)
+					ted->drag_buffer = NULL;
+				break;
 			case SDL_MOUSEMOTION:
 				if (event.motion.state == SDL_BUTTON_LMASK) {
-					if (buffer) {
+					if (ted->drag_buffer != ted->active_buffer)
+						ted->drag_buffer = NULL;
+					if (ted->drag_buffer) {
 						BufferPos pos = {0};
-						if (buffer_pixels_to_pos(buffer, V2((float)event.button.x, (float)event.button.y), &pos)) {
-							buffer_select_to_pos(buffer, pos);
-						}
+						// drag to select
+						// we don't check the return value here, because it's okay to drag off the screen.
+						buffer_pixels_to_pos(ted->drag_buffer, V2((float)event.button.x, (float)event.button.y), &pos);
+						buffer_select_to_pos(ted->drag_buffer, pos);
 					}
 				}
 				break;

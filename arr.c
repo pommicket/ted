@@ -109,8 +109,6 @@ static inline void *arr_add_ptr_(void **arr, size_t member_size) {
 	return ret;
 }
 
-#if 0
-// NOT TESTED
 static inline void arr_set_len_(void **arr, size_t member_size, size_t n) {
 	if (n >= U32_MAX-1) { 
 		// too big; free arr.
@@ -153,10 +151,10 @@ static inline void arr_set_len_(void **arr, size_t member_size, size_t n) {
 			memset((char *)hdr->data + hdr->len, 0, (n - hdr->len) * member_size);
 		}
 		hdr->len = (u32)n;
+		*arr = hdr->data;
 	}
 }
 #define arr_set_len(a, n) arr_set_len_((void **)&a, sizeof *(a), n)
-#endif
 
 #ifdef __cplusplus
 #define arr_cast_typeof(a) (decltype(a))
@@ -208,6 +206,20 @@ static inline void arr_set_len_(void **arr, size_t member_size, size_t n) {
 		*_y = _tmp; \
 	} \
 	} while (0)
+
+
+static void arr_append_str_(char **a, char const *s) {
+	size_t curr_len = arr_len(*a);
+	size_t s_len = strlen(s);
+
+	if (curr_len) --curr_len; // don't include null terminator
+
+	arr_set_len(*a, curr_len + s_len + 1);
+	memcpy(*a + curr_len, s, s_len + 1);
+}
+
+// appends a C-string array with 
+#define arr_append_str(a, s) arr_append_str_(&(a), (s))
 
 static void arr_test(void) {
 	u32 *arr = NULL;

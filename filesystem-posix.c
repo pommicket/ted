@@ -69,3 +69,14 @@ int fs_mkdir(char const *path) {
 		return -1;
 	}
 }
+
+int fs_get_cwd(char *buf, size_t buflen) {
+	assert(buf && buflen);
+	if (getcwd(buf, buflen)) {
+		return 1;
+	} else if (errno == ERANGE) {
+		return 0;
+	} else {
+		return -1;
+	}
+}

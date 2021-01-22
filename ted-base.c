@@ -56,12 +56,12 @@ static Status ted_get_file(char const *name, char *out, size_t outsz) {
 		return true;
 	}
 	if (*ted_local_data_dir) {
-		str_printf(out, outsz, "%s" PATH_SEPARATOR "%s", ted_local_data_dir, name);
+		str_printf(out, outsz, "%s" PATH_SEPARATOR_STR "%s", ted_local_data_dir, name);
 		if (fs_file_exists(out))
 			return true;
 	}
 	if (*ted_global_data_dir) {
-		str_printf(out, outsz, "%s" PATH_SEPARATOR "%s", ted_global_data_dir, name);
+		str_printf(out, outsz, "%s" PATH_SEPARATOR_STR "%s", ted_global_data_dir, name);
 		if (fs_file_exists(out))
 			return true;
 	}

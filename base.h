@@ -8,9 +8,11 @@
 #if _WIN32
 #include <windows.h>
 #include <shlobj.h>
-#define PATH_SEPARATOR "\\"
+#define PATH_SEPARATOR '\\'
+#define PATH_SEPARATOR_STR "\\"
 #else
-#define PATH_SEPARATOR "/"
+#define PATH_SEPARATOR '/'
+#define PATH_SEPARATOR_STR "/"
 #endif
 
 #include <stdbool.h>

@@ -16,12 +16,18 @@ bool fs_file_exists(char const *path);
 // When you're done with the file names, call free on each one, then on the array.
 // NOTE: The files aren't returned in any particular order!
 char **fs_list_directory(char const *dirname);
-// create the directory specified by `path`
-// returns:
+// Create the directory specified by `path`
+// Returns:
 // 1  if the directory was created successfully
 // 0  if the directory already exists
 // -1 if the path already exists, but it's not a directory, or if there's another error (e.g. don't have permission to create directory).
 int fs_mkdir(char const *path);
+// Puts the current working directory into buf, including a null-terminator, writing at most buflen bytes.
+// Returns:
+// 1  if the working directory was inserted into buf successfully
+// 0  if buf is too short to hold the cwd
+// -1 if we can't get the cwd for whatever reason.
+int fs_get_cwd(char *buf, size_t buflen);
 
 #endif // FILESYSTEM_H_
 

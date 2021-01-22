@@ -156,14 +156,7 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 				assert(0);
 				break;
 			case MENU_OPEN: {
-				char *filename_cstr = str32_to_utf8_cstr(buffer_get_line(&ted->line_buffer, 0));
-				if (filename_cstr) {
-					buffer = ted_open_file(ted, filename_cstr);
-					free(filename_cstr);
-					menu_close(ted, false);
-				} else {
-					ted_seterr(ted, "Out of memory.");
-				}
+				ted->file_selector.submitted = true;
 			} break;
 			}
 		}
