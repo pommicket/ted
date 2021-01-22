@@ -3,10 +3,11 @@
 static bool file_selector_entry_pos(Ted const *ted, FileSelector const *fs,
 	u32 i, Rect *r) {
 	Rect bounds = fs->bounds;
+	float padding = ted->settings.padding;
 	float char_height = text_font_char_height(ted->font);
 	*r = rect(V2(bounds.pos.x, bounds.pos.y 
 		+ char_height // make room for cwd
-		+ char_height * 1.5f // make room for line buffer
+		+ char_height * 1.5f + padding // make room for line buffer
 		+ char_height * (float)i), 
 		V2(bounds.size.x, char_height));
 	return rect_clip_to_rect(r, bounds);
@@ -52,11 +53,15 @@ void file_selector_cd(Ted *ted, FileSelector *fs, char const *path) {
 		// this is an absolute path. discard our previous cwd.
 		arr_clear(fs->cwd);
 	}
-	if (strlen(fs->cwd) > 0 && fs->cwd[strlen(fs->cwd) - 1] != PATH_SEPARATOR) {
-		// add path separator to end if not already there
-		arr_append_str(fs->cwd, PATH_SEPARATOR_STR);
-	}
-	arr_append_str(fs->cwd, path);
+	size_t path_len = strlen(path);
+	if (!path_len) return;
+
+	if (path_len > 1 && path[path_len - 1] == PATH_SEPARATOR)
+		--path_len;
+	
+	// add path separator to end
+	arr_append_str(fs->cwd, PATH_SEPARATOR_STR);
+	arr_append_strn(fs->cwd, path, path_len);
 
 	// clear search term
 	buffer_clear(&ted->line_buffer);
@@ -127,7 +132,6 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 	char **files = fs_list_directory(fs->cwd);
 	if (files) {
 		char const *cwd = fs->cwd;
-		bool cwd_has_path_sep = cwd[strlen(cwd) - 1] == PATH_SEPARATOR;
 		u32 nfiles;
 		for (nfiles = 0; files[nfiles]; ++nfiles);
 
@@ -161,7 +165,7 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 					size_t path_size = strlen(name) + strlen(cwd) + 3;
 					char *path = ted_calloc(ted, 1, path_size);
 					if (path) {
-						snprintf(path, path_size - 1, "%s%s%s", cwd, cwd_has_path_sep ? "" : PATH_SEPARATOR_STR, name);
+						snprintf(path, path_size - 1, "%s%s%s", cwd, PATH_SEPARATOR_STR, name);
 						entries[i].path = path;
 						entries[i].type = fs_path_type(path);
 					} else {
@@ -189,12 +193,15 @@ static void file_selector_render(Ted *ted, FileSelector *fs) {
 	u32 n_entries = fs->n_entries;
 	FileEntry const *entries = fs->entries;
 	Font *font = ted->font;
+	float padding = settings->padding;
 	float char_height = text_font_char_height(ted->font);
 	float x1, y1, x2, y2;
 	rect_coords(bounds, &x1, &y1, &x2, &y2);
 
-	// current working directory @TODO
-
+	// current working directory
+	gl_color_rgba(colors[COLOR_TEXT]);
+	text_render(font, fs->cwd, x1, y1);
+	y1 += char_height + padding;
 
 	// search buffer
 	float line_buffer_height = char_height * 1.5f;

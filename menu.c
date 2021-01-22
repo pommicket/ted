@@ -50,8 +50,8 @@ static void menu_update(Ted *ted, Menu menu) {
 }
 
 static void menu_render(Ted *ted, Menu menu) {
-	Settings *settings = &ted->settings;
-	u32 *colors = settings->colors;
+	Settings const *settings = &ted->settings;
+	u32 const *colors = settings->colors;
 	float window_width = ted->window_width, window_height = ted->window_height;
 
 	// render backdrop
@@ -62,7 +62,7 @@ static void menu_render(Ted *ted, Menu menu) {
 
 	
 	if (menu == MENU_OPEN) {
-		float padding = 20;
+		float padding = settings->padding;
 		float menu_x1 = window_width * 0.5f - 300;
 		float menu_x2 = window_width * 0.5f + 300;
 		menu_x1 = maxf(menu_x1, padding);

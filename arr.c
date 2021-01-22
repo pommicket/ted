@@ -208,18 +208,18 @@ static inline void arr_set_len_(void **arr, size_t member_size, size_t n) {
 	} while (0)
 
 
-static void arr_append_str_(char **a, char const *s) {
+static void arr_append_strn_(char **a, char const *s, size_t s_len) {
 	size_t curr_len = arr_len(*a);
-	size_t s_len = strlen(s);
-
 	if (curr_len) --curr_len; // don't include null terminator
 
 	arr_set_len(*a, curr_len + s_len + 1);
 	memcpy(*a + curr_len, s, s_len + 1);
 }
 
-// appends a C-string array with 
-#define arr_append_str(a, s) arr_append_str_(&(a), (s))
+// append to a C-string array
+#define arr_append_str(a, s) arr_append_strn_(&(a), (s), strlen(s))
+// take at most n bytes from s
+#define arr_append_strn(a, s, n) arr_append_strn_(&(a), (s), (n))
 
 static void arr_test(void) {
 	u32 *arr = NULL;
