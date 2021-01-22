@@ -16,7 +16,7 @@ typedef enum {
 
 // all worth it for the -Wformat warnings
 #define config_err(cfg, ...) snprintf((cfg)->ted->error, sizeof (cfg)->ted->error - 1, "%s:%u: ",  (cfg)->filename, (cfg)->line_number), \
-	snprintf((cfg)->ted->error + strlen((cfg)->ted->error), strlen((cfg)->ted->error) - sizeof (cfg)->ted->error - 1, __VA_ARGS__), \
+	snprintf((cfg)->ted->error + strlen((cfg)->ted->error), sizeof (cfg)->ted->error - 1 - strlen((cfg)->ted->error), __VA_ARGS__), \
 	(cfg)->error = true
 
 typedef struct {
