@@ -5,6 +5,7 @@ typedef enum {
 	FS_NON_EXISTENT,
 	FS_FILE,
 	FS_DIRECTORY,
+	FS_LINK,
 	FS_OTHER
 } FsType;
 

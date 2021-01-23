@@ -34,6 +34,19 @@ static void buffer_clear_redo_history(TextBuffer *buffer) {
 	arr_clear(buffer->redo_history);
 }
 
+static void buffer_clear_undo_history(TextBuffer *buffer) {
+	arr_foreach_ptr(buffer->undo_history, BufferEdit, edit) {
+		buffer_edit_free(edit);
+	}
+	arr_clear(buffer->undo_history);
+}
+
+// clear all undo and redo events
+void buffer_clear_undo_redo(TextBuffer *buffer) {
+	buffer_clear_undo_history(buffer);
+	buffer_clear_redo_history(buffer);
+}
+
 // add this edit to the undo history
 static void buffer_append_edit(TextBuffer *buffer, BufferEdit const *edit) {
 	// whenever an edit is made, clear the redo history
@@ -95,6 +108,10 @@ static void buffer_pos_validate(TextBuffer *buffer, BufferPos *p) {
 	u32 line_len = buffer->lines[p->line].len;
 	if (p->index > line_len)
 		p->index = line_len;
+}
+
+static void buffer_validate_cursor(TextBuffer *buffer) {
+	buffer_pos_validate(buffer, &buffer->cursor_pos);
 }
 
 static bool buffer_pos_valid(TextBuffer *buffer, BufferPos p) {
@@ -1501,6 +1518,9 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 	}
 
 	buffer_remove_last_edit_if_empty(buffer);
+	
+	// cursor position could have been invalidated by this edit
+	buffer_validate_cursor(buffer);
 }
 
 // Delete characters between the given buffer positions. Returns number of characters deleted.
@@ -1537,7 +1557,7 @@ void buffer_insert_text_at_cursor(TextBuffer *buffer, String32 str) {
 }
 
 void buffer_insert_char_at_cursor(TextBuffer *buffer, char32_t c) {
-	String32 s = {1, &c};
+	String32 s = {&c, 1};
 	buffer_insert_text_at_cursor(buffer, s);
 }
 
@@ -1607,7 +1627,7 @@ static Status buffer_undo_edit(TextBuffer *buffer, BufferEdit const *edit, Buffe
 	// create inverse edit
 	if (buffer_edit_create(buffer, inverse, edit->pos, edit->new_len, edit->prev_len)) {
 		buffer_delete_chars_at_pos(buffer, edit->pos, (i64)edit->new_len);
-		String32 str = {edit->prev_len, edit->prev_text};
+		String32 str = {edit->prev_text, edit->prev_len};
 		buffer_insert_text_at_pos(buffer, edit->pos, str);
 		success = true;
 	}

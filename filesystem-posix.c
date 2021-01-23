@@ -7,8 +7,15 @@
 
 FsType fs_path_type(char const *path) {
 	struct stat statbuf = {0};
+	char linkbuf[8];
+	if (readlink(path, linkbuf, sizeof linkbuf) != -1) {
+		// unfortunately there is no way of telling from stat alone whether a directory is a symbolic link >:(
+		return FS_LINK;
+	}
 	if (stat(path, &statbuf) != 0)
 		return FS_NON_EXISTENT;
+	if (S_ISLNK(statbuf.st_mode))
+		return FS_LINK;
 	if (S_ISREG(statbuf.st_mode))
 		return FS_FILE;
 	if (S_ISDIR(statbuf.st_mode))

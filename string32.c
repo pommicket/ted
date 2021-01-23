@@ -1,8 +1,17 @@
 // UTF-32 string
 typedef struct {
-	size_t len;
 	char32_t *str;
+	size_t len;
 } String32;
+
+String32 str32(char32_t *str, size_t len) {
+	String32 s = {str, len};
+	return s;
+}
+
+String32 str32_substr(String32 s, size_t from, size_t len) {
+	return str32(s.str + from, len);
+}
 
 void str32_free(String32 *s) {
 	free(s->str);
@@ -13,7 +22,7 @@ void str32_free(String32 *s) {
 // the string returned should be str32_free'd.
 // this will return an empty string if the allocation failed or the string is invalid UTF-8
 String32 str32_from_utf8(char const *utf8) {
-	String32 string = {0, NULL};
+	String32 string = {NULL, 0};
 	size_t len = strlen(utf8);
 	if (len) {
 		// the wide string uses at most as many "characters" (elements?) as the UTF-8 string

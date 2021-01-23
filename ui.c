@@ -43,13 +43,13 @@ static int qsort_file_entry_cmp(void const *av, void const *bv) {
 }
 
 // cd to the directory `name`. `name` cannot include any path separators.
-static void file_selector_cd(FileSelector *fs, char const *name) {
-	if (*name == '\0' || streq(name, ".")) {
+static void file_selector_cd1(FileSelector *fs, char const *name, size_t name_len) {
+	if (name_len == 0 || (name_len == 1 && name[0] == '.')) {
 		// no name, or .
 		return;
 	}
 
-	if (streq(name, "..")) {
+	if (name_len == 2 && name[0] == '.' && name[1] == '.') {
 		// ..
 		char *last_sep = strrchr(fs->cwd, PATH_SEPARATOR);
 		if (last_sep) {
@@ -64,21 +64,84 @@ static void file_selector_cd(FileSelector *fs, char const *name) {
 			}
 		}
 	} else {
-		// add path separator to end
-		arrcstr_append_str(fs->cwd, PATH_SEPARATOR_STR);
+		// add path separator to end if not already there (which could happen in the case of /)
+		if (fs->cwd[strlen(fs->cwd) - 1] != PATH_SEPARATOR)
+			arrcstr_append_str(fs->cwd, PATH_SEPARATOR_STR);
 		// add name itself
-		arrcstr_append_str(fs->cwd, name);
+		arrcstr_append_strn(fs->cwd, name, name_len);
+	}
+}
+
+// go to the directory `path`. make sure `path` only contains path separators like PATH_SEPARATOR, not any
+// other members of ALL_PATH_SEPARATORS
+static void file_selector_cd(FileSelector *fs, char const *path) {
+	size_t path_len = strlen(path);
+	if (path_len == 0) return;
+
+	if (path[0] == PATH_SEPARATOR
+	#if _WIN32
+	|| path[1] == ':' && path[2] == PATH_SEPARATOR
+	#endif
+		) {
+		// absolute path (e.g. /foo, c:\foo)
+		arr_clear(fs->cwd);
+		if (path_len > 1 && 
+#if _WIN32
+			!(path_len == 3 && path[1] == ':')
+#endif
+			path[path_len - 1] == PATH_SEPARATOR) {
+			// path ends with path separator
+			--path_len;
+		}
+		arrcstr_append_strn(fs->cwd, path, path_len);
+		return;
+	}
+
+	char const *p = path;
+
+	while (*p) {
+		size_t len = strcspn(p, PATH_SEPARATOR_STR);
+		file_selector_cd1(fs, p, len);
+		p += len;
+		p += strspn(p, PATH_SEPARATOR_STR);
 	}
 }
 
 // returns the name of the selected file, or NULL
 // if none was selected. the returned pointer should be freed.
 static char *file_selector_update(Ted *ted, FileSelector *fs) {
-	String32 search_term32 = buffer_get_line(&ted->line_buffer, 0);
+	TextBuffer *line_buffer = &ted->line_buffer;
+	String32 search_term32 = buffer_get_line(line_buffer, 0);
 	if (!fs->cwd) {
 		// set the file selector's directory to our current directory.
 		arrcstr_append_str(fs->cwd, ted->cwd);
 	}
+	
+
+	// check if the search term contains a path separator. if so, cd to the dirname.
+	u32 last_path_sep = U32_MAX;
+	for (u32 i = 0; i < search_term32.len; ++i) {
+		char32_t c = search_term32.str[i];
+		if (c < CHAR_MAX && strchr(ALL_PATH_SEPARATORS, (char)c))
+			last_path_sep = i;
+	}
+
+	if (last_path_sep != U32_MAX) {
+		bool include_last_path_sep = last_path_sep == 0;
+		String32 dir_name32 = str32_substr(search_term32, 0, last_path_sep + include_last_path_sep);
+		char *dir_name = str32_to_utf8_cstr(dir_name32);
+		if (dir_name) {
+			// replace all members of ALL_PATH_SEPARATORS with PATH_SEPARATOR in dir_name (i.e. change / to \ on windows)
+			for (char *p = dir_name; *p; ++p)
+				if (strchr(ALL_PATH_SEPARATORS, *p))
+					*p = PATH_SEPARATOR;
+
+			file_selector_cd(fs, dir_name);
+			buffer_delete_chars_at_pos(line_buffer, buffer_start_of_file(line_buffer), last_path_sep + 1); // delete up to and including the last path separator
+			buffer_clear_undo_redo(line_buffer);
+		}
+	}
+
 	char *search_term = search_term32.len ? str32_to_utf8_cstr(search_term32) : NULL;
 
 	bool submitted = fs->submitted;
@@ -103,6 +166,7 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 						break;
 					case FS_DIRECTORY:
 						file_selector_cd(fs, name);
+						buffer_clear(line_buffer); // clear search term
 						break;
 					default: break;
 					}
@@ -119,6 +183,7 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 				break;
 			case FS_DIRECTORY:
 				file_selector_cd(fs, name);
+				buffer_clear(line_buffer); // clear search term
 				break;
 			default: break;
 			}
