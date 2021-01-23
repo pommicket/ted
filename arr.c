@@ -226,10 +226,19 @@ static void arrcstr_append_strn_(char **a, char const *s, size_t s_len) {
 	memcpy(*a + curr_len, s, s_len + 1);
 }
 
+static void arrcstr_shrink_(char **a, u32 new_len) {
+	ArrHeader *hdr = arr_hdr_(*a);
+	assert(hdr->cap > new_len);
+	hdr->len = new_len;
+	(*a)[new_len] = '\0';
+}
+
 // append to a C-string array
 #define arrcstr_append_str(a, s) arrcstr_append_strn_(&(a), (s), strlen(s))
 // take at most n bytes from s
 #define arrcstr_append_strn(a, s, n) arrcstr_append_strn_(&(a), (s), (n))
+// make the string smaller
+#define arrcstr_shrink(a, n) arrcstr_shrink_(&(a), (n))
 
 
 static void arr_test(void) {

@@ -10,9 +10,12 @@
 #include <shlobj.h>
 #define PATH_SEPARATOR '\\'
 #define PATH_SEPARATOR_STR "\\"
+// on windows, let the user use forwards slashes as well as backslashes
+#define ALL_PATH_SEPARATORS "\\/"
 #else
 #define PATH_SEPARATOR '/'
 #define PATH_SEPARATOR_STR "/"
+#define ALL_PATH_SEPARATORS "/"
 #endif
 
 #include <stdbool.h>

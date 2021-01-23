@@ -42,30 +42,33 @@ static int qsort_file_entry_cmp(void const *av, void const *bv) {
 	return strcmp_case_insensitive(a->name, b->name);
 }
 
-// change directory of file selector.
-void file_selector_cd(Ted *ted, FileSelector *fs, char const *path) {
-	// @TODO: handle .. properly
-	if (path[0] == PATH_SEPARATOR
-#if _WIN32
-	// check for, e.g. C:\ at start of path
-		|| (strlen(path) >= 3 && path[1] == ':' && path[2] == '\\')
-#endif
-	) {
-		// this is an absolute path. discard our previous cwd.
-		arr_clear(fs->cwd);
+// cd to the directory `name`. `name` cannot include any path separators.
+static void file_selector_cd(FileSelector *fs, char const *name) {
+	if (*name == '\0' || streq(name, ".")) {
+		// no name, or .
+		return;
 	}
-	size_t path_len = strlen(path);
-	if (!path_len) return;
 
-	if (path_len > 1 && path[path_len - 1] == PATH_SEPARATOR)
-		--path_len;
-	
-	// add path separator to end
-	arrcstr_append_str(fs->cwd, PATH_SEPARATOR_STR);
-	arrcstr_append_strn(fs->cwd, path, path_len);
-
-	// clear search term
-	buffer_clear(&ted->line_buffer);
+	if (streq(name, "..")) {
+		// ..
+		char *last_sep = strrchr(fs->cwd, PATH_SEPARATOR);
+		if (last_sep) {
+			if (last_sep == fs->cwd // this is the starting "/" of a path
+			#if _WIN32
+				|| (last_sep == fs->cwd + 2 && fs->cwd[1] == ':') // this is the \ of C:\  .
+			#endif
+				) {
+				arrcstr_shrink(fs->cwd, (u32)(last_sep + 1 - fs->cwd)); // include the last separator
+			} else {
+				arrcstr_shrink(fs->cwd, (u32)(last_sep - fs->cwd));
+			}
+		}
+	} else {
+		// add path separator to end
+		arrcstr_append_str(fs->cwd, PATH_SEPARATOR_STR);
+		// add name itself
+		arrcstr_append_str(fs->cwd, name);
+	}
 }
 
 // returns the name of the selected file, or NULL
@@ -99,7 +102,7 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 						if (path) return str_dup(path);
 						break;
 					case FS_DIRECTORY:
-						file_selector_cd(ted, fs, name);
+						file_selector_cd(fs, name);
 						break;
 					default: break;
 					}
@@ -115,7 +118,7 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 				if (path) return str_dup(path);
 				break;
 			case FS_DIRECTORY:
-				file_selector_cd(ted, fs, name);
+				file_selector_cd(fs, name);
 				break;
 			default: break;
 			}
