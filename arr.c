@@ -223,7 +223,8 @@ static void arrcstr_append_strn_(char **a, char const *s, size_t s_len) {
 	size_t new_len = curr_len + s_len;
 	arr_reserve(*a, new_len + 1);
 	arr_set_len(*a, new_len);
-	memcpy(*a + curr_len, s, s_len + 1);
+	memcpy(*a + curr_len, s, s_len);
+	(*a)[curr_len + s_len] = '\0';
 }
 
 static void arrcstr_shrink_(char **a, u32 new_len) {

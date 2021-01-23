@@ -1,3 +1,7 @@
+#if __unix__
+#include <fcntl.h>
+#endif
+
 // where is the ith entry in the file selector on the screen?
 // returns false if it's completely offscreen
 static bool file_selector_entry_pos(Ted const *ted, FileSelector const *fs,
@@ -42,8 +46,10 @@ static int qsort_file_entry_cmp(void const *av, void const *bv) {
 	return strcmp_case_insensitive(a->name, b->name);
 }
 
+static void file_selector_cd_(FileSelector *fs, char const *path, int symlink_depth);
+
 // cd to the directory `name`. `name` cannot include any path separators.
-static void file_selector_cd1(FileSelector *fs, char const *name, size_t name_len) {
+static void file_selector_cd1(FileSelector *fs, char const *name, size_t name_len, int symlink_depth) {
 	if (name_len == 0 || (name_len == 1 && name[0] == '.')) {
 		// no name, or .
 		return;
@@ -64,19 +70,36 @@ static void file_selector_cd1(FileSelector *fs, char const *name, size_t name_le
 			}
 		}
 	} else {
+		#if __unix__
+		if (symlink_depth < 32) { // on my system, MAXSYMLINKS is 20, so this should be plenty
+			char path[TED_PATH_MAX], link_to[TED_PATH_MAX];
+			// join fs->cwd with name to get full path
+			str_printf(path, TED_PATH_MAX, "%s%s%*s", fs->cwd, 
+				fs->cwd[strlen(fs->cwd) - 1] == PATH_SEPARATOR ?
+				"" : PATH_SEPARATOR_STR,
+				(int)name_len, name);
+			ssize_t bytes = readlink(path, link_to, sizeof link_to);
+			if (bytes != -1) {
+				// this is a symlink
+				link_to[bytes] = '\0';
+				file_selector_cd_(fs, link_to, symlink_depth + 1);
+				return;
+			}
+		}
+		#else
+		(void)symlink_depth;
+		#endif
 		// add path separator to end if not already there (which could happen in the case of /)
 		if (fs->cwd[strlen(fs->cwd) - 1] != PATH_SEPARATOR)
 			arrcstr_append_str(fs->cwd, PATH_SEPARATOR_STR);
 		// add name itself
 		arrcstr_append_strn(fs->cwd, name, name_len);
 	}
+	
 }
 
-// go to the directory `path`. make sure `path` only contains path separators like PATH_SEPARATOR, not any
-// other members of ALL_PATH_SEPARATORS
-static void file_selector_cd(FileSelector *fs, char const *path) {
-	size_t path_len = strlen(path);
-	if (path_len == 0) return;
+static void file_selector_cd_(FileSelector *fs, char const *path, int symlink_depth) {
+	if (path[0] == '\0') return;
 
 	if (path[0] == PATH_SEPARATOR
 	#if _WIN32
@@ -84,27 +107,35 @@ static void file_selector_cd(FileSelector *fs, char const *path) {
 	#endif
 		) {
 		// absolute path (e.g. /foo, c:\foo)
+		// start out by replacing cwd with the start of the absolute path
 		arr_clear(fs->cwd);
-		if (path_len > 1 && 
-#if _WIN32
-			!(path_len == 3 && path[1] == ':')
-#endif
-			path[path_len - 1] == PATH_SEPARATOR) {
-			// path ends with path separator
-			--path_len;
+		if (path[0] == PATH_SEPARATOR) {
+			arrcstr_append_str(fs->cwd, PATH_SEPARATOR_STR);
+			++path;
 		}
-		arrcstr_append_strn(fs->cwd, path, path_len);
-		return;
+		#if _WIN32
+		else {
+			char s[] = {path[0], path[1], path[2], 0};
+			arrcstr_append_str(fs->cwd, s);
+			path += 3;
+		}
+		#endif
 	}
 
 	char const *p = path;
 
 	while (*p) {
 		size_t len = strcspn(p, PATH_SEPARATOR_STR);
-		file_selector_cd1(fs, p, len);
+		file_selector_cd1(fs, p, len, symlink_depth);
 		p += len;
 		p += strspn(p, PATH_SEPARATOR_STR);
 	}
+}
+
+// go to the directory `path`. make sure `path` only contains path separators like PATH_SEPARATOR, not any
+// other members of ALL_PATH_SEPARATORS
+static void file_selector_cd(FileSelector *fs, char const *path) {
+	file_selector_cd_(fs, path, 0);
 }
 
 // returns the name of the selected file, or NULL
