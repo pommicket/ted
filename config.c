@@ -319,7 +319,7 @@ void config_read(Ted *ted, char const *filename) {
 								}
 							}
 						} else {
-							config_err(cfg, "Invalid line syntax."
+							config_err(cfg, "Invalid line syntax. "
 								"Lines should either look like [section-name] or key = value");
 						}
 					} break;

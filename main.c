@@ -436,12 +436,16 @@ int main(int argc, char **argv) {
 		SDL_GL_SwapWindow(window);
 	}
 
+	if (ted->menu)
+		menu_close(ted, false); // free any memory used by the current menu
+
 	SDL_GL_DeleteContext(glctx);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
 	buffer_free(&ted->main_buffer);
 	buffer_free(&ted->line_buffer);
 	text_font_free(ted->font);
+	text_font_free(ted->font_bold);
 	free(ted);
 #if _WIN32
 	for (int i = 0; i < argc; ++i)

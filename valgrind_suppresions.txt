@@ -7,6 +7,98 @@
 }
 {
    <insert_a_suppression_name_here>
+   Memcheck:Leak
+   ...
+   fun:dbus_threads_init
+   ...
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   ...
+   fun:dbus_bus_register
+   ...
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   ...
+   fun:__glDispatchMakeCurrent
+   ...
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   ...
+   fun:_dbus_type_writer_recurse
+   ...
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   ...
+   fun:_XimOpenIM
+   ...
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   ...
+   fun:_dbus_register_shutdown_func
+   ...
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   ...
+   fun:XInitThreads
+   ...
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   obj:/usr/lib/x86_64-linux-gnu/libSDL2-2.0.so.0.14.0
+   obj:/usr/lib/x86_64-linux-gnu/libSDL2-2.0.so.0.14.0
+   obj:/usr/lib/x86_64-linux-gnu/libSDL2-2.0.so.0.14.0
+   obj:/usr/lib/x86_64-linux-gnu/libSDL2-2.0.so.0.14.0
+   obj:/usr/lib/x86_64-linux-gnu/libSDL2-2.0.so.0.14.0
+   obj:/usr/lib/x86_64-linux-gnu/libSDL2-2.0.so.0.14.0
+   obj:/usr/lib/x86_64-linux-gnu/libSDL2-2.0.so.0.14.0
+   obj:/usr/lib/x86_64-linux-gnu/libSDL2-2.0.so.0.14.0
+   fun:main
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   fun:realloc
+   obj:/usr/lib/x86_64-linux-gnu/libSDL2-2.0.so.0.14.0
+   obj:/usr/lib/x86_64-linux-gnu/libSDL2-2.0.so.0.14.0
+   obj:/usr/lib/x86_64-linux-gnu/libSDL2-2.0.so.0.14.0
+   obj:/usr/lib/x86_64-linux-gnu/libSDL2-2.0.so.0.14.0
+   obj:/usr/lib/x86_64-linux-gnu/libSDL2-2.0.so.0.14.0
+   fun:config_parse_key_combo
+   fun:config_read
+   fun:main
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: reachable
+   fun:malloc
+   obj:/usr/lib/x86_64-linux-gnu/libSDL2-2.0.so.0.14.0
+   obj:/usr/lib/x86_64-linux-gnu/libSDL2-2.0.so.0.14.0
+   obj:/usr/lib/x86_64-linux-gnu/libSDL2-2.0.so.0.14.0
+   obj:/usr/lib/x86_64-linux-gnu/libSDL2-2.0.so.0.14.0
+   fun:config_parse_key_combo
+   fun:config_read
+   fun:main
+}
+{
+   <insert_a_suppression_name_here>
    Memcheck:Addr8
    obj:/usr/lib/x86_64-linux-gnu/libdrm.so.2.4.0
    obj:/usr/lib/x86_64-linux-gnu/libdrm.so.2.4.0
@@ -117,6 +209,13 @@
    obj:/usr/lib/x86_64-linux-gnu/libSDL2-2.0.so.0.12.0
    obj:/usr/lib/x86_64-linux-gnu/libSDL2-2.0.so.0.12.0
    fun:main
+}
+{
+	name
+	Memcheck:Leak
+	...
+	fun:XSetLocaleModifiers
+	...
 }
 {
    <insert_a_suppression_name_here>

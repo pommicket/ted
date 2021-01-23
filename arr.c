@@ -109,7 +109,7 @@ static inline void *arr_add_ptr_(void **arr, size_t member_size) {
 	return ret;
 }
 
-static inline void arr_set_len_(void **arr, size_t member_size, size_t n) {
+static void arr_reserve_(void **arr, size_t member_size, size_t n) {
 	if (n >= U32_MAX-1) { 
 		// too big; free arr.
 		if (*arr) free(arr_hdr_(*arr));
@@ -121,7 +121,6 @@ static inline void arr_set_len_(void **arr, size_t member_size, size_t n) {
 		ArrHeader *hdr = calloc(1, sizeof(ArrHeader) + (n+1) * member_size);
 		if (hdr) {
 			hdr->cap = (u32)n+1;
-			hdr->len = (u32)n;
 			*arr = hdr->data;
 		}
 	} else {
@@ -146,15 +145,22 @@ static inline void arr_set_len_(void **arr, size_t member_size, size_t n) {
 				return;
 			}
 		}
+		*arr = hdr->data;
+	}
+}
+
+static void arr_set_len_(void **arr, size_t member_size, size_t n) {
+	arr_reserve_(arr, member_size, n);
+	if (*arr) {
+		ArrHeader *hdr = arr_hdr_(*arr);
 		if (n > hdr->len) {
 			// zero new elements
 			memset((char *)hdr->data + hdr->len, 0, (n - hdr->len) * member_size);
 		}
 		hdr->len = (u32)n;
-		*arr = hdr->data;
 	}
 }
-#define arr_set_len(a, n) arr_set_len_((void **)&a, sizeof *(a), n)
+
 
 #ifdef __cplusplus
 #define arr_cast_typeof(a) (decltype(a))
@@ -207,19 +213,24 @@ static inline void arr_set_len_(void **arr, size_t member_size, size_t n) {
 	} \
 	} while (0)
 
+// Ensure that enough space is allocated for n elements.
+#define arr_reserve(a, n) arr_reserve_((void **)&(a), sizeof *(a), (n)) 
+// Similar to arr_reserve, but also sets the length of the array to n.
+#define arr_set_len(a, n) arr_set_len_((void **)&(a), sizeof *(a), (n))
 
-static void arr_append_strn_(char **a, char const *s, size_t s_len) {
+static void arrcstr_append_strn_(char **a, char const *s, size_t s_len) {
 	size_t curr_len = arr_len(*a);
-	if (curr_len) --curr_len; // don't include null terminator
-
-	arr_set_len(*a, curr_len + s_len + 1);
+	size_t new_len = curr_len + s_len;
+	arr_reserve(*a, new_len + 1);
+	arr_set_len(*a, new_len);
 	memcpy(*a + curr_len, s, s_len + 1);
 }
 
 // append to a C-string array
-#define arr_append_str(a, s) arr_append_strn_(&(a), (s), strlen(s))
+#define arrcstr_append_str(a, s) arrcstr_append_strn_(&(a), (s), strlen(s))
 // take at most n bytes from s
-#define arr_append_strn(a, s, n) arr_append_strn_(&(a), (s), (n))
+#define arrcstr_append_strn(a, s, n) arrcstr_append_strn_(&(a), (s), (n))
+
 
 static void arr_test(void) {
 	u32 *arr = NULL;

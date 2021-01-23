@@ -15,7 +15,7 @@ static void menu_close(Ted *ted, bool restore_prev_active_buffer) {
 	ted->menu = MENU_NONE;
 	if (restore_prev_active_buffer) ted->active_buffer = ted->prev_active_buffer;
 	ted->prev_active_buffer = NULL;
-	
+	file_selector_free(&ted->file_selector);
 	buffer_clear(&ted->line_buffer);
 }
 

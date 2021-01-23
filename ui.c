@@ -61,8 +61,8 @@ void file_selector_cd(Ted *ted, FileSelector *fs, char const *path) {
 		--path_len;
 	
 	// add path separator to end
-	arr_append_str(fs->cwd, PATH_SEPARATOR_STR);
-	arr_append_strn(fs->cwd, path, path_len);
+	arrcstr_append_str(fs->cwd, PATH_SEPARATOR_STR);
+	arrcstr_append_strn(fs->cwd, path, path_len);
 
 	// clear search term
 	buffer_clear(&ted->line_buffer);
@@ -74,7 +74,7 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 	String32 search_term32 = buffer_get_line(&ted->line_buffer, 0);
 	if (!fs->cwd) {
 		// set the file selector's directory to our current directory.
-		arr_append_str(fs->cwd, ted->cwd);
+		arrcstr_append_str(fs->cwd, ted->cwd);
 	}
 	char *search_term = search_term32.len ? str32_to_utf8_cstr(search_term32) : NULL;
 
