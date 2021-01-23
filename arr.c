@@ -218,6 +218,7 @@ static void arr_set_len_(void **arr, size_t member_size, size_t n) {
 // Similar to arr_reserve, but also sets the length of the array to n.
 #define arr_set_len(a, n) arr_set_len_((void **)&(a), sizeof *(a), (n))
 
+#if 0
 static void arrcstr_append_strn_(char **a, char const *s, size_t s_len) {
 	size_t curr_len = arr_len(*a);
 	size_t new_len = curr_len + s_len;
@@ -240,8 +241,9 @@ static void arrcstr_shrink_(char **a, u32 new_len) {
 #define arrcstr_append_strn(a, s, n) arrcstr_append_strn_(&(a), (s), (n))
 // make the string smaller
 #define arrcstr_shrink(a, n) arrcstr_shrink_(&(a), (n))
+#endif
 
-
+#ifndef NDEBUG
 static void arr_test(void) {
 	u32 *arr = NULL;
 	u32 i;
@@ -258,4 +260,6 @@ static void arr_test(void) {
 		arr_remove_last(arr);
 	assert(arr_len(arr) == 0);
 }
+#endif
+
 #endif // ARR_C_

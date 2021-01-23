@@ -31,7 +31,7 @@ static void file_selector_clear_entries(FileSelector *fs) {
 
 static void file_selector_free(FileSelector *fs) {
 	file_selector_clear_entries(fs);
-	arr_clear(fs->cwd);
+	fs->cwd[0] = '\0';
 }
 
 static int qsort_file_entry_cmp(void const *av, void const *bv) {
@@ -50,6 +50,8 @@ static void file_selector_cd_(FileSelector *fs, char const *path, int symlink_de
 
 // cd to the directory `name`. `name` cannot include any path separators.
 static void file_selector_cd1(FileSelector *fs, char const *name, size_t name_len, int symlink_depth) {
+	char *const cwd = fs->cwd;
+
 	if (name_len == 0 || (name_len == 1 && name[0] == '.')) {
 		// no name, or .
 		return;
@@ -57,16 +59,16 @@ static void file_selector_cd1(FileSelector *fs, char const *name, size_t name_le
 
 	if (name_len == 2 && name[0] == '.' && name[1] == '.') {
 		// ..
-		char *last_sep = strrchr(fs->cwd, PATH_SEPARATOR);
+		char *last_sep = strrchr(cwd, PATH_SEPARATOR);
 		if (last_sep) {
-			if (last_sep == fs->cwd // this is the starting "/" of a path
+			if (last_sep == cwd // this is the starting "/" of a path
 			#if _WIN32
-				|| (last_sep == fs->cwd + 2 && fs->cwd[1] == ':') // this is the \ of C:\  .
+				|| (last_sep == cwd + 2 && cwd[1] == ':') // this is the \ of C:\  .
 			#endif
 				) {
-				arrcstr_shrink(fs->cwd, (u32)(last_sep + 1 - fs->cwd)); // include the last separator
+				last_sep[1] = '\0'; // include the last separator
 			} else {
-				arrcstr_shrink(fs->cwd, (u32)(last_sep - fs->cwd));
+				last_sep[0] = '\0';
 			}
 		}
 	} else {
@@ -74,8 +76,8 @@ static void file_selector_cd1(FileSelector *fs, char const *name, size_t name_le
 		if (symlink_depth < 32) { // on my system, MAXSYMLINKS is 20, so this should be plenty
 			char path[TED_PATH_MAX], link_to[TED_PATH_MAX];
 			// join fs->cwd with name to get full path
-			str_printf(path, TED_PATH_MAX, "%s%s%*s", fs->cwd, 
-				fs->cwd[strlen(fs->cwd) - 1] == PATH_SEPARATOR ?
+			str_printf(path, TED_PATH_MAX, "%s%s%*s", cwd, 
+				cwd[strlen(cwd) - 1] == PATH_SEPARATOR ?
 				"" : PATH_SEPARATOR_STR,
 				(int)name_len, name);
 			ssize_t bytes = readlink(path, link_to, sizeof link_to);
@@ -90,15 +92,16 @@ static void file_selector_cd1(FileSelector *fs, char const *name, size_t name_le
 		(void)symlink_depth;
 		#endif
 		// add path separator to end if not already there (which could happen in the case of /)
-		if (fs->cwd[strlen(fs->cwd) - 1] != PATH_SEPARATOR)
-			arrcstr_append_str(fs->cwd, PATH_SEPARATOR_STR);
+		if (cwd[strlen(cwd) - 1] != PATH_SEPARATOR)
+			str_cat(cwd, sizeof fs->cwd, PATH_SEPARATOR_STR);
 		// add name itself
-		arrcstr_append_strn(fs->cwd, name, name_len);
+		strn_cat(cwd, sizeof fs->cwd, name, name_len);
 	}
 	
 }
 
 static void file_selector_cd_(FileSelector *fs, char const *path, int symlink_depth) {
+	char *const cwd = fs->cwd;
 	if (path[0] == '\0') return;
 
 	if (path[0] == PATH_SEPARATOR
@@ -108,15 +111,14 @@ static void file_selector_cd_(FileSelector *fs, char const *path, int symlink_de
 		) {
 		// absolute path (e.g. /foo, c:\foo)
 		// start out by replacing cwd with the start of the absolute path
-		arr_clear(fs->cwd);
+		cwd[0] = '\0';
 		if (path[0] == PATH_SEPARATOR) {
-			arrcstr_append_str(fs->cwd, PATH_SEPARATOR_STR);
-			++path;
+			str_cat(cwd, sizeof fs->cwd, PATH_SEPARATOR_STR);
+			path += 1;
 		}
 		#if _WIN32
 		else {
-			char s[] = {path[0], path[1], path[2], 0};
-			arrcstr_append_str(fs->cwd, s);
+			strn_cat(cwd, sizeof fs->cwd, path, 3);
 			path += 3;
 		}
 		#endif
@@ -143,9 +145,11 @@ static void file_selector_cd(FileSelector *fs, char const *path) {
 static char *file_selector_update(Ted *ted, FileSelector *fs) {
 	TextBuffer *line_buffer = &ted->line_buffer;
 	String32 search_term32 = buffer_get_line(line_buffer, 0);
-	if (!fs->cwd) {
+	char *const cwd = fs->cwd;
+
+	if (cwd[0] == '\0') {
 		// set the file selector's directory to our current directory.
-		arrcstr_append_str(fs->cwd, ted->cwd);
+		str_cpy(cwd, sizeof fs->cwd, ted->cwd);
 	}
 	
 
@@ -229,9 +233,8 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 	// free previous entries
 	file_selector_clear_entries(fs);
 	// get new entries
-	char **files = fs_list_directory(fs->cwd);
+	char **files = fs_list_directory(cwd);
 	if (files) {
-		char const *cwd = fs->cwd;
 		u32 nfiles;
 		for (nfiles = 0; files[nfiles]; ++nfiles);
 
@@ -279,7 +282,7 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 
 		free(files);
 	} else {
-		ted_seterr(ted, "Couldn't list directory '%s'.", fs->cwd);
+		ted_seterr(ted, "Couldn't list directory '%s'.", cwd);
 	}
 	
 	free(search_term);

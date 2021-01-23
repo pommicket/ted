@@ -87,7 +87,7 @@ typedef struct {
 	Rect bounds;
 	u32 n_entries;
 	FileEntry *entries;
-	char *cwd; // a dynamic null-terminated array of chars representing the current directory
+	char cwd[TED_PATH_MAX];
 	bool submitted; // set to true if the line buffer was just submitted this frame.
 } FileSelector;
 

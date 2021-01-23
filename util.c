@@ -62,9 +62,9 @@ static char *str_dup(char const *src) {
 // it is unusual to have a string that long.
 #define STRLEN_SAFE_MAX (UINT_MAX >> 2)
 
-// safer version of strcat. dst_sz includes a null terminator.
-static void str_cat(char *dst, size_t dst_sz, char const *src) {
-	size_t dst_len = strlen(dst), src_len = strlen(src);
+// safer version of strncat. dst_sz includes a null terminator.
+static void strn_cat(char *dst, size_t dst_sz, char const *src, size_t src_len) {
+	size_t dst_len = strlen(dst);
 
 	// make sure dst_len + src_len + 1 doesn't overflow
 	if (dst_len > STRLEN_SAFE_MAX || src_len > STRLEN_SAFE_MAX) {
@@ -87,6 +87,11 @@ static void str_cat(char *dst, size_t dst_sz, char const *src) {
 		memcpy(dst + dst_len, src, src_len);
 		dst[dst_len + src_len] = 0;
 	}
+}
+
+// safer version of strcat. dst_sz includes a null terminator.
+static void str_cat(char *dst, size_t dst_sz, char const *src) {
+	strn_cat(dst, dst_sz, src, strlen(src));
 }
 
 // safer version of strncpy. dst_sz includes a null terminator.
