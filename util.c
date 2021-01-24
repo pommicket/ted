@@ -191,3 +191,15 @@ static int str_qsort_case_insensitive_cmp(const void *av, const void *bv) {
 	char const *const *a = av, *const *b = bv;
 	return strcmp_case_insensitive(*a, *b);
 }
+
+// qsort but with a user void*
+static void qsort_with_context(void *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *, void *), void *arg) {
+#if _WIN32
+	qsort_s(base, nmemb, size, compar, arg);
+#elif __GLIBC__ > 2 || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 8)
+	// GNU doesn't have qsort_s ):
+	qsort_r(base, nmemb, size, compar, arg);
+#else
+#error "No qsort_r/qsort_s. You can try filling in this function if you know what you're doing."
+#endif
+}

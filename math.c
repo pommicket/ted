@@ -82,6 +82,12 @@ static u32 maxu32(u32 a, u32 b) {
 	return a > b ? a : b;
 }
 
+static i64 mod_i64(i64 a, i64 b) {
+	i64 ret = a % b;
+	if (ret < 0) ret += b;
+	return ret;
+}
+
 static float sgnf(float x) {
 	if (x < 0) return -1;
 	if (x > 0) return +1;

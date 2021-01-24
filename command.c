@@ -19,6 +19,7 @@ char const *command_to_str(Command c) {
 
 void command_execute(Ted *ted, Command c, i64 argument) {
 	TextBuffer *buffer = ted->active_buffer;
+	FileSelector *file_selector = &ted->file_selector;
 	Settings *settings = &ted->settings;
 
 
@@ -37,10 +38,12 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		if (buffer) buffer_cursor_move_right(buffer, argument);
 		break;
 	case CMD_UP:
-		if (buffer) buffer_cursor_move_up(buffer, argument);
+		if (file_selector->open) file_selector_up(file_selector, argument);
+		else if (buffer) buffer_cursor_move_up(buffer, argument);
 		break;
 	case CMD_DOWN:
-		if (buffer) buffer_cursor_move_down(buffer, argument);
+		if (file_selector->open) file_selector_down(file_selector, argument);
+		else if (buffer) buffer_cursor_move_down(buffer, argument);
 		break;
 	case CMD_SELECT_LEFT:
 		if (buffer) buffer_select_left(buffer, argument);

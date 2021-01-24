@@ -5,6 +5,10 @@
 #define NDEBUG 1
 #endif
 
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #if _WIN32
 #include <windows.h>
 #include <shlobj.h>

@@ -86,9 +86,11 @@ typedef struct {
 typedef struct {
 	Rect bounds;
 	u32 n_entries;
+	u32 selected; // which FileEntry is currently selected
 	float scroll;
 	FileEntry *entries;
 	char cwd[TED_PATH_MAX];
+	bool open; // is the file selector on screen?
 	bool submitted; // set to true if the line buffer was just submitted this frame.
 } FileSelector;
 

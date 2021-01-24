@@ -41,7 +41,20 @@ static void file_selector_free(FileSelector *fs) {
 	memset(fs, 0, sizeof *fs);
 }
 
-static int qsort_file_entry_cmp(void const *av, void const *bv) {
+static void file_selector_up(FileSelector *fs, i64 n) {
+	i64 selected = fs->selected - n;
+	selected = mod_i64(selected, fs->n_entries);
+	fs->selected = (u32)selected;
+}
+
+static void file_selector_down(FileSelector *fs, i64 n) {
+	i64 selected = fs->selected + n;
+	selected = mod_i64(selected, fs->n_entries);
+	fs->selected = (u32)selected;
+}
+
+static int qsort_file_entry_cmp(void const *av, void const *bv, void *search_termv) {
+	char const *search_term = search_termv;
 	FileEntry const *a = av, *b = bv;
 	// put directories first
 	if (a->type == FS_DIRECTORY && b->type != FS_DIRECTORY) {
@@ -50,6 +63,17 @@ static int qsort_file_entry_cmp(void const *av, void const *bv) {
 	if (a->type != FS_DIRECTORY && b->type == FS_DIRECTORY) {
 		return +1;
 	}
+	if (search_term) {
+		bool a_prefix = str_is_prefix(a->name, search_term);
+		bool b_prefix = str_is_prefix(b->name, search_term);
+		if (a_prefix && !b_prefix) {
+			return -1;
+		}
+		if (b_prefix && !a_prefix) {
+			return +1;
+		}
+	}
+	
 	return strcmp_case_insensitive(a->name, b->name);
 }
 
@@ -166,12 +190,15 @@ static Status file_selector_cd_(FileSelector *fs, char const *path, int symlink_
 // other members of ALL_PATH_SEPARATORS
 // returns false if this path doesn't exist or isn't a directory
 static bool file_selector_cd(FileSelector *fs, char const *path) {
+	fs->selected = 0;
 	return file_selector_cd_(fs, path, 0);
 }
 
 // returns the name of the selected file, or NULL
 // if none was selected. the returned pointer should be freed.
 static char *file_selector_update(Ted *ted, FileSelector *fs) {
+	fs->open = true;
+
 	TextBuffer *line_buffer = &ted->line_buffer;
 	String32 search_term32 = buffer_get_line(line_buffer, 0);
 	char *const cwd = fs->cwd;
@@ -246,25 +273,22 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 			}
 		} else on_screen = false;
 		
-		// check if we submitted this entry
-		if (submitted && streq(search_term, name)) {
-			switch (type) {
-			case FS_FILE:
-				free(search_term);
-				if (path) return str_dup(path);
-				break;
-			case FS_DIRECTORY:
-				file_selector_cd(fs, name);
-				buffer_clear(line_buffer); // clear search term
-				break;
-			default: break;
-			}
-		}
 	}
 	
-	// user pressed enter after typing a non-existent file into the search bar
-	if (submitted) {
-		// don't do anything for now
+	// user pressed enter in search bar
+	if (submitted && fs->selected < fs->n_entries) {
+		FileEntry *entry = &fs->entries[fs->selected];
+		switch (entry->type) {
+		case FS_FILE:
+			free(search_term);
+			if (entry->path) return str_dup(entry->path);
+			break;
+		case FS_DIRECTORY:
+			file_selector_cd(fs, entry->name);
+			buffer_clear(line_buffer); // clear search term
+			break;
+		default: break;
+		}
 	}
 	
 	// free previous entries
@@ -297,6 +321,7 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 			FileEntry *entries = ted_calloc(ted, nfiles, sizeof *entries);
 			if (entries) {
 				fs->n_entries = nfiles;
+				if (fs->selected >= fs->n_entries) fs->selected = nfiles - 1;
 				fs->entries = entries;
 				for (u32 i = 0; i < nfiles; ++i) {
 					char *name = files[i];
@@ -314,7 +339,7 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 					}
 				}
 			}
-			qsort(entries, nfiles, sizeof *entries, qsort_file_entry_cmp);
+			qsort_with_context(entries, nfiles, sizeof *entries, qsort_file_entry_cmp, search_term);
 		}
 
 		free(files);
@@ -363,10 +388,10 @@ static void file_selector_render(Ted *ted, FileSelector *fs) {
 
 
 	for (u32 i = 0; i < n_entries; ++i) {
-		// highlight entry user is mousing over
+		// highlight entry user is hovering over/selecting
 		Rect r;
 		if (!file_selector_entry_pos(ted, fs, i, &r)) break;
-		if (rect_contains_point(r, ted->mouse_pos)) {
+		if (rect_contains_point(r, ted->mouse_pos) || fs->selected == i) {
 			glBegin(GL_QUADS);
 			gl_color_rgba(colors[COLOR_MENU_HL]);
 			rect_render(r);
