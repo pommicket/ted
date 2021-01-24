@@ -46,15 +46,25 @@ static int qsort_file_entry_cmp(void const *av, void const *bv) {
 	return strcmp_case_insensitive(a->name, b->name);
 }
 
-static void file_selector_cd_(FileSelector *fs, char const *path, int symlink_depth);
+static Status file_selector_cd_(FileSelector *fs, char const *path, int symlink_depth);
 
 // cd to the directory `name`. `name` cannot include any path separators.
-static void file_selector_cd1(FileSelector *fs, char const *name, size_t name_len, int symlink_depth) {
+static Status file_selector_cd1(FileSelector *fs, char const *name, size_t name_len, int symlink_depth) {
 	char *const cwd = fs->cwd;
 
 	if (name_len == 0 || (name_len == 1 && name[0] == '.')) {
 		// no name, or .
-		return;
+		return true;
+	}
+
+	if (name_len == 1 && name[0] == '~') {
+		// just in case the user's HOME happens to be accidentally set to, e.g. '/foo/~', make
+		// sure we don't recurse infinitely
+		if (symlink_depth < 32) {
+			return file_selector_cd_(fs, ted_home, symlink_depth + 1);
+		} else {
+			return false;
+		}
 	}
 
 	if (name_len == 2 && name[0] == '.' && name[1] == '.') {
@@ -72,37 +82,46 @@ static void file_selector_cd1(FileSelector *fs, char const *name, size_t name_le
 			}
 		}
 	} else {
-		#if __unix__
-		if (symlink_depth < 32) { // on my system, MAXSYMLINKS is 20, so this should be plenty
-			char path[TED_PATH_MAX], link_to[TED_PATH_MAX];
-			// join fs->cwd with name to get full path
-			str_printf(path, TED_PATH_MAX, "%s%s%*s", cwd, 
+		char path[TED_PATH_MAX];
+		// join fs->cwd with name to get full path
+		str_printf(path, TED_PATH_MAX, "%s%s%*s", cwd, 
 				cwd[strlen(cwd) - 1] == PATH_SEPARATOR ?
 				"" : PATH_SEPARATOR_STR,
 				(int)name_len, name);
+		if (fs_path_type(path) != FS_DIRECTORY) {
+			// trying to cd to something that's not a directory!
+			return false;
+		}
+
+		#if __unix__
+		if (symlink_depth < 32) { // on my system, MAXSYMLINKS is 20, so this should be plenty
+			char link_to[TED_PATH_MAX];
 			ssize_t bytes = readlink(path, link_to, sizeof link_to);
 			if (bytes != -1) {
 				// this is a symlink
 				link_to[bytes] = '\0';
-				file_selector_cd_(fs, link_to, symlink_depth + 1);
-				return;
+				return file_selector_cd_(fs, link_to, symlink_depth + 1);
 			}
+		} else {
+			return false;
 		}
 		#else
 		(void)symlink_depth;
 		#endif
+
 		// add path separator to end if not already there (which could happen in the case of /)
 		if (cwd[strlen(cwd) - 1] != PATH_SEPARATOR)
 			str_cat(cwd, sizeof fs->cwd, PATH_SEPARATOR_STR);
 		// add name itself
 		strn_cat(cwd, sizeof fs->cwd, name, name_len);
 	}
+	return true;
 	
 }
 
-static void file_selector_cd_(FileSelector *fs, char const *path, int symlink_depth) {
+static Status file_selector_cd_(FileSelector *fs, char const *path, int symlink_depth) {
 	char *const cwd = fs->cwd;
-	if (path[0] == '\0') return;
+	if (path[0] == '\0') return true;
 
 	if (path[0] == PATH_SEPARATOR
 	#if _WIN32
@@ -128,16 +147,19 @@ static void file_selector_cd_(FileSelector *fs, char const *path, int symlink_de
 
 	while (*p) {
 		size_t len = strcspn(p, PATH_SEPARATOR_STR);
-		file_selector_cd1(fs, p, len, symlink_depth);
+		if (!file_selector_cd1(fs, p, len, symlink_depth))
+			return false;
 		p += len;
 		p += strspn(p, PATH_SEPARATOR_STR);
 	}
+	return true;
 }
 
 // go to the directory `path`. make sure `path` only contains path separators like PATH_SEPARATOR, not any
 // other members of ALL_PATH_SEPARATORS
-static void file_selector_cd(FileSelector *fs, char const *path) {
-	file_selector_cd_(fs, path, 0);
+// returns false if this path doesn't exist or isn't a directory
+static bool file_selector_cd(FileSelector *fs, char const *path) {
+	return file_selector_cd_(fs, path, 0);
 }
 
 // returns the name of the selected file, or NULL
@@ -154,11 +176,14 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 	
 
 	// check if the search term contains a path separator. if so, cd to the dirname.
-	u32 last_path_sep = U32_MAX;
+	u32 first_path_sep = U32_MAX, last_path_sep = U32_MAX;
 	for (u32 i = 0; i < search_term32.len; ++i) {
 		char32_t c = search_term32.str[i];
-		if (c < CHAR_MAX && strchr(ALL_PATH_SEPARATORS, (char)c))
+		if (c < CHAR_MAX && strchr(ALL_PATH_SEPARATORS, (char)c)) {
 			last_path_sep = i;
+			if (first_path_sep == U32_MAX)
+				first_path_sep = i;
+		}
 	}
 
 	if (last_path_sep != U32_MAX) {
@@ -171,9 +196,14 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 				if (strchr(ALL_PATH_SEPARATORS, *p))
 					*p = PATH_SEPARATOR;
 
-			file_selector_cd(fs, dir_name);
-			buffer_delete_chars_at_pos(line_buffer, buffer_start_of_file(line_buffer), last_path_sep + 1); // delete up to and including the last path separator
-			buffer_clear_undo_redo(line_buffer);
+			if (file_selector_cd(fs, dir_name)) {
+				buffer_delete_chars_at_pos(line_buffer, buffer_start_of_file(line_buffer), last_path_sep + 1); // delete up to and including the last path separator
+				buffer_clear_undo_redo(line_buffer);
+			} else {
+				BufferPos pos = {.line = 0, .index = first_path_sep};
+				size_t nchars = search_term32.len - first_path_sep;
+				buffer_delete_chars_at_pos(line_buffer, pos, (i64)nchars);
+			}
 		}
 	}
 

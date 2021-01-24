@@ -38,16 +38,6 @@ static void *ted_realloc(Ted *ted, void *p, size_t new_size) {
 	return ret;
 }
 
-// should the working directory be searched for files? set to true if the executable isn't "installed"
-static bool ted_search_cwd = false;
-static char const ted_global_data_dir[] = 
-#if _WIN32
-	"C:\\Program Files\\ted";
-#else
-	"/usr/share/ted";
-#endif
-static char ted_local_data_dir[TED_PATH_MAX]; // filled out in main()
-
 // Check the various places a file could be, and return the full path.
 static Status ted_get_file(char const *name, char *out, size_t outsz) {
 	if (ted_search_cwd && fs_file_exists(name)) {

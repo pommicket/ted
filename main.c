@@ -95,8 +95,15 @@ int main(int argc, char **argv) {
 			strbuf_printf(ted_local_data_dir, "%ls" PATH_SEPARATOR_STR "ted", appdata);
 			CoTaskMemFree(appdata);
 		}
+		id = FOLDERID_Profile;
+		wchar_t *home = NULL;
+		if (SHGetKnownFolderPath(&id, 0, NULL, &home) == S_OK) {
+			strbuf_printf(ted_home, "%ls", home);
+			CoTaskMemFree(home);
+		}
 #else
 		char *home = getenv("HOME");
+		strbuf_printf(ted_home, "%s", home);
 		strbuf_printf(ted_local_data_dir, "%s/.local/share/ted", home);
 #endif
 	}
