@@ -2,17 +2,24 @@
 #include <fcntl.h>
 #endif
 
+static float file_selector_entries_start_y(Ted const *ted, FileSelector const *fs) {
+	Rect bounds = fs->bounds;
+	float padding = ted->settings.padding;
+	float char_height = text_font_char_height(ted->font);
+	float char_height_bold = text_font_char_height(ted->font_bold);
+	return bounds.pos.y
+		+ char_height_bold + padding // make room for cwd
+		+ char_height * 1.5f; // make room for line buffer
+}
+
 // where is the ith entry in the file selector on the screen?
 // returns false if it's completely offscreen
 static bool file_selector_entry_pos(Ted const *ted, FileSelector const *fs,
 	u32 i, Rect *r) {
 	Rect bounds = fs->bounds;
-	float padding = ted->settings.padding;
 	float char_height = text_font_char_height(ted->font);
-	float char_height_bold = text_font_char_height(ted->font_bold);
-	*r = rect(V2(bounds.pos.x, bounds.pos.y 
-		+ char_height_bold + padding // make room for cwd
-		+ char_height * 1.5f // make room for line buffer
+	*r = rect(V2(bounds.pos.x, file_selector_entries_start_y(ted, fs)
+		- char_height * fs->scroll
 		+ char_height * (float)i), 
 		V2(bounds.size.x, char_height));
 	return rect_clip_to_rect(r, bounds);
@@ -31,16 +38,16 @@ static void file_selector_clear_entries(FileSelector *fs) {
 
 static void file_selector_free(FileSelector *fs) {
 	file_selector_clear_entries(fs);
-	fs->cwd[0] = '\0';
+	memset(fs, 0, sizeof *fs);
 }
 
 static int qsort_file_entry_cmp(void const *av, void const *bv) {
 	FileEntry const *a = av, *b = bv;
 	// put directories first
-	if (a->type > b->type) {
+	if (a->type == FS_DIRECTORY && b->type != FS_DIRECTORY) {
 		return -1;
 	}
-	if (a->type < b->type) {
+	if (a->type != FS_DIRECTORY && b->type == FS_DIRECTORY) {
 		return +1;
 	}
 	return strcmp_case_insensitive(a->name, b->name);
@@ -311,9 +318,21 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 		}
 
 		free(files);
+
 	} else {
 		ted_seterr(ted, "Couldn't list directory '%s'.", cwd);
 	}
+	
+	// apply scroll
+	float scroll_speed = 2.5f;
+	fs->scroll += scroll_speed * (float)ted->scroll_total_y;
+	// clamp scroll
+	float char_height = text_font_char_height(ted->font);
+	float entries_h = rect_y2(fs->bounds) - file_selector_entries_start_y(ted, fs);
+	u32 n_display_entries = (u32)(entries_h / char_height);
+	float max_scroll = (float)fs->n_entries - (float)n_display_entries;
+	if (max_scroll < 0) max_scroll = 0;
+	fs->scroll = clampf(fs->scroll, 0, max_scroll);
 	
 	free(search_term);
 	return NULL;

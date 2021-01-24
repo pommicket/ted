@@ -86,6 +86,7 @@ typedef struct {
 typedef struct {
 	Rect bounds;
 	u32 n_entries;
+	float scroll;
 	FileEntry *entries;
 	char cwd[TED_PATH_MAX];
 	bool submitted; // set to true if the line buffer was just submitted this frame.
@@ -94,7 +95,6 @@ typedef struct {
 typedef struct Ted {
 	Font *font_bold;
 	Font *font;
-
 	TextBuffer *active_buffer;
 	// buffer we are currently drag-to-selecting in, if any
 	TextBuffer *drag_buffer;
@@ -106,6 +106,7 @@ typedef struct Ted {
 	v2 mouse_pos;
 	u8 nmouse_clicks[4]; // nmouse_clicks[i] = length of mouse_clicks[i]
 	v2 mouse_clicks[4][32]; // mouse_clicks[SDL_BUTTON_RIGHT], for example, is all the right mouse-clicks that have happened this frame
+	int scroll_total_x, scroll_total_y; // total amount scrolled in the x and y direction this frame
 	Menu menu;
 	FileSelector file_selector;
 	TextBuffer line_buffer; // general-purpose line buffer for inputs -- used for menus

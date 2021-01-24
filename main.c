@@ -256,6 +256,7 @@ int main(int argc, char **argv) {
 		bool alt_down = keyboard_state[SDL_SCANCODE_LALT] || keyboard_state[SDL_SCANCODE_RALT];
 
 		memset(ted->nmouse_clicks, 0, sizeof ted->nmouse_clicks);
+		ted->scroll_total_x = ted->scroll_total_y = 0;
 
 		//printf("%p\n",(void *)ted->drag_buffer);
 
@@ -271,6 +272,8 @@ int main(int argc, char **argv) {
 			case SDL_MOUSEWHEEL: {
 				// scroll with mouse wheel
 				Sint32 dx = event.wheel.x, dy = -event.wheel.y;
+				ted->scroll_total_x += dx;
+				ted->scroll_total_y += dy;
 				double scroll_speed = 2.5;
 				if (ted->active_buffer)
 					buffer_scroll(ted->active_buffer, dx * scroll_speed, dy * scroll_speed);
