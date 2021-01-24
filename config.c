@@ -312,6 +312,12 @@ void config_read(Ted *ted, char const *filename) {
 										} else {
 											config_err(cfg, "Invalid padding: %s.", value);
 										}
+									} else if (streq(key, "scrolloff")) {
+										if (is_integer && integer >= 1 && integer < 100) {
+											settings->scrolloff = (u8)integer;
+										} else {
+											config_err(cfg, "Invalid scrolloff: %s.", value);
+										}
 									} else {
 										config_err(cfg, "Unrecognized core setting: %s.", key);
 									}

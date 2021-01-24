@@ -150,7 +150,7 @@ static inline Font *buffer_font(TextBuffer *buffer) {
 }
 
 // Get the settings used for this buffer.
-static inline Settings *buffer_settings(TextBuffer *buffer) {
+static inline Settings const *buffer_settings(TextBuffer *buffer) {
 	return &buffer->ted->settings;
 }
 
@@ -845,24 +845,25 @@ static bool buffer_clip_rect(TextBuffer *buffer, Rect *r) {
 
 // if the cursor is offscreen, this will scroll to make it onscreen.
 static void buffer_scroll_to_cursor(TextBuffer *buffer) {
+	Settings const *settings = buffer_settings(buffer);
 	i64 cursor_line = buffer->cursor_pos.line;
 	i64 cursor_col  = buffer_index_to_column(buffer, (u32)cursor_line, buffer->cursor_pos.index);
 	i64 display_lines = buffer_display_lines(buffer);
 	i64 display_cols = buffer_display_cols(buffer);
 	double scroll_x = buffer->scroll_x, scroll_y = buffer->scroll_y;
-	i64 scroll_padding = 5;
+	i64 scrolloff = settings->scrolloff;
 
 	// scroll left if cursor is off screen in that direction
-	double max_scroll_x = (double)(cursor_col - scroll_padding);
+	double max_scroll_x = (double)(cursor_col - scrolloff);
 	scroll_x = mind(scroll_x, max_scroll_x);
 	// scroll right
-	double min_scroll_x = (double)(cursor_col - display_cols + scroll_padding);
+	double min_scroll_x = (double)(cursor_col - display_cols + scrolloff);
 	scroll_x = maxd(scroll_x, min_scroll_x);
 	// scroll up
-	double max_scroll_y = (double)(cursor_line - scroll_padding);
+	double max_scroll_y = (double)(cursor_line - scrolloff);
 	scroll_y = mind(scroll_y, max_scroll_y);
 	// scroll down
-	double min_scroll_y = (double)(cursor_line - display_lines + scroll_padding);
+	double min_scroll_y = (double)(cursor_line - display_lines + scrolloff);
 	scroll_y = maxd(scroll_y, min_scroll_y);
 
 	buffer->scroll_x = scroll_x;
@@ -1718,8 +1719,8 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 	float header_height = char_height;
 
 	Ted *ted = buffer->ted;
-	Settings *settings = buffer_settings(buffer);
-	u32 *colors = settings->colors;
+	Settings const *settings = buffer_settings(buffer);
+	u32 const *colors = settings->colors;
 
 	float border_thickness = settings->border_thickness;
 

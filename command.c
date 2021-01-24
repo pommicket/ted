@@ -38,11 +38,11 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		if (buffer) buffer_cursor_move_right(buffer, argument);
 		break;
 	case CMD_UP:
-		if (file_selector->open) file_selector_up(file_selector, argument);
+		if (file_selector->open) file_selector_up(ted, file_selector, argument);
 		else if (buffer) buffer_cursor_move_up(buffer, argument);
 		break;
 	case CMD_DOWN:
-		if (file_selector->open) file_selector_down(file_selector, argument);
+		if (file_selector->open) file_selector_down(ted, file_selector, argument);
 		else if (buffer) buffer_cursor_move_down(buffer, argument);
 		break;
 	case CMD_SELECT_LEFT:

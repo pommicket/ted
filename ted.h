@@ -13,6 +13,7 @@ typedef struct {
 	u8 undo_save_time;
 	u8 border_thickness;
 	u8 padding;
+	u8 scrolloff;
 } Settings;
 
 #define SCANCODE_COUNT 0x120 // SDL scancodes should be less than this value.

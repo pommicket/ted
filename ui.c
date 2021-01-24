@@ -12,6 +12,28 @@ static float file_selector_entries_start_y(Ted const *ted, FileSelector const *f
 		+ char_height * 1.5f; // make room for line buffer
 }
 
+// number of file entries that can be displayed on the screen
+static u32 file_selector_n_display_entries(Ted const *ted, FileSelector const *fs) {
+	float char_height = text_font_char_height(ted->font);
+	float entries_h = rect_y2(fs->bounds) - file_selector_entries_start_y(ted, fs);
+	return (u32)(entries_h / char_height);
+}
+
+static void file_selector_clamp_scroll(Ted const *ted, FileSelector *fs) {
+	float max_scroll = (float)fs->n_entries - (float)file_selector_n_display_entries(ted, fs);
+	if (max_scroll < 0) max_scroll = 0;
+	fs->scroll = clampf(fs->scroll, 0, max_scroll);
+}
+
+static void file_selector_scroll_to_selected(Ted const *ted, FileSelector *fs) {
+	u32 n_display_entries = file_selector_n_display_entries(ted, fs);
+	float scrolloff = ted->settings.scrolloff;
+	float min_scroll = (float)fs->selected - ((float)n_display_entries - scrolloff);
+	float max_scroll = (float)fs->selected - scrolloff;
+	fs->scroll = clampf(fs->scroll, min_scroll, max_scroll);
+	file_selector_clamp_scroll(ted, fs);
+}
+
 // where is the ith entry in the file selector on the screen?
 // returns false if it's completely offscreen
 static bool file_selector_entry_pos(Ted const *ted, FileSelector const *fs,
@@ -41,16 +63,18 @@ static void file_selector_free(FileSelector *fs) {
 	memset(fs, 0, sizeof *fs);
 }
 
-static void file_selector_up(FileSelector *fs, i64 n) {
+static void file_selector_up(Ted const *ted, FileSelector *fs, i64 n) {
 	i64 selected = fs->selected - n;
 	selected = mod_i64(selected, fs->n_entries);
 	fs->selected = (u32)selected;
+	file_selector_scroll_to_selected(ted, fs);
 }
 
-static void file_selector_down(FileSelector *fs, i64 n) {
+static void file_selector_down(Ted const *ted, FileSelector *fs, i64 n) {
 	i64 selected = fs->selected + n;
 	selected = mod_i64(selected, fs->n_entries);
 	fs->selected = (u32)selected;
+	file_selector_scroll_to_selected(ted, fs);
 }
 
 static int qsort_file_entry_cmp(void const *av, void const *bv, void *search_termv) {
@@ -351,13 +375,7 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 	// apply scroll
 	float scroll_speed = 2.5f;
 	fs->scroll += scroll_speed * (float)ted->scroll_total_y;
-	// clamp scroll
-	float char_height = text_font_char_height(ted->font);
-	float entries_h = rect_y2(fs->bounds) - file_selector_entries_start_y(ted, fs);
-	u32 n_display_entries = (u32)(entries_h / char_height);
-	float max_scroll = (float)fs->n_entries - (float)n_display_entries;
-	if (max_scroll < 0) max_scroll = 0;
-	fs->scroll = clampf(fs->scroll, 0, max_scroll);
+	file_selector_clamp_scroll(ted, fs);
 	
 	free(search_term);
 	return NULL;
