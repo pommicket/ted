@@ -46,7 +46,7 @@ static int clampi(int x, int a, int b) {
 	return x;
 }
 
-static i32 clampi32(i32 x, i32 a, i32 b) {
+static i32 clamp_i32(i32 x, i32 a, i32 b) {
 	if (x < a) return a;
 	if (x > b) return b;
 	return x;
@@ -74,11 +74,35 @@ static double mind(double a, double b) {
 	return a < b ? a : b;
 }
 
-static u32 minu32(u32 a, u32 b) {
+static u32 min_u32(u32 a, u32 b) {
 	return a < b ? a : b;
 }
 
-static u32 maxu32(u32 a, u32 b) {
+static u32 max_u32(u32 a, u32 b) {
+	return a > b ? a : b;
+}
+
+static i32 min_i32(i32 a, i32 b) {
+	return a < b ? a : b;
+}
+
+static i32 max_i32(i32 a, i32 b) {
+	return a > b ? a : b;
+}
+
+static u64 min_u64(u64 a, u64 b) {
+	return a < b ? a : b;
+}
+
+static u64 max_u64(u64 a, u64 b) {
+	return a > b ? a : b;
+}
+
+static i64 min_i64(i64 a, i64 b) {
+	return a < b ? a : b;
+}
+
+static i64 max_i64(i64 a, i64 b) {
 	return a > b ? a : b;
 }
 

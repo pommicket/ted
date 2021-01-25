@@ -12,6 +12,9 @@ ENUM_U16 {
 	COLOR_MENU_BACKDROP,
 	COLOR_MENU_BG,
 	COLOR_MENU_HL,
+	COLOR_ERROR_TEXT,
+	COLOR_ERROR_BG,
+	COLOR_ERROR_BORDER,
 
 	COLOR_COUNT
 } ENUM_U16_END(ColorSetting);
@@ -33,7 +36,10 @@ static ColorName const color_names[COLOR_COUNT] = {
 	{COLOR_SELECTION_BG, "selection-bg"},
 	{COLOR_MENU_BACKDROP, "menu-backdrop"},
 	{COLOR_MENU_BG, "menu-bg"},
-	{COLOR_MENU_HL, "menu-hl"}
+	{COLOR_MENU_HL, "menu-hl"},
+	{COLOR_ERROR_TEXT, "error-text"},
+	{COLOR_ERROR_BG, "error-bg"},
+	{COLOR_ERROR_BORDER, "error-border"}
 };
 
 static ColorSetting color_setting_from_str(char const *str) {

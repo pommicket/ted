@@ -1895,7 +1895,7 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 			sel_start = buffer->selection_pos;
 		} else assert(0);
 
-		for (u32 line_idx = maxu32(sel_start.line, start_line); line_idx <= sel_end.line; ++line_idx) {
+		for (u32 line_idx = max_u32(sel_start.line, start_line); line_idx <= sel_end.line; ++line_idx) {
 			Line *line = &buffer->lines[line_idx];
 			u32 index1 = line_idx == sel_start.line ? sel_start.index : 0;
 			u32 index2 = line_idx == sel_end.line ? sel_end.index : line->len;

@@ -8,6 +8,7 @@ typedef struct {
 	u32 colors[COLOR_COUNT];
 	u16 text_size;
 	u16 max_menu_width;
+	u16 error_display_time;
 	u8 tab_width;
 	u8 cursor_width;
 	u8 undo_save_time;
@@ -115,9 +116,11 @@ typedef struct Ted {
 	FileSelector file_selector;
 	TextBuffer line_buffer; // general-purpose line buffer for inputs -- used for menus
 	TextBuffer main_buffer;
+	double error_time; // time error box was opened (in seconds -- see time_get_seconds)
 	KeyAction key_actions[KEY_COMBO_COUNT];
 	char cwd[TED_PATH_MAX]; // current working directory
 	char error[256];
+	char error_shown[256]; // error display in box on screen
 } Ted;
 
 // should the working directory be searched for files? set to true if the executable isn't "installed"

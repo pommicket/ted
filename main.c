@@ -1,6 +1,7 @@
 // @TODO:
+// - save as
+// - auto-indent
 // - Windows installation
-// - error bar
 #include "base.h"
 no_warn_start
 #if _WIN32
@@ -83,6 +84,22 @@ int main(int argc, char **argv) {
 #endif
 	setlocale(LC_ALL, ""); // allow unicode
 
+	// read command-line arguments
+	char const *starting_filename = "Untitled";
+	switch (argc) {
+	case 0: case 1: break;
+	case 2:
+		starting_filename = argv[1];
+		break;
+	default:	
+		fprintf(stderr, "Usage: %s [filename]\n", argv[0]);
+		return EXIT_FAILURE;
+	}
+
+	SDL_SetHint(SDL_HINT_NO_SIGNAL_HANDLERS, "1"); // if this program is sent a SIGTERM/SIGINT, don't turn it into a quit event
+	if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER) < 0)
+		die("%s", SDL_GetError());
+
 	Ted *ted = calloc(1, sizeof *ted);
 	if (!ted) {
 		die("Not enough memory available to run ted.");
@@ -160,10 +177,6 @@ int main(int argc, char **argv) {
 		die("Error reading config: %s", ted_geterr(ted));
 	}
 
-	SDL_SetHint(SDL_HINT_NO_SIGNAL_HANDLERS, "1"); // if this program is sent a SIGTERM/SIGINT, don't turn it into a quit event
-	if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER) < 0)
-		die("%s", SDL_GetError());
-
 	SDL_Window *window = SDL_CreateWindow("ted", SDL_WINDOWPOS_UNDEFINED, 
 		SDL_WINDOWPOS_UNDEFINED, 1280, 720, SDL_WINDOW_SHOWN|SDL_WINDOW_OPENGL|SDL_WINDOW_RESIZABLE);
 	if (!window)
@@ -203,25 +216,14 @@ int main(int argc, char **argv) {
 		buffer_create(buffer, ted);
 		ted->active_buffer = buffer;
 
-		char const *starting_filename = "Untitled";
-		
-		switch (argc) {
-		case 0: case 1: break;
-		case 2:
-			starting_filename = argv[1];
-			break;
-		default:	
-			die("Usage: %s [filename]", argv[0]);
-			break;
-		}
 
 		if (fs_file_exists(starting_filename)) {
 			if (!buffer_load_file(buffer, starting_filename))
-				die("Error loading file: %s", buffer_geterr(buffer));
+				ted_seterr(ted, "Couldn't load file: %s", buffer_geterr(buffer));
 		} else {
 			buffer_new_file(buffer, starting_filename);
 			if (buffer_haserr(buffer))
-				die("Error creating file: %s", buffer_geterr(buffer));
+				ted_seterr(ted, "Couldn't create file: %s", buffer_geterr(buffer));
 		}
 	}
 
@@ -281,6 +283,15 @@ int main(int argc, char **argv) {
 			} break;
 			case SDL_MOUSEBUTTONDOWN: {
 				Uint32 button = event.button.button;
+				
+				if (button == SDL_BUTTON_LEFT) {
+					// shift+left click = right click
+					if (shift_down) button = SDL_BUTTON_RIGHT;
+					// ctrl+left click = middle click
+					if (ctrl_down)  button = SDL_BUTTON_MIDDLE;
+				}
+
+
 				float x = (float)event.button.x, y = (float)event.button.y;
 				if (button < arr_count(ted->nmouse_clicks) 
 					&& ted->nmouse_clicks[button] < arr_count(ted->mouse_clicks[button])) {
@@ -359,11 +370,6 @@ int main(int argc, char **argv) {
 					buffer_insert_utf8_at_cursor(buffer, text);
 			} break;
 			}
-
-			if (ted_haserr(ted)) {
-				// @TODO: better error handling
-				die("%s", ted_geterr(ted));
-			}
 		}
 		
 		if (!(SDL_GetMouseState(NULL, NULL) & SDL_BUTTON_LMASK)) {
@@ -418,13 +424,14 @@ int main(int argc, char **argv) {
 			glClearColor(bg_color[0], bg_color[1], bg_color[2], bg_color[3]);
 		}
 		glClear(GL_COLOR_BUFFER_BIT);
+		
+		Font *font = ted->font;
 
 		{
 			float x1 = 50, y1 = 50, x2 = window_width-50, y2 = window_height-50;
 			buffer_render(&ted->main_buffer, x1, y1, x2, y2);
 			if (text_has_err()) {
-				die("Text error: %s\n", text_get_err());
-				break;
+				ted_seterr(ted, "Couldn't render text: %s", text_get_err());
 			}
 		}
 
@@ -433,9 +440,61 @@ int main(int argc, char **argv) {
 			menu_render(ted, menu);
 		}
 
+		// check if there's a new error
 		if (ted_haserr(ted)) {
-			// @TODO: better error handling
-			die("%s", ted_geterr(ted));
+			ted->error_time = time_get_seconds();
+			str_cpy(ted->error_shown, sizeof ted->error_shown, ted->error);
+			ted_clearerr(ted);
+		}
+
+		// error box
+		if (*ted->error_shown) {
+			double t = time_get_seconds();
+			double time_passed = t - ted->error_time;
+			if (time_passed > settings->error_display_time) {
+				// stop showing error
+				ted->error_shown[0] = '\0';
+			} else {
+				// @TODO(eventually): output a log
+				// @TODO: middle click to dismiss
+				float padding = settings->padding;
+				float char_width = text_font_char_width(font);
+				float char_height = text_font_char_height(font);
+				Rect r = rect_centered(V2(window_width * 0.5f, window_height * 0.9f),
+					V2(menu_get_width(ted), 3 * char_height + 2 * padding));
+
+				glBegin(GL_QUADS);
+				gl_color_rgba(colors[COLOR_ERROR_BG]);
+				rect_render(r);
+				gl_color_rgba(colors[COLOR_ERROR_BORDER]);
+				rect_render_border(r, settings->border_thickness);
+				glEnd();
+				gl_color_rgba(colors[COLOR_ERROR_TEXT]);
+
+
+				float text_x1 = rect_x1(r) + padding, text_x2 = rect_x2(r) - padding;
+				float text_y1 = rect_y1(r) + padding;
+
+				TextRenderState text_state = {.x = text_x1, .y = text_y1,
+					.min_x = -FLT_MAX, .max_x = FLT_MAX, .min_y = -FLT_MAX, .max_y = FLT_MAX,
+					.render = true};
+				mbstate_t mbstate = {0};
+				char *p = ted->error_shown, *end = p + strlen(p);
+
+				text_chars_begin(font);
+				while (p != end) {
+					char32_t c = 0;
+					size_t n = mbrtoc32(&c, p, (size_t)(end - p), &mbstate);
+					if (n > (size_t)-3) { ++p; continue; } // invalid UTF-8; this shouldn't happen
+					if (n != (size_t)-3) p += n;
+					if (text_state.x + char_width >= text_x2) {
+						text_state.x = text_x1;
+						text_state.y += char_height;
+					}
+					text_render_char(font, &text_state, c);
+				}
+				text_chars_end(font);
+			}
 		}
 
 

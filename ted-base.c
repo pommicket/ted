@@ -16,6 +16,10 @@ char const *ted_geterr(Ted *ted) {
 	return ted->error;
 }
 
+void ted_clearerr(Ted *ted) {
+	ted->error[0] = '\0';
+}
+
 static void ted_out_of_mem(Ted *ted) {
 	ted_seterr(ted, "Out of memory.");
 }

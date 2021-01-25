@@ -318,7 +318,20 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 	// free previous entries
 	file_selector_clear_entries(fs);
 	// get new entries
-	char **files = fs_list_directory(cwd);
+	char **files;
+	// if the directory we're in gets deleted, go back a directory.
+	for (u32 i = 0; i < 100; ++i) {
+		files = fs_list_directory(cwd);
+		if (files) break;
+		else if (i == 0) {
+			if (fs_path_type(cwd) == FS_NON_EXISTENT)
+				ted_seterr(ted, "%s is not a directory.", cwd);
+			else
+				ted_seterr(ted, "Can't list directory %s.", cwd);
+		}
+		file_selector_cd(fs, "..");
+	}
+
 	if (files) {
 		u32 nfiles;
 		for (nfiles = 0; files[nfiles]; ++nfiles);
@@ -367,7 +380,6 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 		}
 
 		free(files);
-
 	} else {
 		ted_seterr(ted, "Couldn't list directory '%s'.", cwd);
 	}

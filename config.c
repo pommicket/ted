@@ -318,6 +318,12 @@ void config_read(Ted *ted, char const *filename) {
 										} else {
 											config_err(cfg, "Invalid scrolloff: %s.", value);
 										}
+									} else if (streq(key, "error-display-time")) {
+										if (is_integer && integer >= 0 && integer < U16_MAX) {
+											settings->error_display_time = (u16)integer;
+										} else {
+											config_err(cfg, "Invalid error display time: %s.", value);
+										}
 									} else {
 										config_err(cfg, "Unrecognized core setting: %s.", key);
 									}

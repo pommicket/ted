@@ -136,6 +136,9 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		if (buffer) buffer_cut(buffer);
 		break;
 	case CMD_PASTE:
+		// @TEST @TODO: delete me
+		ted_seterr(ted, "Very long test error the quick brown fox jumps over the lazy dog. ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz. Thank you very much. It was the best of times. It was the worst of times. It was the age of reason. It was the age of foolishness.");
+
 		if (buffer) buffer_paste(buffer);
 		break;
 	
