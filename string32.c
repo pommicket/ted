@@ -13,6 +13,7 @@ String32 str32_substr(String32 s, size_t from, size_t len) {
 	return str32(s.str + from, len);
 }
 
+// frees string and sets it to ""
 void str32_free(String32 *s) {
 	free(s->str);
 	s->str = NULL;

@@ -1,4 +1,6 @@
 // Text buffers - These store the contents of a file.
+// NOTE: All text editing should be done through the two functions
+// buffer_insert_text_at_pos and buffer_delete_chars_at_pos
 
 // this is a macro so we get -Wformat warnings
 #define buffer_seterr(buffer, ...) \
@@ -181,7 +183,7 @@ static u64 buffer_checksum(TextBuffer *buffer) {
 // Returns the number of characters gotten.
 // You can pass NULL for text if you just want to know how many characters *could* be accessed before the
 // end of the file.
-static size_t buffer_get_text_at_pos(TextBuffer *buffer, BufferPos pos, char32_t *text, size_t nchars) {
+size_t buffer_get_text_at_pos(TextBuffer *buffer, BufferPos pos, char32_t *text, size_t nchars) {
 	if (!buffer_pos_valid(buffer, pos)) {
 		return 0; // invalid position. no chars for you!
 	}
@@ -211,6 +213,32 @@ static size_t buffer_get_text_at_pos(TextBuffer *buffer, BufferPos pos, char32_t
 		}
 	}
 	return nchars - chars_left;
+}
+
+// returns a UTF-32 string of at most `nchars` code points from `buffer` starting at `pos`
+// the string should be str32_free'd.
+String32 buffer_get_str32_text_at_pos(TextBuffer *buffer, BufferPos pos, size_t nchars) {
+	String32 s32 = {0};
+	size_t len = buffer_get_text_at_pos(buffer, pos, NULL, nchars);
+	if (len) {
+		char32_t *str = buffer_calloc(buffer, len, sizeof *str);
+		if (str) {
+			buffer_get_text_at_pos(buffer, pos, str, nchars);
+			s32.str = str;
+			s32.len = len;
+		}
+	}
+	return s32;
+}
+
+// see buffer_get_str32_text_at_pos. returns NULL on failure (out of memory)
+// the returned string should be free'd
+char *buffer_get_utf8_text_at_pos(TextBuffer *buffer, BufferPos pos, size_t nchars) {
+	String32 s32 = buffer_get_str32_text_at_pos(buffer, pos, nchars);
+	char *ret = str32_to_utf8_cstr(s32);
+	if (!ret) buffer_out_of_mem(buffer);
+	str32_free(&s32);
+	return ret;
 }
 
 static BufferPos buffer_pos_advance(TextBuffer *buffer, BufferPos pos, size_t nchars) {
@@ -619,6 +647,9 @@ bool buffer_save(TextBuffer *buffer) {
 			}
 			if (ferror(out)) success = false;
 			if (fclose(out) != 0) success = false;
+			if (success) {
+				buffer->modified = false;
+			}
 			return success;
 		} else {
 			buffer_seterr(buffer, "Couldn't create file %s.", buffer->filename);
@@ -1280,6 +1311,8 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 	// We need to put this after the end so the emptiness-checking is done after the edit is made.
 	buffer_remove_last_edit_if_empty(buffer);
 
+	buffer->modified = true;
+
 	BufferPos b = {.line = line_idx, .index = index};
 	return b;
 }
@@ -1522,6 +1555,8 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 	
 	// cursor position could have been invalidated by this edit
 	buffer_validate_cursor(buffer);
+
+	buffer->modified = true;
 }
 
 // Delete characters between the given buffer positions. Returns number of characters deleted.
@@ -1683,6 +1718,49 @@ void buffer_redo(TextBuffer *buffer, i64 ntimes) {
 	}
 }
 
+void buffer_copy_or_cut(TextBuffer *buffer, bool cut) {
+	if (buffer->selection) {
+		BufferPos pos1 = buffer_pos_min(buffer->selection_pos, buffer->cursor_pos);
+		BufferPos pos2 = buffer_pos_max(buffer->selection_pos, buffer->cursor_pos);
+		i64 selection_len = buffer_pos_diff(buffer, pos1, pos2);
+		char *text = buffer_get_utf8_text_at_pos(buffer, pos1, (size_t)selection_len);
+		if (text) {
+			int err = SDL_SetClipboardText(text);
+			free(text);
+			if (err < 0) {
+				buffer_seterr(buffer, "Couldn't get clipboard contents: %s", SDL_GetError());
+			} else {
+				// text copied successfully
+				if (cut) {
+					buffer_delete_selection(buffer);
+				}
+			}
+		}
+	}
+}
+
+void buffer_copy(TextBuffer *buffer) {
+	buffer_copy_or_cut(buffer, false);
+}
+
+void buffer_cut(TextBuffer *buffer) {
+	buffer_copy_or_cut(buffer, true);
+}
+
+void buffer_paste(TextBuffer *buffer) {
+	if (SDL_HasClipboardText()) {
+		char *text = SDL_GetClipboardText();
+		if (text) {
+			String32 str = str32_from_utf8(text);
+			if (str.len) {
+				buffer_insert_text_at_cursor(buffer, str);
+				str32_free(&str);
+			}
+			SDL_free(text);
+		}
+	}
+}
+
 // for debugging
 #if DEBUG
 static void buffer_pos_check_valid(TextBuffer *buffer, BufferPos p) {
@@ -1752,8 +1830,11 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 	if (!buffer->is_line_buffer) { // header
 		glColor3f(1,1,1);
 		float x = x1, y = y1;
-		if (buffer->filename)
-			text_render_with_state(font, &text_state, buffer->filename, x, y);
+		if (buffer->filename) {
+			char text[256] = {0};
+			strbuf_printf(text, "%s%s%s", buffer->modified ? "*" : "", buffer->filename, buffer->modified ? "*" :"");
+			text_render_with_state(font, &text_state, text, x, y);
+		}
 	#if DEBUG
 		// show checksum
 		char checksum[32] = {0};
@@ -1853,6 +1934,9 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 		.render = true
 	};
 
+	// sel_pos >= scrolloff
+	// sel - scroll >= scrolloff
+	// scroll <= sel - scrolloff
 	text_state.y -= (float)(buffer->scroll_y - start_line) * char_height;
 
 	gl_color_rgba(colors[COLOR_TEXT]);

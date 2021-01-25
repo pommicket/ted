@@ -1,5 +1,6 @@
 // @TODO:
 // - Windows installation
+// - error bar
 #include "base.h"
 no_warn_start
 #if _WIN32

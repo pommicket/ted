@@ -38,6 +38,9 @@ ENUM_U16 {
 	CMD_SAVE, // save current buffer
 	CMD_UNDO,
 	CMD_REDO,
+	CMD_COPY,
+	CMD_CUT,
+	CMD_PASTE,
 
 	CMD_TEXT_SIZE_INCREASE,
 	CMD_TEXT_SIZE_DECREASE,
@@ -87,6 +90,9 @@ static CommandName const command_names[CMD_COUNT] = {
 	{"save", CMD_SAVE},
 	{"undo", CMD_UNDO},
 	{"redo", CMD_REDO},
+	{"copy", CMD_COPY},
+	{"cut", CMD_CUT},
+	{"paste", CMD_PASTE},
 	{"increase-text-size", CMD_TEXT_SIZE_INCREASE},
 	{"decrease-text-size", CMD_TEXT_SIZE_DECREASE},
 	{"escape", CMD_ESCAPE},

@@ -63,6 +63,7 @@ typedef struct {
 	bool is_line_buffer; // "line buffers" are buffers which can only have one line of text (used for inputs)
 	bool selection;
 	bool store_undo_events; // set to false to disable undo events
+	bool modified; // has the buffer been modified since it was loaded/saved?
 	float x1, y1, x2, y2;
 	u32 nlines;
 	u32 lines_capacity;
