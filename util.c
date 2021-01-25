@@ -134,17 +134,14 @@ static char *stristr(char const *haystack, char const *needle) {
 
 	for (char const *haystack_start = haystack; haystack_start + needle_bytes <= haystack_end; utf8_next_char_const(&haystack_start)) {
 		char const *p = haystack_start, *q = needle;
-		mbstate_t pstate = {0}, qstate = {0};
 		bool match = true;
 
 		// check if p matches q
 		while (q < needle_end) {
 			char32_t pchar = 0, qchar = 0;
-			size_t bytes_p = mbrtoc32(&pchar, p, (size_t)(haystack_end - p), &pstate);
-			size_t bytes_q = mbrtoc32(&qchar, q, (size_t)(needle_end - q),   &qstate);
-			if (bytes_p == (size_t)-3) bytes_p = 0;
-			if (bytes_q == (size_t)-3) bytes_q = 0;
-			if (bytes_p > (size_t)-3 || bytes_q > (size_t)-3) return NULL; // invalid UTF-8
+			size_t bytes_p = unicode_utf8_to_utf32(&pchar, p, (size_t)(haystack_end - p));
+			size_t bytes_q = unicode_utf8_to_utf32(&qchar, q, (size_t)(needle_end - q));
+			if (bytes_p == (size_t)-1 || bytes_q == (size_t)-1) return NULL; // invalid UTF-8
 			bool same = pchar == qchar;
 			if (pchar < WINT_MAX && qchar < WINT_MAX) // on Windows, there is no way of finding the lower-case version of a codepoint outside the BMP. ):
 				same = towlower((wint_t)pchar) == towlower((wint_t)qchar);

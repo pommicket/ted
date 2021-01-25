@@ -32,19 +32,15 @@ String32 str32_from_utf8(char const *utf8) {
 			char32_t *wide_p = widestr;
 			char const *utf8_p = utf8;
 			char const *utf8_end = utf8_p + len;
-			mbstate_t mbstate = {0};
 			while (utf8_p < utf8_end) {
 				char32_t c = 0;
-				size_t n = mbrtoc32(&c, utf8_p, (size_t)(utf8_end - utf8_p), &mbstate);
-				if (n == 0// null character. this shouldn't happen.
-					|| n == (size_t)(-2) // incomplete character
+				size_t n = unicode_utf8_to_utf32(&c, utf8_p, (size_t)(utf8_end - utf8_p));
+				if (n == 0 // null character. this shouldn't happen.
 					|| n == (size_t)(-1) // invalid UTF-8
 					) {
 					free(widestr);
 					widestr = wide_p = NULL;
 					break;
-				} else if (n == (size_t)(-3)) { // no bytes consumed, but a character was produced
-					*wide_p++ = c;
 				} else {
 					// n bytes consumed
 					*wide_p++ = c;
@@ -65,11 +61,10 @@ static char *str32_to_utf8_cstr(String32 s) {
 	char *utf8 = calloc(4 * s.len + 1, 1); // each codepoint takes up at most 4 bytes in UTF-8, + we need a terminating null byte
 	if (utf8) {
 		char *p = utf8;
-		mbstate_t mbstate; memset(&mbstate, 0, sizeof mbstate);
 		for (size_t i = 0; i < s.len; ++i) {
-			size_t bytes = c32rtomb(p, s.str[i], &mbstate);
+			size_t bytes = unicode_utf32_to_utf8(p, s.str[i]);
 			if (bytes == (size_t)-1) {
-				// invalid UTF-32 character
+				// invalid UTF-32 code point
 				free(utf8);
 				return NULL;
 			} else {

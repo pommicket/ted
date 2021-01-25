@@ -1,5 +1,6 @@
 #include "base.h"
 #include "text.h"
+#include "unicode.h"
 #define STB_TRUETYPE_IMPLEMENTATION
 #define STBTT_STATIC
 no_warn_start
@@ -7,15 +8,6 @@ no_warn_start
 no_warn_end
 #include <stdlib.h>
 #include <GL/gl.h>
-
-#define UNICODE_BOX_CHARACTER 0x2610
-#define UNICODE_CODE_POINTS 0x110000 // number of Unicode code points
-
-static bool unicode_is_start_of_code_point(u8 byte) {
-	// see https://en.wikipedia.org/wiki/UTF-8#Encoding
-	// continuation bytes are of the form 10xxxxxx
-	return (byte & 0xC0) != 0x80;
-}
 
 // We split up code points into a bunch of pages, so we don't have to load all of the font at
 // once into one texture.
@@ -249,21 +241,16 @@ void text_render_with_state(Font *font, TextRenderState *render_state, char cons
 	render_state->x = x;
 	render_state->y = y;
 	char32_t c = 0;
-	mbstate_t mbstate = {0};
 	char const *end = text + strlen(text);
 	while (text != end) {
-		size_t ret = mbrtoc32(&c, text, (size_t)(end - text), &mbstate);
+		size_t ret = unicode_utf8_to_utf32(&c, text, (size_t)(end - text));
 		if (ret == 0) break;
-		if (ret == (size_t)(-2)) { // incomplete multi-byte character
-			text_render_char(font, render_state, U'?');
-			text = end; // done reading text
-		} else if (ret == (size_t)(-1)) {
+		if (ret == (size_t)(-1)) {
 			// invalid UTF-8; skip this byte
-			text_render_char(font, render_state, U'?');
+			text_render_char(font, render_state, '?');
 			++text;
 		} else {
-			if (ret != (size_t)(-3))
-				text += ret; // character consists of `ret` bytes
+			text += ret; // character consists of `ret` bytes
 			switch (c) {
 			default:
 				text_render_char(font, render_state, c);

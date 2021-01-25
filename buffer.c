@@ -133,7 +133,7 @@ char32_t buffer_char_at_pos(TextBuffer *buffer, BufferPos p) {
 		// invalid (col too large)
 		return 0;
 	} else {
-		return U'\n';
+		return '\n';
 	}
 }
 
@@ -200,7 +200,7 @@ size_t buffer_get_text_at_pos(TextBuffer *buffer, BufferPos pos, char32_t *text,
 			if (p) {
 				memcpy(p, line->str + index, chars_from_this_line * sizeof *p);
 				p += chars_from_this_line;
-				*p++ = U'\n';
+				*p++ = '\n';
 			}
 			chars_left -= chars_from_this_line+1;
 		}
@@ -355,7 +355,7 @@ static void buffer_edit_print(BufferEdit *edit) {
 	printf(" (" U32_FMT " chars): ", edit->prev_len);
 	for (size_t i = 0; i < edit->prev_len; ++i) {
 		char32_t c = edit->prev_text[i];
-		if (c == U'\n')
+		if (c == '\n')
 			printf("\\n");
 		else
 			printf("%lc", (wint_t)c);
@@ -547,22 +547,19 @@ Status buffer_load_file(TextBuffer *buffer, char const *filename) {
 					size_t bytes_read = fread(file_contents, 1, file_size, fp);
 					if (bytes_read == file_size) {
 						char32_t c = 0;
-						mbstate_t mbstate = {0};
 						for (u8 *p = file_contents, *end = p + file_size; p != end; ) {
 							if (*p == '\r' && p != end-1 && p[1] == '\n') {
 								// CRLF line endings
 								p += 2;
-								c = U'\n';
+								c = '\n';
 							} else {
-								size_t n = mbrtoc32(&c, (char *)p, (size_t)(end - p), &mbstate);
+								size_t n = unicode_utf8_to_utf32(&c, (char *)p, (size_t)(end - p));
 								if (n == 0) {
 									// null character
 									c = 0;
 									++p;
-								} else if (n == (size_t)(-3)) {
-									// no bytes consumed, but a character was produced
-								} else if (n == (size_t)(-2) || n == (size_t)(-1)) {
-									// incomplete character at end of file or invalid UTF-8 respectively; fail
+								} else if (n == (size_t)(-1)) {
+									// invalid UTF-8
 									success = false;
 									buffer_seterr(buffer, "Invalid UTF-8 (position: %td).", p - file_contents);
 									break;
@@ -570,7 +567,7 @@ Status buffer_load_file(TextBuffer *buffer, char const *filename) {
 									p += n;
 								}
 							}
-							if (c == U'\n') {
+							if (c == '\n') {
 								if (buffer_lines_set_min_capacity(buffer, &lines, &lines_capacity, nlines + 1))
 									++nlines;
 							} else {
@@ -634,11 +631,12 @@ bool buffer_save(TextBuffer *buffer) {
 		if (out) {
 			bool success = true;
 			for (Line *line = buffer->lines, *end = line + buffer->nlines; line != end; ++line) {
-				mbstate_t state = {0};
 				for (char32_t *p = line->str, *p_end = p + line->len; p != p_end; ++p) {
-					char utf8[MB_LEN_MAX] = {0};
-					size_t bytes = c32rtomb(utf8, *p, &state);
-					fwrite(utf8, 1, bytes, out);
+					char utf8[4] = {0};
+					size_t bytes = unicode_utf32_to_utf8(utf8, *p);
+					if (bytes != (size_t)-1) {
+						fwrite(utf8, 1, bytes, out);
+					}
 				}
 
 				if (line != end-1) {
@@ -694,7 +692,7 @@ static u32 buffer_index_to_column(TextBuffer *buffer, u32 line, u32 index) {
 	uint tab_width = buffer_settings(buffer)->tab_width;
 	for (u32 i = 0; i < index; ++i) {
 		switch (str[i]) {
-		case U'\t': {
+		case '\t': {
 			do
 				++col;
 			while (col % tab_width);
@@ -718,7 +716,7 @@ static u32 buffer_column_to_index(TextBuffer *buffer, u32 line, u32 column) {
 	uint tab_width = buffer_settings(buffer)->tab_width;
 	for (u32 i = 0; i < len; ++i) {
 		switch (str[i]) {
-		case U'\t': {
+		case '\t': {
 			do {
 				if (col == column)
 					return i;
@@ -1059,7 +1057,7 @@ i64 buffer_cursor_move_down(TextBuffer *buffer, i64 by) {
 // Is this character a "word" character?
 // This determines how buffer_pos_move_words (i.e. ctrl+left/right) works
 static bool is_word(char32_t c) {
-	return c > WCHAR_MAX || c == U'_' || iswalnum((wint_t)c);
+	return c > WCHAR_MAX || c == '_' || iswalnum((wint_t)c);
 }
 
 static bool is_space(char32_t c) {
@@ -1229,7 +1227,7 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 
 	if (buffer->is_line_buffer) {
 		// remove all the newlines from str.
-		str32_remove_all_instances_of_char(&str, U'\n');
+		str32_remove_all_instances_of_char(&str, '\n');
 	}
 
 	if (str.len == 0) {
@@ -1260,7 +1258,7 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 
 	// `text` could consist of multiple lines, e.g. U"line 1\nline 2",
 	// so we need to go through them one by one
-	u32 n_added_lines = (u32)str32_count_char(str, U'\n');
+	u32 n_added_lines = (u32)str32_count_char(str, '\n');
 	if (n_added_lines) {
 		if (buffer_insert_lines(buffer, line_idx + 1, n_added_lines)) {
 			line = &buffer->lines[line_idx]; // fix pointer
@@ -1279,7 +1277,7 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 
 
 	while (str.len) {
-		u32 text_line_len = (u32)str32chr(str, U'\n');
+		u32 text_line_len = (u32)str32chr(str, '\n');
 		u32 old_len = line->len;
 		u32 new_len = old_len + text_line_len;
 		if (new_len > old_len) { // handles both overflow and empty text lines
@@ -1947,12 +1945,12 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 			char32_t c = *p;
 
 			switch (c) {
-			case U'\n': assert(0); break;
-			case U'\r': break; // for CRLF line endings
-			case U'\t': {
+			case '\n': assert(0); break;
+			case '\r': break; // for CRLF line endings
+			case '\t': {
 				uint tab_width = settings->tab_width;
 				do {
-					text_render_char(font, &text_state, U' ');
+					text_render_char(font, &text_state, ' ');
 					++column;
 				} while (column % tab_width);
 			} break;

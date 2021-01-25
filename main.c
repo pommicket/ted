@@ -17,8 +17,12 @@ no_warn_end
 #include <shellapi.h>
 #endif
 
-
+#include "unicode.h"
+#if DEBUG
 #include "text.h"
+#else
+#include "text.c"
+#endif
 #include "util.c"
 #define MATH_GL
 #include "math.c"
@@ -30,7 +34,6 @@ no_warn_end
 #error "Unrecognized operating system."
 #endif
 
-#include "unicode.h"
 #include "command.h"
 #include "colors.h"
 #include "ted.h"
@@ -354,10 +357,10 @@ int main(int argc, char **argv) {
 						switch (key_combo) {
 						case SDL_SCANCODE_RETURN << 3:
 							if (!was_in_line_buffer) // make sure return to submit line buffer doesn't get added to newly-active buffer
-								buffer_insert_char_at_cursor(buffer, U'\n');
+								buffer_insert_char_at_cursor(buffer, '\n');
 							break;
 						case SDL_SCANCODE_TAB << 3:
-							buffer_insert_char_at_cursor(buffer, U'\t');
+							buffer_insert_char_at_cursor(buffer, '\t');
 							break;
 						}
 					}
@@ -478,15 +481,14 @@ int main(int argc, char **argv) {
 				TextRenderState text_state = {.x = text_x1, .y = text_y1,
 					.min_x = -FLT_MAX, .max_x = FLT_MAX, .min_y = -FLT_MAX, .max_y = FLT_MAX,
 					.render = true};
-				mbstate_t mbstate = {0};
 				char *p = ted->error_shown, *end = p + strlen(p);
 
 				text_chars_begin(font);
 				while (p != end) {
 					char32_t c = 0;
-					size_t n = mbrtoc32(&c, p, (size_t)(end - p), &mbstate);
-					if (n > (size_t)-3) { ++p; continue; } // invalid UTF-8; this shouldn't happen
-					if (n != (size_t)-3) p += n;
+					size_t n = unicode_utf8_to_utf32(&c, p, (size_t)(end - p));
+					if (n == (size_t)-1) { ++p; continue; } // invalid UTF-8; this shouldn't happen
+					p += n;
 					if (text_state.x + char_width >= text_x2) {
 						text_state.x = text_x1;
 						text_state.y += char_height;

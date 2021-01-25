@@ -9,7 +9,7 @@ INSTALL_BIN_DIR=/usr/bin
 ted: *.[ch] text.o
 	$(CC) main.c text.o -o ted $(DEBUG_CFLAGS) $(LIBS)
 release: *.[ch]
-	$(CC) main.c text.o -o ted $(RELEASE_CFLAGS) $(LIBS)
+	$(CC) main.c -o ted $(RELEASE_CFLAGS) $(LIBS)
 text.o: text.c text.h base.h lib/stb_truetype.h
 	$(CC) text.c -c -o $@ $(DEBUG_CFLAGS)
 clean:
