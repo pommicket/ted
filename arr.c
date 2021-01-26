@@ -31,9 +31,6 @@ For more information, please refer to <http://unlicense.org/>
 // before including this file
 
 #include <stddef.h>
-#if __STDC_VERSION__ >= 201112L
-typedef max_align_t ArrMaxAlign;
-#else
 typedef union {
 	long num;
 	void *ptr;
@@ -43,7 +40,6 @@ typedef union {
 #endif
 	double flt;
 } ArrMaxAlign;
-#endif
 #if __STDC_VERSION__ < 199901L && !defined inline
 #define inline
 #endif
