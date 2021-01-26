@@ -1603,6 +1603,31 @@ void buffer_insert_utf8_at_cursor(TextBuffer *buffer, char const *utf8) {
 	}
 }
 
+// insert newline at cursor and auto-indent
+void buffer_newline(TextBuffer *buffer) {
+	Settings const *settings = buffer_settings(buffer);
+	BufferPos cursor_pos = buffer->cursor_pos;
+	String32 line = buffer_get_line(buffer, cursor_pos.line);
+	u32 whitespace_len;
+	for (whitespace_len = 0; whitespace_len < line.len; ++whitespace_len) {
+		if (line.str[whitespace_len] != ' ' && line.str[whitespace_len] != '\t')
+			break; // found end of indentation
+	}
+	if (settings->auto_indent) {
+		// newline + auto-indent
+		char32_t *text = buffer_calloc(buffer, whitespace_len + 1, sizeof *text); // @OPTIMIZE: don't allocate on heap if whitespace_len is small
+		if (text) {
+			text[0] = '\n';
+			memcpy(&text[1], line.str, whitespace_len * sizeof *text);
+			buffer_insert_text_at_cursor(buffer, str32(text, whitespace_len + 1));
+			free(text);
+		}
+	} else {
+		// just newline
+		buffer_insert_char_at_cursor(buffer, '\n');
+	}
+}
+
 void buffer_delete_chars_at_cursor(TextBuffer *buffer, i64 nchars) {
 	if (buffer->selection)
 		buffer_delete_selection(buffer);

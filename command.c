@@ -97,6 +97,25 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		if (buffer) buffer_select_all(buffer);
 		break;
 
+	case CMD_TAB:
+		buffer_insert_char_at_cursor(buffer, '\t');
+		break;
+	case CMD_NEWLINE:
+		if (buffer->is_line_buffer) {
+			switch (ted->menu) {
+			case MENU_NONE:
+				assert(0);
+				break;
+			case MENU_OPEN:
+			case MENU_SAVE_AS: {
+				ted->file_selector.submitted = true;
+			} break;
+			}
+		} else {
+			buffer_newline(buffer);
+		}
+		break;
+
 	case CMD_BACKSPACE:
 		if (buffer) buffer_backspace_at_cursor(buffer, argument);
 		break;
@@ -170,19 +189,6 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 			menu_close(ted, true);
 		} else if (buffer) {
 			buffer_disable_selection(buffer);
-		}
-		break;
-	case CMD_SUBMIT_LINE_BUFFER:
-		if (buffer->is_line_buffer) {
-			switch (ted->menu) {
-			case MENU_NONE:
-				assert(0);
-				break;
-			case MENU_OPEN:
-			case MENU_SAVE_AS: {
-				ted->file_selector.submitted = true;
-			} break;
-			}
 		}
 		break;
 	}

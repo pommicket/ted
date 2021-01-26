@@ -24,6 +24,10 @@ ENUM_U16 {
 	CMD_SELECT_END_OF_FILE,
 	CMD_SELECT_ALL, // select entire buffer
 
+	// insertion
+	CMD_TAB, // insert '\t'
+	CMD_NEWLINE, // insert '\n' + autoindent -- also used to submit line buffers
+
 	// scrolling
 	CMD_PAGE_UP, // move cursor up one page up (where one page is however tall the buffer is)
 	CMD_PAGE_DOWN,
@@ -47,8 +51,6 @@ ENUM_U16 {
 	CMD_TEXT_SIZE_DECREASE,
 
 	CMD_ESCAPE, // by default this is the escape key. closes menus, etc.
-
-	CMD_SUBMIT_LINE_BUFFER, // submit "line buffer" value -- the line buffer is where you type file names when opening files, etc.
 
 	CMD_COUNT
 } ENUM_U16_END(Command);
@@ -83,6 +85,8 @@ static CommandName const command_names[CMD_COUNT] = {
 	{"select-all", CMD_SELECT_ALL},
 	{"page-up", CMD_PAGE_UP},
 	{"page-down", CMD_PAGE_DOWN},
+	{"tab", CMD_TAB},
+	{"newline", CMD_NEWLINE},
 	{"backspace", CMD_BACKSPACE},
 	{"delete", CMD_DELETE},
 	{"backspace-word", CMD_BACKSPACE_WORD},
@@ -97,7 +101,6 @@ static CommandName const command_names[CMD_COUNT] = {
 	{"paste", CMD_PASTE},
 	{"increase-text-size", CMD_TEXT_SIZE_INCREASE},
 	{"decrease-text-size", CMD_TEXT_SIZE_DECREASE},
-	{"escape", CMD_ESCAPE},
-	{"submit-line-buffer", CMD_SUBMIT_LINE_BUFFER}
+	{"escape", CMD_ESCAPE}
 };
 

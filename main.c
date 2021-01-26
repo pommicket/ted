@@ -1,9 +1,8 @@
 // @TODO:
-// - save as
 // - warn on:
 //  - overwrite (from save as menu)
 //  - unsaved changes
-// - auto-indent
+// - tabs, split
 // - Windows installation
 #include "base.h"
 no_warn_start
@@ -362,21 +361,8 @@ int main(int argc, char **argv) {
 					(u32)((modifier & (KMOD_LALT|KMOD_RALT)) != 0) << KEY_MODIFIER_ALT_BIT;
 				if (key_combo < KEY_COMBO_COUNT) {
 					KeyAction *action = &ted->key_actions[key_combo];
-					bool was_in_line_buffer = buffer && buffer->is_line_buffer;
 					if (action->command) {
 						command_execute(ted, action->command, action->argument);
-					}
-
-					if (buffer) {
-						switch (key_combo) {
-						case SDL_SCANCODE_RETURN << 3:
-							if (!was_in_line_buffer) // make sure return to submit line buffer doesn't get added to newly-active buffer
-								buffer_insert_char_at_cursor(buffer, '\n');
-							break;
-						case SDL_SCANCODE_TAB << 3:
-							buffer_insert_char_at_cursor(buffer, '\t');
-							break;
-						}
 					}
 				}
 			} break;

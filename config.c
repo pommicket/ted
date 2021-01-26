@@ -257,6 +257,16 @@ void config_read(Ted *ted, char const *filename) {
 									bool const is_integer = *endptr == '\0';
 									double const floating = strtod(value, (char **)&endptr);
 									bool const is_floating = *endptr == '\0';
+									bool is_bool = false;
+									bool boolean = false;
+								#define BOOL_HELP "(should be yes/no/on/off)"
+									if (streq(value, "yes") || streq(value, "on")) {
+										is_bool = true;
+										boolean = true;
+									} else if (streq(value, "no") || streq(value, "off")) {
+										is_bool = true;
+										boolean = false;
+									}
 
 									if (streq(key, "tab-width")) {
 										if (is_integer && integer > 0 && integer < 100) {
@@ -324,9 +334,17 @@ void config_read(Ted *ted, char const *filename) {
 										} else {
 											config_err(cfg, "Invalid error display time: %s.", value);
 										}
+									} else if (streq(key, "auto-indent")) {
+										if (is_bool) {
+											settings->auto_indent = boolean;
+										} else {
+											config_err(cfg, "Invalid auto indent: %s " BOOL_HELP ".", value);
+										}
 									} else {
 										config_err(cfg, "Unrecognized core setting: %s.", key);
 									}
+
+								#undef BOOL_HELP
 								} break;
 								}
 							}
