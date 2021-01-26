@@ -478,45 +478,56 @@ int main(int argc, char **argv) {
 			double time_passed = t - ted->error_time;
 			if (time_passed > settings->error_display_time) {
 				// stop showing error
-				ted->error_shown[0] = '\0';
+				*ted->error_shown = '\0';
 			} else {
-				// @TODO: middle click to dismiss
 				float padding = settings->padding;
 				float char_width = text_font_char_width(font);
 				float char_height = text_font_char_height(font);
 				Rect r = rect_centered(V2(window_width * 0.5f, window_height * 0.9f),
 					V2(menu_get_width(ted), 3 * char_height + 2 * padding));
 
-				glBegin(GL_QUADS);
-				gl_color_rgba(colors[COLOR_ERROR_BG]);
-				rect_render(r);
-				gl_color_rgba(colors[COLOR_ERROR_BORDER]);
-				rect_render_border(r, settings->border_thickness);
-				glEnd();
-				gl_color_rgba(colors[COLOR_ERROR_TEXT]);
-
-
-				float text_x1 = rect_x1(r) + padding, text_x2 = rect_x2(r) - padding;
-				float text_y1 = rect_y1(r) + padding;
-
-				TextRenderState text_state = {.x = text_x1, .y = text_y1,
-					.min_x = -FLT_MAX, .max_x = FLT_MAX, .min_y = -FLT_MAX, .max_y = FLT_MAX,
-					.render = true};
-				char *p = ted->error_shown, *end = p + strlen(p);
-
-				text_chars_begin(font);
-				while (p != end) {
-					char32_t c = 0;
-					size_t n = unicode_utf8_to_utf32(&c, p, (size_t)(end - p));
-					if (n == (size_t)-1) { ++p; continue; } // invalid UTF-8; this shouldn't happen
-					p += n;
-					if (text_state.x + char_width >= text_x2) {
-						text_state.x = text_x1;
-						text_state.y += char_height;
+				bool dismissed = false;
+				for (u32 i = 0; i < ted->nmouse_clicks[SDL_BUTTON_MIDDLE]; ++i) {
+					if (rect_contains_point(r, ted->mouse_clicks[SDL_BUTTON_MIDDLE][i])) {
+						dismissed = true;
+						break;
 					}
-					text_render_char(font, &text_state, c);
 				}
-				text_chars_end(font);
+
+				if (dismissed) {
+					*ted->error_shown = '\0';
+				} else {
+					glBegin(GL_QUADS);
+					gl_color_rgba(colors[COLOR_ERROR_BG]);
+					rect_render(r);
+					gl_color_rgba(colors[COLOR_ERROR_BORDER]);
+					rect_render_border(r, settings->border_thickness);
+					glEnd();
+					gl_color_rgba(colors[COLOR_ERROR_TEXT]);
+
+
+					float text_x1 = rect_x1(r) + padding, text_x2 = rect_x2(r) - padding;
+					float text_y1 = rect_y1(r) + padding;
+
+					TextRenderState text_state = {.x = text_x1, .y = text_y1,
+						.min_x = -FLT_MAX, .max_x = FLT_MAX, .min_y = -FLT_MAX, .max_y = FLT_MAX,
+						.render = true};
+					char *p = ted->error_shown, *end = p + strlen(p);
+
+					text_chars_begin(font);
+					while (p != end) {
+						char32_t c = 0;
+						size_t n = unicode_utf8_to_utf32(&c, p, (size_t)(end - p));
+						if (n == (size_t)-1) { ++p; continue; } // invalid UTF-8; this shouldn't happen
+						p += n;
+						if (text_state.x + char_width >= text_x2) {
+							text_state.x = text_x1;
+							text_state.y += char_height;
+						}
+						text_render_char(font, &text_state, c);
+					}
+					text_chars_end(font);
+				}
 			}
 		}
 

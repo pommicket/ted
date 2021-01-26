@@ -158,7 +158,10 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 	} break;
 	
 	case CMD_ESCAPE:
-		if (ted->menu) {
+		if (*ted->error_shown) {
+			// dismiss error box
+			*ted->error_shown = '\0';
+		} else if (ted->menu) {
 			menu_close(ted, true);
 		} else if (buffer) {
 			buffer_disable_selection(buffer);
