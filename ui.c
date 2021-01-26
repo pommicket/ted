@@ -6,10 +6,9 @@ static float file_selector_entries_start_y(Ted const *ted, FileSelector const *f
 	Rect bounds = fs->bounds;
 	float padding = ted->settings.padding;
 	float char_height = text_font_char_height(ted->font);
-	float char_height_bold = text_font_char_height(ted->font_bold);
 	return bounds.pos.y
-		+ char_height_bold + padding // make room for cwd
-		+ char_height * 1.5f; // make room for line buffer
+		+ char_height * 0.75f + padding // make room for cwd
+		+ char_height * 1.75f + padding; // make room for line buffer
 }
 
 // number of file entries that can be displayed on the screen
@@ -408,17 +407,16 @@ static void file_selector_render(Ted *ted, FileSelector *fs) {
 	Rect bounds = fs->bounds;
 	u32 n_entries = fs->n_entries;
 	FileEntry const *entries = fs->entries;
-	Font *font = ted->font, *font_bold = ted->font_bold;
+	Font *font = ted->font;
 	float padding = settings->padding;
 	float char_height = text_font_char_height(font);
-	float char_height_bold = text_font_char_height(font_bold);
 	float x1, y1, x2, y2;
 	rect_coords(bounds, &x1, &y1, &x2, &y2);
 
 	// current working directory
 	gl_color_rgba(colors[COLOR_TEXT]);
-	text_render(font_bold, fs->cwd, x1, y1);
-	y1 += char_height_bold + padding;
+	text_render(font, fs->cwd, x1, y1);
+	y1 += char_height + padding;
 
 	// search buffer
 	float line_buffer_height = char_height * 1.5f;

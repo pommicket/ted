@@ -73,6 +73,8 @@ static void menu_render(Ted *ted, Menu menu) {
 	Settings const *settings = &ted->settings;
 	u32 const *colors = settings->colors;
 	float window_width = ted->window_width, window_height = ted->window_height;
+	Font *font_bold = ted->font_bold;
+	float char_height_bold = text_font_char_height(font_bold);
 
 	// render backdrop
 	glBegin(GL_QUADS);
@@ -100,6 +102,15 @@ static void menu_render(Ted *ted, Menu menu) {
 		menu_x2 -= padding;
 		menu_y2 -= padding;
 		
+
+		gl_color_rgba(colors[COLOR_TEXT]);
+		if (menu == MENU_OPEN) {
+			text_render(font_bold, "Open...", menu_x1, menu_y1);
+		} else if (menu == MENU_SAVE_AS) {
+			text_render(font_bold, "Save as...", menu_x1, menu_y1);
+		}
+			
+		menu_y1 += char_height_bold * 0.75f + padding;
 
 		FileSelector *fs = &ted->file_selector;
 		fs->bounds = rect4(menu_x1, menu_y1, menu_x2, menu_y2);

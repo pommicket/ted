@@ -307,7 +307,7 @@ void config_read(Ted *ted, char const *filename) {
 											config_err(cfg, "Invalid max menu width: %s.", value);
 										}
 									} else if (streq(key, "padding")) {
-										if (is_integer && integer >= 10 && integer < 100) {
+										if (is_integer && integer >= 0 && integer < 100) {
 											settings->padding = (u8)integer;
 										} else {
 											config_err(cfg, "Invalid padding: %s.", value);
