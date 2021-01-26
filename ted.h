@@ -118,20 +118,11 @@ typedef struct Ted {
 	TextBuffer main_buffer;
 	double error_time; // time error box was opened (in seconds -- see time_get_seconds)
 	KeyAction key_actions[KEY_COMBO_COUNT];
+	bool search_cwd; // should the working directory be searched for files? set to true if the executable isn't "installed"
+	char local_data_dir[TED_PATH_MAX];
+	char global_data_dir[TED_PATH_MAX];
+	char home[TED_PATH_MAX];
 	char cwd[TED_PATH_MAX]; // current working directory
-	char error[256];
-	char error_shown[256]; // error display in box on screen
+	char error[512];
+	char error_shown[512]; // error display in box on screen
 } Ted;
-
-// should the working directory be searched for files? set to true if the executable isn't "installed"
-static bool ted_search_cwd = false;
-static char const ted_global_data_dir[] = 
-#if _WIN32
-	"C:\\Program Files\\ted";
-#else
-	"/usr/share/ted";
-#endif
-
-// filled out in main()
-static char ted_local_data_dir[TED_PATH_MAX];
-static char ted_home[TED_PATH_MAX]; // home directory -- this is what ~ expands to

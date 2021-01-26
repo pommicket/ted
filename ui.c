@@ -101,10 +101,10 @@ static int qsort_file_entry_cmp(void const *av, void const *bv, void *search_ter
 	return strcmp_case_insensitive(a->name, b->name);
 }
 
-static Status file_selector_cd_(FileSelector *fs, char const *path, int symlink_depth);
+static Status file_selector_cd_(Ted const *ted, FileSelector *fs, char const *path, int symlink_depth);
 
 // cd to the directory `name`. `name` cannot include any path separators.
-static Status file_selector_cd1(FileSelector *fs, char const *name, size_t name_len, int symlink_depth) {
+static Status file_selector_cd1(Ted const *ted, FileSelector *fs, char const *name, size_t name_len, int symlink_depth) {
 	char *const cwd = fs->cwd;
 
 	if (name_len == 0 || (name_len == 1 && name[0] == '.')) {
@@ -116,7 +116,7 @@ static Status file_selector_cd1(FileSelector *fs, char const *name, size_t name_
 		// just in case the user's HOME happens to be accidentally set to, e.g. '/foo/~', make
 		// sure we don't recurse infinitely
 		if (symlink_depth < 32) {
-			return file_selector_cd_(fs, ted_home, symlink_depth + 1);
+			return file_selector_cd_(ted, fs, ted->home, symlink_depth + 1);
 		} else {
 			return false;
 		}
@@ -155,7 +155,7 @@ static Status file_selector_cd1(FileSelector *fs, char const *name, size_t name_
 			if (bytes != -1) {
 				// this is a symlink
 				link_to[bytes] = '\0';
-				return file_selector_cd_(fs, link_to, symlink_depth + 1);
+				return file_selector_cd_(ted, fs, link_to, symlink_depth + 1);
 			}
 		} else {
 			return false;
@@ -174,7 +174,7 @@ static Status file_selector_cd1(FileSelector *fs, char const *name, size_t name_
 	
 }
 
-static Status file_selector_cd_(FileSelector *fs, char const *path, int symlink_depth) {
+static Status file_selector_cd_(Ted const *ted, FileSelector *fs, char const *path, int symlink_depth) {
 	char *const cwd = fs->cwd;
 	if (path[0] == '\0') return true;
 
@@ -202,7 +202,7 @@ static Status file_selector_cd_(FileSelector *fs, char const *path, int symlink_
 
 	while (*p) {
 		size_t len = strcspn(p, PATH_SEPARATOR_STR);
-		if (!file_selector_cd1(fs, p, len, symlink_depth))
+		if (!file_selector_cd1(ted, fs, p, len, symlink_depth))
 			return false;
 		p += len;
 		p += strspn(p, PATH_SEPARATOR_STR);
@@ -213,9 +213,9 @@ static Status file_selector_cd_(FileSelector *fs, char const *path, int symlink_
 // go to the directory `path`. make sure `path` only contains path separators like PATH_SEPARATOR, not any
 // other members of ALL_PATH_SEPARATORS
 // returns false if this path doesn't exist or isn't a directory
-static bool file_selector_cd(FileSelector *fs, char const *path) {
+static bool file_selector_cd(Ted const *ted, FileSelector *fs, char const *path) {
 	fs->selected = 0;
-	return file_selector_cd_(fs, path, 0);
+	return file_selector_cd_(ted, fs, path, 0);
 }
 
 // returns the name of the selected file, or NULL
@@ -254,7 +254,7 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 				if (strchr(ALL_PATH_SEPARATORS, *p))
 					*p = PATH_SEPARATOR;
 
-			if (file_selector_cd(fs, dir_name)) {
+			if (file_selector_cd(ted, fs, dir_name)) {
 				buffer_delete_chars_at_pos(line_buffer, buffer_start_of_file(line_buffer), last_path_sep + 1); // delete up to and including the last path separator
 				buffer_clear_undo_redo(line_buffer);
 			} else {
@@ -262,6 +262,7 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 				size_t nchars = search_term32.len - first_path_sep;
 				buffer_delete_chars_at_pos(line_buffer, pos, (i64)nchars);
 			}
+			free(dir_name);
 		}
 	}
 
@@ -288,7 +289,7 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 						if (path) return str_dup(path);
 						break;
 					case FS_DIRECTORY:
-						file_selector_cd(fs, name);
+						file_selector_cd(ted, fs, name);
 						buffer_clear(line_buffer); // clear search term
 						break;
 					default: break;
@@ -308,7 +309,7 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 			if (entry->path) return str_dup(entry->path);
 			break;
 		case FS_DIRECTORY:
-			file_selector_cd(fs, entry->name);
+			file_selector_cd(ted, fs, entry->name);
 			buffer_clear(line_buffer); // clear search term
 			break;
 		default: break;
@@ -329,7 +330,7 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 			else
 				ted_seterr(ted, "Can't list directory %s.", cwd);
 		}
-		file_selector_cd(fs, "..");
+		file_selector_cd(ted, fs, "..");
 	}
 
 	if (files) {

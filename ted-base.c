@@ -43,19 +43,19 @@ static void *ted_realloc(Ted *ted, void *p, size_t new_size) {
 }
 
 // Check the various places a file could be, and return the full path.
-static Status ted_get_file(char const *name, char *out, size_t outsz) {
-	if (ted_search_cwd && fs_file_exists(name)) {
+static Status ted_get_file(Ted const *ted, char const *name, char *out, size_t outsz) {
+	if (ted->search_cwd && fs_file_exists(name)) {
 		// check in current working directory
 		str_cpy(out, outsz, name);
 		return true;
 	}
-	if (*ted_local_data_dir) {
-		str_printf(out, outsz, "%s" PATH_SEPARATOR_STR "%s", ted_local_data_dir, name);
+	if (*ted->local_data_dir) {
+		str_printf(out, outsz, "%s" PATH_SEPARATOR_STR "%s", ted->local_data_dir, name);
 		if (fs_file_exists(out))
 			return true;
 	}
-	if (*ted_global_data_dir) {
-		str_printf(out, outsz, "%s" PATH_SEPARATOR_STR "%s", ted_global_data_dir, name);
+	if (*ted->global_data_dir) {
+		str_printf(out, outsz, "%s" PATH_SEPARATOR_STR "%s", ted->global_data_dir, name);
 		if (fs_file_exists(out))
 			return true;
 	}
@@ -66,7 +66,7 @@ static Status ted_get_file(char const *name, char *out, size_t outsz) {
 // *out is left unchanged on failure.
 static void ted_load_font(Ted *ted, char const *filename, Font **out) {
 	char font_filename[TED_PATH_MAX];
-	if (ted_get_file(filename, font_filename, sizeof font_filename)) {
+	if (ted_get_file(ted, filename, font_filename, sizeof font_filename)) {
 		Font *font = text_font_load(font_filename, ted->settings.text_size);
 		if (font) {
 			if (*out) {

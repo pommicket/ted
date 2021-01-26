@@ -122,11 +122,22 @@ int main(int argc, char **argv) {
 			strbuf_printf(ted_home, "%ls", home);
 			CoTaskMemFree(home);
 		}
+		strbuf_printf(ted->global_data_dir, "C:\\Program Files\\ted");
 #else
 		char *home = getenv("HOME");
-		strbuf_printf(ted_home, "%s", home);
-		strbuf_printf(ted_local_data_dir, "%s/.local/share/ted", home);
+		strbuf_printf(ted->home, "%s", home);
+		strbuf_printf(ted->local_data_dir, "%s/.local/share/ted", home);
+		strbuf_printf(ted->global_data_dir, "/usr/share/ted");
 #endif
+
+	}
+
+	FILE *log = NULL;
+	{
+		// open log file
+		char log_filename[TED_PATH_MAX];
+		strbuf_printf(log_filename, "%s/log.txt", ted->local_data_dir);
+		log = fopen(log_filename, "w");
 	}
 
 	{ // get current working directory
@@ -153,7 +164,7 @@ int main(int argc, char **argv) {
 			char *last_slash = strrchr(executable_path, '/');
 			if (last_slash) {
 				*last_slash = '\0';
-				ted_search_cwd = streq(cwd, executable_path);
+				ted->search_cwd = streq(cwd, executable_path);
 			}
 		}
 	#endif
@@ -164,14 +175,14 @@ int main(int argc, char **argv) {
 	{
 		// read global configuration file first to establish defaults
 		char global_config_filename[TED_PATH_MAX];
-		strbuf_printf(global_config_filename, "%s" PATH_SEPARATOR_STR "ted.cfg", ted_global_data_dir);
+		strbuf_printf(global_config_filename, "%s" PATH_SEPARATOR_STR "ted.cfg", ted->global_data_dir);
 		if (fs_file_exists(global_config_filename))
 			config_read(ted, global_config_filename);
 	}
 	{
 		// read local configuration file
 		char config_filename[TED_PATH_MAX];
-		if (ted_get_file("ted.cfg", config_filename, sizeof config_filename))
+		if (ted_get_file(ted, "ted.cfg", config_filename, sizeof config_filename))
 			config_read(ted, config_filename);
 		else
 			ted_seterr(ted, "Couldn't find config file (ted.cfg), not even the backup one that should have come with ted.");
@@ -187,7 +198,7 @@ int main(int argc, char **argv) {
 		
 	{ // set icon
 		char icon_filename[TED_PATH_MAX];
-		if (ted_get_file("assets/icon.bmp", icon_filename, sizeof icon_filename)) {
+		if (ted_get_file(ted, "assets/icon.bmp", icon_filename, sizeof icon_filename)) {
 			SDL_Surface *icon = SDL_LoadBMP(icon_filename);
 			SDL_SetWindowIcon(window, icon);
 			SDL_FreeSurface(icon);
@@ -447,6 +458,17 @@ int main(int argc, char **argv) {
 		if (ted_haserr(ted)) {
 			ted->error_time = time_get_seconds();
 			str_cpy(ted->error_shown, sizeof ted->error_shown, ted->error);
+
+			{ // output error to log file
+				char tstr[256];
+				time_t t = time(NULL);
+				struct tm *tm = localtime(&t);
+				strftime(tstr, sizeof tstr, "%Y-%m-%d %H:%M:%S", tm);
+				if (log) {
+					fprintf(log, "[ERROR %s] %s\n", tstr, ted->error);
+					fflush(log);
+				}
+			}
 			ted_clearerr(ted);
 		}
 
@@ -458,7 +480,6 @@ int main(int argc, char **argv) {
 				// stop showing error
 				ted->error_shown[0] = '\0';
 			} else {
-				// @TODO(eventually): output a log
 				// @TODO: middle click to dismiss
 				float padding = settings->padding;
 				float char_width = text_font_char_width(font);
@@ -508,8 +529,11 @@ int main(int argc, char **argv) {
 		SDL_GL_SwapWindow(window);
 	}
 
+
 	if (ted->menu)
 		menu_close(ted, false); // free any memory used by the current menu
+
+	fclose(log);
 
 	SDL_GL_DeleteContext(glctx);
 	SDL_DestroyWindow(window);

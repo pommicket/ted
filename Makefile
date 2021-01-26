@@ -19,6 +19,7 @@ install: release
 	@[ -w `dirname $(INSTALL_BIN_DIR)` ] || { echo "You need permission to write to $(INSTALL_BIN_DIR). Try running with sudo/as root." && exit 1; }
 
 	mkdir -p $(GLOBAL_DATA_DIR) $(LOCAL_DATA_DIR)
+	chown `logname`:`logname` $(LOCAL_DATA_DIR)
 	cp -r assets $(GLOBAL_DATA_DIR)
 	install -m 644 ted.cfg $(GLOBAL_DATA_DIR)
 	[ ! -e $(LOCAL_DATA_DIR)/ted.cfg ] && install -o `logname` -g `logname` -m 644 ted.cfg $(LOCAL_DATA_DIR) || :
