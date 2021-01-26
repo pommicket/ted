@@ -76,7 +76,8 @@ typedef struct {
 
 ENUM_U16 {
 	MENU_NONE,
-	MENU_OPEN
+	MENU_OPEN,
+	MENU_SAVE_AS
 } ENUM_U16_END(Menu);
 
 // file entries for file selectors
@@ -95,6 +96,7 @@ typedef struct {
 	char cwd[TED_PATH_MAX];
 	bool open; // is the file selector on screen?
 	bool submitted; // set to true if the line buffer was just submitted this frame.
+	bool create_menu; // this is for creating files, not opening files
 } FileSelector;
 
 typedef struct Ted {

@@ -271,7 +271,6 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 	bool submitted = fs->submitted;
 	fs->submitted = false;
 	
-	bool on_screen = true;
 	for (u32 i = 0; i < fs->n_entries; ++i) {
 		Rect r = {0};
 		FileEntry *entry = &fs->entries[i];
@@ -279,7 +278,7 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 		FsType type = entry->type;
 
 		// check if this entry was clicked on
-		if (on_screen && file_selector_entry_pos(ted, fs, i, &r)) {
+		if (file_selector_entry_pos(ted, fs, i, &r)) {
 			for (u32 c = 0; c < ted->nmouse_clicks[SDL_BUTTON_LEFT]; ++c) {
 				if (rect_contains_point(r, ted->mouse_clicks[SDL_BUTTON_LEFT][c])) {
 					// this option was selected
@@ -296,23 +295,32 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 					}
 				}
 			}
-		} else on_screen = false;
+		}
 		
 	}
 	
 	// user pressed enter in search bar
-	if (submitted && fs->selected < fs->n_entries) {
-		FileEntry *entry = &fs->entries[fs->selected];
-		switch (entry->type) {
-		case FS_FILE:
+	if (submitted) {
+		if (fs->create_menu) {
+			char path[TED_PATH_MAX];
+			strbuf_printf(path, "%s%s%s", cwd, cwd[strlen(cwd)-1] == PATH_SEPARATOR ? "" : PATH_SEPARATOR_STR, search_term);
 			free(search_term);
-			if (entry->path) return str_dup(entry->path);
-			break;
-		case FS_DIRECTORY:
-			file_selector_cd(ted, fs, entry->name);
-			buffer_clear(line_buffer); // clear search term
-			break;
-		default: break;
+			return str_dup(path);
+		} else {
+			if (fs->selected && fs->selected < fs->n_entries) {
+				FileEntry *entry = &fs->entries[fs->selected];
+				switch (entry->type) {
+				case FS_FILE:
+					free(search_term);
+					if (entry->path) return str_dup(entry->path);
+					break;
+				case FS_DIRECTORY:
+					file_selector_cd(ted, fs, entry->name);
+					buffer_clear(line_buffer); // clear search term
+					break;
+				default: break;
+				}
+			}
 		}
 	}
 	
@@ -418,15 +426,18 @@ static void file_selector_render(Ted *ted, FileSelector *fs) {
 	y1 += line_buffer_height;
 
 
+	Rect text_bounds = rect4(x1, y1, x2, y2);
 	for (u32 i = 0; i < n_entries; ++i) {
 		// highlight entry user is hovering over/selecting
 		Rect r;
-		if (!file_selector_entry_pos(ted, fs, i, &r)) break;
-		if (rect_contains_point(r, ted->mouse_pos) || fs->selected == i) {
-			glBegin(GL_QUADS);
-			gl_color_rgba(colors[COLOR_MENU_HL]);
-			rect_render(r);
-			glEnd();
+		if (file_selector_entry_pos(ted, fs, i, &r)) {
+			rect_clip_to_rect(&r, text_bounds);
+			if (rect_contains_point(r, ted->mouse_pos) || fs->selected == i) {
+				glBegin(GL_QUADS);
+				gl_color_rgba(colors[COLOR_MENU_HL]);
+				rect_render(r);
+				glEnd();
+			}
 		}
 	}
 	
@@ -434,20 +445,21 @@ static void file_selector_render(Ted *ted, FileSelector *fs) {
 	// render file names themselves
 	for (u32 i = 0; i < n_entries; ++i) {
 		Rect r;
-		if (!file_selector_entry_pos(ted, fs, i, &r)) break;
-		float x = r.pos.x, y = r.pos.y;
-		switch (entries[i].type) {
-		case FS_FILE:
-			gl_color_rgba(colors[COLOR_TEXT]);
-			break;
-		case FS_DIRECTORY:
-			gl_color_rgba(colors[COLOR_TEXT_FOLDER]);
-			break;
-		default:
-			gl_color_rgba(colors[COLOR_TEXT_OTHER]);
-			break;
+		if (file_selector_entry_pos(ted, fs, i, &r)) {
+			float x = r.pos.x, y = r.pos.y;
+			switch (entries[i].type) {
+			case FS_FILE:
+				gl_color_rgba(colors[COLOR_TEXT]);
+				break;
+			case FS_DIRECTORY:
+				gl_color_rgba(colors[COLOR_TEXT_FOLDER]);
+				break;
+			default:
+				gl_color_rgba(colors[COLOR_TEXT_OTHER]);
+				break;
+			}
+			text_render_with_state(font, &text_render_state, entries[i].name, x, y);
 		}
-		text_render_with_state(font, &text_render_state, entries[i].name, x, y);
 	}
 }
 

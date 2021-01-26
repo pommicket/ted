@@ -123,6 +123,11 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 	case CMD_SAVE:
 		if (buffer) buffer_save(buffer);
 		break;
+	case CMD_SAVE_AS:
+		if (buffer && !buffer->is_line_buffer) {
+			menu_open(ted, MENU_SAVE_AS);
+		}
+		break;
 	case CMD_UNDO:
 		if (buffer) buffer_undo(buffer, argument);
 		break;
@@ -173,7 +178,8 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 			case MENU_NONE:
 				assert(0);
 				break;
-			case MENU_OPEN: {
+			case MENU_OPEN:
+			case MENU_SAVE_AS: {
 				ted->file_selector.submitted = true;
 			} break;
 			}

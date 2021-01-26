@@ -8,6 +8,10 @@ static void menu_open(Ted *ted, Menu menu) {
 	case MENU_OPEN:
 		ted->active_buffer = &ted->line_buffer;
 		break;
+	case MENU_SAVE_AS:
+		ted->active_buffer = &ted->line_buffer;
+		ted->file_selector.create_menu = true;
+		break;
 	}
 }
 
@@ -39,6 +43,18 @@ static Rect menu_rect(Ted *ted) {
 static void menu_update(Ted *ted, Menu menu) {
 	switch (menu) {
 	case MENU_NONE: break;
+	case MENU_SAVE_AS: {
+		char *selected_file = file_selector_update(ted, &ted->file_selector);
+		if (selected_file) {
+			TextBuffer *buffer = ted->prev_active_buffer;
+			if (buffer) {
+				buffer_save_as(buffer, selected_file);
+				menu_close(ted, true);
+				file_selector_free(&ted->file_selector);
+			}
+			free(selected_file);
+		}
+	} break;
 	case MENU_OPEN: {
 		char *selected_file = file_selector_update(ted, &ted->file_selector);
 		if (selected_file) {
@@ -65,7 +81,7 @@ static void menu_render(Ted *ted, Menu menu) {
 	glEnd();
 
 	
-	if (menu == MENU_OPEN) {
+	if (menu == MENU_OPEN || menu == MENU_SAVE_AS) {
 		float padding = settings->padding;
 		Rect rect = menu_rect(ted);
 		float menu_x1, menu_y1, menu_x2, menu_y2;

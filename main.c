@@ -1,5 +1,8 @@
 // @TODO:
 // - save as
+// - warn on:
+//  - overwrite (from save as menu)
+//  - unsaved changes
 // - auto-indent
 // - Windows installation
 #include "base.h"
