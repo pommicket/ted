@@ -65,6 +65,16 @@ static void die(char const *fmt, ...) {
 	exit(EXIT_FAILURE);
 }
 
+static Rect error_box_rect(Ted *ted) {
+	Font *font = ted->font;
+	Settings const *settings = &ted->settings;
+	float padding = settings->padding;
+	float window_width = ted->window_width, window_height = ted->window_height;
+	float char_height = text_font_char_height(font);
+	return rect_centered(V2(window_width * 0.5f, window_height * 0.9f),
+			V2(menu_get_width(ted), 3 * char_height + 2 * padding));
+}
+
 #if _WIN32
 INT WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
     PSTR lpCmdLine, INT nCmdShow) {
@@ -311,9 +321,21 @@ int main(int argc, char **argv) {
 				float x = (float)event.button.x, y = (float)event.button.y;
 				if (button < arr_count(ted->nmouse_clicks) 
 					&& ted->nmouse_clicks[button] < arr_count(ted->mouse_clicks[button])) {
-					v2 *v = &ted->mouse_clicks[button][ted->nmouse_clicks[button]++];
-					v->x = x;
-					v->y = y;
+					v2 pos = V2(x, y);
+					bool add = true;
+					if (*ted->error_shown) {
+						if (rect_contains_point(error_box_rect(ted), pos)) {
+							// clicked on error
+							if (button == SDL_BUTTON_LEFT) {
+								// dismiss error
+								*ted->error_shown = '\0';
+							}
+							// don't let anyone else use this event
+							add = false;
+						}
+					}
+					if (add)
+						ted->mouse_clicks[button][ted->nmouse_clicks[button]++] = pos;
 				}
 				switch (button) {
 				case SDL_BUTTON_LEFT: {
@@ -469,54 +491,41 @@ int main(int argc, char **argv) {
 				// stop showing error
 				*ted->error_shown = '\0';
 			} else {
-				float padding = settings->padding;
+				Rect r = error_box_rect(ted);
 				float char_width = text_font_char_width(font);
 				float char_height = text_font_char_height(font);
-				Rect r = rect_centered(V2(window_width * 0.5f, window_height * 0.9f),
-					V2(menu_get_width(ted), 3 * char_height + 2 * padding));
+				float padding = settings->padding;
 
-				bool dismissed = false;
-				for (u32 i = 0; i < ted->nmouse_clicks[SDL_BUTTON_MIDDLE]; ++i) {
-					if (rect_contains_point(r, ted->mouse_clicks[SDL_BUTTON_MIDDLE][i])) {
-						dismissed = true;
-						break;
+				glBegin(GL_QUADS);
+				gl_color_rgba(colors[COLOR_ERROR_BG]);
+				rect_render(r);
+				gl_color_rgba(colors[COLOR_ERROR_BORDER]);
+				rect_render_border(r, settings->border_thickness);
+				glEnd();
+				gl_color_rgba(colors[COLOR_ERROR_TEXT]);
+
+
+				float text_x1 = rect_x1(r) + padding, text_x2 = rect_x2(r) - padding;
+				float text_y1 = rect_y1(r) + padding;
+
+				TextRenderState text_state = {.x = text_x1, .y = text_y1,
+					.min_x = -FLT_MAX, .max_x = FLT_MAX, .min_y = -FLT_MAX, .max_y = FLT_MAX,
+					.render = true};
+				char *p = ted->error_shown, *end = p + strlen(p);
+
+				text_chars_begin(font);
+				while (p != end) {
+					char32_t c = 0;
+					size_t n = unicode_utf8_to_utf32(&c, p, (size_t)(end - p));
+					if (n == (size_t)-1) { ++p; continue; } // invalid UTF-8; this shouldn't happen
+					p += n;
+					if (text_state.x + char_width >= text_x2) {
+						text_state.x = text_x1;
+						text_state.y += char_height;
 					}
+					text_render_char(font, &text_state, c);
 				}
-
-				if (dismissed) {
-					*ted->error_shown = '\0';
-				} else {
-					glBegin(GL_QUADS);
-					gl_color_rgba(colors[COLOR_ERROR_BG]);
-					rect_render(r);
-					gl_color_rgba(colors[COLOR_ERROR_BORDER]);
-					rect_render_border(r, settings->border_thickness);
-					glEnd();
-					gl_color_rgba(colors[COLOR_ERROR_TEXT]);
-
-
-					float text_x1 = rect_x1(r) + padding, text_x2 = rect_x2(r) - padding;
-					float text_y1 = rect_y1(r) + padding;
-
-					TextRenderState text_state = {.x = text_x1, .y = text_y1,
-						.min_x = -FLT_MAX, .max_x = FLT_MAX, .min_y = -FLT_MAX, .max_y = FLT_MAX,
-						.render = true};
-					char *p = ted->error_shown, *end = p + strlen(p);
-
-					text_chars_begin(font);
-					while (p != end) {
-						char32_t c = 0;
-						size_t n = unicode_utf8_to_utf32(&c, p, (size_t)(end - p));
-						if (n == (size_t)-1) { ++p; continue; } // invalid UTF-8; this shouldn't happen
-						p += n;
-						if (text_state.x + char_width >= text_x2) {
-							text_state.x = text_x1;
-							text_state.y += char_height;
-						}
-						text_render_char(font, &text_state, c);
-					}
-					text_chars_end(font);
-				}
+				text_chars_end(font);
 			}
 		}
 
