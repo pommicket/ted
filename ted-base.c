@@ -102,4 +102,4 @@ static WarnUnusedResult TextBuffer *ted_open_file(Ted *ted, char const *filename
 }
 
 static void menu_open(Ted *ted, Menu menu);
-static void menu_close(Ted *ted, bool restore_prev_active_buffer);
+static void menu_escape(Ted *ted);

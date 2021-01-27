@@ -186,7 +186,7 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 			// dismiss error box
 			*ted->error_shown = '\0';
 		} else if (ted->menu) {
-			menu_close(ted, true);
+			menu_escape(ted);
 		} else if (buffer) {
 			buffer_disable_selection(buffer);
 		}

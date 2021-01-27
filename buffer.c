@@ -94,6 +94,7 @@ void buffer_create(TextBuffer *buffer, Ted *ted) {
 	buffer->ted = ted;
 }
 
+
 void line_buffer_create(TextBuffer *buffer, Ted *ted) {
 	buffer_create(buffer, ted);
 	buffer->is_line_buffer = true;
@@ -118,6 +119,11 @@ static void buffer_validate_cursor(TextBuffer *buffer) {
 
 static bool buffer_pos_valid(TextBuffer *buffer, BufferPos p) {
 	return p.line < buffer->nlines && p.index <= buffer->lines[p.line].len;
+}
+
+// are there any unsaved changes?
+bool buffer_unsaved_changes(TextBuffer *buffer) {
+	return buffer->modified;
 }
 
 // code point at position.

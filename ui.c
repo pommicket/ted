@@ -306,7 +306,7 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 			free(search_term);
 			return str_dup(path);
 		} else {
-			if (fs->selected && fs->selected < fs->n_entries) {
+			if (fs->selected < fs->n_entries) {
 				FileEntry *entry = &fs->entries[fs->selected];
 				switch (entry->type) {
 				case FS_FILE:
@@ -461,3 +461,30 @@ static void file_selector_render(Ted *ted, FileSelector *fs) {
 	}
 }
 
+typedef enum {
+	POPUP_NONE,
+	POPUP_YES,
+	POPUP_NO,
+	POPUP_CANCEL
+} PopupOption;
+
+static PopupOption popup_update(Ted *ted) {
+	(void)ted;
+	return POPUP_NONE;
+}
+
+static void popup_render(Ted *ted, char const *title, char const *body) {
+	float window_width = ted->window_width;
+	float window_height = ted->window_height;
+	Rect r = rect_centered(V2(window_width * 0.5f, window_height * 0.5f), V2(300, 200));
+	Settings const *settings = &ted->settings;
+	u32 const *colors = settings->colors;
+
+	glBegin(GL_QUADS);
+	gl_color_rgba(colors[COLOR_MENU_BG]);
+	rect_render(r);
+	glEnd();
+
+	(void)title;
+	(void)body;
+}

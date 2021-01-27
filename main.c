@@ -1,8 +1,10 @@
 // @TODO:
 // - warn on:
 //  - overwrite (from save as menu)
-//  - unsaved changes
+// - file selector:
+//  - tab to set search term to selected
 // - tabs, split
+// - when closing tabs, warn on unsaved changes
 // - Windows installation
 #include "base.h"
 no_warn_start

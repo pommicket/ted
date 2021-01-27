@@ -2,6 +2,7 @@ static void menu_open(Ted *ted, Menu menu) {
 	ted->menu = menu;
 	ted->prev_active_buffer = ted->active_buffer;
 	ted->active_buffer = NULL;
+	*ted->warn_overwrite = 0; // clear warn_overwrite
 
 	switch (menu) {
 	case MENU_NONE: assert(0); break;
@@ -21,6 +22,16 @@ static void menu_close(Ted *ted, bool restore_prev_active_buffer) {
 	ted->prev_active_buffer = NULL;
 	file_selector_free(&ted->file_selector);
 	buffer_clear(&ted->line_buffer);
+}
+
+static void menu_escape(Ted *ted) {
+	if (*ted->warn_overwrite) {
+		// just close "are you sure you want to overwrite?"
+		*ted->warn_overwrite = 0;
+		ted->active_buffer = &ted->line_buffer;
+	} else {
+		menu_close(ted, true);
+	}
 }
 
 static float menu_get_width(Ted *ted) {
@@ -44,15 +55,23 @@ static void menu_update(Ted *ted, Menu menu) {
 	switch (menu) {
 	case MENU_NONE: break;
 	case MENU_SAVE_AS: {
-		char *selected_file = file_selector_update(ted, &ted->file_selector);
-		if (selected_file) {
-			TextBuffer *buffer = ted->prev_active_buffer;
-			if (buffer) {
-				buffer_save_as(buffer, selected_file);
-				menu_close(ted, true);
-				file_selector_free(&ted->file_selector);
+		if (*ted->warn_overwrite) {
+		} else {
+			char *selected_file = file_selector_update(ted, &ted->file_selector);
+			if (selected_file) {
+				TextBuffer *buffer = ted->prev_active_buffer;
+				if (buffer) {
+					if (fs_path_type(selected_file) != FS_NON_EXISTENT) {
+						strbuf_cpy(ted->warn_overwrite, selected_file);
+						ted->active_buffer = NULL;
+					} else {
+						buffer_save_as(buffer, selected_file);
+						menu_close(ted, true);
+						file_selector_free(&ted->file_selector);
+					}
+				}
+				free(selected_file);
 			}
-			free(selected_file);
 		}
 	} break;
 	case MENU_OPEN: {
@@ -82,6 +101,12 @@ static void menu_render(Ted *ted, Menu menu) {
 	rect_render(rect(V2(0, 0), V2(window_width, window_height)));
 	glEnd();
 
+	if (*ted->warn_overwrite) {
+		char body[256] = {0};
+		strbuf_printf(body, "Are you sure you want to overwrite %s?", ted->warn_overwrite);
+		popup_render(ted, "Save as...", body);
+		return;
+	}
 	
 	if (menu == MENU_OPEN || menu == MENU_SAVE_AS) {
 		float padding = settings->padding;

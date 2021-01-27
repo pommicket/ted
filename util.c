@@ -110,6 +110,8 @@ static void str_cpy(char *dst, size_t dst_sz, char const *src) {
 	dst[n] = 0;
 }
 
+#define strbuf_cpy(dst, src) str_cpy(dst, sizeof dst, src)
+
 // advances str to the start of the next UTF8 character
 static void utf8_next_char_const(char const **str) {
 	if (**str) {
