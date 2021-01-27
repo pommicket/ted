@@ -656,7 +656,7 @@ bool buffer_save(TextBuffer *buffer) {
 			}
 			return success;
 		} else {
-			buffer_seterr(buffer, "Couldn't create file %s.", buffer->filename);
+			buffer_seterr(buffer, "Couldn't write to file %s.", buffer->filename);
 			return false;
 		}
 	} else {

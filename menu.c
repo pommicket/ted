@@ -102,9 +102,12 @@ static void menu_render(Ted *ted, Menu menu) {
 	glEnd();
 
 	if (*ted->warn_overwrite) {
-		char body[256] = {0};
+		char const *filename = ted->warn_overwrite;
+		char title[32] = {0}, body[256] = {0};
+		char const *last_path_sep = strrchr(filename, PATH_SEPARATOR);
+		strbuf_printf(title, "Overwrite %s?", last_path_sep ? last_path_sep + 1 : filename);
 		strbuf_printf(body, "Are you sure you want to overwrite %s?", ted->warn_overwrite);
-		popup_render(ted, "Save as...", body);
+		popup_render(ted, title, body);
 		return;
 	}
 	

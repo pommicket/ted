@@ -476,15 +476,47 @@ static PopupOption popup_update(Ted *ted) {
 static void popup_render(Ted *ted, char const *title, char const *body) {
 	float window_width = ted->window_width;
 	float window_height = ted->window_height;
+	Font *font = ted->font;
+	Font *font_bold = ted->font_bold;
 	Rect r = rect_centered(V2(window_width * 0.5f, window_height * 0.5f), V2(300, 200));
 	Settings const *settings = &ted->settings;
 	u32 const *colors = settings->colors;
+	float const char_height_bold = text_font_char_height(font_bold);
+	float const padding = settings->padding;
 
 	glBegin(GL_QUADS);
 	gl_color_rgba(colors[COLOR_MENU_BG]);
 	rect_render(r);
+	gl_color_rgba(colors[COLOR_BORDER]);
+	rect_render_border(r, 1);
 	glEnd();
 
-	(void)title;
-	(void)body;
+	float y = r.pos.y;
+	// title text
+	v2 title_size = {0};
+	text_get_size(font_bold, title, &title_size.x, &title_size.y);
+	v2 title_pos = v2_sub(V2(window_width * 0.5f, y), V2(title_size.x * 0.5f, 0));
+	gl_color_rgba(colors[COLOR_TEXT]);
+	text_render(font_bold, title, title_pos.x, title_pos.y);
+
+	y += char_height_bold;
+	// line separating text from body
+	glBegin(GL_LINES);
+	gl_color_rgba(colors[COLOR_BORDER]);
+	glVertex2f(rect_x1(r), y);
+	glVertex2f(rect_x2(r), y);
+	glEnd();
+
+	y += padding;
+
+	// body text
+	gl_color_rgba(colors[COLOR_TEXT]);
+	float text_x1 = rect_x1(r) + padding;
+	float text_x2 = rect_x2(r) - padding;
+	TextRenderState state = {
+		.render = true, .wrap = true,
+		.min_x = text_x1, .max_x = text_x2,
+		.min_y = -FLT_MAX, .max_y = +FLT_MAX
+	};
+	text_render_with_state(font, &state, body, text_x1, y);
 }

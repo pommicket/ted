@@ -180,6 +180,7 @@ void text_chars_end(Font *font) {
 }
 
 void text_render_char(Font *font, TextRenderState *state, char32_t c) {
+top:
 	if (c >= 0x40000 && c < 0xE0000){
 		// these Unicode code points are currently unassigned. replace them with a Unicode box.
 		// (specifically, we don't want to use extra memory for pages which
@@ -192,7 +193,7 @@ void text_render_char(Font *font, TextRenderState *state, char32_t c) {
 	if (state->render)
 		text_render_with_page(font, (int)page);
 	stbtt_bakedchar *char_data = font->char_pages[page];
-	float char_height = font->char_height;
+	float const char_height = font->char_height;
 	if (char_data) { // if page was successfully loaded
 		stbtt_aligned_quad q = {0};
 		state->y += char_height * 0.75f;
@@ -205,6 +206,12 @@ void text_render_char(Font *font, TextRenderState *state, char32_t c) {
 		float x1 = q.x1, y1 = q.y1;
 		float const min_x = state->min_x, max_x = state->max_x;
 		float const min_y = state->min_y, max_y = state->max_y;
+		if (state->wrap && x1 >= max_x) {
+			state->x = min_x;
+			state->y += char_height;
+			goto top;
+		}
+
 		if (x0 > max_x || y0 > max_y || x1 < min_x || y1 < min_y)
 			return;
 		if (x0 < min_x) {

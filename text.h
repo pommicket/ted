@@ -13,6 +13,7 @@ typedef struct Font Font;
 typedef struct {
 	// should the text actually be rendered (set to false to get text size)
 	bool render;
+	bool wrap; // should the text wrap around to min_x when it reaches max_x? NOTE: this is character-by-character wrapping, not word wrap
 
 	float x, y;
 	// points at which the text should be cut off

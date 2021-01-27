@@ -494,8 +494,6 @@ int main(int argc, char **argv) {
 				*ted->error_shown = '\0';
 			} else {
 				Rect r = error_box_rect(ted);
-				float char_width = text_font_char_width(font);
-				float char_height = text_font_char_height(font);
 				float padding = settings->padding;
 
 				glBegin(GL_QUADS);
@@ -510,24 +508,11 @@ int main(int argc, char **argv) {
 				float text_x1 = rect_x1(r) + padding, text_x2 = rect_x2(r) - padding;
 				float text_y1 = rect_y1(r) + padding;
 
+				// (make sure text wraps)
 				TextRenderState text_state = {.x = text_x1, .y = text_y1,
-					.min_x = -FLT_MAX, .max_x = FLT_MAX, .min_y = -FLT_MAX, .max_y = FLT_MAX,
-					.render = true};
-				char *p = ted->error_shown, *end = p + strlen(p);
-
-				text_chars_begin(font);
-				while (p != end) {
-					char32_t c = 0;
-					size_t n = unicode_utf8_to_utf32(&c, p, (size_t)(end - p));
-					if (n == (size_t)-1) { ++p; continue; } // invalid UTF-8; this shouldn't happen
-					p += n;
-					if (text_state.x + char_width >= text_x2) {
-						text_state.x = text_x1;
-						text_state.y += char_height;
-					}
-					text_render_char(font, &text_state, c);
-				}
-				text_chars_end(font);
+					.min_x = text_x1, .max_x = text_x2, .min_y = -FLT_MAX, .max_y = FLT_MAX,
+					.render = true, .wrap = true};
+				text_render_with_state(font, &text_state, ted->error_shown, text_x1, text_y1);
 			}
 		}
 
