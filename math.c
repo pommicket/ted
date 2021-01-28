@@ -112,6 +112,16 @@ static i64 mod_i64(i64 a, i64 b) {
 	return ret;
 }
 
+static i64 abs_i64(i64 x) {
+	return x < 0 ? -x : +x;
+}
+
+static i64 sgn_i64(i64 x) {
+	if (x < 0) return -1;
+	if (x > 0) return +1;
+	return 0;
+}
+
 static float sgnf(float x) {
 	if (x < 0) return -1;
 	if (x > 0) return +1;

@@ -1,10 +1,6 @@
 // @TODO:
-// - warn on:
-//  - overwrite (from save as menu)
-// - file selector:
-//  - tab to set search term to selected
 // - tabs, split
-// - when closing tabs, warn on unsaved changes
+// - when closing tabs/window, warn on unsaved changes
 // - Windows installation
 #include "base.h"
 no_warn_start
@@ -465,6 +461,11 @@ int main(int argc, char **argv) {
 		Menu menu = ted->menu;
 		if (menu) {
 			menu_render(ted, menu);
+		}
+
+		if (buffer_haserr(&ted->main_buffer)) {
+			ted_seterr_to_buferr(ted, &ted->main_buffer);
+			buffer_clearerr(&ted->main_buffer);
 		}
 
 		// check if there's a new error

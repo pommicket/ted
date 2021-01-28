@@ -57,23 +57,32 @@ static void file_selector_clear_entries(FileSelector *fs) {
 	fs->n_entries = 0;
 }
 
+// returns true if there are any directory entries
+static bool file_selector_any_directories(FileSelector const *fs) {
+	FileEntry const *entries = fs->entries;
+	for (u32 i = 0, n_entries = fs->n_entries; i < n_entries; ++i) {
+		if (entries[i].type == FS_DIRECTORY)
+			return true;
+	}
+	return false;
+}
+
 static void file_selector_free(FileSelector *fs) {
 	file_selector_clear_entries(fs);
 	memset(fs, 0, sizeof *fs);
 }
 
 static void file_selector_up(Ted const *ted, FileSelector *fs, i64 n) {
-	i64 selected = fs->selected - n;
-	selected = mod_i64(selected, fs->n_entries);
-	fs->selected = (u32)selected;
+	if (fs->n_entries == 0) {
+		// can't do anything
+		return;
+	}
+	fs->selected = (u32)mod_i64(fs->selected - n, fs->n_entries);
 	file_selector_scroll_to_selected(ted, fs);
 }
 
 static void file_selector_down(Ted const *ted, FileSelector *fs, i64 n) {
-	i64 selected = fs->selected + n;
-	selected = mod_i64(selected, fs->n_entries);
-	fs->selected = (u32)selected;
-	file_selector_scroll_to_selected(ted, fs);
+	file_selector_up(ted, fs, -n);
 }
 
 static int qsort_file_entry_cmp(void const *av, void const *bv, void *search_termv) {
@@ -214,6 +223,7 @@ static Status file_selector_cd_(Ted const *ted, FileSelector *fs, char const *pa
 // returns false if this path doesn't exist or isn't a directory
 static bool file_selector_cd(Ted const *ted, FileSelector *fs, char const *path) {
 	fs->selected = 0;
+	fs->scroll = 0;
 	return file_selector_cd_(ted, fs, path, 0);
 }
 
@@ -267,9 +277,6 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 
 	char *search_term = search_term32.len ? str32_to_utf8_cstr(search_term32) : NULL;
 
-	bool submitted = fs->submitted;
-	fs->submitted = false;
-	
 	for (u32 i = 0; i < fs->n_entries; ++i) {
 		Rect r = {0};
 		FileEntry *entry = &fs->entries[i];
@@ -298,9 +305,13 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 		
 	}
 	
+	bool submitted = fs->submitted;
+	fs->submitted = false;
+	
 	// user pressed enter in search bar
 	if (submitted) {
-		if (fs->create_menu) {
+		if (fs->create_menu && search_term) {
+			// user typed in file name to save as
 			char path[TED_PATH_MAX];
 			strbuf_printf(path, "%s%s%s", cwd, cwd[strlen(cwd)-1] == PATH_SEPARATOR ? "" : PATH_SEPARATOR_STR, search_term);
 			free(search_term);
@@ -430,7 +441,9 @@ static void file_selector_render(Ted *ted, FileSelector *fs) {
 		Rect r;
 		if (file_selector_entry_pos(ted, fs, i, &r)) {
 			rect_clip_to_rect(&r, text_bounds);
-			if (rect_contains_point(r, ted->mouse_pos) || fs->selected == i) {
+			if (rect_contains_point(r, ted->mouse_pos) || 
+				((!fs->create_menu || buffer_empty(&ted->line_buffer)) // only highlight selected for create menus if there is no search term (because that will be the name of the file)
+					&& fs->selected == i)) {
 				glBegin(GL_QUADS);
 				gl_color_rgba(colors[COLOR_MENU_HL]);
 				rect_render(r);

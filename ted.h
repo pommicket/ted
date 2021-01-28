@@ -91,7 +91,7 @@ typedef struct {
 typedef struct {
 	Rect bounds;
 	u32 n_entries;
-	u32 selected; // which FileEntry is currently selected
+	u32 selected;
 	float scroll;
 	FileEntry *entries;
 	char cwd[TED_PATH_MAX];

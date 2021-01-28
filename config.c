@@ -81,6 +81,8 @@ static u32 config_parse_key_combo(ConfigReader *cfg, char const *str) {
 			{"Period", 0, SDL_SCANCODE_PERIOD, 0},
 			{"Semicolon", 0, SDL_SCANCODE_SEMICOLON, 0},
 			{"Slash", 0, SDL_SCANCODE_SLASH, 0},
+			{"Enter", 0, SDL_SCANCODE_RETURN, 0},
+			{"Keypad Return", 0, SDL_SCANCODE_KP_ENTER, 0},
 			{"Exclaim", "Exclamation Mark", SDL_SCANCODE_1, 1},
 			{"!", 0, SDL_SCANCODE_1, 1},
 			{"At", "@", SDL_SCANCODE_2, 1},
@@ -103,7 +105,7 @@ static u32 config_parse_key_combo(ConfigReader *cfg, char const *str) {
 			{"Greater Than", ">", SDL_SCANCODE_PERIOD, 1},
 			{"Question Mark", "?", SDL_SCANCODE_SLASH, 1},
 			{"Question", 0, SDL_SCANCODE_SLASH, 1},
-			{"Tilde", "~", SDL_SCANCODE_GRAVE, 1}
+			{"Tilde", "~", SDL_SCANCODE_GRAVE, 1},
 		};
 
 		// @OPTIMIZE: sort key_names (and split keyname1/2); do a binary search

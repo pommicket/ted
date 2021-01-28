@@ -60,12 +60,14 @@ static void menu_update(Ted *ted, Menu menu) {
 			case POPUP_NONE:
 				// no option selected
 				break;
-			case POPUP_YES:
+			case POPUP_YES: {
 				// overwrite it!
-				if (ted->prev_active_buffer)
-					buffer_save_as(ted->prev_active_buffer, ted->warn_overwrite);
+				TextBuffer *buffer = ted->prev_active_buffer;
+				if (buffer) {
+					buffer_save_as(buffer, ted->warn_overwrite);
+				}
 				menu_close(ted, true);
-				break;
+			} break;
 			case POPUP_NO:
 				// back to the file selector
 				*ted->warn_overwrite = '\0';

@@ -96,7 +96,6 @@ static WarnUnusedResult TextBuffer *ted_open_file(Ted *ted, char const *filename
 		ted->active_buffer = open_to;
 		return open_to;
 	} else {
-		ted_seterr_to_buferr(ted, open_to);
 		return NULL;
 	}
 }

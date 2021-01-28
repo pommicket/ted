@@ -43,6 +43,11 @@ static void buffer_clear_undo_history(TextBuffer *buffer) {
 	arr_clear(buffer->undo_history);
 }
 
+
+bool buffer_empty(TextBuffer *buffer) {
+	return buffer->nlines == 1 && buffer->lines[0].len == 0;
+}
+
 // clear all undo and redo events
 void buffer_clear_undo_redo(TextBuffer *buffer) {
 	buffer_clear_undo_history(buffer);
@@ -632,16 +637,17 @@ void buffer_new_file(TextBuffer *buffer, char const *filename) {
 }
 
 bool buffer_save(TextBuffer *buffer) {
-	if (buffer->filename) {
+	if (!buffer->is_line_buffer && buffer->filename) {
 		FILE *out = fopen(buffer->filename, "wb");
 		if (out) {
-			bool success = true;
 			for (Line *line = buffer->lines, *end = line + buffer->nlines; line != end; ++line) {
 				for (char32_t *p = line->str, *p_end = p + line->len; p != p_end; ++p) {
 					char utf8[4] = {0};
 					size_t bytes = unicode_utf32_to_utf8(utf8, *p);
 					if (bytes != (size_t)-1) {
-						fwrite(utf8, 1, bytes, out);
+						if (fwrite(utf8, 1, bytes, out) != bytes) {
+							buffer_seterr(buffer, "Couldn't write to %s.", buffer->filename);
+						}
 					}
 				}
 
@@ -649,14 +655,21 @@ bool buffer_save(TextBuffer *buffer) {
 					putc('\n', out);
 				}
 			}
-			if (ferror(out)) success = false;
-			if (fclose(out) != 0) success = false;
+			if (ferror(out)) {
+				if (!buffer_haserr(buffer))
+					buffer_seterr(buffer, "Couldn't write to %s.", buffer->filename);
+			}
+			if (fclose(out) != 0) {
+				if (!buffer_haserr(buffer))
+					buffer_seterr(buffer, "Couldn't close file %s.", buffer->filename);
+			}
+			bool success = !buffer_haserr(buffer);
 			if (success) {
 				buffer->modified = false;
 			}
 			return success;
 		} else {
-			buffer_seterr(buffer, "Couldn't write to file %s.", buffer->filename);
+			buffer_seterr(buffer, "Couldn't open file %s for writing: %s.", buffer->filename, strerror(errno));
 			return false;
 		}
 	} else {
@@ -667,9 +680,16 @@ bool buffer_save(TextBuffer *buffer) {
 
 // save, but with a different file name
 bool buffer_save_as(TextBuffer *buffer, char const *new_filename) {
-	free(buffer->filename);
+	char *prev_filename = buffer->filename;
 	if ((buffer->filename = buffer_strdup(buffer, new_filename))) {
-		return buffer_save(buffer);
+		if (buffer_save(buffer)) {
+			free(prev_filename);
+			return true;
+		} else {
+			free(buffer->filename);
+			buffer->filename = prev_filename;
+			return false;
+		}
 	} else {
 		return false;
 	}

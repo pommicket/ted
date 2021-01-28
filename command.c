@@ -101,7 +101,8 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		buffer_insert_char_at_cursor(buffer, '\t');
 		break;
 	case CMD_NEWLINE:
-		if (buffer->is_line_buffer) {
+		if (!buffer) {
+		} else if (buffer->is_line_buffer) {
 			switch (ted->menu) {
 			case MENU_NONE:
 				assert(0);
@@ -191,10 +192,5 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 			buffer_disable_selection(buffer);
 		}
 		break;
-	}
-
-	if (buffer && buffer_haserr(buffer)) {
-		ted_seterr_to_buferr(ted, buffer);
-		buffer_clearerr(buffer);
 	}
 }
