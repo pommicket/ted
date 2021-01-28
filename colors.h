@@ -16,6 +16,10 @@ ENUM_U16 {
 	COLOR_ERROR_BG,
 	COLOR_ERROR_BORDER,
 
+	COLOR_YES,
+	COLOR_NO,
+	COLOR_CANCEL,
+
 	COLOR_COUNT
 } ENUM_U16_END(ColorSetting);
 
@@ -39,7 +43,10 @@ static ColorName const color_names[COLOR_COUNT] = {
 	{COLOR_MENU_HL, "menu-hl"},
 	{COLOR_ERROR_TEXT, "error-text"},
 	{COLOR_ERROR_BG, "error-bg"},
-	{COLOR_ERROR_BORDER, "error-border"}
+	{COLOR_ERROR_BORDER, "error-border"},
+	{COLOR_YES, "yes"},
+	{COLOR_NO, "no"},
+	{COLOR_CANCEL, "cancel"}
 };
 
 static ColorSetting color_setting_from_str(char const *str) {

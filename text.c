@@ -280,11 +280,29 @@ void text_render(Font *font, char const *text, float x, float y) {
 	text_render_internal(font, text, &x, &y, true);
 }
 
+void text_render_anchored(Font *font, char const *text, float x, float y, Anchor anchor) {
+	float w = 0, h = 0; // width, height of text
+	text_get_size(font, text, &w, &h);
+	float hw = w * 0.5f, hh = h * 0.5f; // half-width, half-height
+	switch (anchor) {
+	case ANCHOR_TOP_LEFT: break;
+	case ANCHOR_TOP_MIDDLE: x -= hw; break;
+	case ANCHOR_TOP_RIGHT: x -= w; break;
+	case ANCHOR_MIDDLE_LEFT: y -= hh; break;
+	case ANCHOR_MIDDLE: x -= hw; y -= hh; break;
+	case ANCHOR_MIDDLE_RIGHT: x -= w; y -= hh; break;
+	case ANCHOR_BOTTOM_LEFT: y -= h; break;
+	case ANCHOR_BOTTOM_MIDDLE: x -= hw; y -= h; break;
+	case ANCHOR_BOTTOM_RIGHT: x -= w; y -= h; break;
+	}
+	text_render(font, text, x, y);
+}
+
 void text_get_size(Font *font, char const *text, float *width, float *height) {
 	float x = 0, y = 0;
 	text_render_internal(font, text, &x, &y, false);
 	if (width)  *width = x;
-	if (height) *height = y + font->char_height * (2/3.0f);
+	if (height) *height = y + font->char_height;
 }
 
 void text_get_size32(Font *font, char32_t const *text, u64 len, float *width, float *height) {

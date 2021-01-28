@@ -20,6 +20,18 @@ typedef struct {
 	float min_x, max_x, min_y, max_y;
 } TextRenderState;
 
+typedef enum {
+	ANCHOR_TOP_LEFT,
+	ANCHOR_TOP_MIDDLE,
+	ANCHOR_TOP_RIGHT,
+	ANCHOR_MIDDLE_LEFT,
+	ANCHOR_MIDDLE,
+	ANCHOR_MIDDLE_RIGHT,
+	ANCHOR_BOTTOM_LEFT,
+	ANCHOR_BOTTOM_MIDDLE,
+	ANCHOR_BOTTOM_RIGHT,
+} Anchor;
+
 extern bool text_has_err(void);
 // Get the current error. Errors will NOT be overwritten with newer errors.
 extern char const *text_get_err(void);
@@ -39,6 +51,7 @@ extern void text_get_size(Font *font, char const *text, float *width, float *hei
 extern void text_get_size32(Font *font, char32_t const *text, u64 len, float *width, float *height);
 // Write text, but using a state, starting at (x, y) -- state->x and state->y are ignored. This allows you to control min/max_x/y.
 extern void text_render_with_state(Font *font, TextRenderState *state, char const *text, float x, float y);
+extern void text_render_anchored(Font *font, char const *text, float x, float y, Anchor anchor);
 // Begin writing characters.
 extern void text_chars_begin(Font *font);
 // Finish writing characters.

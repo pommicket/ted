@@ -461,6 +461,24 @@ static void file_selector_render(Ted *ted, FileSelector *fs) {
 	}
 }
 
+static void button_render(Ted *ted, Rect button, char const *text, u32 color) {
+	u32 const *colors = ted->settings.colors;
+
+	glBegin(GL_QUADS);
+	if (rect_contains_point(button, ted->mouse_pos)) {
+		// highlight button when hovering over it
+		gl_color_rgba((color & 0xffffff00) | ((color & 0xff) / 3));
+		rect_render(button);
+	}
+	gl_color_rgba(colors[COLOR_BORDER]);
+	rect_render_border(button, 1);
+	glEnd();
+
+	gl_color_rgba(color);
+	v2 pos = rect_center(button);
+	text_render_anchored(ted->font, text, pos.x, pos.y, ANCHOR_MIDDLE);
+}
+
 typedef enum {
 	POPUP_NONE,
 	POPUP_YES,
@@ -519,4 +537,15 @@ static void popup_render(Ted *ted, char const *title, char const *body) {
 		.min_y = -FLT_MAX, .max_y = +FLT_MAX
 	};
 	text_render_with_state(font, &state, body, text_x1, y);
+
+	float button_height = 30;
+	u16 nbuttons = 3;
+	float button_width = r.size.x / nbuttons;
+	Rect button_yes    = rect(V2(r.pos.x, rect_y2(r) - button_height), V2(button_width, button_height));
+	Rect button_no     = rect_translate(button_yes, V2(button_width, 0));
+	Rect button_cancel = rect_translate(button_no, V2(button_width, 0));
+
+	button_render(ted, button_yes, "Yes", colors[COLOR_YES]);
+	button_render(ted, button_no, "No", colors[COLOR_NO]);
+	button_render(ted, button_cancel, "Cancel", colors[COLOR_CANCEL]);
 }

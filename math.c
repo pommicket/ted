@@ -658,6 +658,10 @@ static bool rect_contains_point(Rect r, v2 point) {
 	return rect_contains_point_v2(r.pos, r.size, point);
 }
 
+static Rect rect_translate(Rect r, v2 by) {
+	return rect(v2_add(r.pos, by), r.size);
+}
+
 static float rect_x1(Rect r) { return r.pos.x; }
 static float rect_y1(Rect r) { return r.pos.y; }
 static float rect_x2(Rect r) { return r.pos.x + r.size.x; }
@@ -688,27 +692,22 @@ static void rect_render(Rect r) {
 static void rect_render_border(Rect r, float border_thickness) {
 	float border_radius = border_thickness * 0.5f;
 	float x1 = r.pos.x, y1 = r.pos.y, x2 = x1 + r.size.x, y2 = y1 + r.size.y;
-	//float a = 0.3f; // for debugging
 
-	//glColor4f(1,0,0,a);
 	glVertex2f(x1+border_radius, y1-border_radius);
 	glVertex2f(x1+border_radius, y1+border_radius);
 	glVertex2f(x2+border_radius, y1+border_radius);
 	glVertex2f(x2+border_radius, y1-border_radius);
 	
-	//glColor4f(0,1,0,a);
 	glVertex2f(x1-border_radius, y2-border_radius);
 	glVertex2f(x1-border_radius, y2+border_radius);
 	glVertex2f(x2-border_radius, y2+border_radius);
 	glVertex2f(x2-border_radius, y2-border_radius);
 	
-	//glColor4f(0,0,1,a);
 	glVertex2f(x1-border_radius, y1-border_radius);
 	glVertex2f(x1+border_radius, y1-border_radius);
 	glVertex2f(x1+border_radius, y2-border_radius);
 	glVertex2f(x1-border_radius, y2-border_radius);
 	
-	//glColor4f(1,1,0,a);
 	glVertex2f(x2-border_radius, y1+border_radius);
 	glVertex2f(x2+border_radius, y1+border_radius);
 	glVertex2f(x2+border_radius, y2+border_radius);
