@@ -542,7 +542,7 @@ int main(int argc, char **argv) {
 	if (ted->menu)
 		menu_close(ted, false); // free any memory used by the current menu
 
-	fclose(log);
+	if (log) fclose(log);
 
 	SDL_GL_DeleteContext(glctx);
 	SDL_DestroyWindow(window);
