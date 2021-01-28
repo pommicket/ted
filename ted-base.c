@@ -89,14 +89,50 @@ static void ted_load_fonts(Ted *ted) {
 	ted_load_font(ted, "assets/font-bold.ttf", &ted->font_bold);
 }
 
+// returns the index of an available buffer, or -1 if none are available 
+static i32 ted_new_buffer(Ted *ted) {
+	bool *buffers_used = ted->buffers_used;
+	for (i32 i = 0; i < TED_MAX_BUFFERS; ++i) {
+		if (!buffers_used[i]) {
+			buffers_used[i] = true;
+			return i;
+		}
+	}
+	return -1;
+}
+
+// returns the index of an available node, or -1 if none are available 
+static i32 ted_new_node(Ted *ted) {
+	bool *nodes_used = ted->nodes_used;
+	for (i32 i = 0; i < TED_MAX_NODES; ++i) {
+		if (!nodes_used[i]) {
+			nodes_used[i] = true;
+			return i;
+		}
+	}
+	return -1;
+	
+}
+
+static void node_free(Node *node) {
+	arr_free(node->tabs);
+}
+
 // returns buffer of new file, or NULL on failure
 static WarnUnusedResult TextBuffer *ted_open_file(Ted *ted, char const *filename) {
-	TextBuffer *open_to = &ted->main_buffer;
-	if (buffer_load_file(open_to, filename)) {
-		ted->active_buffer = open_to;
-		return open_to;
-	} else {
+	i32 new_buffer_index = ted_new_buffer(ted);
+	if (new_buffer_index < 0) {
+		ted_seterr(ted, "Too many buffers open!");
 		return NULL;
+	} else {
+		arr_add(ted->active_node->tabs, (u16)new_buffer_index);
+		TextBuffer *new_buffer = &ted->buffers[new_buffer_index];
+		if (buffer_load_file(new_buffer, filename)) {
+			ted->active_buffer = new_buffer;
+			return new_buffer;
+		} else {
+			return NULL;
+		}
 	}
 }
 

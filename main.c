@@ -236,9 +236,16 @@ int main(int argc, char **argv) {
 	
 	
 	{
-		TextBuffer *buffer = &ted->main_buffer;
+		u16 buffer_index = (u16)ted_new_buffer(ted);
+		assert(buffer_index == 0);
+		TextBuffer *buffer = &ted->buffers[buffer_index];
 		buffer_create(buffer, ted);
 		ted->active_buffer = buffer;
+		u16 node_index = (u16)ted_new_node(ted);
+		assert(node_index == 0);
+		Node *node = ted->active_node = &ted->nodes[node_index];
+		node->tabs = NULL;
+		arr_add(node->tabs, 0);
 
 
 		if (fs_file_exists(starting_filename)) {
@@ -452,7 +459,7 @@ int main(int argc, char **argv) {
 
 		{
 			float x1 = 50, y1 = 50, x2 = window_width-50, y2 = window_height-50;
-			buffer_render(&ted->main_buffer, x1, y1, x2, y2);
+			buffer_render(&ted->buffers[ted->active_node->tabs[0]], x1, y1, x2, y2);
 			if (text_has_err()) {
 				ted_seterr(ted, "Couldn't render text: %s", text_get_err());
 			}
@@ -463,9 +470,12 @@ int main(int argc, char **argv) {
 			menu_render(ted, menu);
 		}
 
-		if (buffer_haserr(&ted->main_buffer)) {
-			ted_seterr_to_buferr(ted, &ted->main_buffer);
-			buffer_clearerr(&ted->main_buffer);
+		for (u16 i = 0; i < TED_MAX_BUFFERS; ++i) {
+			TextBuffer *buffer = &ted->buffers[i];
+			if (buffer_haserr(buffer)) {
+				ted_seterr_to_buferr(ted, buffer);
+				buffer_clearerr(buffer);
+			}
 		}
 
 		// check if there's a new error
@@ -519,7 +529,9 @@ int main(int argc, char **argv) {
 
 
 	#if DEBUG
-		buffer_check_valid(&ted->main_buffer);
+		for (u16 i = 0; i < TED_MAX_BUFFERS; ++i)
+			if (ted->buffers_used[i])
+				buffer_check_valid(&ted->buffers[i]);
 		buffer_check_valid(&ted->line_buffer);
 	#endif
 
@@ -535,7 +547,10 @@ int main(int argc, char **argv) {
 	SDL_GL_DeleteContext(glctx);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
-	buffer_free(&ted->main_buffer);
+	for (u16 i = 0; i < TED_MAX_BUFFERS; ++i)
+		buffer_free(&ted->buffers[i]);
+	for (u16 i = 0; i < TED_MAX_NODES; ++i)
+		node_free(&ted->nodes[i]);
 	buffer_free(&ted->line_buffer);
 	text_font_free(ted->font);
 	text_font_free(ted->font_bold);

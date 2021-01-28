@@ -100,6 +100,15 @@ typedef struct {
 	bool create_menu; // this is for creating files, not opening files
 } FileSelector;
 
+// a node is a collection of tabs OR a split of two nodes
+typedef struct Node {
+	u16 *tabs; // dynamic array of indices into ted->buffers, or NULL if this is a split
+	u16 left; // index into ted->nodes
+	u16 right;
+} Node;
+
+#define TED_MAX_BUFFERS 256
+#define TED_MAX_NODES 256
 typedef struct Ted {
 	Font *font_bold;
 	Font *font;
@@ -109,6 +118,8 @@ typedef struct Ted {
 	// while a menu or something is open, there is no active buffer. when the menu is closed,
 	// the old active buffer needs to be restored. that's what this stores.
 	TextBuffer *prev_active_buffer; 
+	Node *root;
+	Node *active_node;
 	Settings settings;
 	float window_width, window_height;
 	v2 mouse_pos;
@@ -118,7 +129,6 @@ typedef struct Ted {
 	Menu menu;
 	FileSelector file_selector;
 	TextBuffer line_buffer; // general-purpose line buffer for inputs -- used for menus
-	TextBuffer main_buffer;
 	double error_time; // time error box was opened (in seconds -- see time_get_seconds)
 	KeyAction key_actions[KEY_COMBO_COUNT];
 	bool search_cwd; // should the working directory be searched for files? set to true if the executable isn't "installed"
@@ -127,6 +137,10 @@ typedef struct Ted {
 	char global_data_dir[TED_PATH_MAX];
 	char home[TED_PATH_MAX];
 	char cwd[TED_PATH_MAX]; // current working directory
+	bool nodes_used[TED_MAX_NODES];
+	Node nodes[TED_MAX_NODES];
+	bool buffers_used[TED_MAX_BUFFERS];
+	TextBuffer buffers[TED_MAX_BUFFERS];
 	char error[512];
 	char error_shown[512]; // error display in box on screen
 } Ted;
