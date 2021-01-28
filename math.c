@@ -195,6 +195,10 @@ static v2 v2_mul(v2 a, v2 b) {
 	return V2(a.x * b.x, a.y * b.y);
 }
 
+static v2 v2_clamp(v2 x, v2 a, v2 b) {
+	return V2(clampf(x.x, a.x, b.x), clampf(x.y, a.y, b.y));
+}
+
 static float v2_dot(v2 a, v2 b) {
 	return a.x * b.x + a.y * b.y;
 }

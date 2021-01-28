@@ -479,6 +479,16 @@ static void button_render(Ted *ted, Rect button, char const *text, u32 color) {
 	text_render_anchored(ted->font, text, pos.x, pos.y, ANCHOR_MIDDLE);
 }
 
+// returns true if the button was clicked on.
+static bool button_update(Ted *ted, Rect button) {
+	for (u16 i = 0; i < ted->nmouse_clicks[SDL_BUTTON_LEFT]; ++i) {
+		if (rect_contains_point(button, ted->mouse_clicks[SDL_BUTTON_LEFT][i])) {
+			return true;
+		}
+	}
+	return false;
+}
+
 typedef enum {
 	POPUP_NONE,
 	POPUP_YES,
@@ -486,21 +496,44 @@ typedef enum {
 	POPUP_CANCEL
 } PopupOption;
 
+
+static void popup_get_rects(Ted const *ted, Rect *popup, Rect *button_yes, Rect *button_no, Rect *button_cancel) {
+	float window_width = ted->window_width, window_height = ted->window_height;
+	
+	*popup = rect_centered(V2(window_width * 0.5f, window_height * 0.5f), V2(300, 200));
+	float button_height = 30;
+	u16 nbuttons = 3;
+	float button_width = popup->size.x / nbuttons;
+	popup->size = v2_clamp(popup->size, v2_zero, V2(window_width, window_height));
+	*button_yes    = rect(V2(popup->pos.x, rect_y2(*popup) - button_height), V2(button_width, button_height));
+	*button_no     = rect_translate(*button_yes, V2(button_width, 0));
+	*button_cancel = rect_translate(*button_no, V2(button_width, 0));
+	
+}
+
 static PopupOption popup_update(Ted *ted) {
-	(void)ted;
+	Rect r, button_yes, button_no, button_cancel;
+	popup_get_rects(ted, &r, &button_yes, &button_no, &button_cancel);
+	if (button_update(ted, button_yes))
+		return POPUP_YES;
+	if (button_update(ted, button_no))
+		return POPUP_NO;
+	if (button_update(ted, button_cancel))
+		return POPUP_CANCEL;
 	return POPUP_NONE;
 }
 
 static void popup_render(Ted *ted, char const *title, char const *body) {
 	float window_width = ted->window_width;
-	float window_height = ted->window_height;
 	Font *font = ted->font;
 	Font *font_bold = ted->font_bold;
-	Rect r = rect_centered(V2(window_width * 0.5f, window_height * 0.5f), V2(300, 200));
+	Rect r, button_yes, button_no, button_cancel;
 	Settings const *settings = &ted->settings;
 	u32 const *colors = settings->colors;
 	float const char_height_bold = text_font_char_height(font_bold);
 	float const padding = settings->padding;
+
+	popup_get_rects(ted, &r, &button_yes, &button_no, &button_cancel);
 
 	glBegin(GL_QUADS);
 	gl_color_rgba(colors[COLOR_MENU_BG]);
@@ -537,13 +570,6 @@ static void popup_render(Ted *ted, char const *title, char const *body) {
 		.min_y = -FLT_MAX, .max_y = +FLT_MAX
 	};
 	text_render_with_state(font, &state, body, text_x1, y);
-
-	float button_height = 30;
-	u16 nbuttons = 3;
-	float button_width = r.size.x / nbuttons;
-	Rect button_yes    = rect(V2(r.pos.x, rect_y2(r) - button_height), V2(button_width, button_height));
-	Rect button_no     = rect_translate(button_yes, V2(button_width, 0));
-	Rect button_cancel = rect_translate(button_no, V2(button_width, 0));
 
 	button_render(ted, button_yes, "Yes", colors[COLOR_YES]);
 	button_render(ted, button_no, "No", colors[COLOR_NO]);

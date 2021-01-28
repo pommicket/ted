@@ -56,18 +56,39 @@ static void menu_update(Ted *ted, Menu menu) {
 	case MENU_NONE: break;
 	case MENU_SAVE_AS: {
 		if (*ted->warn_overwrite) {
+			switch (popup_update(ted)) {
+			case POPUP_NONE:
+				// no option selected
+				break;
+			case POPUP_YES:
+				// overwrite it!
+				if (ted->prev_active_buffer)
+					buffer_save_as(ted->prev_active_buffer, ted->warn_overwrite);
+				menu_close(ted, true);
+				break;
+			case POPUP_NO:
+				// back to the file selector
+				*ted->warn_overwrite = '\0';
+				ted->active_buffer = &ted->line_buffer;
+				break;
+			case POPUP_CANCEL:
+				// close "save as" menu
+				menu_close(ted, true);
+				break;
+			}
 		} else {
 			char *selected_file = file_selector_update(ted, &ted->file_selector);
 			if (selected_file) {
 				TextBuffer *buffer = ted->prev_active_buffer;
 				if (buffer) {
 					if (fs_path_type(selected_file) != FS_NON_EXISTENT) {
+						// file already exists! warn about overwriting it.
 						strbuf_cpy(ted->warn_overwrite, selected_file);
 						ted->active_buffer = NULL;
 					} else {
+						// create the new file.
 						buffer_save_as(buffer, selected_file);
 						menu_close(ted, true);
-						file_selector_free(&ted->file_selector);
 					}
 				}
 				free(selected_file);
