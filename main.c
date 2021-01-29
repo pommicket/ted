@@ -75,6 +75,7 @@ static Rect error_box_rect(Ted *ted) {
 
 static void node_render(Ted *ted, Node *node, Rect r) {
 	if (node->tabs) {
+		bool is_active = node == ted->active_node;
 		Settings const *settings = &ted->settings;
 		u32 const *colors = settings->colors;
 		Font *font = ted->font;
@@ -91,13 +92,19 @@ static void node_render(Ted *ted, Node *node, Rect r) {
 			for (u16 i = 0; i < ntabs; ++i) {
 				TextBuffer *buffer = &ted->buffers[node->tabs[i]];
 				char tab_title[256];
-				char const *filename = buffer_get_filename(buffer);
+				char const *path = buffer_get_filename(buffer);
+				char const *filename = path_filename(path);
 				Rect tab_rect = rect(V2(r.pos.x + tab_width * i, r.pos.y), V2(tab_width, tab_bar_height));
 				glBegin(GL_QUADS);
 				gl_color_rgba(colors[COLOR_BORDER]);
 
 				// tab border
 				rect_render_border(tab_rect, 1);
+				if (i == node->active_tab) {
+					// highlight active tab
+					gl_color_rgba(colors[is_active ? COLOR_ACTIVE_TAB_HL : COLOR_HL]);
+					rect_render(tab_rect);
+				}
 				glEnd();
 
 				// tab title
@@ -118,7 +125,7 @@ static void node_render(Ted *ted, Node *node, Rect r) {
 	} else {
 
 #if 0
-	// @TODO: test
+	// @TODO: test this
 		// this node is a split
 		Node *a = &ted->nodes[node->split_a];
 		Node *b = &ted->nodes[node->split_b];
@@ -316,6 +323,7 @@ int main(int argc, char **argv) {
 		u16 node_index = (u16)ted_new_node(ted);
 		assert(node_index == 0);
 		Node *node = ted->active_node = &ted->nodes[node_index];
+		ted->root = node;
 		node->tabs = NULL;
 		arr_add(node->tabs, 0);
 
@@ -531,7 +539,7 @@ int main(int argc, char **argv) {
 
 		{
 			float x1 = 50, y1 = 50, x2 = window_width-50, y2 = window_height-50;
-			Node *node = ted->active_node;
+			Node *node = ted->root;
 			node_render(ted, node, rect4(x1, y1, x2, y2));
 		}
 

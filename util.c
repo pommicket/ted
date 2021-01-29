@@ -204,3 +204,13 @@ static void qsort_with_context(void *base, size_t nmemb, size_t size, int (*comp
 	qsort_ctx_cmp = compar;
 	qsort(base, nmemb, size, qsort_with_context_cmp);
 }
+
+// the actual file name part of the path; get rid of the containing directory.
+// NOTE: the returned string is part of path, so you don't need to free it or anything.
+static char const *path_filename(char const *path) {
+	char const *last_path_sep = strrchr(path, PATH_SEPARATOR);
+	if (last_path_sep)
+		return last_path_sep + 1;
+	// (a relative path with no path separators)
+	return path;
+}

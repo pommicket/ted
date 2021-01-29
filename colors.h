@@ -1,11 +1,12 @@
 ENUM_U16 {
 	COLOR_UNKNOWN,
 
+	COLOR_TEXT,
 	COLOR_BG,
+	COLOR_HL,
 	COLOR_CURSOR,
 	COLOR_CURSOR_LINE_BG,
 	COLOR_BORDER,
-	COLOR_TEXT,
 	COLOR_TEXT_FOLDER,
 	COLOR_TEXT_OTHER,
 	COLOR_SELECTION_BG,
@@ -15,6 +16,7 @@ ENUM_U16 {
 	COLOR_ERROR_TEXT,
 	COLOR_ERROR_BG,
 	COLOR_ERROR_BORDER,
+	COLOR_ACTIVE_TAB_HL,
 
 	COLOR_YES,
 	COLOR_NO,
@@ -30,11 +32,12 @@ typedef struct {
 
 static ColorName const color_names[COLOR_COUNT] = {
 	{COLOR_UNKNOWN, "unknown"},
+	{COLOR_TEXT, "text"},
 	{COLOR_BG, "bg"},
+	{COLOR_HL, "hl"},
 	{COLOR_CURSOR, "cursor"},
 	{COLOR_CURSOR_LINE_BG, "cursor-line-bg"},
 	{COLOR_BORDER, "border"},
-	{COLOR_TEXT, "text"},
 	{COLOR_TEXT_FOLDER, "text-folder"},
 	{COLOR_TEXT_OTHER, "text-other"},
 	{COLOR_SELECTION_BG, "selection-bg"},
@@ -44,6 +47,7 @@ static ColorName const color_names[COLOR_COUNT] = {
 	{COLOR_ERROR_TEXT, "error-text"},
 	{COLOR_ERROR_BG, "error-bg"},
 	{COLOR_ERROR_BORDER, "error-border"},
+	{COLOR_ACTIVE_TAB_HL, "active-tab-hl"},
 	{COLOR_YES, "yes"},
 	{COLOR_NO, "no"},
 	{COLOR_CANCEL, "cancel"}

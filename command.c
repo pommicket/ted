@@ -141,9 +141,16 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		menu_open(ted, MENU_OPEN);
 		break;
 	case CMD_SAVE:
-		if (buffer) buffer_save(buffer);
+		if (buffer) {
+			if (buffer->filename && streq(buffer->filename, "Untitled")) {
+				// don't worry, this won't catch files called "Untitled"; buffer->filename is the full path.
+				goto save_as;
+			}
+			buffer_save(buffer);
+		}
 		break;
 	case CMD_SAVE_AS:
+	save_as:
 		if (buffer && !buffer->is_line_buffer) {
 			menu_open(ted, MENU_SAVE_AS);
 		}
