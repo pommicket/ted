@@ -431,7 +431,7 @@ static void file_selector_render(Ted *ted, FileSelector *fs) {
 
 	// search buffer
 	float line_buffer_height = char_height * 1.5f;
-	buffer_render(&ted->line_buffer, x1, y1, x2, y1 + line_buffer_height);
+	buffer_render(&ted->line_buffer, rect4(x1, y1, x2, y1 + line_buffer_height));
 	y1 += line_buffer_height;
 
 
@@ -577,11 +577,11 @@ static void popup_render(Ted *ted, char const *title, char const *body) {
 	gl_color_rgba(colors[COLOR_TEXT]);
 	float text_x1 = rect_x1(r) + padding;
 	float text_x2 = rect_x2(r) - padding;
-	TextRenderState state = {
-		.render = true, .wrap = true,
-		.min_x = text_x1, .max_x = text_x2,
-		.min_y = -FLT_MAX, .max_y = +FLT_MAX
-	};
+
+	TextRenderState state = text_render_state_default;
+	state.min_x = text_x1;
+	state.max_x = text_x2;
+	state.wrap = true;
 	text_render_with_state(font, &state, body, text_x1, y);
 
 	button_render(ted, button_yes, "Yes", colors[COLOR_YES]);

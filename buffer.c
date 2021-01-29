@@ -48,6 +48,10 @@ bool buffer_empty(TextBuffer *buffer) {
 	return buffer->nlines == 1 && buffer->lines[0].len == 0;
 }
 
+char const *buffer_get_filename(TextBuffer *buffer) {
+	return buffer->filename;
+}
+
 // clear all undo and redo events
 void buffer_clear_undo_redo(TextBuffer *buffer) {
 	buffer_clear_undo_history(buffer);
@@ -1834,7 +1838,9 @@ void buffer_check_valid(TextBuffer *buffer) {
 #endif
 
 // Render the text buffer in the given rectangle
-void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
+void buffer_render(TextBuffer *buffer, Rect r) {
+	float x1, y1, x2, y2;
+	rect_coords(r, &x1, &y1, &x2, &y2);
 	// Correct the scroll, because the window size might have changed
 	buffer_correct_scroll(buffer);
 
@@ -1843,7 +1849,6 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 	Line *lines = buffer->lines;
 	float char_width = text_font_char_width(font),
 		char_height = text_font_char_height(font);
-	float header_height = char_height;
 
 	Ted *ted = buffer->ted;
 	Settings const *settings = buffer_settings(buffer);
@@ -1874,40 +1879,6 @@ void buffer_render(TextBuffer *buffer, float x1, float y1, float x2, float y2) {
 		.max_x = x2, .max_y = y2,
 		.render = true
 	};
-
-
-	if (!buffer->is_line_buffer) { // header
-		glColor3f(1,1,1);
-		float x = x1, y = y1;
-		if (buffer->filename) {
-			char text[256] = {0};
-			strbuf_printf(text, "%s%s%s", buffer->modified ? "*" : "", buffer->filename, buffer->modified ? "*" :"");
-			text_render_with_state(font, &text_state, text, x, y);
-		}
-	#if DEBUG
-		// show checksum
-		char checksum[32] = {0};
-		snprintf(checksum, sizeof checksum - 1, "%08llx", (ullong)buffer_checksum(buffer));
-		gl_color1f(0.5f);
-		float checksum_w = 0;
-		text_get_size(font, checksum, &checksum_w, NULL);
-		x = x2 - checksum_w;
-		text_render_with_state(font, &text_state, checksum, x, y);
-	#endif
-
-		y1 += header_height + 0.5f * border_thickness;
-
-		// line separating header from buffer proper
-		glBegin(GL_QUADS);
-		gl_color_rgba(border_color);
-		glVertex2f(x1, y1 - 0.5f * border_thickness);
-		glVertex2f(x2, y1 - 0.5f * border_thickness);
-		glVertex2f(x2, y1 + 0.5f * border_thickness);
-		glVertex2f(x1, y1 + 0.5f * border_thickness);
-		glEnd();
-		y1 += 0.5f * border_thickness;
-	}
-	
 
 	buffer->x1 = x1; buffer->y1 = y1; buffer->x2 = x2; buffer->y2 = y2;
 

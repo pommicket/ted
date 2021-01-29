@@ -73,6 +73,73 @@ static Rect error_box_rect(Ted *ted) {
 			V2(menu_get_width(ted), 3 * char_height + 2 * padding));
 }
 
+static void node_render(Ted *ted, Node *node, Rect r) {
+	if (node->tabs) {
+		Settings const *settings = &ted->settings;
+		u32 const *colors = settings->colors;
+		Font *font = ted->font;
+		
+		u16 buffer_index = node->tabs[node->active_tab];
+		float tab_bar_height = 20;
+		
+		Rect tab_bar_rect = r;
+		tab_bar_rect.size.y = tab_bar_height;
+
+		{ // tab bar
+			u16 ntabs = (u16)arr_len(node->tabs);
+			float tab_width = r.size.x / ntabs;
+			for (u16 i = 0; i < ntabs; ++i) {
+				TextBuffer *buffer = &ted->buffers[node->tabs[i]];
+				char tab_title[256];
+				char const *filename = buffer_get_filename(buffer);
+				Rect tab_rect = rect(V2(r.pos.x + tab_width * i, r.pos.y), V2(tab_width, tab_bar_height));
+				glBegin(GL_QUADS);
+				gl_color_rgba(colors[COLOR_BORDER]);
+
+				// tab border
+				rect_render_border(tab_rect, 1);
+				glEnd();
+
+				// tab title
+				{
+					char const *surround = buffer_unsaved_changes(buffer) ? "*" : "";
+					strbuf_printf(tab_title, "%s%s%s", surround, filename, surround);
+				}
+				gl_color_rgba(colors[COLOR_TEXT]);
+				TextRenderState text_state = text_render_state_default;
+				text_state.max_x = rect_x2(tab_rect);
+				text_render_with_state(font, &text_state, tab_title, tab_rect.pos.x, tab_rect.pos.y);
+			}
+		}
+
+		TextBuffer *buffer = &ted->buffers[buffer_index];
+		Rect buffer_rect = rect_translate(r, V2(0, tab_bar_height));
+		buffer_render(buffer, buffer_rect);
+	} else {
+
+#if 0
+	// @TODO: test
+		// this node is a split
+		Node *a = &ted->nodes[node->split_a];
+		Node *b = &ted->nodes[node->split_b];
+		Rect r1 = r, r2 = r;
+		if (node->vertical_split) {
+			float split_pos = r.size.y * node->split_pos;
+			r1.size.y = split_pos;
+			r2.pos.y += split_pos;
+			r2.size.y = r.size.y - split_pos;
+		} else {
+			float split_pos = r.size.x * node->split_pos;
+			r1.size.x = split_pos;
+			r2.pos.x += split_pos;
+			r2.size.x = r.size.x - split_pos;
+		}
+		node_render(ted, a, r1);
+		node_render(ted, b, r2);
+#endif
+	}
+}
+
 #if _WIN32
 INT WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
     PSTR lpCmdLine, INT nCmdShow) {
@@ -465,10 +532,7 @@ int main(int argc, char **argv) {
 		{
 			float x1 = 50, y1 = 50, x2 = window_width-50, y2 = window_height-50;
 			Node *node = ted->active_node;
-			buffer_render(&ted->buffers[node->tabs[node->active_tab]], x1, y1, x2, y2);
-			if (text_has_err()) {
-				ted_seterr(ted, "Couldn't render text: %s", text_get_err());
-			}
+			node_render(ted, node, rect4(x1, y1, x2, y2));
 		}
 
 		Menu menu = ted->menu;
@@ -476,6 +540,10 @@ int main(int argc, char **argv) {
 			menu_render(ted, menu);
 		}
 
+
+		if (text_has_err()) {
+			ted_seterr(ted, "Couldn't render text: %s", text_get_err());
+		}
 		for (u16 i = 0; i < TED_MAX_BUFFERS; ++i) {
 			TextBuffer *buffer = &ted->buffers[i];
 			if (buffer_haserr(buffer)) {
@@ -526,9 +594,10 @@ int main(int argc, char **argv) {
 				float text_y1 = rect_y1(r) + padding;
 
 				// (make sure text wraps)
-				TextRenderState text_state = {.x = text_x1, .y = text_y1,
-					.min_x = text_x1, .max_x = text_x2, .min_y = -FLT_MAX, .max_y = FLT_MAX,
-					.render = true, .wrap = true};
+				TextRenderState text_state = text_render_state_default;
+				text_state.min_x = text_x1;
+				text_state.max_x = text_x2;
+				text_state.wrap = true;
 				text_render_with_state(font, &text_state, ted->error_shown, text_x1, text_y1);
 			}
 		}

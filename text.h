@@ -61,4 +61,11 @@ extern void text_render_char(Font *font, TextRenderState *state, char32_t c);
 // Free memory used by font.
 extern void text_font_free(Font *font);
 
+// The "default" text rendering state - everything you need to just render text normally.
+// This lets you do stuff like:
+// TextRenderState state = text_render_state_default;
+//    (set a few options)
+// text_render_with_state(font, &state, ...)
+extern TextRenderState const text_render_state_default;
+
 #endif

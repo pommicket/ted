@@ -25,6 +25,14 @@ struct Font {
 	int curr_page;
 };
 
+TextRenderState const text_render_state_default = {
+	.render = true,
+	.wrap = false,
+	.x = 0, .y = 0,
+	.min_x = -FLT_MAX, .max_x = +FLT_MAX,
+	.min_y = -FLT_MAX, .max_y = +FLT_MAX
+};
+
 static char text_err[200];
 void text_clear_err(void) {
 	text_err[0] = '\0';
@@ -270,7 +278,8 @@ void text_render_with_state(Font *font, TextRenderState *render_state, char cons
 }
 
 static void text_render_internal(Font *font, char const *text, float *x, float *y, bool render) {
-	TextRenderState render_state = {.x = 0, .y = 0, .min_x = -FLT_MAX, .max_x = FLT_MAX, .min_y = -FLT_MAX, .max_y = FLT_MAX, .render = render};
+	TextRenderState render_state = text_render_state_default;
+	render_state.render = render;
 	text_render_with_state(font, &render_state, text, *x, *y);
 	*x = render_state.x;
 	*y = render_state.y;
@@ -306,7 +315,8 @@ void text_get_size(Font *font, char const *text, float *width, float *height) {
 }
 
 void text_get_size32(Font *font, char32_t const *text, u64 len, float *width, float *height) {
-	TextRenderState render_state = {.x = 0, .y = 0, .min_x = -FLT_MAX, .max_x = FLT_MAX, .min_y = -FLT_MAX, .max_y = FLT_MAX, .render = false};
+	TextRenderState render_state = text_render_state_default;
+	render_state.render = false;
 	for (u64 i = 0; i < len; ++i) {
 		text_render_char(font, &render_state, text[i]);
 	}
