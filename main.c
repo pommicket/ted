@@ -464,7 +464,8 @@ int main(int argc, char **argv) {
 
 		{
 			float x1 = 50, y1 = 50, x2 = window_width-50, y2 = window_height-50;
-			buffer_render(&ted->buffers[ted->active_node->tabs[0]], x1, y1, x2, y2);
+			Node *node = ted->active_node;
+			buffer_render(&ted->buffers[node->tabs[node->active_tab]], x1, y1, x2, y2);
 			if (text_has_err()) {
 				ted_seterr(ted, "Couldn't render text: %s", text_get_err());
 			}

@@ -103,12 +103,15 @@ typedef struct {
 // a node is a collection of tabs OR a split of two nodes
 typedef struct Node {
 	u16 *tabs; // dynamic array of indices into ted->buffers, or NULL if this is a split
+	u16 active_tab;
 	u16 left; // index into ted->nodes
 	u16 right;
 } Node;
 
 #define TED_MAX_BUFFERS 256
 #define TED_MAX_NODES 256
+// max tabs per node
+#define TED_MAX_TABS 100
 typedef struct Ted {
 	Font *font_bold;
 	Font *font;

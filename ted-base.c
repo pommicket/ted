@@ -95,6 +95,7 @@ static i32 ted_new_buffer(Ted *ted) {
 	for (i32 i = 0; i < TED_MAX_BUFFERS; ++i) {
 		if (!buffers_used[i]) {
 			buffers_used[i] = true;
+			buffer_create(&ted->buffers[i], ted);
 			return i;
 		}
 	}
@@ -125,14 +126,19 @@ static WarnUnusedResult TextBuffer *ted_open_file(Ted *ted, char const *filename
 		ted_seterr(ted, "Too many buffers open!");
 		return NULL;
 	} else {
-		arr_add(ted->active_node->tabs, (u16)new_buffer_index);
-		TextBuffer *new_buffer = &ted->buffers[new_buffer_index];
-		if (buffer_load_file(new_buffer, filename)) {
-			ted->active_buffer = new_buffer;
-			return new_buffer;
+		Node *node = ted->active_node;
+		if (arr_len(node->tabs) < TED_MAX_TABS) {
+			arr_add(node->tabs, (u16)new_buffer_index);
+			TextBuffer *new_buffer = &ted->buffers[new_buffer_index];
+			if (node->tabs && buffer_load_file(new_buffer, filename)) {
+				ted->active_buffer = new_buffer;
+				node->active_tab = (u16)(arr_len(node->tabs) - 1);
+				return new_buffer;
+			}
 		} else {
-			return NULL;
+			ted_seterr(ted, "Too many tabs.");
 		}
+		return NULL;
 	}
 }
 
