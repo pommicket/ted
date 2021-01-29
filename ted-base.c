@@ -111,6 +111,7 @@ static i32 ted_new_node(Ted *ted) {
 			return i;
 		}
 	}
+	ted_seterr(ted, "Too many buffers open!");
 	return -1;
 	
 }
@@ -119,13 +120,10 @@ static void node_free(Node *node) {
 	arr_free(node->tabs);
 }
 
-// returns buffer of new file, or NULL on failure
-static WarnUnusedResult TextBuffer *ted_open_file(Ted *ted, char const *filename) {
+// returns true on success
+static bool ted_open_file(Ted *ted, char const *filename) {
 	i32 new_buffer_index = ted_new_buffer(ted);
-	if (new_buffer_index < 0) {
-		ted_seterr(ted, "Too many buffers open!");
-		return NULL;
-	} else {
+	if (new_buffer_index >= 0) {
 		Node *node = ted->active_node;
 		if (arr_len(node->tabs) < TED_MAX_TABS) {
 			arr_add(node->tabs, (u16)new_buffer_index);
@@ -133,12 +131,32 @@ static WarnUnusedResult TextBuffer *ted_open_file(Ted *ted, char const *filename
 			if (node->tabs && buffer_load_file(new_buffer, filename)) {
 				ted->active_buffer = new_buffer;
 				node->active_tab = (u16)(arr_len(node->tabs) - 1);
-				return new_buffer;
+				return true;
 			}
 		} else {
 			ted_seterr(ted, "Too many tabs.");
 		}
-		return NULL;
+	}
+	return false;
+}
+
+static void ted_new_file(Ted *ted) {
+	i32 new_buffer_index = ted_new_buffer(ted);
+	if (new_buffer_index >= 0) {
+		Node *node = ted->active_node;
+		if (arr_len(node->tabs) < TED_MAX_TABS) {
+			arr_add(node->tabs, (u16)new_buffer_index);
+			TextBuffer *new_buffer = &ted->buffers[new_buffer_index];
+			if (node->tabs) {
+				buffer_new_file(new_buffer, "Untitled");
+				if (!buffer_haserr(new_buffer)) {
+					ted->active_buffer = new_buffer;
+					node->active_tab = (u16)(arr_len(node->tabs) - 1);
+				}
+			}
+		} else {
+			ted_seterr(ted, "Too many tabs.");
+		}
 	}
 }
 

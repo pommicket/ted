@@ -1,6 +1,7 @@
 // @TODO:
-// - tabs, split
 // - when closing tabs/window, warn on unsaved changes
+// - try opening a file you don't have read permission for
+// - split
 // - Windows installation
 #include "base.h"
 no_warn_start
@@ -73,7 +74,17 @@ static Rect error_box_rect(Ted *ted) {
 			V2(menu_get_width(ted), 3 * char_height + 2 * padding));
 }
 
-static void node_render(Ted *ted, Node *node, Rect r) {
+static void node_switch_to_tab(Ted *ted, Node *node, u16 new_tab_index) {
+	node->active_tab = new_tab_index;
+	if (node == ted->active_node) {
+		// switch active buffer
+		assert(node->tabs);
+		u16 buffer_idx = node->tabs[new_tab_index];
+		ted->active_buffer = &ted->buffers[buffer_idx];
+	}
+}
+
+static void node_frame(Ted *ted, Node *node, Rect r) {
 	if (node->tabs) {
 		bool is_active = node == ted->active_node;
 		Settings const *settings = &ted->settings;
@@ -89,6 +100,13 @@ static void node_render(Ted *ted, Node *node, Rect r) {
 		{ // tab bar
 			u16 ntabs = (u16)arr_len(node->tabs);
 			float tab_width = r.size.x / ntabs;
+			for (u16 c = 0; c < ted->nmouse_clicks[SDL_BUTTON_LEFT]; ++c) {
+				v2 click = ted->mouse_clicks[SDL_BUTTON_LEFT][c];
+				if (rect_contains_point(tab_bar_rect, click)) {
+					u16 tab_index = (u16)((click.x - r.pos.x) / tab_width);
+					node_switch_to_tab(ted, node, tab_index);
+				}
+			}
 			for (u16 i = 0; i < ntabs; ++i) {
 				TextBuffer *buffer = &ted->buffers[node->tabs[i]];
 				char tab_title[256];
@@ -116,6 +134,7 @@ static void node_render(Ted *ted, Node *node, Rect r) {
 				TextRenderState text_state = text_render_state_default;
 				text_state.max_x = rect_x2(tab_rect);
 				text_render_with_state(font, &text_state, tab_title, tab_rect.pos.x, tab_rect.pos.y);
+				
 			}
 		}
 
@@ -349,13 +368,6 @@ int main(int argc, char **argv) {
 		//printf("\033[H\033[2J");
 	#endif
 
-		{
-			int window_width_int = 0, window_height_int = 0;
-			SDL_GetWindowSize(window, &window_width_int, &window_height_int);
-			ted->window_width = (float)window_width_int;
-			ted->window_height = (float)window_height_int;
-		}
-		float window_width = ted->window_width, window_height = ted->window_height;
 
 		SDL_Event event;
 		Uint8 const *keyboard_state = SDL_GetKeyboardState(NULL);
@@ -374,7 +386,17 @@ int main(int argc, char **argv) {
 
 		//printf("%p\n",(void *)ted->drag_buffer);
 
+		float window_width = 0, window_height = 0;
+		{
+			int window_width_int = 0, window_height_int = 0;
+			SDL_GetWindowSize(window, &window_width_int, &window_height_int);
+			ted->window_width = (float)window_width_int;
+			ted->window_height = (float)window_height_int;
+		}
+		window_width = ted->window_width, window_height = ted->window_height;
+
 		while (SDL_PollEvent(&event)) {
+
 			TextBuffer *buffer = ted->active_buffer;
 			u32 key_modifier = (u32)ctrl_down << KEY_MODIFIER_CTRL_BIT
 				| (u32)shift_down << KEY_MODIFIER_SHIFT_BIT
@@ -489,7 +511,6 @@ int main(int argc, char **argv) {
 			ted->drag_buffer = NULL;
 		}
 
-		menu_update(ted, ted->menu);
 
 		u32 key_modifier = (u32)ctrl_down << KEY_MODIFIER_CTRL_BIT
 			| (u32)shift_down << KEY_MODIFIER_SHIFT_BIT
@@ -517,7 +538,15 @@ int main(int argc, char **argv) {
 			if (keyboard_state[SDL_SCANCODE_RIGHT])
 				buffer_scroll(active_buffer, +scroll_amount_x, 0);
 		}
-			
+		
+		// update window dimensions
+		{
+			int window_width_int = 0, window_height_int = 0;
+			SDL_GetWindowSize(window, &window_width_int, &window_height_int);
+			ted->window_width = (float)window_width_int;
+			ted->window_height = (float)window_height_int;
+		}
+		window_width = ted->window_width, window_height = ted->window_height;
 
 
 		// set up GL
@@ -540,12 +569,12 @@ int main(int argc, char **argv) {
 		{
 			float x1 = 50, y1 = 50, x2 = window_width-50, y2 = window_height-50;
 			Node *node = ted->root;
-			node_render(ted, node, rect4(x1, y1, x2, y2));
+			node_frame(ted, node, rect4(x1, y1, x2, y2));
 		}
 
 		Menu menu = ted->menu;
 		if (menu) {
-			menu_render(ted, menu);
+			menu_frame(ted, menu);
 		}
 
 

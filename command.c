@@ -140,6 +140,9 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 	case CMD_OPEN:
 		menu_open(ted, MENU_OPEN);
 		break;
+	case CMD_NEW:
+		ted_new_file(ted);
+		break;
 	case CMD_SAVE:
 		if (buffer) {
 			if (buffer->filename && streq(buffer->filename, "Untitled")) {

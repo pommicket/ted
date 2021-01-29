@@ -41,11 +41,16 @@ ENUM_U16 {
 	CMD_OPEN, // open a file
 	CMD_SAVE, // save current buffer
 	CMD_SAVE_AS,
+	CMD_NEW,
 	CMD_UNDO,
 	CMD_REDO,
 	CMD_COPY,
 	CMD_CUT,
 	CMD_PASTE,
+
+	CMD_TAB_CLOSE,
+	CMD_TAB_NEXT,
+	CMD_TAB_PREV,
 
 	CMD_TEXT_SIZE_INCREASE,
 	CMD_TEXT_SIZE_DECREASE,
@@ -92,6 +97,7 @@ static CommandName const command_names[CMD_COUNT] = {
 	{"backspace-word", CMD_BACKSPACE_WORD},
 	{"delete-word", CMD_DELETE_WORD},
 	{"open", CMD_OPEN},
+	{"new", CMD_NEW},
 	{"save", CMD_SAVE},
 	{"save-as", CMD_SAVE_AS},
 	{"undo", CMD_UNDO},
@@ -99,6 +105,9 @@ static CommandName const command_names[CMD_COUNT] = {
 	{"copy", CMD_COPY},
 	{"cut", CMD_CUT},
 	{"paste", CMD_PASTE},
+	{"tab-close", CMD_TAB_CLOSE},
+	{"tab-next", CMD_TAB_NEXT},
+	{"tab-prev", CMD_TAB_PREV},
 	{"increase-text-size", CMD_TEXT_SIZE_INCREASE},
 	{"decrease-text-size", CMD_TEXT_SIZE_DECREASE},
 	{"escape", CMD_ESCAPE}

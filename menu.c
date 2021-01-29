@@ -168,3 +168,9 @@ static void menu_render(Ted *ted, Menu menu) {
 		file_selector_render(ted, fs);
 	}
 }
+
+static void menu_frame(Ted *ted, Menu menu) {
+	menu_update(ted, menu);
+	if (ted->menu)
+		menu_render(ted, ted->menu);
+}
