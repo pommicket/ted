@@ -68,7 +68,7 @@ int fs_mkdir(char const *path) {
 
 int fs_get_cwd(char *buf, size_t buflen) {
 	assert(buf && buflen);
-	DWORD pathlen = GetCurrentDirectory(buflen, buf);
+	DWORD pathlen = GetCurrentDirectory((DWORD)buflen, buf);
 	if (pathlen == 0) {
 		return -1;
 	} else if (pathlen < buflen) { // it's confusing, but this is < and not <=

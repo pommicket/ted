@@ -85,7 +85,7 @@ static void file_selector_down(Ted const *ted, FileSelector *fs, i64 n) {
 	file_selector_up(ted, fs, -n);
 }
 
-static int qsort_file_entry_cmp(void const *av, void const *bv, void *search_termv) {
+static int qsort_file_entry_cmp(void *search_termv, void const *av, void const *bv) {
 	char const *search_term = search_termv;
 	FileEntry const *a = av, *b = bv;
 	// put directories first
