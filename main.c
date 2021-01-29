@@ -179,6 +179,11 @@ int main(int argc, char **argv) {
 		}
 	#endif
 	}
+	#if TED_FORCE_SEARCH_CWD
+	// override whether or not we are in the executable's directory
+	// (for testing on Unix systems without /proc)
+	ted->search_cwd = true;
+	#endif
 
 	Settings *settings = &ted->settings;
 

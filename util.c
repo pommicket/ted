@@ -191,6 +191,12 @@ static int str_qsort_case_insensitive_cmp(const void *av, const void *bv) {
 	return strcmp_case_insensitive(*a, *b);
 }
 
+static void *qsort_ctx_data;
+static int (*qsort_ctx_cmp)(const void *, const void *, void *data);
+static int qsort_with_context_cmp(const void *a, const void *b) {
+	return qsort_ctx_cmp(a, b, qsort_ctx_data);
+}
+
 // qsort but with a user void*
 static void qsort_with_context(void *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *, void *), void *arg) {
 #if _WIN32
@@ -199,6 +205,9 @@ static void qsort_with_context(void *base, size_t nmemb, size_t size, int (*comp
 	// GNU doesn't have qsort_s ):
 	qsort_r(base, nmemb, size, compar, arg);
 #else
-#error "No qsort_r/qsort_s. You can try filling in this function if you know what you're doing."
+	// just use global variables. hopefully we don't try to run this in something multithreaded!
+	qsort_ctx_data = arg;
+	qsort_ctx_cmp = compar;
+	qsort(base, nmemb, size, qsort_with_context_cmp);
 #endif
 }
