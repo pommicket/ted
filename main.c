@@ -190,13 +190,13 @@ int main(int argc, char **argv) {
 		wchar_t *appdata = NULL;
 		KNOWNFOLDERID id = FOLDERID_LocalAppData;
 		if (SHGetKnownFolderPath(&id, 0, NULL, &appdata) == S_OK) {
-			strbuf_printf(ted_local_data_dir, "%ls" PATH_SEPARATOR_STR "ted", appdata);
+			strbuf_printf(ted->local_data_dir, "%ls" PATH_SEPARATOR_STR "ted", appdata);
 			CoTaskMemFree(appdata);
 		}
 		id = FOLDERID_Profile;
 		wchar_t *home = NULL;
 		if (SHGetKnownFolderPath(&id, 0, NULL, &home) == S_OK) {
-			strbuf_printf(ted_home, "%ls", home);
+			strbuf_printf(ted->home, "%ls", home);
 			CoTaskMemFree(home);
 		}
 		strbuf_printf(ted->global_data_dir, "C:\\Program Files\\ted");
@@ -229,7 +229,7 @@ int main(int argc, char **argv) {
 			char *last_backslash = strrchr(executable_path, '\\');
 			if (last_backslash) {
 				*last_backslash = '\0';
-				ted_search_cwd = streq(cwd, executable_path);
+				ted->search_cwd = streq(cwd, executable_path);
 			}
 		}
 	#else
