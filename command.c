@@ -145,7 +145,7 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		break;
 	case CMD_SAVE:
 		if (buffer) {
-			if (buffer->filename && streq(buffer->filename, "Untitled")) {
+			if (buffer->filename && streq(buffer->filename, TED_UNTITLED)) {
 				// don't worry, this won't catch files called "Untitled"; buffer->filename is the full path.
 				goto save_as;
 			}
@@ -171,9 +171,6 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		if (buffer) buffer_cut(buffer);
 		break;
 	case CMD_PASTE:
-		// @TEST @TODO: delete me
-		ted_seterr(ted, "Very long test error the quick brown fox jumps over the lazy dog. ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz. Thank you very much. It was the best of times. It was the worst of times. It was the age of reason. It was the age of foolishness.");
-
 		if (buffer) buffer_paste(buffer);
 		break;
 	
@@ -191,6 +188,13 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 			ted_load_fonts(ted);
 		}
 	} break;
+
+	case CMD_TAB_NEXT:
+		node_tab_next(ted, ted->active_node, argument);
+		break;
+	case CMD_TAB_PREV:
+		node_tab_prev(ted, ted->active_node, argument);
+		break;
 	
 	case CMD_ESCAPE:
 		if (*ted->error_shown) {

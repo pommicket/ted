@@ -148,7 +148,7 @@ static void ted_new_file(Ted *ted) {
 			arr_add(node->tabs, (u16)new_buffer_index);
 			TextBuffer *new_buffer = &ted->buffers[new_buffer_index];
 			if (node->tabs) {
-				buffer_new_file(new_buffer, "Untitled");
+				buffer_new_file(new_buffer, TED_UNTITLED);
 				if (!buffer_haserr(new_buffer)) {
 					ted->active_buffer = new_buffer;
 					node->active_tab = (u16)(arr_len(node->tabs) - 1);

@@ -1,4 +1,5 @@
 #define TED_PATH_MAX 256
+#define TED_UNTITLED "Untitled" // what to call untitled buffers
 
 #define TEXT_SIZE_MIN 6
 #define TEXT_SIZE_MAX 70
@@ -70,7 +71,7 @@ typedef struct {
 	u32 nlines;
 	u32 lines_capacity;
 	Line *lines;
-	char error[128];
+	char error[256];
 	BufferEdit *undo_history; // dynamic array of undo history
 	BufferEdit *redo_history; // dynamic array of redo history
 } TextBuffer;
