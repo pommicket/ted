@@ -2,6 +2,7 @@ ENUM_U16 {
 	COLOR_UNKNOWN,
 
 	COLOR_TEXT,
+	COLOR_TEXT_SECONDARY,
 	COLOR_BG,
 	COLOR_HL,
 	COLOR_CURSOR,
@@ -33,6 +34,7 @@ typedef struct {
 static ColorName const color_names[COLOR_COUNT] = {
 	{COLOR_UNKNOWN, "unknown"},
 	{COLOR_TEXT, "text"},
+	{COLOR_TEXT_SECONDARY, "text-secondary"},
 	{COLOR_BG, "bg"},
 	{COLOR_HL, "hl"},
 	{COLOR_CURSOR, "cursor"},

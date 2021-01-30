@@ -625,7 +625,7 @@ Status buffer_load_file(TextBuffer *buffer, char const *filename) {
 			success = false;
 		}
 	} else {
-		buffer_seterr(buffer, "File %s does not exist.", filename);
+		buffer_seterr(buffer, "Couldn't open file %s: %s.", filename, strerror(errno));
 		success = false;
 	}
 	return success;

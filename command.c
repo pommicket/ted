@@ -220,7 +220,7 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 
 	case CMD_TAB_CLOSE: {
 		if (ted->menu) {
-			menu_close(ted, true);
+			menu_close(ted);
 		} else {
 			Node *node = ted->active_node;
 			if (node) {

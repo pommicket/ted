@@ -173,6 +173,7 @@ static bool ted_open_file(Ted *ted, char const *filename) {
 		if (buffer_load_file(buffer, filename)) {
 			return true;
 		} else {
+			ted_seterr_to_buferr(ted, buffer);
 			node_tab_close(ted, ted->active_node, tab_idx);
 			ted_delete_buffer(ted, (u16)buffer_idx);
 			return false;
@@ -190,6 +191,7 @@ static bool ted_new_file(Ted *ted) {
 		if (!buffer_haserr(buffer)) {
 			return true;
 		} else {
+			ted_seterr_to_buferr(ted, buffer);
 			node_tab_close(ted, ted->active_node, tab_idx);
 			ted_delete_buffer(ted, (u16)buffer_idx);
 			return false;
@@ -217,18 +219,6 @@ static void ted_switch_to_buffer(Ted *ted, u16 buffer_idx) {
 		}
 	}
 	assert(0);
-}
-
-// are there any unsaved changes in any buffers?
-static bool ted_any_unsaved_changes(Ted *ted) {
-	bool *buffers_used = ted->buffers_used;
-	for (u16 i = 0; i < TED_MAX_BUFFERS; ++i) {
-		if (buffers_used[i]) {
-			if (buffer_unsaved_changes(&ted->buffers[i]))
-				return true;
-		}
-	}
-	return false;
 }
 
 // save all changes to all buffers with unsaved changes.

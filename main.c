@@ -1,7 +1,4 @@
 // @TODO:
-// - try opening a file you don't have read permission for -- check for memory leaks!
-
-// - show something informative when there's no nodes open (i.e. ted->active_node == NULL).
 // - split
 // - Windows installation
 #include "base.h"
@@ -101,7 +98,7 @@ int main(int argc, char **argv) {
 	setlocale(LC_ALL, ""); // allow unicode
 
 	// read command-line arguments
-	char const *starting_filename = TED_UNTITLED;
+	char const *starting_filename = NULL;
 	switch (argc) {
 	case 0: case 1: break;
 	case 2:
@@ -257,11 +254,20 @@ int main(int argc, char **argv) {
 		arr_add(node->tabs, 0);
 
 
-		if (fs_file_exists(starting_filename)) {
-			if (!buffer_load_file(buffer, starting_filename))
+		char path[TED_PATH_MAX];
+		if (starting_filename) {
+			// get full path to file
+			strbuf_printf(path, "%s%s%s", ted->cwd, ted->cwd[strlen(ted->cwd) - 1] == PATH_SEPARATOR ? "" : PATH_SEPARATOR_STR,
+				starting_filename);
+		} else {
+			strbuf_printf(path, "Untitled");
+		}
+
+		if (starting_filename && fs_file_exists(path)) {
+			if (!buffer_load_file(buffer, path))
 				ted_seterr(ted, "Couldn't load file: %s", buffer_geterr(buffer));
 		} else {
-			buffer_new_file(buffer, starting_filename);
+			buffer_new_file(buffer, path);
 			if (buffer_haserr(buffer))
 				ted_seterr(ted, "Couldn't create file: %s", buffer_geterr(buffer));
 		}
@@ -475,10 +481,14 @@ int main(int argc, char **argv) {
 		
 		Font *font = ted->font;
 
-		{
+		if (ted->active_node) {
 			float x1 = 25, y1 = 25, x2 = window_width-25, y2 = window_height-25;
 			Node *node = ted->root;
 			node_frame(ted, node, rect4(x1, y1, x2, y2));
+		} else {
+			gl_color_rgba(colors[COLOR_TEXT_SECONDARY]);
+			text_render_anchored(font, "Press Ctrl+O to open a file or Ctrl+N to create a new one.",
+				window_width * 0.5f, window_height * 0.5f, ANCHOR_MIDDLE);
 		}
 
 		Menu menu = ted->menu;
@@ -561,7 +571,7 @@ int main(int argc, char **argv) {
 
 
 	if (ted->menu)
-		menu_close(ted, false); // free any memory used by the current menu
+		menu_close(ted); // free any memory used by the current menu
 
 	if (log) fclose(log);
 

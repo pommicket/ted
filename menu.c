@@ -20,8 +20,8 @@ static void menu_open(Ted *ted, Menu menu) {
 	}
 }
 
-static void menu_close(Ted *ted, bool restore_prev_active_buffer) {
-	if (restore_prev_active_buffer) ted->active_buffer = ted->prev_active_buffer;
+static void menu_close(Ted *ted) {
+	ted->active_buffer = ted->prev_active_buffer;
 	ted->prev_active_buffer = NULL;
 	switch (ted->menu) {
 	case MENU_NONE: assert(0); break;
@@ -44,7 +44,7 @@ static void menu_escape(Ted *ted) {
 		*ted->warn_overwrite = 0;
 		ted->active_buffer = &ted->line_buffer;
 	} else {
-		menu_close(ted, true);
+		menu_close(ted);
 	}
 }
 
@@ -80,7 +80,7 @@ static void menu_update(Ted *ted, Menu menu) {
 				if (buffer) {
 					buffer_save_as(buffer, ted->warn_overwrite);
 				}
-				menu_close(ted, true);
+				menu_close(ted);
 			} break;
 			case POPUP_NO:
 				// back to the file selector
@@ -89,7 +89,7 @@ static void menu_update(Ted *ted, Menu menu) {
 				break;
 			case POPUP_CANCEL:
 				// close "save as" menu
-				menu_close(ted, true);
+				menu_close(ted);
 				break;
 			}
 		} else {
@@ -104,7 +104,7 @@ static void menu_update(Ted *ted, Menu menu) {
 					} else {
 						// create the new file.
 						buffer_save_as(buffer, selected_file);
-						menu_close(ted, true);
+						menu_close(ted);
 					}
 				}
 				free(selected_file);
@@ -115,10 +115,8 @@ static void menu_update(Ted *ted, Menu menu) {
 		char *selected_file = file_selector_update(ted, &ted->file_selector);
 		if (selected_file) {
 			// open that file!
-			if (ted_open_file(ted, selected_file)) {
-				menu_close(ted, false);
-				file_selector_free(&ted->file_selector);
-			}
+			menu_close(ted);
+			ted_open_file(ted, selected_file);
 			free(selected_file);
 		}
 	} break;
@@ -129,7 +127,7 @@ static void menu_update(Ted *ted, Menu menu) {
 			// save changes
 			switch (ted->warn_unsaved) {
 			case CMD_TAB_CLOSE: {
-				menu_close(ted, true);
+				menu_close(ted);
 				TextBuffer *buffer = ted->active_buffer;
 				command_execute(ted, CMD_SAVE, 1); 
 				if (!buffer_unsaved_changes(buffer)) {
@@ -137,7 +135,7 @@ static void menu_update(Ted *ted, Menu menu) {
 				}
 			} break;
 			case CMD_QUIT:
-				menu_close(ted, true);
+				menu_close(ted);
 				if (ted_save_all(ted)) {
 					command_execute(ted, CMD_QUIT, 1);
 				}
@@ -150,11 +148,11 @@ static void menu_update(Ted *ted, Menu menu) {
 		case POPUP_NO: {
 			// pass in an argument of 2 to override dialog
 			Command cmd = ted->warn_unsaved;
-			menu_close(ted, true);
+			menu_close(ted);
 			command_execute(ted, cmd, 2);
 		} break;
 		case POPUP_CANCEL:
-			menu_close(ted, true);
+			menu_close(ted);
 			break;
 		}
 		break;
