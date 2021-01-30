@@ -155,5 +155,4 @@ typedef struct Ted {
 	char error_shown[512]; // error display in box on screen
 } Ted;
 
-// forward declarations
 void command_execute(Ted *ted, Command c, i64 argument);

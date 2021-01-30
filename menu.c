@@ -129,13 +129,16 @@ static void menu_update(Ted *ted, Menu menu) {
 			// save changes
 			switch (ted->warn_unsaved) {
 			case CMD_TAB_CLOSE:
+				menu_close(ted, true);
 				if (buffer_save(ted->prev_active_buffer)) {
-					menu_close(ted, true);
 					command_execute(ted, CMD_TAB_CLOSE, 1);
 				}
 				break;
 			case CMD_QUIT:
-				assert(0); // @TODO!
+				menu_close(ted, true);
+				if (ted_save_all(ted)) {
+					command_execute(ted, CMD_QUIT, 1);
+				}
 				break;
 			default:
 				assert(0);

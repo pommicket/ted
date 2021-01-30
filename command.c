@@ -159,9 +159,34 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 			menu_open(ted, MENU_SAVE_AS);
 		}
 		break;
+	case CMD_SAVE_ALL:
+		ted_save_all(ted);
+		break;
 	case CMD_QUIT:
-		// @TODO: check for unsaved changes in all buffers
-		ted->quit = true;
+		// pass argument of 2 to override dialog
+		if (argument == 2) {
+			ted->quit = true;
+		} else {
+			*ted->warn_unsaved_names = 0;
+			bool *buffers_used = ted->buffers_used;
+			bool first = true;
+			for (u16 i = 0; i < TED_MAX_BUFFERS; ++i) {
+				if (buffers_used[i]) {
+					buffer = &ted->buffers[i];
+					if (buffer_unsaved_changes(buffer)) {
+						strbuf_catf(ted->warn_unsaved_names, "%s%s", first ? "" : ", ", path_filename(buffer->filename));
+						first = false;
+					}
+				}
+			}
+			if (*ted->warn_unsaved_names) {
+				ted->warn_unsaved = CMD_QUIT;
+				menu_open(ted, MENU_WARN_UNSAVED);
+			} else {
+				// no unsaved changes
+				ted->quit = true;
+			}
+		}
 		break;
 	case CMD_UNDO:
 		if (buffer) buffer_undo(buffer, argument);

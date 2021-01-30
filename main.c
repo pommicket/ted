@@ -1,5 +1,5 @@
 // @TODO:
-// - when closing tabs/window, warn on unsaved changes
+// - middle click to close tab
 // - try opening a file you don't have read permission for -- check for memory leaks!
 
 // - show something informative when there's no nodes open (i.e. ted->active_node == NULL).
@@ -570,9 +570,11 @@ int main(int argc, char **argv) {
 	SDL_DestroyWindow(window);
 	SDL_Quit();
 	for (u16 i = 0; i < TED_MAX_BUFFERS; ++i)
-		buffer_free(&ted->buffers[i]);
+		if (ted->buffers_used[i])
+			buffer_free(&ted->buffers[i]);
 	for (u16 i = 0; i < TED_MAX_NODES; ++i)
-		node_free(&ted->nodes[i]);
+		if (ted->nodes_used[i])
+			node_free(&ted->nodes[i]);
 	buffer_free(&ted->line_buffer);
 	text_font_free(ted->font);
 	text_font_free(ted->font_bold);

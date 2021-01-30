@@ -57,6 +57,9 @@ static char *str_dup(char const *src) {
 //                              first, check that str is actually an array
 #define strbuf_printf(str, ...) assert(sizeof str != 4 && sizeof str != 8), \
 	str_printf(str, sizeof str, __VA_ARGS__)
+#define str_catf(str, size, ...) str_printf((str) + strlen(str), (size) - strlen(str), __VA_ARGS__)
+#define strbuf_catf(str, ...) assert(sizeof str != 4 && sizeof str != 8), \
+	str_catf(str, sizeof str, __VA_ARGS__)
 
 // on 16-bit systems, this is 16383. on 32/64-bit systems, this is 1073741823
 // it is unusual to have a string that long.

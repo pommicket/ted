@@ -640,6 +640,8 @@ void buffer_new_file(TextBuffer *buffer, char const *filename) {
 	buffer->nlines = 1;
 }
 
+// Save the buffer to its current filename. This will rewrite the entire file, regardless of
+// whether there are any unsaved changes.
 bool buffer_save(TextBuffer *buffer) {
 	if (!buffer->is_line_buffer && buffer->filename) {
 		FILE *out = fopen(buffer->filename, "wb");

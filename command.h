@@ -41,6 +41,7 @@ ENUM_U16 {
 	CMD_OPEN, // open a file
 	CMD_SAVE, // save current buffer
 	CMD_SAVE_AS,
+	CMD_SAVE_ALL, // save all open buffers with unsaved changes
 	CMD_NEW,
 	CMD_UNDO,
 	CMD_REDO,
@@ -101,6 +102,7 @@ static CommandName const command_names[CMD_COUNT] = {
 	{"new", CMD_NEW},
 	{"save", CMD_SAVE},
 	{"save-as", CMD_SAVE_AS},
+	{"save-all", CMD_SAVE_ALL},
 	{"quit", CMD_QUIT},
 	{"undo", CMD_UNDO},
 	{"redo", CMD_REDO},

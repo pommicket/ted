@@ -1,3 +1,5 @@
+static void menu_open(Ted *ted, Menu menu);
+
 // this is a macro so we get -Wformat warnings
 #define ted_seterr(buffer, ...) \
 	snprintf(ted->error, sizeof ted->error - 1, __VA_ARGS__)
@@ -195,4 +197,60 @@ static bool ted_new_file(Ted *ted) {
 	} else {
 		return false;
 	}
+}
+
+// sets the active buffer to this buffer, and updates active_node, etc. accordingly
+static void ted_switch_to_buffer(Ted *ted, u16 buffer_idx) {
+	ted->active_buffer = &ted->buffers[buffer_idx];
+	// now we need to figure out where this buffer is
+	bool *nodes_used = ted->nodes_used;
+	for (u16 i = 0; i < TED_MAX_NODES; ++i) {
+		if (nodes_used[i]) {
+			Node *node = &ted->nodes[i];
+			arr_foreach_ptr(node->tabs, u16, tab) {
+				if (buffer_idx == *tab) {
+					node->active_tab = (u16)(tab - node->tabs);
+					ted->active_node = node;
+					return;
+				}
+			}
+		}
+	}
+	assert(0);
+}
+
+// are there any unsaved changes in any buffers?
+static bool ted_any_unsaved_changes(Ted *ted) {
+	bool *buffers_used = ted->buffers_used;
+	for (u16 i = 0; i < TED_MAX_BUFFERS; ++i) {
+		if (buffers_used[i]) {
+			if (buffer_unsaved_changes(&ted->buffers[i]))
+				return true;
+		}
+	}
+	return false;
+}
+
+// save all changes to all buffers with unsaved changes.
+// returns true if all buffers were saved successfully
+static bool ted_save_all(Ted *ted) {
+	bool success = true;
+	bool *buffers_used = ted->buffers_used;
+	for (u16 i = 0; i < TED_MAX_BUFFERS; ++i) {
+		if (buffers_used[i]) {
+			TextBuffer *buffer = &ted->buffers[i];
+			if (buffer_unsaved_changes(buffer)) {
+				if (buffer->filename && streq(buffer->filename, TED_UNTITLED)) {
+					ted_switch_to_buffer(ted, i);
+					menu_open(ted, MENU_SAVE_AS);
+					success = false; // we haven't saved this buffer yet; we've just opened the "save as" menu.
+					break;
+				} else {
+					if (!buffer_save(buffer))
+						success = false;
+				}
+			}
+		}
+	}
+	return success;
 }
