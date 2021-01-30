@@ -45,12 +45,14 @@ static void node_close(Ted *ted, Node *node) {
 }
 
 // close tab, WITHOUT checking for unsaved changes!
-static void node_tab_close(Ted *ted, Node *node, u16 index) {
+// returns true if the node is still open
+static bool node_tab_close(Ted *ted, Node *node, u16 index) {
 	u16 ntabs = (u16)arr_len(node->tabs);
 	assert(index < ntabs);
 	if (ntabs == 1) {
 		// only 1 tab left, just close the node
 		node_close(ted, node);
+		return false;
 	} else {
 		u16 buffer_index = node->tabs[index];
 		// remove tab from array
@@ -66,6 +68,7 @@ static void node_tab_close(Ted *ted, Node *node, u16 index) {
 			// fix active buffer if necessary
 			ted->active_buffer = &ted->buffers[node->tabs[node->active_tab]];
 		}
+		return true;
 	}
 }
 
@@ -76,7 +79,6 @@ static void node_frame(Ted *ted, Node *node, Rect r) {
 		u32 const *colors = settings->colors;
 		Font *font = ted->font;
 		
-		u16 buffer_index = node->tabs[node->active_tab];
 		float tab_bar_height = 20;
 		
 		Rect tab_bar_rect = r;
@@ -92,6 +94,27 @@ static void node_frame(Ted *ted, Node *node, Rect r) {
 					node_switch_to_tab(ted, node, tab_index);
 				}
 			}
+			for (u16 c = 0; c < ted->nmouse_clicks[SDL_BUTTON_MIDDLE]; ++c) {
+				v2 click = ted->mouse_clicks[SDL_BUTTON_MIDDLE][c];
+				if (rect_contains_point(tab_bar_rect, click)) {
+					u16 tab_index = (u16)((click.x - r.pos.x) / tab_width);
+					u16 buffer_idx = node->tabs[tab_index];
+					TextBuffer *buffer = &ted->buffers[buffer_idx];
+					// close that tab
+					if (buffer_unsaved_changes(buffer)) {
+						// make sure unsaved changes dialog is opened
+						ted_switch_to_buffer(ted, buffer_idx);
+						command_execute(ted, CMD_TAB_CLOSE, 1);
+					} else {
+						if (!node_tab_close(ted, node, tab_index)) {
+							return; // node closed
+						}
+					}
+					ntabs = (u16)arr_len(node->tabs);
+					tab_width = r.size.x / ntabs;
+				}
+			}
+
 			for (u16 i = 0; i < ntabs; ++i) {
 				TextBuffer *buffer = &ted->buffers[node->tabs[i]];
 				char tab_title[256];
@@ -123,6 +146,7 @@ static void node_frame(Ted *ted, Node *node, Rect r) {
 			}
 		}
 
+		u16 buffer_index = node->tabs[node->active_tab];
 		TextBuffer *buffer = &ted->buffers[buffer_index];
 		assert(ted->buffers_used[buffer_index]);
 		Rect buffer_rect = rect_translate(r, V2(0, tab_bar_height));

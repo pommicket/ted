@@ -128,7 +128,7 @@ static i32 ted_new_node(Ted *ted) {
 	
 }
 
-static void node_tab_close(Ted *ted, Node *node, u16 index);
+static bool node_tab_close(Ted *ted, Node *node, u16 index);
 
 // Open a new buffer. Fills out *tab to the index of the tab used, and *buffer_idx to the index of the buffer.
 // Returns true on success.

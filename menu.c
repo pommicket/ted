@@ -128,12 +128,14 @@ static void menu_update(Ted *ted, Menu menu) {
 		case POPUP_YES:
 			// save changes
 			switch (ted->warn_unsaved) {
-			case CMD_TAB_CLOSE:
+			case CMD_TAB_CLOSE: {
 				menu_close(ted, true);
-				if (buffer_save(ted->prev_active_buffer)) {
+				TextBuffer *buffer = ted->active_buffer;
+				command_execute(ted, CMD_SAVE, 1); 
+				if (!buffer_unsaved_changes(buffer)) {
 					command_execute(ted, CMD_TAB_CLOSE, 1);
 				}
-				break;
+			} break;
 			case CMD_QUIT:
 				menu_close(ted, true);
 				if (ted_save_all(ted)) {

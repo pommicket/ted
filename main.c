@@ -1,5 +1,4 @@
 // @TODO:
-// - middle click to close tab
 // - try opening a file you don't have read permission for -- check for memory leaks!
 
 // - show something informative when there's no nodes open (i.e. ted->active_node == NULL).
