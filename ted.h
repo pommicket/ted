@@ -138,6 +138,7 @@ typedef struct Ted {
 	double error_time; // time error box was opened (in seconds -- see time_get_seconds)
 	KeyAction key_actions[KEY_COMBO_COUNT];
 	bool search_cwd; // should the working directory be searched for files? set to true if the executable isn't "installed"
+	bool quit; // if set to true, the window will close next frame. NOTE: this doesn't check for unsaved changes!!
 	char warn_overwrite[TED_PATH_MAX]; // file name user is trying to overwrite
 	char local_data_dir[TED_PATH_MAX];
 	char global_data_dir[TED_PATH_MAX];

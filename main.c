@@ -1,6 +1,8 @@
 // @TODO:
 // - when closing tabs/window, warn on unsaved changes
-// - try opening a file you don't have read permission for
+// - try opening a file you don't have read permission for -- check for memory leaks!
+
+// - show something informative when there's no nodes open (i.e. ted->active_node == NULL).
 // - split
 // - Windows installation
 #include "base.h"
@@ -42,7 +44,7 @@ no_warn_end
 #include "string32.c"
 #include "arr.c"
 #include "buffer.c"
-#include "ted-base.c"
+#include "ted.c"
 #include "ui.c"
 #include "node.c"
 #include "command.c"
@@ -271,8 +273,7 @@ int main(int argc, char **argv) {
 
 	Uint32 time_at_last_frame = SDL_GetTicks();
 
-	bool quit = false;
-	while (!quit) {
+	while (!ted->quit) {
 	#if DEBUG
 		//printf("\033[H\033[2J");
 	#endif
@@ -312,7 +313,7 @@ int main(int argc, char **argv) {
 				| (u32)alt_down << KEY_MODIFIER_ALT_BIT;
 			switch (event.type) {
 			case SDL_QUIT:
-				quit = true;
+				command_execute(ted, CMD_QUIT, 1);
 				break;
 			case SDL_MOUSEWHEEL: {
 				// scroll with mouse wheel
@@ -476,7 +477,7 @@ int main(int argc, char **argv) {
 		Font *font = ted->font;
 
 		{
-			float x1 = 50, y1 = 50, x2 = window_width-50, y2 = window_height-50;
+			float x1 = 25, y1 = 25, x2 = window_width-25, y2 = window_height-25;
 			Node *node = ted->root;
 			node_frame(ted, node, rect4(x1, y1, x2, y2));
 		}

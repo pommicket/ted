@@ -20,6 +20,55 @@ static void node_tab_prev(Ted *ted, Node *node, i64 n) {
 	node_tab_next(ted, node, -n);
 }
 
+static void node_free(Node *node) {
+	arr_free(node->tabs);
+	memset(node, 0, sizeof *node);
+}
+
+static void node_close(Ted *ted, Node *node) {
+	// @TODO(split)
+
+	// delete all associated buffers
+	arr_foreach_ptr(node->tabs, u16, tab) {
+		u16 buffer_index = *tab;
+		ted_delete_buffer(ted, buffer_index);
+	}
+
+	node_free(node);
+
+	u16 node_index = (u16)(node - ted->nodes);
+	assert(node_index < TED_MAX_NODES);
+	ted->nodes_used[node_index] = false;
+	if (ted->active_node == node) {
+		ted->active_node = NULL;
+	}
+}
+
+// close tab, WITHOUT checking for unsaved changes!
+static void node_tab_close(Ted *ted, Node *node, u16 index) {
+	u16 ntabs = (u16)arr_len(node->tabs);
+	assert(index < ntabs);
+	if (ntabs == 1) {
+		// only 1 tab left, just close the node
+		node_close(ted, node);
+	} else {
+		u16 buffer_index = node->tabs[index];
+		// remove tab from array
+		memmove(&node->tabs[index], &node->tabs[index + 1], (ntabs - (index + 1)) * sizeof *node->tabs);
+		arr_remove_last(node->tabs);
+		ted_delete_buffer(ted, buffer_index);
+
+		ntabs = (u16)arr_len(node->tabs); // update ntabs
+		assert(ntabs);
+		// make sure active tab is valid
+		node->active_tab = clamp_u16(node->active_tab, 0, ntabs - 1);
+		if (ted->active_node == node) {
+			// fix active buffer if necessary
+			ted->active_buffer = &ted->buffers[node->tabs[node->active_tab]];
+		}
+	}
+}
+
 static void node_frame(Ted *ted, Node *node, Rect r) {
 	if (node->tabs) {
 		bool is_active = node == ted->active_node;
@@ -75,7 +124,9 @@ static void node_frame(Ted *ted, Node *node, Rect r) {
 		}
 
 		TextBuffer *buffer = &ted->buffers[buffer_index];
+		assert(ted->buffers_used[buffer_index]);
 		Rect buffer_rect = rect_translate(r, V2(0, tab_bar_height));
+		buffer_rect.size.y -= tab_bar_height;
 		buffer_render(buffer, buffer_rect);
 	} else {
 

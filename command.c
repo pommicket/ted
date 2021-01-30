@@ -147,16 +147,20 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		if (buffer) {
 			if (buffer->filename && streq(buffer->filename, TED_UNTITLED)) {
 				// don't worry, this won't catch files called "Untitled"; buffer->filename is the full path.
-				goto save_as;
+				command_execute(ted, CMD_SAVE_AS, 1);
+				return;
 			}
 			buffer_save(buffer);
 		}
 		break;
 	case CMD_SAVE_AS:
-	save_as:
 		if (buffer && !buffer->is_line_buffer) {
 			menu_open(ted, MENU_SAVE_AS);
 		}
+		break;
+	case CMD_QUIT:
+		// @TODO: check for unsaved changes in all buffers
+		ted->quit = true;
 		break;
 	case CMD_UNDO:
 		if (buffer) buffer_undo(buffer, argument);
@@ -189,11 +193,20 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		}
 	} break;
 
+	case CMD_TAB_CLOSE: {
+		Node *node = ted->active_node;
+		if (node) {
+			node_tab_close(ted, node, node->active_tab);
+		} else {
+			command_execute(ted, CMD_QUIT, 1);
+			return;
+		}
+	} break;
 	case CMD_TAB_NEXT:
-		node_tab_next(ted, ted->active_node, argument);
+		if (ted->active_node) node_tab_next(ted, ted->active_node, argument);
 		break;
 	case CMD_TAB_PREV:
-		node_tab_prev(ted, ted->active_node, argument);
+		if (ted->active_node) node_tab_prev(ted, ted->active_node, argument);
 		break;
 	
 	case CMD_ESCAPE:

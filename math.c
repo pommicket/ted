@@ -46,11 +46,30 @@ static int clampi(int x, int a, int b) {
 	return x;
 }
 
+static i16 clamp_i16(i16 x, i16 a, i16 b) {
+	if (x < a) return a;
+	if (x > b) return b;
+	return x;
+}
+
+static u16 clamp_u16(u16 x, u16 a, u16 b) {
+	if (x < a) return a;
+	if (x > b) return b;
+	return x;
+}
+
 static i32 clamp_i32(i32 x, i32 a, i32 b) {
 	if (x < a) return a;
 	if (x > b) return b;
 	return x;
 }
+
+static u32 clamp_u32(u32 x, u32 a, u32 b) {
+	if (x < a) return a;
+	if (x > b) return b;
+	return x;
+}
+
 
 // remap x from the interval [from_a, from_b] to the interval [to_a, to_b], NOT clamping if x is outside the "from" interval.
 static float remapf(float x, float from_a, float from_b, float to_a, float to_b) {

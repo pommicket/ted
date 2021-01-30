@@ -102,7 +102,17 @@ static i32 ted_new_buffer(Ted *ted) {
 	return -1;
 }
 
-// returns the index of an available node, or -1 if none are available 
+// Opposite of ted_new_buffer
+// Make sure you set active_buffer to something else if you delete it!
+static void ted_delete_buffer(Ted *ted, u16 index) {
+	TextBuffer *buffer = &ted->buffers[index];
+	if (buffer == ted->active_buffer)
+		ted->active_buffer = NULL; // make sure we don't set the active buffer to something invalid
+	buffer_free(buffer);
+	ted->buffers_used[index] = false;
+}
+
+// Returns the index of an available node, or -1 if none are available 
 static i32 ted_new_node(Ted *ted) {
 	bool *nodes_used = ted->nodes_used;
 	for (i32 i = 0; i < TED_MAX_NODES; ++i) {
@@ -111,52 +121,79 @@ static i32 ted_new_node(Ted *ted) {
 			return i;
 		}
 	}
-	ted_seterr(ted, "Too many buffers open!");
+	ted_seterr(ted, "Too many nodes.");
 	return -1;
 	
 }
 
-static void node_free(Node *node) {
-	arr_free(node->tabs);
-}
+static void node_tab_close(Ted *ted, Node *node, u16 index);
 
-// returns true on success
-static bool ted_open_file(Ted *ted, char const *filename) {
+// Open a new buffer. Fills out *tab to the index of the tab used, and *buffer_idx to the index of the buffer.
+// Returns true on success.
+static Status ted_open_buffer(Ted *ted, u16 *buffer_idx, u16 *tab) {
 	i32 new_buffer_index = ted_new_buffer(ted);
 	if (new_buffer_index >= 0) {
 		Node *node = ted->active_node;
+		if (!node) {
+			// no active node; let's create one!
+			i32 node_idx = ted_new_node(ted);
+			if (node_idx >= 0) {
+				node = &ted->nodes[node_idx];
+				ted->active_node = node;
+			} else {
+				ted_delete_buffer(ted, (u16)new_buffer_index);
+				return false;
+			}
+		}
 		if (arr_len(node->tabs) < TED_MAX_TABS) {
 			arr_add(node->tabs, (u16)new_buffer_index);
 			TextBuffer *new_buffer = &ted->buffers[new_buffer_index];
-			if (node->tabs && buffer_load_file(new_buffer, filename)) {
-				ted->active_buffer = new_buffer;
-				node->active_tab = (u16)(arr_len(node->tabs) - 1);
-				return true;
-			}
+			ted->active_buffer = new_buffer;
+			node->active_tab = (u16)(arr_len(node->tabs) - 1);
+			*buffer_idx = (u16)new_buffer_index;
+			*tab = node->active_tab;
+			return true;
 		} else {
 			ted_seterr(ted, "Too many tabs.");
+			ted_delete_buffer(ted, (u16)new_buffer_index);
+			return false;
 		}
+	} else {
+		return false;
 	}
-	return false;
 }
 
-static void ted_new_file(Ted *ted) {
-	i32 new_buffer_index = ted_new_buffer(ted);
-	if (new_buffer_index >= 0) {
-		Node *node = ted->active_node;
-		if (arr_len(node->tabs) < TED_MAX_TABS) {
-			arr_add(node->tabs, (u16)new_buffer_index);
-			TextBuffer *new_buffer = &ted->buffers[new_buffer_index];
-			if (node->tabs) {
-				buffer_new_file(new_buffer, TED_UNTITLED);
-				if (!buffer_haserr(new_buffer)) {
-					ted->active_buffer = new_buffer;
-					node->active_tab = (u16)(arr_len(node->tabs) - 1);
-				}
-			}
+// Returns true on success
+static bool ted_open_file(Ted *ted, char const *filename) {
+	u16 buffer_idx, tab_idx;
+	if (ted_open_buffer(ted, &buffer_idx, &tab_idx)) {
+		TextBuffer *buffer = &ted->buffers[buffer_idx];
+		if (buffer_load_file(buffer, filename)) {
+			return true;
 		} else {
-			ted_seterr(ted, "Too many tabs.");
+			node_tab_close(ted, ted->active_node, tab_idx);
+			ted_delete_buffer(ted, (u16)buffer_idx);
+			return false;
 		}
+	} else {
+		return false;
+	}
+}
+
+static bool ted_new_file(Ted *ted) {
+	u16 buffer_idx, tab_idx;
+	if (ted_open_buffer(ted, &buffer_idx, &tab_idx)) {
+		TextBuffer *buffer = &ted->buffers[buffer_idx];
+		buffer_new_file(buffer, TED_UNTITLED);
+		if (!buffer_haserr(buffer)) {
+			return true;
+		} else {
+			node_tab_close(ted, ted->active_node, tab_idx);
+			ted_delete_buffer(ted, (u16)buffer_idx);
+			return false;
+		}
+	} else {
+		return false;
 	}
 }
 

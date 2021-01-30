@@ -47,6 +47,7 @@ ENUM_U16 {
 	CMD_COPY,
 	CMD_CUT,
 	CMD_PASTE,
+	CMD_QUIT,
 
 	CMD_TAB_CLOSE,
 	CMD_TAB_NEXT,
@@ -100,6 +101,7 @@ static CommandName const command_names[CMD_COUNT] = {
 	{"new", CMD_NEW},
 	{"save", CMD_SAVE},
 	{"save-as", CMD_SAVE_AS},
+	{"quit", CMD_QUIT},
 	{"undo", CMD_UNDO},
 	{"redo", CMD_REDO},
 	{"copy", CMD_COPY},
