@@ -217,3 +217,11 @@ static char const *path_filename(char const *path) {
 	// (a relative path with no path separators)
 	return path;
 }
+
+static bool path_is_absolute(char const *path) {
+	return path[0] == PATH_SEPARATOR
+	#if _WIN32
+		|| path[1] == ':' && path[2] == PATH_SEPARATOR
+	#endif
+		;
+}

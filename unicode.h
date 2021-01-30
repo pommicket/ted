@@ -119,14 +119,14 @@ static size_t unicode_utf32_to_utf8(char *s, char32_t c32) {
 		return 1;
 	} else if (c32 <= 0x7FF) {
 		// two bytes needed
-		*p++ = 0xC0 | (u8)(c32 >> 6);
-		*p   = 0x80 | (u8)(c32 & 0x3F);
+		*p++ = (u8)(0xC0 | (c32 >> 6));
+		*p   = (u8)(0x80 | (c32 & 0x3F));
 		return 2;
 	} else if (c32 <= 0x7FFF) {
 		if (c32 < 0xD800 || c32 > 0xDFFF) {
-			*p++ = 0xE0 | (u8)( c32 >> 12);
-			*p++ = 0x80 | (u8)((c32 >> 6) & 0x3F);
-			*p   = 0x80 | (u8)( c32       & 0x3F);
+			*p++ = (u8)(0xE0 | ( c32 >> 12));
+			*p++ = (u8)(0x80 | ((c32 >> 6) & 0x3F));
+			*p   = (u8)(0x80 | ( c32       & 0x3F));
 			return 3;
 		} else {
 			// UTF-16 surrogate halves
@@ -134,10 +134,10 @@ static size_t unicode_utf32_to_utf8(char *s, char32_t c32) {
 			return (size_t)-1;
 		}
 	} else if (c32 <= 0x10FFFF) {
-		*p++ = 0xF0 | (u8)( c32 >> 18);
-		*p++ = 0x80 | (u8)((c32 >> 12) & 0x3F);
-		*p++ = 0x80 | (u8)((c32 >>  6) & 0x3F);
-		*p   = 0x80 | (u8)( c32        & 0x3F);
+		*p++ = (u8)(0xF0 | ( c32 >> 18));
+		*p++ = (u8)(0x80 | ((c32 >> 12) & 0x3F));
+		*p++ = (u8)(0x80 | ((c32 >>  6) & 0x3F));
+		*p   = (u8)(0x80 | ( c32        & 0x3F));
 		return 4;
 	} else {
 		// code point too big

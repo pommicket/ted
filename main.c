@@ -257,8 +257,11 @@ int main(int argc, char **argv) {
 		char path[TED_PATH_MAX];
 		if (starting_filename) {
 			// get full path to file
-			strbuf_printf(path, "%s%s%s", ted->cwd, ted->cwd[strlen(ted->cwd) - 1] == PATH_SEPARATOR ? "" : PATH_SEPARATOR_STR,
-				starting_filename);
+			if (!path_is_absolute(starting_filename))
+				strbuf_printf(path, "%s%s%s", ted->cwd, ted->cwd[strlen(ted->cwd) - 1] == PATH_SEPARATOR ? "" : PATH_SEPARATOR_STR,
+					starting_filename);
+			else
+				strbuf_printf(path, "%s", starting_filename);
 		} else {
 			strbuf_printf(path, "Untitled");
 		}

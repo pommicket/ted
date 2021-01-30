@@ -186,11 +186,7 @@ static Status file_selector_cd_(Ted const *ted, FileSelector *fs, char const *pa
 	char *const cwd = fs->cwd;
 	if (path[0] == '\0') return true;
 
-	if (path[0] == PATH_SEPARATOR
-	#if _WIN32
-	|| path[1] == ':' && path[2] == PATH_SEPARATOR
-	#endif
-		) {
+	if (path_is_absolute(path)) {
 		// absolute path (e.g. /foo, c:\foo)
 		// start out by replacing cwd with the start of the absolute path
 		cwd[0] = '\0';

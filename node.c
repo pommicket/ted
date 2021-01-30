@@ -56,7 +56,7 @@ static bool node_tab_close(Ted *ted, Node *node, u16 index) {
 	} else {
 		u16 buffer_index = node->tabs[index];
 		// remove tab from array
-		memmove(&node->tabs[index], &node->tabs[index + 1], (ntabs - (index + 1)) * sizeof *node->tabs);
+		memmove(&node->tabs[index], &node->tabs[index + 1], (size_t)(ntabs - (index + 1)) * sizeof *node->tabs);
 		arr_remove_last(node->tabs);
 		ted_delete_buffer(ted, buffer_index);
 

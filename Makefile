@@ -1,5 +1,5 @@
 ALL_CFLAGS=$(CFLAGS) -Wall -Wextra -Wshadow -Wconversion -Wpedantic -pedantic -std=gnu11 \
-	-Wno-unused-function -Wno-fixed-enum-extension -Wimplicit-fallthrough
+	-Wno-unused-function -Wno-fixed-enum-extension -Wimplicit-fallthrough -Wno-format-truncation -Wno-unknown-warning-option
 LIBS=-lSDL2 -lGL -ldl -lm
 DEBUG_CFLAGS=$(ALL_CFLAGS) -DDEBUG -O0 -g
 RELEASE_CFLAGS=$(ALL_CFLAGS) -O3
