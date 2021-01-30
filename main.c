@@ -47,9 +47,9 @@ no_warn_end
 #include "ted.c"
 #include "ui.c"
 #include "node.c"
+#include "menu.c"
 #include "command.c"
 #include "config.c"
-#include "menu.c"
 
 static void die(char const *fmt, ...) {
 	char buf[256] = {0};

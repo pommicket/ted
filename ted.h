@@ -79,7 +79,8 @@ typedef struct {
 ENUM_U16 {
 	MENU_NONE,
 	MENU_OPEN,
-	MENU_SAVE_AS
+	MENU_SAVE_AS,
+	MENU_WARN_UNSAVED // warn about unsaved changes
 } ENUM_U16_END(Menu);
 
 // file entries for file selectors
@@ -139,6 +140,8 @@ typedef struct Ted {
 	KeyAction key_actions[KEY_COMBO_COUNT];
 	bool search_cwd; // should the working directory be searched for files? set to true if the executable isn't "installed"
 	bool quit; // if set to true, the window will close next frame. NOTE: this doesn't check for unsaved changes!!
+	Command warn_unsaved; // if non-zero, the user is trying to execute this command, but there are unsaved changes
+	char warn_unsaved_names[TED_PATH_MAX]; // comma-separated list of files with unsaved changes (only applicable if warn_unsaved != 0)
 	char warn_overwrite[TED_PATH_MAX]; // file name user is trying to overwrite
 	char local_data_dir[TED_PATH_MAX];
 	char global_data_dir[TED_PATH_MAX];
@@ -151,3 +154,6 @@ typedef struct Ted {
 	char error[512];
 	char error_shown[512]; // error display in box on screen
 } Ted;
+
+// forward declarations
+void command_execute(Ted *ted, Command c, i64 argument);

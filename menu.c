@@ -13,15 +13,29 @@ static void menu_open(Ted *ted, Menu menu) {
 		ted->active_buffer = &ted->line_buffer;
 		ted->file_selector.create_menu = true;
 		break;
+	case MENU_WARN_UNSAVED:
+		assert(ted->warn_unsaved);
+		assert(*ted->warn_unsaved_names);
+		break;
 	}
 }
 
 static void menu_close(Ted *ted, bool restore_prev_active_buffer) {
-	ted->menu = MENU_NONE;
 	if (restore_prev_active_buffer) ted->active_buffer = ted->prev_active_buffer;
 	ted->prev_active_buffer = NULL;
-	file_selector_free(&ted->file_selector);
-	buffer_clear(&ted->line_buffer);
+	switch (ted->menu) {
+	case MENU_NONE: assert(0); break;
+	case MENU_OPEN:
+	case MENU_SAVE_AS:
+		file_selector_free(&ted->file_selector);
+		buffer_clear(&ted->line_buffer);
+		break;
+	case MENU_WARN_UNSAVED:
+		ted->warn_unsaved = 0;
+		*ted->warn_unsaved_names = 0;
+		break;
+	}
+	ted->menu = MENU_NONE;
 }
 
 static void menu_escape(Ted *ted) {
@@ -108,6 +122,37 @@ static void menu_update(Ted *ted, Menu menu) {
 			free(selected_file);
 		}
 	} break;
+	case MENU_WARN_UNSAVED:
+		switch (popup_update(ted)) {
+		case POPUP_NONE: break;
+		case POPUP_YES:
+			// save changes
+			switch (ted->warn_unsaved) {
+			case CMD_TAB_CLOSE:
+				if (buffer_save(ted->prev_active_buffer)) {
+					menu_close(ted, true);
+					command_execute(ted, CMD_TAB_CLOSE, 1);
+				}
+				break;
+			case CMD_QUIT:
+				assert(0); // @TODO!
+				break;
+			default:
+				assert(0);
+				break;
+			}
+			break;
+		case POPUP_NO: {
+			// pass in an argument of 2 to override dialog
+			Command cmd = ted->warn_unsaved;
+			menu_close(ted, true);
+			command_execute(ted, cmd, 2);
+		} break;
+		case POPUP_CANCEL:
+			menu_close(ted, true);
+			break;
+		}
+		break;
 	}
 }
 
@@ -127,9 +172,16 @@ static void menu_render(Ted *ted, Menu menu) {
 	if (*ted->warn_overwrite) {
 		char const *path = ted->warn_overwrite;
 		char const *filename = path_filename(path);
-		char title[32] = {0}, body[256] = {0};
+		char title[64] = {0}, body[1024] = {0};
 		strbuf_printf(title, "Overwrite %s?", filename);
 		strbuf_printf(body, "Are you sure you want to overwrite %s?", path);
+		popup_render(ted, title, body);
+		return;
+	}
+	if (menu == MENU_WARN_UNSAVED) {
+		char title[64] = {0}, body[1024] = {0};
+		strbuf_printf(title, "Save changes?");
+		strbuf_printf(body, "Do you want to save your changes to %s?", ted->warn_unsaved_names);
 		popup_render(ted, title, body);
 		return;
 	}

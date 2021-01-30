@@ -196,6 +196,3 @@ static bool ted_new_file(Ted *ted) {
 		return false;
 	}
 }
-
-static void menu_open(Ted *ted, Menu menu);
-static void menu_escape(Ted *ted);
