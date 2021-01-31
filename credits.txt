@@ -1,4 +1,4 @@
-assets/font-code.ttf (Noto Sans Mono Regular), assets/font-regular.ttf (Noto Sans Regular), assets/font-bold.ttf (Noto Sans Bold):
+assets/font.ttf (Noto Sans Mono Regular), assets/font-bold.ttf (Noto Sans Mono Bold):
     These are from the Noto font family, licensed under the Apache License, version 2.0, as found in apache2.txt.
     They can be found here: https://www.google.com/get/noto/
 stb_truetype.h:
