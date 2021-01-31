@@ -247,6 +247,9 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 	case CMD_TAB_PREV:
 		if (ted->active_node) node_tab_prev(ted, ted->active_node, argument);
 		break;
+	case CMD_TAB_SWITCH:
+		if (ted->active_node) node_tab_switch(ted, ted->active_node, argument);
+		break;
 	
 	case CMD_ESCAPE:
 		if (*ted->error_shown) {

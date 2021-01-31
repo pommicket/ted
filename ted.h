@@ -11,6 +11,7 @@ typedef struct {
 	u16 max_menu_width;
 	u16 error_display_time;
 	bool auto_indent;
+	bool auto_add_newline;
 	u8 tab_width;
 	u8 cursor_width;
 	u8 undo_save_time;

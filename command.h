@@ -51,6 +51,7 @@ ENUM_U16 {
 	CMD_QUIT,
 
 	CMD_TAB_CLOSE,
+	CMD_TAB_SWITCH, // argument = index of tab (starting at 0)
 	CMD_TAB_NEXT,
 	CMD_TAB_PREV,
 
@@ -110,6 +111,7 @@ static CommandName const command_names[CMD_COUNT] = {
 	{"cut", CMD_CUT},
 	{"paste", CMD_PASTE},
 	{"tab-close", CMD_TAB_CLOSE},
+	{"tab-switch", CMD_TAB_SWITCH},
 	{"tab-next", CMD_TAB_NEXT},
 	{"tab-prev", CMD_TAB_PREV},
 	{"increase-text-size", CMD_TEXT_SIZE_INCREASE},

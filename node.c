@@ -20,6 +20,13 @@ static void node_tab_prev(Ted *ted, Node *node, i64 n) {
 	node_tab_next(ted, node, -n);
 }
 
+static void node_tab_switch(Ted *ted, Node *node, i64 tab) {
+	assert(node->tabs);
+	if (tab < arr_len(node->tabs)) {
+		node_switch_to_tab(ted, node, (u16)tab);
+	}
+}
+
 static void node_free(Node *node) {
 	arr_free(node->tabs);
 	memset(node, 0, sizeof *node);

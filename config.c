@@ -151,6 +151,47 @@ void config_read(Ted *ted, char const *filename) {
 	};
 	ConfigReader *cfg = &cfg_reader;
 	Settings *settings = &ted->settings;
+	
+	typedef struct {
+		char const *name;
+		bool *control;
+	} OptionBool;
+	typedef struct {
+		char const *name;
+		u8 *control, min, max;
+	} OptionU8;
+	typedef struct {
+		char const *name;
+		float *control, min, max;
+	} OptionFloat;
+	typedef struct {
+		char const *name;
+		u16 *control, min, max;
+	} OptionU16;
+	// core options
+	// (these go at the start so they don't need to be re-computed each time)
+	OptionBool const options_bool[] = {
+		{"auto-indent", &settings->auto_indent},
+		{"auto-add-newline", &settings->auto_add_newline},
+	};
+	OptionU8 const options_u8[] = {
+		{"tab-width", &settings->tab_width, 1, 100},
+		{"cursor-width", &settings->cursor_width, 1, 100},
+		{"undo-save-time", &settings->undo_save_time, 1, 200},
+		{"border-thickness", &settings->border_thickness, 1, 30},
+		{"padding", &settings->padding, 0, 100},
+		{"scrolloff", &settings->scrolloff, 1, 100},
+	};
+	OptionFloat const options_float[] = {
+		{"cursor-blink-time-on", &settings->cursor_blink_time_on, 0, 1000},
+		{"cursor-blink-time-off", &settings->cursor_blink_time_off, 0, 1000},
+	};
+	OptionU16 const options_u16[] = {
+		{"text-size", &settings->text_size, TEXT_SIZE_MIN, TEXT_SIZE_MAX},
+		{"max-menu-width", &settings->max_menu_width, 10, U16_MAX},
+		{"error-display-time", &settings->error_display_time, 0, U16_MAX},
+	};
+
 	FILE *fp = fopen(filename, "rb");
 	if (fp) {
 		int line_cap = 4096;
@@ -270,83 +311,48 @@ void config_read(Ted *ted, char const *filename) {
 										boolean = false;
 									}
 
-									if (streq(key, "tab-width")) {
-										if (is_integer && integer > 0 && integer < 100) {
-											settings->tab_width = (u8)integer;
-										} else {
-											config_err(cfg, "Invalid tab width: %s.", value);
+									// go through all types of options
+									for (size_t i = 0; i < arr_count(options_bool); ++i) {
+										OptionBool const *option = &options_bool[i];
+										if (streq(key, option->name)) {
+											if (is_bool)
+												*option->control = boolean;
+											else
+												config_err(cfg, "Invalid %s: %s. This should be yes, no, on, or off.", option->name, value);
 										}
-									} else if (streq(key, "cursor-width")) {
-										if (is_integer && integer > 0 && integer < 100) {
-											settings->cursor_width = (u8)integer;
-										} else {
-											config_err(cfg, "Invalid cursor width: %s.", value);
-										}
-									} else if (streq(key, "undo-save-time")) {
-										if (is_integer && integer > 0 && integer < 200) {
-											settings->undo_save_time = (u8)integer;
-										} else {
-											config_err(cfg, "Invalid undo save time: %s.", value);
-										}
-									} else if (streq(key, "cursor-blink-time-on")) {
-										if (is_floating && floating >= 0 && floating < 1000) {
-											settings->cursor_blink_time_on = (float)floating;
-										} else {
-											config_err(cfg, "Invalid cursor blink time: %s.", value);
-										}
-									} else if (streq(key, "cursor-blink-time-off")) {
-										if (is_floating && floating >= 0 && floating < 1000) {
-											settings->cursor_blink_time_off = (float)floating;
-										} else {
-											config_err(cfg, "Invalid cursor blink time: %s.", value);
-										}
-									} else if (streq(key, "text-size")) {
-										if (is_integer && integer >= TEXT_SIZE_MIN && integer <= TEXT_SIZE_MAX) {
-											settings->text_size = (u16)integer;
-										} else {
-											config_err(cfg, "Invalid text size: %s.", value);
-										}
-									} else if (streq(key, "border-thickness")) {
-										if (is_integer && integer > 0 && integer < 30) {
-											settings->border_thickness = (u8)integer;
-										} else {
-											config_err(cfg, "Invalid border thickness: %s.", value);
-										}
-									} else if (streq(key, "max-menu-width")) {
-										if (is_integer && integer >= 10 && integer < U16_MAX) {
-											settings->max_menu_width = (u16)integer;
-										} else {
-											config_err(cfg, "Invalid max menu width: %s.", value);
-										}
-									} else if (streq(key, "padding")) {
-										if (is_integer && integer >= 0 && integer < 100) {
-											settings->padding = (u8)integer;
-										} else {
-											config_err(cfg, "Invalid padding: %s.", value);
-										}
-									} else if (streq(key, "scrolloff")) {
-										if (is_integer && integer >= 1 && integer < 100) {
-											settings->scrolloff = (u8)integer;
-										} else {
-											config_err(cfg, "Invalid scrolloff: %s.", value);
-										}
-									} else if (streq(key, "error-display-time")) {
-										if (is_integer && integer >= 0 && integer < U16_MAX) {
-											settings->error_display_time = (u16)integer;
-										} else {
-											config_err(cfg, "Invalid error display time: %s.", value);
-										}
-									} else if (streq(key, "auto-indent")) {
-										if (is_bool) {
-											settings->auto_indent = boolean;
-										} else {
-											config_err(cfg, "Invalid auto indent: %s " BOOL_HELP ".", value);
-										}
-									} else {
-										config_err(cfg, "Unrecognized core setting: %s.", key);
 									}
 
-								#undef BOOL_HELP
+									for (size_t i = 0; i < arr_count(options_u8); ++i) {
+										OptionU8 const *option = &options_u8[i];
+										if (streq(key, option->name)) {
+											if (is_integer && integer >= option->min && integer <= option->max)
+												*option->control = (u8)integer;
+											else
+												config_err(cfg, "Invalid %s: %s. This should be an integer from %u to %u.", option->name, value, option->min, option->max);
+										}
+									}
+
+									for (size_t i = 0; i < arr_count(options_u16); ++i) {
+										OptionU16 const *option = &options_u16[i];
+										if (streq(key, option->name)) {
+											if (is_integer && integer >= option->min && integer <= option->max)
+												*option->control = (u16)integer;
+											else
+												config_err(cfg, "Invalid %s: %s. This should be an integer from %u to %u.", option->name, value, option->min, option->max);
+										}
+									}
+
+
+									for (size_t i = 0; i < arr_count(options_float); ++i) {
+										OptionFloat const *option = &options_float[i];
+										if (streq(key, option->name)) {
+											if (is_floating && floating >= option->min && floating <= option->max)
+												*option->control = (float)floating;
+											else
+												config_err(cfg, "Invalid %s: %s. This should be a number from %g to %g.", option->name, value, option->min, option->max);
+										}
+									}
+
 								} break;
 								}
 							}

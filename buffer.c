@@ -643,6 +643,7 @@ void buffer_new_file(TextBuffer *buffer, char const *filename) {
 // Save the buffer to its current filename. This will rewrite the entire file, regardless of
 // whether there are any unsaved changes.
 bool buffer_save(TextBuffer *buffer) {
+	Settings const *settings = buffer_settings(buffer);
 	if (!buffer->is_line_buffer && buffer->filename) {
 		FILE *out = fopen(buffer->filename, "wb");
 		if (out) {
@@ -659,6 +660,13 @@ bool buffer_save(TextBuffer *buffer) {
 
 				if (line != end-1) {
 					putc('\n', out);
+				} else {
+					if (settings->auto_add_newline) {
+						if (line->len) {
+							// if the last line isn't empty, add a newline.
+							putc('\n', out);
+						}
+					}
 				}
 			}
 			if (ferror(out)) {
