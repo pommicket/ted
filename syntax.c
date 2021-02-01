@@ -42,11 +42,15 @@ static void syntax_highlight_c(SyntaxStateC *state, char32_t *line, u32 line_len
 	bool in_string = state->continued_string;
 	bool in_single_line_comment = state->continued_single_line_comment; // this kind of comment :)
 	bool in_multi_line_comment = state->multi_line_comment;
+	bool in_char = false;
+	bool in_number = false;
+
 	int backslashes = 0;
 	for (u32 i = 0; i < line_len; ++i) {
 		SyntaxCharType type = SYNTAX_NORMAL;
 		// necessary for the final " of a string to be highlighted
 		bool in_string_now = in_string;
+		bool in_char_now = in_char;
 		bool in_multi_line_comment_now = in_multi_line_comment;
 
 		// are there 1/2 characters left in the line?
@@ -81,6 +85,12 @@ static void syntax_highlight_c(SyntaxStateC *state, char32_t *line, u32 line_len
 			else if (!in_multi_line_comment && !in_single_line_comment)
 				in_string = in_string_now = true;
 			break;
+		case '\'':
+			if (in_char && backslashes % 2 == 0)
+				in_char = false;
+			else if (!in_multi_line_comment && !in_single_line_comment)
+				in_char = in_char_now = true;
+			break;
 		case '<': // preprocessor string, e.g. <stdio.h>
 			if (in_preprocessor)
 				in_string = in_string_now = true;
@@ -88,6 +98,16 @@ static void syntax_highlight_c(SyntaxStateC *state, char32_t *line, u32 line_len
 		case '>':
 			if (in_preprocessor && in_string)
 				in_string = false;
+			break;
+		case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9': // don't you wish C had case ranges...
+			// a number!
+			if (!in_single_line_comment && !in_multi_line_comment && !in_string) {
+				in_number = true;
+				if (i && line[i - 1] == '.') {
+					// support .6, for example
+					char_types[i - 1] = SYNTAX_NUMBER;
+				}
+			}
 			break;
 		default: {
 			// split keywords by starting letter to speed this up
@@ -97,13 +117,13 @@ static void syntax_highlight_c(SyntaxStateC *state, char32_t *line, u32 line_len
 				['c'] = {"case", "char", "const", "continue", "char8_t", "char16_t", "char32_t"},
 				['d'] = {"default", "do", "double"},
 				['e'] = {"else", "enum", "extern"},
-				['f'] = {"float", "for"},
+				['f'] = {"float", "for", "false"},
 				['g'] = {"goto"},
 				['i'] = {"if", "inline", "int", "int8_t", "int16_t", "int32_t", "int64_t"},
 				['l'] = {"long"},
 				['r'] = {"register", "restrict", "return"},
 				['s'] = {"short", "signed", "sizeof", "static", "struct", "switch"},
-				['t'] = {"typedef"},
+				['t'] = {"typedef", "true"},
 				['u'] = {"union", "unsigned", "uint8_t", "uint16_t", "uint32_t", "uint64_t"},
 				['v'] = {"void", "volatile"},
 				['w'] = {"while", "wchar_t", "wint_t"},
@@ -111,49 +131,59 @@ static void syntax_highlight_c(SyntaxStateC *state, char32_t *line, u32 line_len
 					"_Imaginary", "_Noreturn", "_Static_assert", "_Thread_local"},
 			};
 
-			char const *const *keywords = line[i] < arr_count(all_keywords) ? all_keywords[line[i]] : NULL;
-			if (char_types && keywords && !in_single_line_comment && !in_multi_line_comment && !in_string && !in_preprocessor) {
-				// keywords don't matter for advancing the state
-				for (size_t k = 0; keywords[k]; ++k) {
-					bool matches = true;
-					char const *keyword = keywords[k];
-					size_t keyword_len = strlen(keyword);
-					if (i + keyword_len <= line_len) {
-						// make sure we don't catch "print" as containing the keyword "int"
-						bool separated = (i == 0 || !is32_ident(line[i-1])) && (i + keyword_len == line_len || !is32_ident(line[i + keyword_len]));
-						if (separated) {
-							char32_t *p = &line[i];
-							// check if `p` starts with `keyword`
-							for (char const *q = keyword; *q; ++p, ++q) {
-								if (*p != (char32_t)*q) {
-									matches = false;
+			// keywords don't matter for advancing the state
+			if (char_types && !in_single_line_comment && !in_multi_line_comment && !in_string && !in_preprocessor) {
+				char const *const *keywords = line[i] < arr_count(all_keywords) ? all_keywords[line[i]] : NULL;
+				if (keywords) {
+					for (size_t k = 0; keywords[k]; ++k) {
+						bool matches = true;
+						char const *keyword = keywords[k];
+						size_t keyword_len = strlen(keyword);
+						if (i + keyword_len <= line_len) {
+							// make sure we don't catch "print" as containing the keyword "int"
+							bool separated = (i == 0 || !is32_ident(line[i-1])) && (i + keyword_len == line_len || !is32_ident(line[i + keyword_len]));
+							if (separated) {
+								char32_t *p = &line[i];
+								// check if `p` starts with `keyword`
+								for (char const *q = keyword; *q; ++p, ++q) {
+									if (*p != (char32_t)*q) {
+										matches = false;
+										break;
+									}
+								}
+								if (matches) {
+									// it's a keyword
+									// let's highlight all of it now
+									for (size_t c = 0; keyword[c]; ++c) {
+										char_types[i++] = SYNTAX_KEYWORD;
+									}
+									--i; // we'll increment i from the for loop
+									dealt_with = true;
 									break;
 								}
-							}
-							if (matches) {
-								for (size_t c = 0; keyword[c]; ++c) {
-									char_types[i++] = SYNTAX_KEYWORD;
-								}
-								--i; // we'll increment i from the for loop
-								dealt_with = true;
-								break;
 							}
 						}
 					}
 				}
-
 			}
 		} break;
 		}
 		if (line[i] != '\\') backslashes = 0;
+		if (in_number && !(is32_digit(line[i]) || line[i] == '.' || line[i] == 'e' || (i && line[i-1] == 'e' && (line[i] == '+' || line[i] == '-')))) {
+			in_number = false;
+		}
 
 		if (char_types && !dealt_with) {
 			if (in_single_line_comment || in_multi_line_comment_now)
 				type = SYNTAX_COMMENT;
 			else if (in_string_now)
 				type = SYNTAX_STRING;
+			else if (in_char_now)
+				type = SYNTAX_CHARACTER;
 			else if (in_preprocessor)
 				type = SYNTAX_PREPROCESSOR;
+			else if (in_number)
+				type = SYNTAX_NUMBER;
 
 			char_types[i] = type;
 		}
