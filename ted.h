@@ -5,6 +5,33 @@
 #define TEXT_SIZE_MAX 70
 
 typedef struct {
+	bool multi_line_comment:1; // are we in a multi-line comment? (delineated by /* */)
+	bool continued_single_line_comment:1; // if you add a \ to the end of a single-line comment, it is continued to the next line.
+	bool continued_preprocessor:1; // similar to above
+	bool continued_string:1;
+} SyntaxStateC;
+
+typedef union {
+	SyntaxStateC c;
+} SyntaxState;
+
+ENUM_U16 {
+	LANG_TEXT,
+	LANG_C,
+	LANG_COUNT
+} ENUM_U16_END(Language);
+
+ENUM_U8 {
+	SYNTAX_NORMAL,
+	SYNTAX_KEYWORD,
+	SYNTAX_COMMENT,
+	SYNTAX_PREPROCESSOR,
+	SYNTAX_STRING,
+	SYNTAX_CHARACTER,
+	SYNTAX_CONSTANT
+} ENUM_U8_END(SyntaxCharType);
+
+typedef struct {
 	float cursor_blink_time_on, cursor_blink_time_off;
 	u32 colors[COLOR_COUNT];
 	u16 text_size;
@@ -64,6 +91,7 @@ typedef struct {
 	double scroll_x, scroll_y; // number of characters scrolled in the x/y direction
 	BufferPos cursor_pos;
 	BufferPos selection_pos; // if selection is true, the text between selection_pos and cursor_pos is selected.
+	Language language;
 	bool is_line_buffer; // "line buffers" are buffers which can only have one line of text (used for inputs)
 	bool selection;
 	bool store_undo_events; // set to false to disable undo events

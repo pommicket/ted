@@ -1980,7 +1980,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	SyntaxCharType *char_types = NULL;
 	for (u32 line_idx = 0; line_idx < start_line; ++line_idx) {
 		Line *line = &lines[line_idx];
-		syntax_highlight(&syntax_state, LANG_C, line->str, line->len, NULL);
+		syntax_highlight(&syntax_state, buffer->language, line->str, line->len, NULL);
 	}
 
 	for (u32 line_idx = start_line; line_idx < nlines; ++line_idx) {
@@ -1988,7 +1988,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 		if (arr_len(char_types) < line->len) {
 			arr_set_len(char_types, line->len);
 		}
-		syntax_highlight(&syntax_state, LANG_C, line->str, line->len, char_types);
+		syntax_highlight(&syntax_state, buffer->language, line->str, line->len, char_types);
 		for (u32 i = 0; i < line->len; ++i) {
 			char32_t c = line->str[i];
 			SyntaxCharType type = char_types[i];

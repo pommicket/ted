@@ -1,28 +1,3 @@
-typedef struct {
-	bool multi_line_comment:1; // are we in a multi-line comment? (delineated by /* */)
-	bool continued_single_line_comment:1; // if you add a \ to the end of a single-line comment, it is continued to the next line.
-	bool continued_preprocessor:1; // similar to above
-	bool continued_string:1;
-} SyntaxStateC;
-
-typedef union {
-	SyntaxStateC c;
-} SyntaxState;
-
-ENUM_U16 {
-	LANG_C
-} ENUM_U16_END(Language);
-
-ENUM_U8 {
-	SYNTAX_NORMAL,
-	SYNTAX_KEYWORD,
-	SYNTAX_COMMENT,
-	SYNTAX_PREPROCESSOR,
-	SYNTAX_STRING,
-	SYNTAX_CHARACTER,
-	SYNTAX_CONSTANT
-} ENUM_U8_END(SyntaxCharType);
-
 // NOTE: returns the color setting, not the color
 ColorSetting syntax_char_type_to_color(SyntaxCharType t) {
 	switch (t) {
@@ -235,8 +210,12 @@ static void syntax_highlight_c(SyntaxStateC *state, char32_t *line, u32 line_len
 // You can set char_types to NULL if you just want to advance the state, and don't care about the character types.
 void syntax_highlight(SyntaxState *state, Language lang, char32_t *line, u32 line_len, SyntaxCharType *char_types) {
 	switch (lang) {
+	case LANG_TEXT:
+		memset(char_types, 0, line_len * sizeof *char_types);
+		break;
 	case LANG_C:
 		syntax_highlight_c(&state->c, line, line_len, char_types);
 		break;
+	case LANG_COUNT: assert(0); break;
 	}
 }
