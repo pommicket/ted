@@ -177,6 +177,33 @@ static inline Settings const *buffer_settings(TextBuffer *buffer) {
 	return &buffer->ted->settings;
 }
 
+// what programming language is this?
+Language buffer_language(TextBuffer *buffer) {
+	Settings const *settings = buffer_settings(buffer);
+	char const *filename = buffer->filename;
+	if (!filename)
+		return LANG_NONE;
+	size_t filename_len = strlen(filename);
+
+	for (u16 l = 0; l < LANG_COUNT; ++l) {
+		char const *extensions = settings->language_extensions[l];
+		if (extensions) {
+			// extensions is a string with commas separating each extension.
+			size_t len = 0;
+			for (char const *p = extensions; *p; p += len) {
+				if (*p == ',') ++p; // move past comma
+				len = strcspn(p, ",");
+				if (filename_len >= len && strncmp(&filename[filename_len - len], p, len) == 0) {
+					// found a match!
+					return (Language)l;
+				}
+			}
+		}
+	}
+	// no extensions matched
+	return LANG_NONE;
+}
+
 // NOTE: this string will be invalidated when the line is edited!!!
 // only use it briefly!!
 static String32 buffer_get_line(TextBuffer *buffer, u32 line_number) {
@@ -1976,11 +2003,12 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	text_state.y -= (float)(buffer->scroll_y - start_line) * char_height;
 
 	SyntaxState syntax_state = {0};
+	Language language = buffer_language(buffer);
 	// dynamic array of character types, to be filled by syntax_highlight
 	SyntaxCharType *char_types = NULL;
 	for (u32 line_idx = 0; line_idx < start_line; ++line_idx) {
 		Line *line = &lines[line_idx];
-		syntax_highlight(&syntax_state, buffer->language, line->str, line->len, NULL);
+		syntax_highlight(&syntax_state, language, line->str, line->len, NULL);
 	}
 
 	for (u32 line_idx = start_line; line_idx < nlines; ++line_idx) {
@@ -1988,7 +2016,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 		if (arr_len(char_types) < line->len) {
 			arr_set_len(char_types, line->len);
 		}
-		syntax_highlight(&syntax_state, buffer->language, line->str, line->len, char_types);
+		syntax_highlight(&syntax_state, language, line->str, line->len, char_types);
 		for (u32 i = 0; i < line->len; ++i) {
 			char32_t c = line->str[i];
 			SyntaxCharType type = char_types[i];

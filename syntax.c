@@ -1,3 +1,12 @@
+// returns the language this string is referring to, or LANG_NONE if it's invalid.
+Language language_from_str(char const *str) {
+	for (int i = 0; i < LANG_COUNT; ++i) {
+		if (streq(language_names[i].name, str))
+			return language_names[i].lang;
+	}
+	return LANG_NONE;
+}
+
 // NOTE: returns the color setting, not the color
 ColorSetting syntax_char_type_to_color(SyntaxCharType t) {
 	switch (t) {
@@ -210,7 +219,7 @@ static void syntax_highlight_c(SyntaxStateC *state, char32_t *line, u32 line_len
 // You can set char_types to NULL if you just want to advance the state, and don't care about the character types.
 void syntax_highlight(SyntaxState *state, Language lang, char32_t *line, u32 line_len, SyntaxCharType *char_types) {
 	switch (lang) {
-	case LANG_TEXT:
+	case LANG_NONE:
 		memset(char_types, 0, line_len * sizeof *char_types);
 		break;
 	case LANG_C:

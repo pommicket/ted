@@ -16,10 +16,20 @@ typedef union {
 } SyntaxState;
 
 ENUM_U16 {
-	LANG_TEXT,
+	LANG_NONE,
 	LANG_C,
 	LANG_COUNT
 } ENUM_U16_END(Language);
+
+typedef struct {
+	Language lang;
+	char const *name;
+} LanguageName;
+
+static LanguageName const language_names[] = {
+	{LANG_NONE, "None"},
+	{LANG_C, "C"},
+};
 
 ENUM_U8 {
 	SYNTAX_NORMAL,
@@ -45,6 +55,8 @@ typedef struct {
 	u8 border_thickness;
 	u8 padding;
 	u8 scrolloff;
+	// [i] = comma-separated string of file extensions for language i, or NULL for none
+	char *language_extensions[LANG_COUNT];
 } Settings;
 
 #define SCANCODE_COUNT 0x120 // SDL scancodes should be less than this value.
@@ -91,7 +103,6 @@ typedef struct {
 	double scroll_x, scroll_y; // number of characters scrolled in the x/y direction
 	BufferPos cursor_pos;
 	BufferPos selection_pos; // if selection is true, the text between selection_pos and cursor_pos is selected.
-	Language language;
 	bool is_line_buffer; // "line buffers" are buffers which can only have one line of text (used for inputs)
 	bool selection;
 	bool store_undo_events; // set to false to disable undo events

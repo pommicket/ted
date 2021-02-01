@@ -11,7 +11,8 @@ typedef enum {
 	SECTION_NONE,
 	SECTION_CORE,
 	SECTION_KEYBOARD,
-	SECTION_COLORS
+	SECTION_COLORS,
+	SECTION_EXTENSIONS
 } Section;
 
 // all worth it for the -Wformat warnings
@@ -227,6 +228,8 @@ void config_read(Ted *ted, char const *filename) {
 								section = SECTION_COLORS;
 							} else if (streq(section_name, "core")) {
 								section = SECTION_CORE;
+							} else if (streq(section_name, "extensions")) {
+								section = SECTION_EXTENSIONS;
 							} else {
 								config_err(cfg, "Unrecognized section: [%s].", section_name);
 							}
@@ -292,6 +295,25 @@ void config_read(Ted *ted, char const *filename) {
 										}
 									} else {
 										config_err(cfg, "Expected ':' for key action. This line should look something like: %s = :command.", key);
+									}
+								} break;
+								case SECTION_EXTENSIONS: {
+									Language lang = language_from_str(key);
+									if (lang == LANG_NONE) {
+										config_err(cfg, "Invalid programming language: %s.", key);
+									} else {
+										char *new_str = malloc(strlen(value) + 1);
+										if (!new_str) {
+											config_err(cfg, "Out of memory.");
+										} else {
+											char *dst = new_str;
+											// get rid of whitespace in extension list
+											for (char const *src = value; *src; ++src)
+												if (!isspace(*src))
+													*dst++ = *src;
+											*dst = 0;
+											settings->language_extensions[lang] = new_str;
+										}
 									}
 								} break;
 								case SECTION_CORE: {
@@ -378,5 +400,12 @@ void config_read(Ted *ted, char const *filename) {
 		fclose(fp);
 	} else {
 		ted_seterr(ted, "Couldn't open file %s.", filename);
+	}
+}
+
+static void settings_free(Settings *settings) {
+	for (u16 i = 0; i < LANG_COUNT; ++i) {
+		free(settings->language_extensions[i]);
+		settings->language_extensions[i] = NULL;
 	}
 }
