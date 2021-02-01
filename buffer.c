@@ -1974,6 +1974,10 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	SyntaxState syntax_state = {0};
 	// dynamic array of character types, to be filled by syntax_highlight
 	SyntaxCharType *char_types = NULL;
+	for (u32 line_idx = 0; line_idx < start_line; ++line_idx) {
+		Line *line = &lines[line_idx];
+		syntax_highlight(&syntax_state, LANG_C, line->str, line->len, NULL);
+	}
 
 	for (u32 line_idx = start_line; line_idx < nlines; ++line_idx) {
 		Line *line = &lines[line_idx];

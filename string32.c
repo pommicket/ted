@@ -123,3 +123,7 @@ bool is32_alnum(char32_t c) {
 	return c <= WINT_MAX && iswalnum((wint_t)c);
 }
 
+// could this character appear in a C-style identifier?
+bool is32_ident(char32_t c) {
+	return c <= WINT_MAX && (iswalnum((wint_t)c) || c == '_');
+}
