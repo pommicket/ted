@@ -132,6 +132,8 @@ static bool buffer_pos_valid(TextBuffer *buffer, BufferPos p) {
 
 // are there any unsaved changes?
 bool buffer_unsaved_changes(TextBuffer *buffer) {
+	if (streq(buffer->filename, TED_UNTITLED) && buffer_empty(buffer))
+		return false; // don't worry about empty untitled buffers
 	return buffer->modified;
 }
 
@@ -1969,13 +1971,21 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	// scroll <= sel - scrolloff
 	text_state.y -= (float)(buffer->scroll_y - start_line) * char_height;
 
-	gl_color_rgba(colors[COLOR_TEXT]);
+	SyntaxState syntax_state = {0};
+	// dynamic array of character types, to be filled by syntax_highlight
+	SyntaxCharType *char_types = NULL;
 
 	for (u32 line_idx = start_line; line_idx < nlines; ++line_idx) {
 		Line *line = &lines[line_idx];
-		for (char32_t *p = line->str, *end = p + line->len; p != end; ++p) {
-			char32_t c = *p;
+		if (arr_len(char_types) < line->len) {
+			arr_set_len(char_types, line->len);
+		}
+		syntax_highlight(&syntax_state, LANG_C, line->str, line->len, char_types);
+		for (u32 i = 0; i < line->len; ++i) {
+			char32_t c = line->str[i];
+			SyntaxCharType type = char_types[i];
 
+			gl_color_rgba(colors[syntax_char_type_to_color(type)]);
 			switch (c) {
 			case '\n': assert(0); break;
 			case '\r': break; // for CRLF line endings
@@ -2002,6 +2012,9 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 		text_state.y += text_font_char_height(font);
 		column = 0;
 	}
+	
+	arr_free(char_types);
+
 	
 
 	text_chars_end(font);

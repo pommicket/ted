@@ -65,6 +65,14 @@ typedef long long llong;
 typedef unsigned long long ullong;
 
 #if __clang__
+#define ENUM_U8 typedef enum : u8
+#define ENUM_U8_END(name) name
+#else
+#define ENUM_U8 enum
+#define ENUM_U8_END(name) ; typedef u8 name
+#endif
+
+#if __clang__
 #define ENUM_U16 typedef enum : u16
 #define ENUM_U16_END(name) name
 #else

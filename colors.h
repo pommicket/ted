@@ -23,6 +23,13 @@ ENUM_U16 {
 	COLOR_NO,
 	COLOR_CANCEL,
 
+	COLOR_KEYWORD,
+	COLOR_COMMENT,
+	COLOR_PREPROCESSOR,
+	COLOR_STRING,
+	COLOR_CHARACTER,
+	COLOR_NUMBER,
+
 	COLOR_COUNT
 } ENUM_U16_END(ColorSetting);
 
@@ -50,6 +57,12 @@ static ColorName const color_names[COLOR_COUNT] = {
 	{COLOR_ERROR_BG, "error-bg"},
 	{COLOR_ERROR_BORDER, "error-border"},
 	{COLOR_ACTIVE_TAB_HL, "active-tab-hl"},
+	{COLOR_KEYWORD, "keyword"},
+	{COLOR_COMMENT, "comment"},
+	{COLOR_PREPROCESSOR, "preprocessor"},
+	{COLOR_STRING, "string"},
+	{COLOR_CHARACTER, "character"},
+	{COLOR_NUMBER, "number"},
 	{COLOR_YES, "yes"},
 	{COLOR_NO, "no"},
 	{COLOR_CANCEL, "cancel"}
@@ -106,3 +119,4 @@ static Status color_from_str(char const *str, u32 *color) {
 		*color = (u32)r << 24 | (u32)g << 16 | (u32)b << 8 | (u32)a;
 	return true;
 }
+

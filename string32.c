@@ -110,3 +110,16 @@ size_t str32_remove_all_instances_of_char(String32 *s, char32_t c) {
 	s->len = out;
 	return ndeleted;
 }
+
+bool is32_space(char32_t c) {
+	return c <= WINT_MAX && iswspace((wint_t)c);
+}
+
+bool is32_alpha(char32_t c) {
+	return c <= WINT_MAX && iswalpha((wint_t)c);
+}
+
+bool is32_alnum(char32_t c) {
+	return c <= WINT_MAX && iswalnum((wint_t)c);
+}
+

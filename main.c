@@ -39,6 +39,7 @@ no_warn_end
 #include "time.c"
 #include "string32.c"
 #include "arr.c"
+#include "syntax.c"
 #include "buffer.c"
 #include "ted.c"
 #include "ui.c"
