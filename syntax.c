@@ -45,7 +45,7 @@ static void syntax_highlight_c(SyntaxStateC *state, char32_t *line, u32 line_len
 	bool in_multi_line_comment = state->multi_line_comment;
 	bool in_char = false;
 	bool in_number = false;
-
+	
 	int backslashes = 0;
 	for (u32 i = 0; i < line_len; ++i) {
 		SyntaxCharType type = SYNTAX_NORMAL;
@@ -91,14 +91,6 @@ static void syntax_highlight_c(SyntaxStateC *state, char32_t *line, u32 line_len
 				in_char = false;
 			else if (!in_multi_line_comment && !in_single_line_comment && !in_string)
 				in_char = in_char_now = true;
-			break;
-		case '<': // preprocessor string, e.g. <stdio.h>
-			if (in_preprocessor && !in_char)
-				in_string = in_string_now = true;
-			break;
-		case '>':
-			if (in_preprocessor && in_string)
-				in_string = false;
 			break;
 		case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9': // don't you wish C had case ranges...
 			// a number!
@@ -209,8 +201,9 @@ static void syntax_highlight_c(SyntaxStateC *state, char32_t *line, u32 line_len
 		} break;
 		}
 		if (line[i] != '\\') backslashes = 0;
-		if (in_number && !(is32_digit(line[i]) || line[i] == '.' || line[i] == 'e' ||
-			(i && line[i-1] == 'e' && (line[i] == '+' || line[i] == '-')))) {
+		if (in_number && !(is32_digit(line[i]) || line[i] == '.'
+			|| (line[i] < CHAR_MAX && strchr("xXoObBlLuU", (char)line[i]))
+ 			|| (i && line[i-1] == 'e' && (line[i] == '+' || line[i] == '-')))) {
 			in_number = false;
 		}
 

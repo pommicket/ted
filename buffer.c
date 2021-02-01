@@ -52,6 +52,10 @@ char const *buffer_get_filename(TextBuffer *buffer) {
 	return buffer->filename;
 }
 
+bool buffer_is_untitled(TextBuffer *buffer) {
+	return streq(buffer->filename, TED_UNTITLED);
+}
+
 // clear all undo and redo events
 void buffer_clear_undo_redo(TextBuffer *buffer) {
 	buffer_clear_undo_history(buffer);
@@ -132,7 +136,7 @@ static bool buffer_pos_valid(TextBuffer *buffer, BufferPos p) {
 
 // are there any unsaved changes?
 bool buffer_unsaved_changes(TextBuffer *buffer) {
-	if (streq(buffer->filename, TED_UNTITLED) && buffer_empty(buffer))
+	if (buffer_is_untitled(buffer) && buffer_empty(buffer))
 		return false; // don't worry about empty untitled buffers
 	return buffer->modified;
 }
