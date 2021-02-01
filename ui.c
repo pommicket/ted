@@ -382,7 +382,9 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 					size_t path_size = strlen(name) + strlen(cwd) + 3;
 					char *path = ted_calloc(ted, 1, path_size);
 					if (path) {
-						snprintf(path, path_size - 1, "%s%s%s", cwd, PATH_SEPARATOR_STR, name);
+						snprintf(path, path_size - 1, "%s%s%s", cwd,
+							cwd[strlen(cwd) - 1] == PATH_SEPARATOR ? "" : PATH_SEPARATOR_STR,
+							name);
 						entries[i].path = path;
 						entries[i].type = fs_path_type(path);
 					} else {

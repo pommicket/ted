@@ -22,7 +22,9 @@ char **fs_list_directory(char const *dirname) {
 	char **ret = NULL;
 	WIN32_FIND_DATA find_data;
 	HANDLE fhandle;
-	sprintf_s(file_pattern, sizeof file_pattern, "%s\\*", dirname);
+	assert(*dirname);
+	sprintf_s(file_pattern, sizeof file_pattern, "%s%s*", dirname,
+		dirname[strlen(dirname) - 1] == PATH_SEPARATOR ? "" : PATH_SEPARATOR_STR);
 	fhandle = FindFirstFileA(file_pattern, &find_data);
 	if (fhandle != INVALID_HANDLE_VALUE) {
 		// first, figure out number of files

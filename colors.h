@@ -28,7 +28,7 @@ ENUM_U16 {
 	COLOR_PREPROCESSOR,
 	COLOR_STRING,
 	COLOR_CHARACTER,
-	COLOR_NUMBER,
+	COLOR_CONSTANT,
 
 	COLOR_COUNT
 } ENUM_U16_END(ColorSetting);
@@ -62,7 +62,7 @@ static ColorName const color_names[COLOR_COUNT] = {
 	{COLOR_PREPROCESSOR, "preprocessor"},
 	{COLOR_STRING, "string"},
 	{COLOR_CHARACTER, "character"},
-	{COLOR_NUMBER, "number"},
+	{COLOR_CONSTANT, "constant"},
 	{COLOR_YES, "yes"},
 	{COLOR_NO, "no"},
 	{COLOR_CANCEL, "cancel"}
