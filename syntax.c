@@ -186,7 +186,7 @@ static void syntax_highlight_c(SyntaxState *state_ptr, char32_t *line, u32 line_
 		}
 		if (line[i] != '\\') backslashes = 0;
 		if (in_number && !(is32_digit(line[i]) || line[i] == '.'
-			|| (line[i] < CHAR_MAX && strchr("xXoObBlLuU", (char)line[i]))
+			|| (line[i] < CHAR_MAX && strchr("xXoObBlLuUabcdefABCDEF", (char)line[i]))
  			|| (i && line[i-1] == 'e' && (line[i] == '+' || line[i] == '-')))) {
 			in_number = false;
 		}

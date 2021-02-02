@@ -809,23 +809,13 @@ static u32 buffer_column_to_index(TextBuffer *buffer, u32 line, u32 column) {
 }
 
 // returns the number of lines of text in the buffer into *lines (if not NULL),
-// and the number of columns of text, i.e. the number of columns in the longest line, into *cols (if not NULL)
+// and the number of columns of text, i.e. the number of columns in the longest line displayed, into *cols (if not NULL)
 void buffer_text_dimensions(TextBuffer *buffer, u32 *lines, u32 *columns) {
 	if (lines) {
 		*lines = buffer->nlines;
 	}
 	if (columns) {
-		// @OPTIMIZE
-		u32 nlines = buffer->nlines;
-		Line *line_arr = buffer->lines;
-		u32 maxcol = 0;
-		for (u32 i = 0; i < nlines; ++i) {
-			Line *line = &line_arr[i];
-			u32 cols = buffer_index_to_column(buffer, i, line->len);
-			if (cols > maxcol)
-				maxcol = cols;
-		}
-		*columns = maxcol;
+		*columns = buffer->longest_line_on_screen;
 	}
 }
 
@@ -2043,8 +2033,11 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	buffer->frame_earliest_line_modified = U32_MAX;
 	buffer->frame_latest_line_modified = 0;
 
+	buffer->longest_line_on_screen = 0;
+	
 	for (u32 line_idx = start_line; line_idx < nlines; ++line_idx) {
 		Line *line = &lines[line_idx];
+		buffer->longest_line_on_screen = max_u32(buffer->longest_line_on_screen, line->len);
 		if (arr_len(char_types) < line->len) {
 			arr_set_len(char_types, line->len);
 		}

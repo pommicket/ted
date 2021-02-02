@@ -17,54 +17,54 @@
 
 #include <math.h>
 
-static float degrees(float r) {
+static inline float degrees(float r) {
 	return r * (180.0f / PIf);
 }
-static float radians(float r) {
+static inline float radians(float r) {
 	return r * (PIf / 180.f);
 }
 
 // map x from the interval [0, 1] to the interval [a, b]. does NOT clamp.
-static float lerpf(float x, float a, float b) {
+static inline float lerpf(float x, float a, float b) {
 	return x * (b-a) + a;
 }
 
 // opposite of lerp; map x from the interval [a, b] to the interval [0, 1]. does NOT clamp.
-static float normf(float x, float a, float b) {
+static inline float normf(float x, float a, float b) {
 	return (x-a) / (b-a);
 }
 
-static float clampf(float x, float a, float b) {
+static inline float clampf(float x, float a, float b) {
 	if (x < a) return a;
 	if (x > b) return b;
 	return x;
 }
 
-static int clampi(int x, int a, int b) {
+static inline int clampi(int x, int a, int b) {
 	if (x < a) return a;
 	if (x > b) return b;
 	return x;
 }
 
-static i16 clamp_i16(i16 x, i16 a, i16 b) {
+static inline i16 clamp_i16(i16 x, i16 a, i16 b) {
 	if (x < a) return a;
 	if (x > b) return b;
 	return x;
 }
 
-static u16 clamp_u16(u16 x, u16 a, u16 b) {
+static inline u16 clamp_u16(u16 x, u16 a, u16 b) {
 	if (x < a) return a;
 	if (x > b) return b;
 	return x;
 }
 
-static i32 clamp_i32(i32 x, i32 a, i32 b) {
+static inline i32 clamp_i32(i32 x, i32 a, i32 b) {
 	if (x < a) return a;
 	if (x > b) return b;
 	return x;
 }
 
-static u32 clamp_u32(u32 x, u32 a, u32 b) {
+static inline u32 clamp_u32(u32 x, u32 a, u32 b) {
 	if (x < a) return a;
 	if (x > b) return b;
 	return x;
@@ -72,88 +72,88 @@ static u32 clamp_u32(u32 x, u32 a, u32 b) {
 
 
 // remap x from the interval [from_a, from_b] to the interval [to_a, to_b], NOT clamping if x is outside the "from" interval.
-static float remapf(float x, float from_a, float from_b, float to_a, float to_b) {
+static inline float remapf(float x, float from_a, float from_b, float to_a, float to_b) {
 	float pos = (x - from_a) / (from_b - from_a);
 	return lerpf(pos, to_a, to_b);
 }
 
-static float minf(float a, float b) {
+static inline float minf(float a, float b) {
 	return a < b ? a : b;
 }
 
-static float maxf(float a, float b) {
+static inline float maxf(float a, float b) {
 	return a > b ? a : b;
 }
 
-static double maxd(double a, double b) {
+static inline double maxd(double a, double b) {
 	return a > b ? a : b;
 }
 
-static double mind(double a, double b) {
+static inline double mind(double a, double b) {
 	return a < b ? a : b;
 }
 
-static u32 min_u32(u32 a, u32 b) {
+static inline u32 min_u32(u32 a, u32 b) {
 	return a < b ? a : b;
 }
 
-static u32 max_u32(u32 a, u32 b) {
+static inline u32 max_u32(u32 a, u32 b) {
 	return a > b ? a : b;
 }
 
-static i32 min_i32(i32 a, i32 b) {
+static inline i32 min_i32(i32 a, i32 b) {
 	return a < b ? a : b;
 }
 
-static i32 max_i32(i32 a, i32 b) {
+static inline i32 max_i32(i32 a, i32 b) {
 	return a > b ? a : b;
 }
 
-static u64 min_u64(u64 a, u64 b) {
+static inline u64 min_u64(u64 a, u64 b) {
 	return a < b ? a : b;
 }
 
-static u64 max_u64(u64 a, u64 b) {
+static inline u64 max_u64(u64 a, u64 b) {
 	return a > b ? a : b;
 }
 
-static i64 min_i64(i64 a, i64 b) {
+static inline i64 min_i64(i64 a, i64 b) {
 	return a < b ? a : b;
 }
 
-static i64 max_i64(i64 a, i64 b) {
+static inline i64 max_i64(i64 a, i64 b) {
 	return a > b ? a : b;
 }
 
-static i64 mod_i64(i64 a, i64 b) {
+static inline i64 mod_i64(i64 a, i64 b) {
 	i64 ret = a % b;
 	if (ret < 0) ret += b;
 	return ret;
 }
 
-static i64 abs_i64(i64 x) {
+static inline i64 abs_i64(i64 x) {
 	return x < 0 ? -x : +x;
 }
 
-static i64 sgn_i64(i64 x) {
+static inline i64 sgn_i64(i64 x) {
 	if (x < 0) return -1;
 	if (x > 0) return +1;
 	return 0;
 }
 
-static float sgnf(float x) {
+static inline float sgnf(float x) {
 	if (x < 0) return -1;
 	if (x > 0) return +1;
 	return 0;
 }
 
-static float smoothstepf(float x) {
+static inline float smoothstepf(float x) {
 	if (x <= 0) return 0;
 	if (x >= 1) return 1;
 	return x * x * (3 - 2 * x);
 }
 
-static float randf(void) {
+static inline float randf(void) {
 	return (float)rand() / (float)((ulong)RAND_MAX + 1);
 }
 

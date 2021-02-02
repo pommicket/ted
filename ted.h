@@ -118,6 +118,8 @@ typedef struct {
 	u32 nlines;
 	u32 lines_capacity;
 
+	u32 longest_line_on_screen; // length of the longest line on screen. used to determine how far right we can scroll.
+
 	// to cache syntax highlighting properly, it is important to keep track of the
 	// first and last line modified since last frame.
 	u32 frame_earliest_line_modified;
