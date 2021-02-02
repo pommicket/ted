@@ -428,7 +428,7 @@ static void file_selector_render(Ted *ted, FileSelector *fs) {
 	y1 += char_height + padding;
 
 	// search buffer
-	float line_buffer_height = char_height * 1.5f;
+	float line_buffer_height = char_height;
 	buffer_render(&ted->line_buffer, rect4(x1, y1, x2, y1 + line_buffer_height));
 	y1 += line_buffer_height;
 

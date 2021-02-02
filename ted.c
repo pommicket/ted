@@ -168,7 +168,7 @@ static Status ted_open_buffer(Ted *ted, u16 *buffer_idx, u16 *tab) {
 // Returns true on success
 static bool ted_open_file(Ted *ted, char const *filename) {
 	u16 buffer_idx, tab_idx;
-	if (buffer_is_untitled(ted->active_buffer) && buffer_empty(ted->active_buffer)) {
+	if (ted->active_buffer && buffer_is_untitled(ted->active_buffer) && buffer_empty(ted->active_buffer)) {
 		// the active buffer is just an empty untitled buffer. open it here.
 		return buffer_load_file(ted->active_buffer, filename);
 	} else if (ted_open_buffer(ted, &buffer_idx, &tab_idx)) {

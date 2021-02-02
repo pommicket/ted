@@ -42,18 +42,17 @@ static inline bool keyword_matches(char32_t *text, size_t len, char const *keywo
 
 static void syntax_highlight_c_cpp(SyntaxState *state_ptr, bool cpp, char32_t *line, u32 line_len, SyntaxCharType *char_types) {
 	SyntaxState state = *state_ptr;
-	bool in_preprocessor = (state & SYNTAX_STATE_PREPROCESSOR) != 0;
-	bool in_string = (state & SYNTAX_STATE_STRING) != 0;
-	bool in_single_line_comment = (state & SYNTAX_STATE_SINGLE_LINE_COMMENT) != 0;
-	bool in_multi_line_comment = (state & SYNTAX_STATE_MULTI_LINE_COMMENT) != 0;
-	bool in_raw_string = (state & SYNTAX_STATE_RAW_STRING);
+	bool in_preprocessor = (state & SYNTAX_STATE_CPP_PREPROCESSOR) != 0;
+	bool in_string = (state & SYNTAX_STATE_CPP_STRING) != 0;
+	bool in_single_line_comment = (state & SYNTAX_STATE_CPP_SINGLE_LINE_COMMENT) != 0;
+	bool in_multi_line_comment = (state & SYNTAX_STATE_CPP_MULTI_LINE_COMMENT) != 0;
+	bool in_raw_string = (state & SYNTAX_STATE_CPP_RAW_STRING);
 	bool in_char = false;
 	bool in_number = false;
 	bool raw_string_ending = false;
 	
 	int backslashes = 0;
 	for (u32 i = 0; i < line_len; ++i) {
-		SyntaxCharType type = SYNTAX_NORMAL;
 		// necessary for the final " of a string to be highlighted
 		bool in_string_now = in_string;
 		bool in_char_now = in_char;
@@ -160,7 +159,7 @@ static void syntax_highlight_c_cpp(SyntaxState *state_ptr, bool cpp, char32_t *l
 				if (keyword) {
 					// it's a keyword
 					// let's highlight all of it now
-					type = SYNTAX_KEYWORD;
+					SyntaxCharType type = SYNTAX_KEYWORD;
 					if (isupper(keyword[0]) || 
 						(keyword_len == 4 && streq(keyword, "true")) ||
 						(keyword_len == 5 && streq(keyword, "false")) ||
@@ -186,6 +185,7 @@ static void syntax_highlight_c_cpp(SyntaxState *state_ptr, bool cpp, char32_t *l
 		}
 
 		if (char_types && !dealt_with) {
+			SyntaxCharType type = SYNTAX_NORMAL;
 			if (in_single_line_comment || in_multi_line_comment_now)
 				type = SYNTAX_COMMENT;
 			else if (in_string_now)
@@ -201,11 +201,34 @@ static void syntax_highlight_c_cpp(SyntaxState *state_ptr, bool cpp, char32_t *l
 		}
 	}
 	*state_ptr = (SyntaxState)(
-		  (backslashes && in_single_line_comment) << SYNTAX_STATE_SINGLE_LINE_COMMENT_SHIFT
-		| (backslashes && in_preprocessor) << SYNTAX_STATE_PREPROCESSOR_SHIFT
-		| (backslashes && in_string) << SYNTAX_STATE_STRING_SHIFT
-		| in_multi_line_comment << SYNTAX_STATE_MULTI_LINE_COMMENT_SHIFT)
-		| in_raw_string << SYNTAX_STATE_RAW_STRING_SHIFT;
+		  ((backslashes && in_single_line_comment) * SYNTAX_STATE_CPP_SINGLE_LINE_COMMENT)
+		| ((backslashes && in_preprocessor) * SYNTAX_STATE_CPP_PREPROCESSOR)
+		| ((backslashes && in_string) * SYNTAX_STATE_CPP_STRING)
+		| (in_multi_line_comment * SYNTAX_STATE_CPP_MULTI_LINE_COMMENT)
+		| (in_raw_string * SYNTAX_STATE_CPP_RAW_STRING)
+	);
+}
+
+static void syntax_highlight_rust(SyntaxState *state, char32_t *line, u32 line_len, SyntaxCharType *char_types) {
+	u8 comment_depth = (u8)((*state & SYNTAX_STATE_RUST_COMMENT_DEPTH_MASK) / SYNTAX_STATE_RUST_COMMENT_DEPTH_MUL);
+	for (u32 i = 0; i < line_len; ++i) {
+		char32_t c = line[i];
+		bool dealt_with = false;
+		switch (c) {
+		
+		}
+		if (char_types && !dealt_with) {
+			SyntaxCharType type = SYNTAX_NORMAL;
+			char_types[i] = type;
+		}
+	}
+	
+	uint max_comment_depth = (1u<<SYNTAX_STATE_RUST_COMMENT_DEPTH_BITS);	
+	if (comment_depth >= max_comment_depth)
+		comment_depth = (u8)max_comment_depth;
+	*state = (SyntaxState)(
+		(comment_depth * SYNTAX_STATE_RUST_COMMENT_DEPTH_MUL)
+	);
 }
 
 // This is the main syntax highlighting function. It will determine which colors to use for each character.

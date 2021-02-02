@@ -820,14 +820,14 @@ void buffer_text_dimensions(TextBuffer *buffer, u32 *lines, u32 *columns) {
 }
 
 
-// returns the number of rows of text that can fit in the buffer, rounded down.
-int buffer_display_lines(TextBuffer *buffer) {
-	return (int)((buffer->y2 - buffer->y1) / text_font_char_height(buffer_font(buffer)));
+// returns the number of rows of text that can fit in the buffer
+float buffer_display_lines(TextBuffer *buffer) {
+	return (buffer->y2 - buffer->y1) / text_font_char_height(buffer_font(buffer));
 }
 
-// returns the number of columns of text that can fit in the buffer, rounded down.
-int buffer_display_cols(TextBuffer *buffer) {
-	return (int)((buffer->x2 - buffer->x1) / text_font_char_width(buffer_font(buffer)));
+// returns the number of columns of text that can fit in the buffer
+float buffer_display_cols(TextBuffer *buffer) {
+	return (buffer->x2 - buffer->x1) / text_font_char_width(buffer_font(buffer));
 }
 
 // make sure we don't scroll too far
@@ -860,11 +860,11 @@ void buffer_scroll(TextBuffer *buffer, double dx, double dy) {
 }
 
 void buffer_page_up(TextBuffer *buffer, i64 npages) {
-	buffer_scroll(buffer, 0, (double)(-npages * buffer_display_lines(buffer)));
+	buffer_scroll(buffer, 0, (double)-npages * buffer_display_lines(buffer));
 }
 
 void buffer_page_down(TextBuffer *buffer, i64 npages) {
-	buffer_scroll(buffer, 0, (double)(+npages * buffer_display_lines(buffer)));
+	buffer_scroll(buffer, 0, (double)+npages * buffer_display_lines(buffer));
 }
 
 // returns the position of the character at the given position in the buffer.
@@ -874,7 +874,7 @@ v2 buffer_pos_to_pixels(TextBuffer *buffer, BufferPos pos) {
 	u32 col = buffer_index_to_column(buffer, line, index);
 	Font *font = buffer_font(buffer);
 	float x = (float)((double)col  - buffer->scroll_x) * text_font_char_width(font) + buffer->x1;
-	float y = (float)((double)line - buffer->scroll_y + 0.2f /* nudge */) * text_font_char_height(font) + buffer->y1;
+	float y = (float)((double)line - buffer->scroll_y) * text_font_char_height(font) + buffer->y1;
 	return V2(x, y);
 }
 
@@ -895,7 +895,7 @@ bool buffer_pixels_to_pos(TextBuffer *buffer, v2 pixel_coords, BufferPos *pos) {
 		display_col = 0;
 		ret = false;
 	}
-	int display_cols = buffer_display_cols(buffer), display_lines = buffer_display_lines(buffer);
+	double display_cols = buffer_display_cols(buffer), display_lines = buffer_display_lines(buffer);
 	if (display_col >= display_cols) {
 		display_col = display_cols - 1;
 		ret = false;
@@ -940,24 +940,24 @@ static bool buffer_clip_rect(TextBuffer *buffer, Rect *r) {
 // if the cursor is offscreen, this will scroll to make it onscreen.
 static void buffer_scroll_to_cursor(TextBuffer *buffer) {
 	Settings const *settings = buffer_settings(buffer);
-	i64 cursor_line = buffer->cursor_pos.line;
-	i64 cursor_col  = buffer_index_to_column(buffer, (u32)cursor_line, buffer->cursor_pos.index);
-	i64 display_lines = buffer_display_lines(buffer);
-	i64 display_cols = buffer_display_cols(buffer);
+	double cursor_line = buffer->cursor_pos.line;
+	double cursor_col  = buffer_index_to_column(buffer, (u32)cursor_line, buffer->cursor_pos.index);
+	double display_lines = buffer_display_lines(buffer);
+	double display_cols = buffer_display_cols(buffer);
 	double scroll_x = buffer->scroll_x, scroll_y = buffer->scroll_y;
-	i64 scrolloff = settings->scrolloff;
+	double scrolloff = settings->scrolloff;
 
 	// scroll left if cursor is off screen in that direction
-	double max_scroll_x = (double)(cursor_col - scrolloff);
+	double max_scroll_x = cursor_col - scrolloff;
 	scroll_x = mind(scroll_x, max_scroll_x);
 	// scroll right
-	double min_scroll_x = (double)(cursor_col - display_cols + scrolloff);
+	double min_scroll_x = cursor_col - display_cols + scrolloff;
 	scroll_x = maxd(scroll_x, min_scroll_x);
 	// scroll up
-	double max_scroll_y = (double)(cursor_line - scrolloff);
+	double max_scroll_y = cursor_line - scrolloff;
 	scroll_y = mind(scroll_y, max_scroll_y);
 	// scroll down
-	double min_scroll_y = (double)(cursor_line - display_lines + scrolloff);
+	double min_scroll_y = cursor_line - display_lines + scrolloff;
 	scroll_y = maxd(scroll_y, min_scroll_y);
 
 	buffer->scroll_x = scroll_x;
@@ -967,13 +967,13 @@ static void buffer_scroll_to_cursor(TextBuffer *buffer) {
 
 // scroll so that the cursor is in the center of the screen
 void buffer_center_cursor(TextBuffer *buffer) {
-	i64 cursor_line = buffer->cursor_pos.line;
-	i64 cursor_col  = buffer_index_to_column(buffer, (u32)cursor_line, buffer->cursor_pos.index);
-	i64 display_lines = buffer_display_lines(buffer);
-	i64 display_cols = buffer_display_cols(buffer);
+	double cursor_line = buffer->cursor_pos.line;
+	double cursor_col  = buffer_index_to_column(buffer, (u32)cursor_line, buffer->cursor_pos.index);
+	double display_lines = buffer_display_lines(buffer);
+	double display_cols = buffer_display_cols(buffer);
 	
-	buffer->scroll_x = (double)(cursor_col - display_cols / 2);
-	buffer->scroll_y = (double)(cursor_line - display_lines / 2);
+	buffer->scroll_x = cursor_col - display_cols * 0.5;
+	buffer->scroll_y = cursor_line - display_lines * 0.5;
 
 	buffer_correct_scroll(buffer);
 }
@@ -1901,10 +1901,6 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 
 	float border_thickness = settings->border_thickness;
 
-	// get screen coordinates of cursor
-	v2 cursor_display_pos = buffer_pos_to_pixels(buffer, buffer->cursor_pos);
-	// the rectangle that the cursor is rendered as
-	Rect cursor_rect = rect(cursor_display_pos, V2(settings->cursor_width, char_height));
 
 	u32 border_color = colors[COLOR_BORDER]; // color of border around buffer
 
@@ -1917,6 +1913,12 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	y1 += border_thickness * 0.5f;
 	x2 -= border_thickness * 0.5f;
 	y2 -= border_thickness * 0.5f;
+
+
+	// get screen coordinates of cursor
+	v2 cursor_display_pos = buffer_pos_to_pixels(buffer, buffer->cursor_pos);
+	// the rectangle that the cursor is rendered as
+	Rect cursor_rect = rect(cursor_display_pos, V2(settings->cursor_width, char_height));
 
 	TextRenderState text_state = {
 		.x = 0, .y = 0,
@@ -1993,15 +1995,12 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	text_chars_begin(font);
 
 	text_state = (TextRenderState){
-		.x = render_start_x, .y = y1 + 0.25f * text_font_char_height(font),
+		.x = render_start_x, .y = y1,
 		.min_x = x1, .min_y = y1,
 		.max_x = x2, .max_y = y2,
 		.render = true
 	};
 
-	// sel_pos >= scrolloff
-	// sel - scroll >= scrolloff
-	// scroll <= sel - scrolloff
 	text_state.y -= (float)(buffer->scroll_y - start_line) * char_height;
 
 	Language language = buffer_language(buffer);

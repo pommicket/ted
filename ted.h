@@ -4,20 +4,20 @@
 #define TEXT_SIZE_MIN 6
 #define TEXT_SIZE_MAX 70
 
+// these all say "CPP" but really they're C/C++
 enum {
-	SYNTAX_STATE_SINGLE_LINE_COMMENT_SHIFT,
-	SYNTAX_STATE_MULTI_LINE_COMMENT_SHIFT,
-	SYNTAX_STATE_PREPROCESSOR_SHIFT,
-	SYNTAX_STATE_STRING_SHIFT,
-	SYNTAX_STATE_RAW_STRING_SHIFT,
+	SYNTAX_STATE_CPP_MULTI_LINE_COMMENT = 0x1u, // are we in a multi-line comment? (delineated by /* */)
+	SYNTAX_STATE_CPP_SINGLE_LINE_COMMENT = 0x2u, // if you add a \ to the end of a single-line comment, it is continued to the next line.
+	SYNTAX_STATE_CPP_PREPROCESSOR = 0x4u, // similar to above
+	SYNTAX_STATE_CPP_STRING = 0x8u,
+	SYNTAX_STATE_CPP_RAW_STRING = 0x10u,
 };
 
 enum {
-	SYNTAX_STATE_MULTI_LINE_COMMENT = 1<<SYNTAX_STATE_MULTI_LINE_COMMENT_SHIFT, // are we in a multi-line comment? (delineated by /* */)
-	SYNTAX_STATE_SINGLE_LINE_COMMENT = 1<<SYNTAX_STATE_SINGLE_LINE_COMMENT_SHIFT, // if you add a \ to the end of a single-line comment, it is continued to the next line.
-	SYNTAX_STATE_PREPROCESSOR = 1<<SYNTAX_STATE_PREPROCESSOR_SHIFT, // similar to above
-	SYNTAX_STATE_STRING = 1<<SYNTAX_STATE_STRING_SHIFT,
-	SYNTAX_STATE_RAW_STRING = 1<<SYNTAX_STATE_RAW_STRING_SHIFT, 
+	SYNTAX_STATE_RUST_COMMENT_DEPTH_MASK = 0x7u, // in rust, /* */ comments can nest.
+	SYNTAX_STATE_RUST_COMMENT_DEPTH_MUL  = 0x1u,
+	SYNTAX_STATE_RUST_COMMENT_DEPTH_BITS = 4, // number of bits we allocate for the comment depth.
+	SYNTAX_STATE_RUST_STRING = 0x10u,
 };
 
 typedef u8 SyntaxState;
