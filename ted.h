@@ -18,7 +18,7 @@ enum {
 	SYNTAX_STATE_STRING = 1<<SYNTAX_STATE_STRING_SHIFT,
 };
 
-typedef u16 SyntaxState;
+typedef u8 SyntaxState;
 
 ENUM_U16 {
 	LANG_NONE,
@@ -89,6 +89,7 @@ typedef struct {
 } BufferPos;
 
 typedef struct {
+	SyntaxState syntax;
 	u32 len;
 	u32 capacity;
 	char32_t *str;
@@ -116,6 +117,12 @@ typedef struct {
 	float x1, y1, x2, y2;
 	u32 nlines;
 	u32 lines_capacity;
+
+	// to cache syntax highlighting properly, it is important to keep track of the
+	// first and last line modified since last frame.
+	u32 frame_earliest_line_modified;
+	u32 frame_latest_line_modified;
+
 	Line *lines;
 	char error[256];
 	BufferEdit *undo_history; // dynamic array of undo history

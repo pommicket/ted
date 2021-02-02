@@ -632,6 +632,8 @@ Status buffer_load_file(TextBuffer *buffer, char const *filename) {
 								buffer_clear(buffer);
 								buffer->lines = lines;
 								buffer->nlines = nlines;
+								buffer->frame_earliest_line_modified = 0;
+								buffer->frame_latest_line_modified = nlines - 1;
 								buffer->lines_capacity = lines_capacity;
 								buffer->filename = filename_copy;
 							}
@@ -1270,6 +1272,16 @@ void buffer_cursor_move_to_end_of_file(TextBuffer *buffer) {
 	buffer_cursor_move_to_pos(buffer, buffer_end_of_file(buffer));
 }
 
+
+static void buffer_lines_modified(TextBuffer *buffer, u32 first_line, u32 last_line) {
+	assert(last_line >= first_line);
+	buffer->modified = true;
+	if (first_line < buffer->frame_earliest_line_modified)
+		buffer->frame_earliest_line_modified = first_line;
+	if (last_line > buffer->frame_latest_line_modified)
+		buffer->frame_latest_line_modified = last_line;
+}
+
 // insert `number` empty lines starting at index `where`.
 static Status buffer_insert_lines(TextBuffer *buffer, u32 where, u32 number) {
 	assert(!buffer->is_line_buffer);
@@ -1382,7 +1394,7 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 	// We need to put this after the end so the emptiness-checking is done after the edit is made.
 	buffer_remove_last_edit_if_empty(buffer);
 
-	buffer->modified = true;
+	buffer_lines_modified(buffer, pos.line, line_idx);
 
 	BufferPos b = {.line = line_idx, .index = index};
 	return b;
@@ -1627,7 +1639,7 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 	// cursor position could have been invalidated by this edit
 	buffer_validate_cursor(buffer);
 
-	buffer->modified = true;
+	buffer_lines_modified(buffer, line_idx, line_idx);
 }
 
 // Delete characters between the given buffer positions. Returns number of characters deleted.
@@ -2002,27 +2014,44 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	// scroll <= sel - scrolloff
 	text_state.y -= (float)(buffer->scroll_y - start_line) * char_height;
 
-	SyntaxState syntax_state = {0};
 	Language language = buffer_language(buffer);
 	// dynamic array of character types, to be filled by syntax_highlight
 	SyntaxCharType *char_types = NULL;
 	bool syntax_highlighting = language && settings->syntax_highlighting;
-	if (syntax_highlighting) {
-		for (u32 line_idx = 0; line_idx < start_line; ++line_idx) {
-			Line *line = &lines[line_idx];
-			syntax_highlight(&syntax_state, language, line->str, line->len, NULL);
-		}
-	} else {
+	if (!syntax_highlighting) {
 		gl_color_rgba(colors[COLOR_TEXT]);
 	}
+
+	if (buffer->frame_latest_line_modified >= buffer->frame_earliest_line_modified) {
+		// update syntax cache
+		Line *earliest = &buffer->lines[buffer->frame_earliest_line_modified];
+		Line *latest = &buffer->lines[buffer->frame_latest_line_modified];
+		Line *buffer_last_line = &buffer->lines[buffer->nlines - 1];
+		Line *start = earliest == buffer->lines ? earliest : earliest - 1;
+
+		for (Line *line = start; line != buffer_last_line; ++line) {
+			SyntaxState syntax = line->syntax;
+			syntax_highlight(&syntax, language, line->str, line->len, NULL);
+			if (line > latest && line[1].syntax == syntax) {
+				// no further necessary changes to the cache
+				break;
+			} else {
+				line[1].syntax = syntax;
+			}
+		}
+	}
+	buffer->frame_earliest_line_modified = U32_MAX;
+	buffer->frame_latest_line_modified = 0;
 
 	for (u32 line_idx = start_line; line_idx < nlines; ++line_idx) {
 		Line *line = &lines[line_idx];
 		if (arr_len(char_types) < line->len) {
 			arr_set_len(char_types, line->len);
 		}
-		if (language)
+		if (syntax_highlighting) {
+			SyntaxState syntax_state = line->syntax;
 			syntax_highlight(&syntax_state, language, line->str, line->len, char_types);
+		}
 		for (u32 i = 0; i < line->len; ++i) {
 			char32_t c = line->str[i];
 			if (syntax_highlighting) {
