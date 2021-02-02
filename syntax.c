@@ -46,8 +46,10 @@ static void syntax_highlight_c_cpp(SyntaxState *state_ptr, bool cpp, char32_t *l
 	bool in_string = (state & SYNTAX_STATE_STRING) != 0;
 	bool in_single_line_comment = (state & SYNTAX_STATE_SINGLE_LINE_COMMENT) != 0;
 	bool in_multi_line_comment = (state & SYNTAX_STATE_MULTI_LINE_COMMENT) != 0;
+	bool in_raw_string = (state & SYNTAX_STATE_RAW_STRING);
 	bool in_char = false;
 	bool in_number = false;
+	bool raw_string_ending = false;
 	
 	int backslashes = 0;
 	for (u32 i = 0; i < line_len; ++i) {
@@ -58,12 +60,23 @@ static void syntax_highlight_c_cpp(SyntaxState *state_ptr, bool cpp, char32_t *l
 		bool in_multi_line_comment_now = in_multi_line_comment;
 
 		// are there 1/2 characters left in the line?
-		bool has_1_char = i + 1 < line_len;
-
+		bool has_1_char =  i + 1 < line_len;
+		bool has_2_chars = i + 2 < line_len;
+		
 		bool dealt_with = false;
 		
 		char32_t c = line[i];
-		switch (c) {
+		
+		if (in_raw_string) {
+			if (has_2_chars && c == ')' && line[1] == '"') {
+				raw_string_ending = true;
+			}
+			if (char_types)
+				char_types[i] = SYNTAX_STRING;
+			if (raw_string_ending && c == '"')
+				in_raw_string = false;
+			dealt_with = true;
+		} else switch (c) {
 		case '#':
 			if (!in_single_line_comment && !in_multi_line_comment && !in_char && !in_string)
 				in_preprocessor = true;
@@ -98,7 +111,7 @@ static void syntax_highlight_c_cpp(SyntaxState *state_ptr, bool cpp, char32_t *l
 			break;
 		case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9': // don't you wish C had case ranges...
 			// a number!
-			if (!in_single_line_comment && !in_multi_line_comment && !in_string && !in_number && !in_char) {
+			if (char_types && !in_single_line_comment && !in_multi_line_comment && !in_string && !in_number && !in_char) {
 				in_number = true;
 				if (i) {
 					if (line[i - 1] == '.') {
@@ -115,7 +128,13 @@ static void syntax_highlight_c_cpp(SyntaxState *state_ptr, bool cpp, char32_t *l
 			if ((i && is32_ident(line[i - 1])) || !is32_ident(c))
 				break; // can't be a keyword on its own.
 			
-		
+			if (c == 'R' && has_2_chars && line[i + 1] == '"' && line[i + 2] == '(') {
+				// raw string
+				in_raw_string = true;
+				raw_string_ending = false;
+				break;
+			}
+			
 			// keywords don't matter for advancing the state
 			if (char_types && !in_single_line_comment && !in_multi_line_comment && !in_string && !in_preprocessor && !in_char) {
 				u32 keyword_end;
@@ -185,7 +204,8 @@ static void syntax_highlight_c_cpp(SyntaxState *state_ptr, bool cpp, char32_t *l
 		  (backslashes && in_single_line_comment) << SYNTAX_STATE_SINGLE_LINE_COMMENT_SHIFT
 		| (backslashes && in_preprocessor) << SYNTAX_STATE_PREPROCESSOR_SHIFT
 		| (backslashes && in_string) << SYNTAX_STATE_STRING_SHIFT
-		| in_multi_line_comment << SYNTAX_STATE_MULTI_LINE_COMMENT_SHIFT);
+		| in_multi_line_comment << SYNTAX_STATE_MULTI_LINE_COMMENT_SHIFT)
+		| in_raw_string << SYNTAX_STATE_RAW_STRING_SHIFT;
 }
 
 // This is the main syntax highlighting function. It will determine which colors to use for each character.

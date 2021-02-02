@@ -1,5 +1,12 @@
 #include <iostream>
-
+char const *s = R"(
+Lorem ipsum dolor sit amet.
+It was the age of reason.
+It was the age of foolishness.
+do {
+	class x;
+} while (0.1238712e+12 != CHAR_MAX);
+)";
 using std::cout;
 
 template<typename T>
