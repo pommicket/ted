@@ -62,3 +62,27 @@ static char const *const *const syntax_all_keywords_cpp[] = {
 	['a'] = syntax_keywords_cpp_a, ['b'] = syntax_keywords_cpp_b, ['c'] = syntax_keywords_cpp_c, ['d'] = syntax_keywords_cpp_d, ['e'] = syntax_keywords_cpp_e, ['f'] = syntax_keywords_cpp_f, ['m'] = syntax_keywords_cpp_m, ['n'] = syntax_keywords_cpp_n, ['o'] = syntax_keywords_cpp_o, ['p'] = syntax_keywords_cpp_p, ['r'] = syntax_keywords_cpp_r, ['s'] = syntax_keywords_cpp_s, ['t'] = syntax_keywords_cpp_t, ['u'] = syntax_keywords_cpp_u, ['v'] = syntax_keywords_cpp_v, ['x'] = syntax_keywords_cpp_x
 };
 
+static char const *const syntax_keywords_rust_S[2] = {"Self"};
+static char const *const syntax_keywords_rust_a[9] = {"abstract","as","asm!","assert!","assert_eq!","assert_ne!","async","await"};
+static char const *const syntax_keywords_rust_b[4] = {"become","box","break"};
+static char const *const syntax_keywords_rust_c[9] = {"cfg!","column!","compile_error!","concat!","concat_idents!","const","continue","crate"};
+static char const *const syntax_keywords_rust_d[7] = {"dbg!","debug_assert!","debug_assert_eq!","debug_assert_ne!","do","dyn"};
+static char const *const syntax_keywords_rust_e[7] = {"else","enum","env!","eprint!","eprintln!","extern"};
+static char const *const syntax_keywords_rust_f[9] = {"false","file!","final","fn","for","format!","format_args!","format_args_nl!"};
+static char const *const syntax_keywords_rust_g[2] = {"global_asm!"};
+static char const *const syntax_keywords_rust_i[14] = {"if","impl","in","include!","include_bytes!","include_str!","is_aarch64_feature_detected!","is_arm_feature_detected!","is_mips64_feature_detected!","is_mips_feature_detected!","is_powerpc64_feature_detected!","is_powerpc_feature_detected!","is_x86_feature_detected!"};
+static char const *const syntax_keywords_rust_l[6] = {"let","line!","llvm_asm!","log_syntax!","loop"};
+static char const *const syntax_keywords_rust_m[8] = {"macro","match","matches!","mod","module_path!","move","mut"};
+static char const *const syntax_keywords_rust_o[3] = {"option_env!","override"};
+static char const *const syntax_keywords_rust_p[6] = {"panic!","print!","println!","priv","pub"};
+static char const *const syntax_keywords_rust_r[3] = {"ref","return"};
+static char const *const syntax_keywords_rust_s[6] = {"self","static","stringify!","struct","super"};
+static char const *const syntax_keywords_rust_t[10] = {"thread_local!","todo!","trace_macros!","trait","true","try","try!","type","typeof"};
+static char const *const syntax_keywords_rust_u[7] = {"unimplemented!","union","unreachable!","unsafe","unsized","use"};
+static char const *const syntax_keywords_rust_v[3] = {"vec!","virtual"};
+static char const *const syntax_keywords_rust_w[5] = {"where","while","write!","writeln!"};
+static char const *const syntax_keywords_rust_y[2] = {"yield"};
+static char const *const *const syntax_all_keywords_rust[] = {
+	['S'] = syntax_keywords_rust_S, ['a'] = syntax_keywords_rust_a, ['b'] = syntax_keywords_rust_b, ['c'] = syntax_keywords_rust_c, ['d'] = syntax_keywords_rust_d, ['e'] = syntax_keywords_rust_e, ['f'] = syntax_keywords_rust_f, ['g'] = syntax_keywords_rust_g, ['i'] = syntax_keywords_rust_i, ['l'] = syntax_keywords_rust_l, ['m'] = syntax_keywords_rust_m, ['o'] = syntax_keywords_rust_o, ['p'] = syntax_keywords_rust_p, ['r'] = syntax_keywords_rust_r, ['s'] = syntax_keywords_rust_s, ['t'] = syntax_keywords_rust_t, ['u'] = syntax_keywords_rust_u, ['v'] = syntax_keywords_rust_v, ['w'] = syntax_keywords_rust_w, ['y'] = syntax_keywords_rust_y
+};
+

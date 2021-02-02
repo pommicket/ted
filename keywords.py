@@ -135,8 +135,26 @@ keywords_cpp = [
     'xor', 'xor_eq',
 ]
 assert not set(keywords_c).intersection(keywords_cpp)
+
+keywords_rust = [
+    "as", "break", "const", "continue", "crate", "else", "enum", "extern", "false", "fn", "for",
+    "if", "impl", "in", "let", "loop", "match", "mod", "move", "mut", "pub", "ref", "return",
+    "self", "Self", "static", "struct", "super", "trait", "true", "type", "unsafe", "use",
+    "where", "while", "async", "await", "dyn", "abstract", "become", "box", "do", "final",
+    "macro", "override", "priv", "typeof", "unsized", "virtual", "yield", "try", "union",
+    "asm!","concat_idents!","format_args_nl!","global_asm!","is_aarch64_feature_detected!",
+    "is_arm_feature_detected!","is_mips64_feature_detected!","is_mips_feature_detected!",
+    "is_powerpc64_feature_detected!","is_powerpc_feature_detected!","llvm_asm!","log_syntax!",
+    "trace_macros!","assert!","assert_eq!","assert_ne!","cfg!","column!","compile_error!",
+    "concat!","dbg!","debug_assert!","debug_assert_eq!","debug_assert_ne!","env!","eprint!",
+    "eprintln!","file!","format!","format_args!","include!","include_bytes!","include_str!",
+    "is_x86_feature_detected!","line!","matches!","module_path!","option_env!","panic!",
+    "print!","println!","stringify!","thread_local!","todo!","try!","unimplemented!",
+    "unreachable!","vec!","write!","writeln!",
+]
   
 file = open('keywords.h', 'w')
 output_keywords(file, keywords_c, 'c')
 output_keywords(file, keywords_cpp, 'cpp')
+output_keywords(file, keywords_rust, 'rust')
 file.close()

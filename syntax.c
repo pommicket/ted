@@ -1,5 +1,9 @@
 #include "keywords.h"
 
+// all characters that can appear in a number
+#define SYNTAX_DIGITS "0123456789.xXoObBlLuUiIabcdefABCDEF_"
+
+
 // returns the language this string is referring to, or LANG_NONE if it's invalid.
 Language language_from_str(char const *str) {
 	for (int i = 0; i < LANG_COUNT; ++i) {
@@ -40,6 +44,25 @@ static inline bool keyword_matches(char32_t *text, size_t len, char const *keywo
 	}
 }
 
+// does i continue the number literal from i-1
+static inline bool syntax_number_continues(char32_t *line, u32 line_len, u32 i) {
+	if (line[i] == '.' && ((i && line[i-1] == '.') || (i < line_len-1 && line[i+1] == '.')))
+		return false; // can't have two .s in a row
+	return line[i] < CHAR_MAX && strchr(SYNTAX_DIGITS, (char)line[i])
+		|| (i && line[i-1] == 'e' && (line[i] == '+' || line[i] == '-'));
+}
+
+// find how long this keyword would be (if this is a keyword)
+static inline u32 syntax_keyword_len(Language lang, char32_t *line, u32 i, u32 line_len) {
+	u32 keyword_end;
+	for (keyword_end = i; 
+		keyword_end < line_len 
+		&& (is32_ident(line[keyword_end]) 
+		|| (lang == LANG_RUST && line[keyword_end] == '!')) // for rust builtin macros		
+		; ++keyword_end);
+	return keyword_end - i;
+}	
+
 static void syntax_highlight_c_cpp(SyntaxState *state_ptr, bool cpp, char32_t *line, u32 line_len, SyntaxCharType *char_types) {
 	SyntaxState state = *state_ptr;
 	bool in_preprocessor = (state & SYNTAX_STATE_CPP_PREPROCESSOR) != 0;
@@ -53,10 +76,6 @@ static void syntax_highlight_c_cpp(SyntaxState *state_ptr, bool cpp, char32_t *l
 	
 	int backslashes = 0;
 	for (u32 i = 0; i < line_len; ++i) {
-		// necessary for the final " of a string to be highlighted
-		bool in_string_now = in_string;
-		bool in_char_now = in_char;
-		bool in_multi_line_comment_now = in_multi_line_comment;
 
 		// are there 1/2 characters left in the line?
 		bool has_1_char =  i + 1 < line_len;
@@ -88,25 +107,39 @@ static void syntax_highlight_c_cpp(SyntaxState *state_ptr, bool cpp, char32_t *l
 				if (line[i + 1] == '/')
 					in_single_line_comment = true; // //
 				else if (line[i + 1] == '*')
-					in_multi_line_comment = in_multi_line_comment_now = true; // /*
+					in_multi_line_comment = true; // /*
 			} else if (in_multi_line_comment) {
 				if (i && line[i - 1] == '*') {
 					// */
 					in_multi_line_comment = false;
+					if (char_types) {
+						dealt_with = true;
+						char_types[i] = SYNTAX_COMMENT;
+					}
 				}
 			}
 			break;
 		case '"':
-			if (in_string && backslashes % 2 == 0)
+			if (in_string && backslashes % 2 == 0) {
 				in_string = false;
-			else if (!in_multi_line_comment && !in_single_line_comment && !in_char)
-				in_string = in_string_now = true;
+				if (char_types) {
+					dealt_with = true;
+					char_types[i] = SYNTAX_STRING;
+				}
+			} else if (!in_multi_line_comment && !in_single_line_comment && !in_char) {
+				in_string = true;
+			}
 			break;
 		case '\'':
-			if (in_char && backslashes % 2 == 0)
+			if (in_char && backslashes % 2 == 0) {
 				in_char = false;
-			else if (!in_multi_line_comment && !in_single_line_comment && !in_string)
-				in_char = in_char_now = true;
+				if (char_types) {
+					dealt_with = true;
+					char_types[i] = SYNTAX_CHARACTER;
+				}
+			} else if (!in_multi_line_comment && !in_single_line_comment && !in_string) {
+				in_char = true;
+			}
 			break;
 		case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9': // don't you wish C had case ranges...
 			// a number!
@@ -127,7 +160,7 @@ static void syntax_highlight_c_cpp(SyntaxState *state_ptr, bool cpp, char32_t *l
 			if ((i && is32_ident(line[i - 1])) || !is32_ident(c))
 				break; // can't be a keyword on its own.
 			
-			if (c == 'R' && has_2_chars && line[i + 1] == '"' && line[i + 2] == '(') {
+			if (!in_single_line_comment && !in_multi_line_comment && !in_string && c == 'R' && has_2_chars && line[i + 1] == '"' && line[i + 2] == '(') {
 				// raw string
 				in_raw_string = true;
 				raw_string_ending = false;
@@ -136,24 +169,28 @@ static void syntax_highlight_c_cpp(SyntaxState *state_ptr, bool cpp, char32_t *l
 			
 			// keywords don't matter for advancing the state
 			if (char_types && !in_single_line_comment && !in_multi_line_comment && !in_string && !in_preprocessor && !in_char) {
-				u32 keyword_end;
-				// find where this keyword would end (if this is a keyword)
-				for (keyword_end = i; keyword_end < line_len && is32_ident(line[keyword_end]); ++keyword_end);
-				
-				u32 keyword_len = keyword_end - i;
+				u32 keyword_len = syntax_keyword_len(cpp ? LANG_CPP : LANG_C, line, i, line_len);
 				char const *const *keywords = c < arr_count(syntax_all_keywords_c) ? syntax_all_keywords_c[c] : NULL;
 				char const *keyword = NULL;
-				if (keywords)
-					for (size_t k = 0; keywords[k]; ++k)
-						if (keyword_matches(&line[i], keyword_len, keywords[k]))
+				if (keywords) {
+					for (size_t k = 0; keywords[k]; ++k) {
+						if (keyword_matches(&line[i], keyword_len, keywords[k])) {
 							keyword = keywords[k];
+							break;
+						}
+					}
+				}
 				if (cpp && !keyword) {
 					// check C++'s keywords too!
 					keywords = c < arr_count(syntax_all_keywords_cpp) ? syntax_all_keywords_cpp[c] : NULL;
-					if (keywords)
-						for (size_t k = 0; keywords[k]; ++k)
-							if (keyword_matches(&line[i], keyword_len, keywords[k]))
+					if (keywords) {
+						for (size_t k = 0; keywords[k]; ++k) {
+							if (keyword_matches(&line[i], keyword_len, keywords[k])) {
 								keyword = keywords[k];
+								break;
+							}
+						}
+					}
 				}
 				
 				if (keyword) {
@@ -177,20 +214,18 @@ static void syntax_highlight_c_cpp(SyntaxState *state_ptr, bool cpp, char32_t *l
 			}
 		} break;
 		}
-		if (line[i] != '\\') backslashes = 0;
-		if (in_number && !(is32_digit(line[i]) || line[i] == '.'
-			|| (line[i] < CHAR_MAX && strchr("xXoObBlLuUabcdefABCDEF", (char)line[i]))
- 			|| (i && line[i-1] == 'e' && (line[i] == '+' || line[i] == '-')))) {
+		if (c != '\\') backslashes = 0;
+		if (in_number && !syntax_number_continues(line, line_len, i)) {
 			in_number = false;
 		}
 
 		if (char_types && !dealt_with) {
 			SyntaxCharType type = SYNTAX_NORMAL;
-			if (in_single_line_comment || in_multi_line_comment_now)
+			if (in_single_line_comment || in_multi_line_comment)
 				type = SYNTAX_COMMENT;
-			else if (in_string_now)
+			else if (in_string)
 				type = SYNTAX_STRING;
-			else if (in_char_now)
+			else if (in_char)
 				type = SYNTAX_CHARACTER;
 			else if (in_number)
 				type = SYNTAX_CONSTANT;
@@ -210,24 +245,166 @@ static void syntax_highlight_c_cpp(SyntaxState *state_ptr, bool cpp, char32_t *l
 }
 
 static void syntax_highlight_rust(SyntaxState *state, char32_t *line, u32 line_len, SyntaxCharType *char_types) {
-	u8 comment_depth = (u8)((*state & SYNTAX_STATE_RUST_COMMENT_DEPTH_MASK) / SYNTAX_STATE_RUST_COMMENT_DEPTH_MUL);
+	u32 comment_depth = (((u32)*state & SYNTAX_STATE_RUST_COMMENT_DEPTH_MASK) / SYNTAX_STATE_RUST_COMMENT_DEPTH_MUL);
+	bool in_string = (*state & SYNTAX_STATE_RUST_STRING) != 0;
+	bool string_is_raw = (*state & SYNTAX_STATE_RUST_STRING_IS_RAW) != 0;
+	bool in_number = false;
+	uint backslashes = 0;
+	
 	for (u32 i = 0; i < line_len; ++i) {
 		char32_t c = line[i];
 		bool dealt_with = false;
-		switch (c) {
+		bool has_1_char = i + 1 < line_len;
+		bool has_2_chars = i + 2 < line_len;
 		
+		switch (c) {
+		case '/':
+			if (!in_string) {
+				if (i && line[i-1] == '*') {
+					// */
+					if (comment_depth)
+						--comment_depth;
+					if (char_types) {
+						char_types[i] = SYNTAX_COMMENT;
+						dealt_with = true;
+					}
+				} else if (has_1_char && line[i+1] == '*') {
+					// /*
+					++comment_depth;
+				} else if (!comment_depth && has_1_char && line[i+1] == '/') {
+					// //
+					// just handle it all now
+					if (char_types) {
+						for (u32 j = i; j < line_len; ++j)
+							char_types[j] = SYNTAX_COMMENT;
+					}
+					i = line_len - 1;
+					dealt_with = true;
+					break;
+				}
+			}
+			break;
+		case '"':
+			if (!comment_depth) {
+				if (in_string) {
+					if (backslashes % 2 == 0) {
+						if (!string_is_raw || (has_1_char && line[i+1] == '#')) {
+							// end of string literal
+							in_string = false;
+							if (char_types) {
+								char_types[i] = SYNTAX_STRING;
+								dealt_with = true;
+							}
+							string_is_raw = false;
+						}
+					}
+				} else {
+					// start of string literal
+					in_string = true;
+					if (i && line[i-1] == '#')
+						string_is_raw = true;
+				}
+			}
+			break;
+		case '\'': {
+			if (!comment_depth && !in_string && has_2_chars) {
+				// figure out if this is a character or a lifetime
+				u32 char_end;
+				backslashes = line[i+1] == '\\';
+				for (char_end = i + 2; char_end < line_len; ++char_end) {
+					if (line[char_end] == '\'' && backslashes % 2 == 0) {
+						break;
+					}
+					if (line[char_end] < CHAR_MAX
+					&& line[char_end - 1] != '\\'
+					&& !strchr("abcdefABCDEF0123456789", (char)line[char_end]))
+						break;
+				}
+				if (char_end < line_len && line[char_end] == '\'') {
+					// a character literal
+					if (char_types)
+						for (u32 j = i; j <= char_end; ++j)
+							char_types[j] = SYNTAX_CHARACTER;
+						dealt_with = true;
+						i = char_end;
+				} else {
+					// a lifetime or something else
+				}
+			}
+		} break;
+		case '\\':
+			++backslashes;
+			break;
+		case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9': // don't you wish C had case ranges...
+			// a number!
+			if (char_types && !comment_depth && !in_string && !in_number) {
+				in_number = true;
+				if (i && (is32_ident(line[i - 1])
+					|| (line[i-1] == '.' && !(i >= 2 && line[i-2] == '.')))
+				) {
+					// actually, this isn't a number. it's something like a*6* or u3*2*.
+					// also, don't highlight the 0 in tuple.0
+					in_number = false;
+				}
+			}
+			break;
+		default: {
+			if ((i && is32_ident(line[i - 1])) || !is32_ident(c))
+				break; // can't be a keyword on its own.
+			
+			if (char_types && !in_string && !comment_depth && !in_number) {
+				u32 keyword_len = syntax_keyword_len(LANG_RUST, line, i, line_len);
+				char const *keyword = NULL;
+				char const *const *keywords = c < arr_count(syntax_all_keywords_rust) ? syntax_all_keywords_rust[c] : NULL;
+				if (keywords) {
+					for (size_t k = 0; keywords[k]; ++k) {
+						if (keyword_matches(&line[i], keyword_len, keywords[k])) {
+							keyword = keywords[k];
+							break;
+						}
+					}
+					if (keyword) {
+						SyntaxCharType type = SYNTAX_KEYWORD;
+						if ((keyword_len == 4 && streq(keyword, "true"))
+							|| (keyword_len == 5 && streq(keyword, "false"))
+							) {
+							type = SYNTAX_CONSTANT; // these are constants, not keywords
+						}
+						for (size_t j = 0; keyword[j]; ++j) {
+							char_types[i++] = type;
+						}
+						--i; // we'll increment i from the for loop
+						dealt_with = true;
+					}
+				}
+			}
+		} break;
 		}
+		if (c != '\\') backslashes = 0;
+		if (in_number && !syntax_number_continues(line, line_len, i))
+			in_number = false;
+		
 		if (char_types && !dealt_with) {
 			SyntaxCharType type = SYNTAX_NORMAL;
+			if (comment_depth) {
+				type = SYNTAX_COMMENT;
+			} else if (in_string) {
+				type = SYNTAX_STRING;
+			} else if (in_number) {
+				type = SYNTAX_CONSTANT;
+			}
 			char_types[i] = type;
 		}
+		
 	}
 	
-	uint max_comment_depth = (1u<<SYNTAX_STATE_RUST_COMMENT_DEPTH_BITS);	
+	u32 max_comment_depth = ((u32)1<<SYNTAX_STATE_RUST_COMMENT_DEPTH_BITS);	
 	if (comment_depth >= max_comment_depth)
-		comment_depth = (u8)max_comment_depth;
+		comment_depth = max_comment_depth;
 	*state = (SyntaxState)(
-		(comment_depth * SYNTAX_STATE_RUST_COMMENT_DEPTH_MUL)
+		  (comment_depth * SYNTAX_STATE_RUST_COMMENT_DEPTH_MUL)
+		| (in_string * SYNTAX_STATE_RUST_STRING)
+		| (string_is_raw * SYNTAX_STATE_RUST_STRING_IS_RAW)
 	);
 }
 
@@ -246,6 +423,9 @@ void syntax_highlight(SyntaxState *state, Language lang, char32_t *line, u32 lin
 		break;
 	case LANG_CPP:
 		syntax_highlight_c_cpp(state, true, line, line_len, char_types);
+		break;
+	case LANG_RUST:
+		syntax_highlight_rust(state, line, line_len, char_types);
 		break;
 	case LANG_COUNT: assert(0); break;
 	}

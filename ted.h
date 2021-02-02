@@ -18,6 +18,7 @@ enum {
 	SYNTAX_STATE_RUST_COMMENT_DEPTH_MUL  = 0x1u,
 	SYNTAX_STATE_RUST_COMMENT_DEPTH_BITS = 4, // number of bits we allocate for the comment depth.
 	SYNTAX_STATE_RUST_STRING = 0x10u,
+	SYNTAX_STATE_RUST_STRING_IS_RAW = 0x20u,
 };
 
 typedef u8 SyntaxState;
@@ -26,6 +27,7 @@ ENUM_U16 {
 	LANG_NONE,
 	LANG_C,
 	LANG_CPP,
+	LANG_RUST,
 	LANG_COUNT
 } ENUM_U16_END(Language);
 
@@ -38,6 +40,7 @@ static LanguageName const language_names[] = {
 	{LANG_NONE, "None"},
 	{LANG_C, "C"},
 	{LANG_CPP, "C++"},
+	{LANG_RUST, "Rust"},
 };
 
 ENUM_U8 {
