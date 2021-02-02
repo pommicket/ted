@@ -1,5 +1,26 @@
 import ast
-keywords = ["CHAR_BIT", "CHAR_MAX", "CHAR_MIN", "DBL_DIG", "DBL_EPSILON", "DBL_HAS_SUBNORM", "DBL_MANT_DIG", "DBL_MAX", 
+def process_keywords(keywords):
+    assert len(set(keywords)) == len(keywords)
+    keywords_by_c = {}
+    for kwd in keywords:
+        c = kwd[0]
+        if c in keywords_by_c:
+            keywords_by_c[c].append(kwd)
+        else:
+            keywords_by_c[c] = [kwd]
+    return keywords_by_c
+   
+def output_keywords(file, keywords, language):
+    keywords = process_keywords(keywords)
+    for (c, kwds) in sorted(keywords.items()):
+        kwds = list(sorted(kwds))
+        file.write('static char const *const syntax_keywords_{}_{}[{}] = {{'.format(language, c, len(kwds)+1))
+        file.write(','.join(map(lambda x: '"'+x+'"', kwds)) + '};\n')
+    file.write('static char const *const *const syntax_all_keywords_{}[] = {{\n'.format(language))
+    file.write('\t'+', '.join(["['{}'] = syntax_keywords_{}_{}".format(c, language, c) for c in sorted(keywords.keys())]) + '\n')
+    file.write('};\n\n')
+
+keywords_c = ["CHAR_BIT", "CHAR_MAX", "CHAR_MIN", "DBL_DIG", "DBL_EPSILON", "DBL_HAS_SUBNORM", "DBL_MANT_DIG", "DBL_MAX", 
     "DBL_MAX_10_EXP", "DBL_MAX_EXP", "DBL_MIN", "DBL_MIN_EXP", "DBL_TRUE_MIN", "DECIMAL_DIG", "EXIT_FAILURE", "EXIT_SUCCESS", 
     "FLT_DECIMAL_DIG", "FLT_DIG", "FLT_EVAL_METHOD", "FLT_HAS_SUBNORM", "FLT_MANT_DIG", "FLT_MAX", "FLT_MAX_10_EXP", "FLT_MAX_EXP", 
     "FLT_MIN", "FLT_MIN_10_EXP", "FLT_MIN_EXP", "FLT_RADIX", "FLT_ROUNDS", "FLT_TRUE_MIN", "INT16_MAX", "INT16_MIN", 
@@ -77,7 +98,7 @@ keywords = ["CHAR_BIT", "CHAR_MAX", "CHAR_MIN", "DBL_DIG", "DBL_EPSILON", "DBL_H
 
 for x in ['char', 'char16_t', 'char32_t', 'wchar_t', 'short', 'int',
     'long', 'llong', 'address', 'flag']:
-    keywords.append('ATOMIC_{}_LOCK_FREE'.format(x.upper()))
+    keywords_c.append('ATOMIC_{}_LOCK_FREE'.format(x.upper()))
 for x in ['flag', 'bool', 'address', 'char', 'schar', 'uchar', 'short',
     'ushort', 'int', 'uint', 'long', 'ulong', 'llong', 'ullong', 'char16_t',
     'char32_t', 'wchar_t',
@@ -86,34 +107,36 @@ for x in ['flag', 'bool', 'address', 'char', 'schar', 'uchar', 'short',
     'int_fast8_t', 'int_fast16_t', 'int_fast32_t', 'int_fast64_t',
     'uint_fast8_t', 'uint_fast16_t', 'uint_fast32_t', 'uint_fast64_t',
     'intptr_t', 'uintptr_t', 'size_t', 'ptrdiff_t', 'intmax_t', 'uintmax_t']:
-    keywords.append('atomic_{}'.format(x))
+    keywords_c.append('atomic_{}'.format(x))
 
 for c in 'diouxX':
     for thing in ['', 'LEAST', 'FAST']:
         for N in [8, 16, 32, 64]:
-            keywords.append('PRI{}{}{}'.format(c, thing, N))
-            if c != 'X': keywords.append('SCN{}{}{}'.format(c, thing, N))
+            keywords_c.append('PRI{}{}{}'.format(c, thing, N))
+            if c != 'X': keywords_c.append('SCN{}{}{}'.format(c, thing, N))
             
-    keywords.append('PRI{}PTR'.format(c))
-    keywords.append('PRI{}MAX'.format(c))
+    keywords_c.append('PRI{}PTR'.format(c))
+    keywords_c.append('PRI{}MAX'.format(c))
     if c != 'X':
-        keywords.append('SCN{}PTR'.format(c))
-        keywords.append('SCN{}MAX'.format(c))
-
-assert len(set(keywords)) == len(keywords)
-
-keywords_by_c = {}
-for kwd in keywords:
-    c = kwd[0]
-    if c in keywords_by_c:
-        keywords_by_c[c].append(kwd)
-    else:
-        keywords_by_c[c] = [kwd]
-
-for (c, kwds) in sorted(keywords_by_c.items()):
-    kwds = list(sorted(kwds))
-    print('static char const *const keywords_{}[{}] = {{'.format(c, len(kwds)+1), end='')
-    print(','.join(map(lambda x: '"'+x+'"', kwds)), end='};\n')
-print('static char const *const *const all_keywords[] = {')
-print('\t'+', '.join(["['{}'] = keywords_{}".format(c, c) for c in sorted(keywords_by_c.keys())]))
-print('};')
+        keywords_c.append('SCN{}PTR'.format(c))
+        keywords_c.append('SCN{}MAX'.format(c))
+  
+# keywords unique to C++ (not in C)
+keywords_cpp = [
+    'and', 'and_eq', 'asm', 'atomic_cancel', 'atomic_commit', 
+    'atomic_noexcept', 'bitand', 'bitor', 'catch', 'class', 'compl',
+    'concept', 'consteval', 'constexpr', 'constinit', 'const_cast',
+    'co_await', 'co_return', 'co_yield', 'decltype', 'delete', 'thread_local',
+    'dynamic_cast', 'explicit', 'export', 'friend', 'mutable', 'namespace',
+    'new', 'noexcept', 'not', 'not_eq', 'nullptr', 'operator', 'or', 'or_eq',
+    'private', 'protected', 'public', 'reflexpr', 'reinterpret_cast', 'requires',
+    'static_cast', 'synchronized', 'template', 'this',
+    'throw', 'try', 'typeid', 'typename', 'using', 'virtual',
+    'xor', 'xor_eq',
+]
+assert not set(keywords_c).intersection(keywords_cpp)
+  
+file = open('keywords.h', 'w')
+output_keywords(file, keywords_c, 'c')
+output_keywords(file, keywords_cpp, 'cpp')
+file.close()

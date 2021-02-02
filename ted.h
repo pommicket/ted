@@ -23,6 +23,7 @@ typedef u8 SyntaxState;
 ENUM_U16 {
 	LANG_NONE,
 	LANG_C,
+	LANG_CPP,
 	LANG_COUNT
 } ENUM_U16_END(Language);
 
@@ -34,6 +35,7 @@ typedef struct {
 static LanguageName const language_names[] = {
 	{LANG_NONE, "None"},
 	{LANG_C, "C"},
+	{LANG_CPP, "C++"},
 };
 
 ENUM_U8 {
