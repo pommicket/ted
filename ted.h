@@ -4,16 +4,21 @@
 #define TEXT_SIZE_MIN 6
 #define TEXT_SIZE_MAX 70
 
-typedef struct {
-	bool multi_line_comment:1; // are we in a multi-line comment? (delineated by /* */)
-	bool continued_single_line_comment:1; // if you add a \ to the end of a single-line comment, it is continued to the next line.
-	bool continued_preprocessor:1; // similar to above
-	bool continued_string:1;
-} SyntaxStateC;
+enum {
+	SYNTAX_STATE_SINGLE_LINE_COMMENT_SHIFT,
+	SYNTAX_STATE_MULTI_LINE_COMMENT_SHIFT,
+	SYNTAX_STATE_PREPROCESSOR_SHIFT,
+	SYNTAX_STATE_STRING_SHIFT,
+};
 
-typedef union {
-	SyntaxStateC c;
-} SyntaxState;
+enum {
+	SYNTAX_STATE_MULTI_LINE_COMMENT = 1<<SYNTAX_STATE_MULTI_LINE_COMMENT_SHIFT, // are we in a multi-line comment? (delineated by /* */)
+	SYNTAX_STATE_SINGLE_LINE_COMMENT = 1<<SYNTAX_STATE_SINGLE_LINE_COMMENT_SHIFT, // if you add a \ to the end of a single-line comment, it is continued to the next line.
+	SYNTAX_STATE_PREPROCESSOR = 1<<SYNTAX_STATE_PREPROCESSOR_SHIFT, // similar to above
+	SYNTAX_STATE_STRING = 1<<SYNTAX_STATE_STRING_SHIFT,
+};
+
+typedef u16 SyntaxState;
 
 ENUM_U16 {
 	LANG_NONE,
@@ -49,6 +54,7 @@ typedef struct {
 	u16 error_display_time;
 	bool auto_indent;
 	bool auto_add_newline;
+	bool syntax_highlighting;
 	u8 tab_width;
 	u8 cursor_width;
 	u8 undo_save_time;

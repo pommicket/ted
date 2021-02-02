@@ -21,12 +21,12 @@ ColorSetting syntax_char_type_to_color(SyntaxCharType t) {
 	return COLOR_TEXT;
 }
 
-static void syntax_highlight_c(SyntaxStateC *state, char32_t *line, u32 line_len, SyntaxCharType *char_types) {
-	(void)state;
-	bool in_preprocessor = state->continued_preprocessor;
-	bool in_string = state->continued_string;
-	bool in_single_line_comment = state->continued_single_line_comment; // this kind of comment :)
-	bool in_multi_line_comment = state->multi_line_comment;
+static void syntax_highlight_c(SyntaxState *state_ptr, char32_t *line, u32 line_len, SyntaxCharType *char_types) {
+	SyntaxState state = *state_ptr;
+	bool in_preprocessor = (state & SYNTAX_STATE_PREPROCESSOR) != 0;
+	bool in_string = (state & SYNTAX_STATE_STRING) != 0;
+	bool in_single_line_comment = (state & SYNTAX_STATE_SINGLE_LINE_COMMENT) != 0;
+	bool in_multi_line_comment = (state & SYNTAX_STATE_MULTI_LINE_COMMENT) != 0;
 	bool in_char = false;
 	bool in_number = false;
 	
@@ -206,11 +206,11 @@ static void syntax_highlight_c(SyntaxStateC *state, char32_t *line, u32 line_len
 			char_types[i] = type;
 		}
 	}
-	state->continued_single_line_comment = backslashes && in_single_line_comment;
-	state->continued_preprocessor = backslashes && in_preprocessor;
-	state->continued_string = backslashes && in_string;
-
-	state->multi_line_comment = in_multi_line_comment;
+	*state_ptr = (SyntaxState)(
+		  (backslashes && in_single_line_comment) << SYNTAX_STATE_SINGLE_LINE_COMMENT_SHIFT
+		| (backslashes && in_preprocessor) << SYNTAX_STATE_PREPROCESSOR_SHIFT
+		| (backslashes && in_string) << SYNTAX_STATE_STRING_SHIFT
+		| in_multi_line_comment << SYNTAX_STATE_MULTI_LINE_COMMENT_SHIFT);
 }
 
 // This is the main syntax highlighting function. It will determine which colors to use for each character.
@@ -223,7 +223,7 @@ void syntax_highlight(SyntaxState *state, Language lang, char32_t *line, u32 lin
 		memset(char_types, 0, line_len * sizeof *char_types);
 		break;
 	case LANG_C:
-		syntax_highlight_c(&state->c, line, line_len, char_types);
+		syntax_highlight_c(state, line, line_len, char_types);
 		break;
 	case LANG_COUNT: assert(0); break;
 	}

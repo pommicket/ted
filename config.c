@@ -174,6 +174,7 @@ void config_read(Ted *ted, char const *filename) {
 	OptionBool const options_bool[] = {
 		{"auto-indent", &settings->auto_indent},
 		{"auto-add-newline", &settings->auto_add_newline},
+		{"syntax-highlighting", &settings->syntax_highlighting},
 	};
 	OptionU8 const options_u8[] = {
 		{"tab-width", &settings->tab_width, 1, 100},

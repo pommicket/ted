@@ -48,6 +48,12 @@ no_warn_end
 #include "command.c"
 #include "config.c"
 
+#if PROFILE
+#define PROFILE_TIME(var) double var = time_get_seconds();
+#else
+#define PROFILE_TIME(var)
+#endif
+
 static void die(char const *fmt, ...) {
 	char buf[256] = {0};
 	
@@ -315,7 +321,6 @@ int main(int argc, char **argv) {
 		window_width = ted->window_width, window_height = ted->window_height;
 
 		while (SDL_PollEvent(&event)) {
-
 			TextBuffer *buffer = ted->active_buffer;
 			u32 key_modifier = (u32)ctrl_down << KEY_MODIFIER_CTRL_BIT
 				| (u32)shift_down << KEY_MODIFIER_SHIFT_BIT
@@ -483,6 +488,8 @@ int main(int argc, char **argv) {
 		}
 		glClear(GL_COLOR_BUFFER_BIT);
 		
+		PROFILE_TIME(frame_start);
+
 		Font *font = ted->font;
 
 		if (ted->active_node) {
@@ -568,6 +575,15 @@ int main(int argc, char **argv) {
 			if (ted->buffers_used[i])
 				buffer_check_valid(&ted->buffers[i]);
 		buffer_check_valid(&ted->line_buffer);
+	#endif
+
+
+		PROFILE_TIME(frame_end);
+
+	#if PROFILE
+		{
+			printf("Frame: %.1f ms\n", (frame_end - frame_start) * 1000);
+		}
 	#endif
 
 		SDL_GL_SwapWindow(window);

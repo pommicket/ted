@@ -2006,9 +2006,14 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	Language language = buffer_language(buffer);
 	// dynamic array of character types, to be filled by syntax_highlight
 	SyntaxCharType *char_types = NULL;
-	for (u32 line_idx = 0; line_idx < start_line; ++line_idx) {
-		Line *line = &lines[line_idx];
-		syntax_highlight(&syntax_state, language, line->str, line->len, NULL);
+	bool syntax_highlighting = language && settings->syntax_highlighting;
+	if (syntax_highlighting) {
+		for (u32 line_idx = 0; line_idx < start_line; ++line_idx) {
+			Line *line = &lines[line_idx];
+			syntax_highlight(&syntax_state, language, line->str, line->len, NULL);
+		}
+	} else {
+		gl_color_rgba(colors[COLOR_TEXT]);
 	}
 
 	for (u32 line_idx = start_line; line_idx < nlines; ++line_idx) {
@@ -2016,12 +2021,14 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 		if (arr_len(char_types) < line->len) {
 			arr_set_len(char_types, line->len);
 		}
-		syntax_highlight(&syntax_state, language, line->str, line->len, char_types);
+		if (language)
+			syntax_highlight(&syntax_state, language, line->str, line->len, char_types);
 		for (u32 i = 0; i < line->len; ++i) {
 			char32_t c = line->str[i];
-			SyntaxCharType type = char_types[i];
-
-			gl_color_rgba(colors[syntax_char_type_to_color(type)]);
+			if (syntax_highlighting) {
+				SyntaxCharType type = char_types[i];
+				gl_color_rgba(colors[syntax_char_type_to_color(type)]);
+			}
 			switch (c) {
 			case '\n': assert(0); break;
 			case '\r': break; // for CRLF line endings

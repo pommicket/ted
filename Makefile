@@ -3,6 +3,7 @@ ALL_CFLAGS=$(CFLAGS) -Wall -Wextra -Wshadow -Wconversion -Wpedantic -pedantic -s
 LIBS=-lSDL2 -lGL -ldl -lm
 DEBUG_CFLAGS=$(ALL_CFLAGS) -DDEBUG -O0 -g
 RELEASE_CFLAGS=$(ALL_CFLAGS) -O3
+PROFILE_CFLAGS=$(ALL_CFLAGS) -O3 -DPROFILE=1
 GLOBAL_DATA_DIR=/usr/share/ted
 LOCAL_DATA_DIR=/home/`logname`/.local/share/ted
 INSTALL_BIN_DIR=/usr/bin
@@ -10,6 +11,8 @@ ted: *.[ch] text.o
 	$(CC) main.c text.o -o ted $(DEBUG_CFLAGS) $(LIBS)
 release: *.[ch]
 	$(CC) main.c -o ted $(RELEASE_CFLAGS) $(LIBS)
+profile: *.[ch]
+	$(CC) main.c -o ted $(PROFILE_CFLAGS) $(LIBS)
 text.o: text.c text.h base.h lib/stb_truetype.h
 	$(CC) text.c -c -o $@ $(DEBUG_CFLAGS)
 clean:
