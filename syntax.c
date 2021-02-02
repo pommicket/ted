@@ -220,7 +220,8 @@ static void syntax_highlight_c(SyntaxState *state_ptr, char32_t *line, u32 line_
 void syntax_highlight(SyntaxState *state, Language lang, char32_t *line, u32 line_len, SyntaxCharType *char_types) {
 	switch (lang) {
 	case LANG_NONE:
-		memset(char_types, 0, line_len * sizeof *char_types);
+		if (char_types)
+			memset(char_types, 0, line_len * sizeof *char_types);
 		break;
 	case LANG_C:
 		syntax_highlight_c(state, line, line_len, char_types);

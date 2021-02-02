@@ -2012,7 +2012,8 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 		gl_color_rgba(colors[COLOR_TEXT]);
 	}
 
-	if (buffer->frame_latest_line_modified >= buffer->frame_earliest_line_modified) {
+	if (buffer->frame_latest_line_modified >= buffer->frame_earliest_line_modified
+		&& syntax_highlighting) {
 		// update syntax cache
 		Line *earliest = &buffer->lines[buffer->frame_earliest_line_modified];
 		Line *latest = &buffer->lines[buffer->frame_latest_line_modified];
