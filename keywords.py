@@ -157,9 +157,9 @@ def cant_overlap(*args):
 cant_overlap(keywords_c, keywords_cpp)
 
 keywords_rust = [
-    'as', 'break', 'const', 'continue', 'crate', 'else', 'enum', 'extern', 'false', 'fn', 'for',
+    'as', 'break', 'const', 'continue', 'crate', 'else', 'enum', 'extern', 'fn', 'for',
     'if', 'impl', 'in', 'let', 'loop', 'match', 'mod', 'move', 'mut', 'pub', 'ref', 'return',
-    'self', 'Self', 'static', 'struct', 'super', 'trait', 'true', 'type', 'unsafe', 'use',
+    'self', 'Self', 'static', 'struct', 'super', 'trait', 'type', 'unsafe', 'use',
     'where', 'while', 'async', 'await', 'dyn', 'abstract', 'become', 'box', 'do', 'final',
     'macro', 'override', 'priv', 'typeof', 'unsized', 'virtual', 'yield', 'try', 'union',
 ]
@@ -173,8 +173,16 @@ builtins_rust = [
     'is_x86_feature_detected!','line!','matches!','module_path!','option_env!','panic!',
     'print!','println!','stringify!','thread_local!','todo!','try!','unimplemented!',
     'unreachable!','vec!','write!','writeln!',
-	# @TODO: i32, u32, Some, str, etc.
+	'Copy', 'Send', 'Sized', 'Sync', 'Unpin', 'Drop', 'Fn', 'FnMut', 'FnOnce',
+	'drop', 'Box', 'ToOwned', 'Clone', 'PartialEq', 'PartialOrd', 'Eq', 'Ord',
+	'AsRef', 'AsMut', 'Into', 'From', 'Default', 'Iterator', 'Extend', 'IntoIterator',
+	'DoubleEndedIterator', 'ExactSizeIterator', 'Option', 'Some', 'None', 'Result', 'Ok',
+	'Err', 'String', 'ToString', 'Vec',
+	'u8', 'u16', 'u32', 'u64', 'u128', 'usize',
+	'i8', 'i16', 'i32', 'i64', 'i128', 'isize',
+	'f32', 'f64', 'bool', 'char', 'str',
 ]
+constants_rust = ['false', 'true']
   
 file = open('keywords.h', 'w')
 file.write('''typedef struct {
@@ -186,11 +194,12 @@ def label(kwds, l):
 	return [(l, kwd) for kwd in kwds]
 
 cant_overlap(keywords_c, constants_c, builtins_c)
+cant_overlap(keywords_rust, builtins_rust, constants_rust)
 c_things = label(keywords_c, SYNTAX_KEYWORD) + label(constants_c, SYNTAX_CONSTANT) + label(builtins_c, SYNTAX_BUILTIN)
 output_keywords(file, c_things, 'c')
 cpp_things = c_things + label(keywords_cpp, SYNTAX_KEYWORD)
 cpp_things.remove((SYNTAX_BUILTIN, 'bool'))
 cpp_things.remove((SYNTAX_BUILTIN, 'wchar_t'))
 output_keywords(file, cpp_things, 'cpp')
-output_keywords(file, label(keywords_rust, SYNTAX_KEYWORD) + label(builtins_rust, SYNTAX_BUILTIN), 'rust')
+output_keywords(file, label(keywords_rust, SYNTAX_KEYWORD) + label(builtins_rust, SYNTAX_BUILTIN) + label(constants_rust, SYNTAX_CONSTANT), 'rust')
 file.close()
