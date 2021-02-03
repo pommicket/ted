@@ -14,11 +14,16 @@ enum {
 };
 
 enum {
-	SYNTAX_STATE_RUST_COMMENT_DEPTH_MASK = 0x7u, // in rust, /* */ comments can nest.
+	SYNTAX_STATE_RUST_COMMENT_DEPTH_MASK = 0xfu, // in rust, /* */ comments can nest.
 	SYNTAX_STATE_RUST_COMMENT_DEPTH_MUL  = 0x1u,
 	SYNTAX_STATE_RUST_COMMENT_DEPTH_BITS = 4, // number of bits we allocate for the comment depth.
 	SYNTAX_STATE_RUST_STRING = 0x10u,
 	SYNTAX_STATE_RUST_STRING_IS_RAW = 0x20u,
+};
+
+enum {
+	SYNTAX_STATE_PYTHON_STRING = 0x01u, // multiline strings (''' and """)
+	SYNTAX_STATE_PYTHON_STRING_DBL_QUOTED = 0x02u, // is this a """ string, as opposed to a ''' string?
 };
 
 typedef u8 SyntaxState;
@@ -28,6 +33,7 @@ ENUM_U16 {
 	LANG_C,
 	LANG_CPP,
 	LANG_RUST,
+	LANG_PYTHON,
 	LANG_COUNT
 } ENUM_U16_END(Language);
 
@@ -41,6 +47,7 @@ static LanguageName const language_names[] = {
 	{LANG_C, "C"},
 	{LANG_CPP, "C++"},
 	{LANG_RUST, "Rust"},
+	{LANG_PYTHON, "Python"},
 };
 
 ENUM_U8 {

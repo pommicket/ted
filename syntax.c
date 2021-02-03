@@ -188,7 +188,7 @@ static void syntax_highlight_c_cpp(SyntaxState *state_ptr, bool cpp, char32_t *l
 			}
 			
 			// keywords don't matter for advancing the state
-			if (char_types && !in_single_line_comment && !in_multi_line_comment && !in_string && !in_preprocessor && !in_char) {
+			if (char_types && !in_single_line_comment && !in_multi_line_comment && !in_number && !in_string && !in_preprocessor && !in_char) {
 				u32 keyword_len = syntax_keyword_len(cpp ? LANG_CPP : LANG_C, line, i, line_len);
 				Keyword const *keyword = NULL;
 				if (cpp)
@@ -393,6 +393,115 @@ static void syntax_highlight_rust(SyntaxState *state, char32_t *line, u32 line_l
 	);
 }
 
+static void syntax_highlight_python(SyntaxState *state, char32_t *line, u32 line_len, SyntaxCharType *char_types) {
+	(void)state;
+	bool in_string = (*state & SYNTAX_STATE_PYTHON_STRING) != 0;
+	bool string_is_dbl_quoted = (*state & SYNTAX_STATE_PYTHON_STRING_DBL_QUOTED) != 0;
+	bool string_is_multiline = true;
+	bool in_number = false;
+	uint backslashes = 0;
+	
+	for (u32 i = 0; i < line_len; ++i) {
+		char32_t c = line[i];
+		bool dealt_with = false;
+		switch (c) {
+		case '#':
+			if (!in_string) {
+				// comment
+				if (char_types) {
+					for (u32 j = i; j < line_len; ++j)
+						char_types[j] = SYNTAX_COMMENT;
+					dealt_with = true;
+				}
+				i = line_len - 1;
+			}
+			break;
+		case '\'':
+		case '"': {
+			// @TODO: multi-line strings
+			bool dbl_quoted = c == '"';
+			bool is_triple = i < line_len - 2 &&
+				line[i+1] == c && line[i+2] == c;
+			if (in_string) {
+				if (!string_is_multiline || is_triple) {
+					// end of string
+					if (string_is_dbl_quoted == dbl_quoted && backslashes % 2 == 0) {
+						in_string = false;
+						if (char_types) {
+							char_types[i] = SYNTAX_STRING;
+							if (string_is_multiline) {
+								// highlight all three ending quotes
+								char_types[++i] = SYNTAX_STRING;
+								char_types[++i] = SYNTAX_STRING;
+							}
+							dealt_with = true;
+						}
+					}
+				}
+			} else {
+				// start of string
+				string_is_dbl_quoted = dbl_quoted;
+				in_string = true;
+				string_is_multiline = is_triple;
+			}
+		} break;
+		case ANY_DIGIT:
+			if (char_types && !in_string && !in_number) {
+				in_number = true;
+				if (i) {
+					if (line[i - 1] == '.') {
+						// support .6, for example
+						char_types[i - 1] = SYNTAX_CONSTANT;
+					} else if (is32_ident(line[i - 1])) {
+						// actually, this isn't a number. it's something like a*6* or u3*2*.
+						in_number = false;
+					}
+				}
+			}
+			break;
+		case '\\':
+			++backslashes;
+			break;
+		default:
+			if ((i && is32_ident(line[i - 1])) || !is32_ident(c))
+				break; // can't be a keyword on its own.
+			
+			if (char_types && !in_string && !in_number) {
+				u32 keyword_len = syntax_keyword_len(LANG_PYTHON, line, i, line_len);
+				Keyword const *keyword = syntax_keyword_lookup(syntax_all_keywords_python, arr_count(syntax_all_keywords_python),
+					&line[i], keyword_len);
+				if (keyword) {
+					SyntaxCharType type = keyword->type;
+					for (size_t j = 0; j < keyword_len; ++j) {
+						char_types[i++] = type;
+					}
+					--i; // we'll increment i from the for loop
+					dealt_with = true;
+					break;
+				}
+			}
+			break;
+		}
+		if (c != '\\') backslashes = 0;
+		if (in_number && !syntax_number_continues(line, line_len, i))
+			in_number = false;
+		
+		if (char_types && !dealt_with) {
+			SyntaxCharType type = SYNTAX_NORMAL;
+			if (in_string)
+				type = SYNTAX_STRING;
+			else if (in_number)
+				type = SYNTAX_CONSTANT;
+			char_types[i] = type;
+		}
+	}
+	*state = 0;
+	if (in_string && string_is_multiline) {
+		*state |= SYNTAX_STATE_PYTHON_STRING
+			| (SYNTAX_STATE_PYTHON_STRING_DBL_QUOTED * string_is_dbl_quoted);
+	}
+}
+
 // This is the main syntax highlighting function. It will determine which colors to use for each character.
 // Rather than returning colors, it returns a character type (e.g. comment) which can be converted to a color.
 // To highlight multiple lines, start out with a zeroed SyntaxState, and pass a pointer to it each time.
@@ -411,6 +520,9 @@ void syntax_highlight(SyntaxState *state, Language lang, char32_t *line, u32 lin
 		break;
 	case LANG_RUST:
 		syntax_highlight_rust(state, line, line_len, char_types);
+		break;
+	case LANG_PYTHON:
+		syntax_highlight_python(state, line, line_len, char_types);
 		break;
 	case LANG_COUNT: assert(0); break;
 	}
