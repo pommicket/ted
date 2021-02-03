@@ -158,7 +158,8 @@ static void syntax_highlight_c_cpp(SyntaxState *state_ptr, bool cpp, char32_t *l
 					char_types[i] = SYNTAX_CHARACTER;
 				}
 			} else if (!in_multi_line_comment && !in_single_line_comment && !in_string) {
-				in_char = true;
+				if (i == 0 || !is32_digit(line[i-1])) // in C++, you can use ' as a separator, e.g. 1'000'000
+					in_char = true;
 			}
 			break;
 		case ANY_DIGIT:
