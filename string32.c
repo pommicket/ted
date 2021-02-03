@@ -131,3 +131,4 @@ bool is32_digit(char32_t c) {
 bool is32_ident(char32_t c) {
 	return c <= WINT_MAX && (iswalnum((wint_t)c) || c == '_');
 }
+

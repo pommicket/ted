@@ -64,6 +64,13 @@ typedef unsigned long ulong;
 typedef long long llong;
 typedef unsigned long long ullong;
 
+// allows 
+// switch (c) {
+//     case ANY_DIGIT:
+//        ...
+// }
+#define ANY_DIGIT '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9'
+
 #if __clang__
 #define ENUM_U8 typedef enum : u8
 #define ENUM_U8_END(name) name

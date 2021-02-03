@@ -23,11 +23,12 @@ ColorSetting syntax_char_type_to_color(SyntaxCharType t) {
 	case SYNTAX_STRING: return COLOR_STRING;
 	case SYNTAX_CHARACTER: return COLOR_CHARACTER;
 	case SYNTAX_CONSTANT: return COLOR_CONSTANT;
+	case SYNTAX_BUILTIN: return COLOR_BUILTIN;
 	}
 	return COLOR_TEXT;
 }
 
-static inline bool keyword_matches(char32_t *text, size_t len, char const *keyword) {
+static inline bool syntax_keyword_matches(char32_t *text, size_t len, char const *keyword) {
 	if (len == strlen(keyword)) {
 		bool matches = true;
 		char32_t *p = text;
@@ -44,12 +45,30 @@ static inline bool keyword_matches(char32_t *text, size_t len, char const *keywo
 	}
 }
 
+// lookup the given string in the keywords table
+static Keyword const *syntax_keyword_lookup(Keyword const *const *all_keywords, size_t n_all_keywords, char32_t *str, size_t len) {
+	if (!len) return NULL;
+	if (str[0] >= n_all_keywords) return NULL;
+
+	Keyword const *keywords = all_keywords[str[0]];
+
+	if (keywords) {
+		for (size_t k = 0; keywords[k].str; ++k) {
+			if (syntax_keyword_matches(str, len, keywords[k].str)) {
+				return &keywords[k];
+			}
+		}
+	}
+	return NULL;
+}
+
 // does i continue the number literal from i-1
 static inline bool syntax_number_continues(char32_t *line, u32 line_len, u32 i) {
 	if (line[i] == '.' && ((i && line[i-1] == '.') || (i < line_len-1 && line[i+1] == '.')))
 		return false; // can't have two .s in a row
-	return line[i] < CHAR_MAX && strchr(SYNTAX_DIGITS, (char)line[i])
-		|| (i && line[i-1] == 'e' && (line[i] == '+' || line[i] == '-'));
+	return (line[i] < CHAR_MAX && 
+		(strchr(SYNTAX_DIGITS, (char)line[i])
+		|| (i && line[i-1] == 'e' && (line[i] == '+' || line[i] == '-'))));
 }
 
 // find how long this keyword would be (if this is a keyword)
@@ -62,6 +81,7 @@ static inline u32 syntax_keyword_len(Language lang, char32_t *line, u32 i, u32 l
 		; ++keyword_end);
 	return keyword_end - i;
 }	
+
 
 static void syntax_highlight_c_cpp(SyntaxState *state_ptr, bool cpp, char32_t *line, u32 line_len, SyntaxCharType *char_types) {
 	SyntaxState state = *state_ptr;
@@ -141,7 +161,7 @@ static void syntax_highlight_c_cpp(SyntaxState *state_ptr, bool cpp, char32_t *l
 				in_char = true;
 			}
 			break;
-		case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9': // don't you wish C had case ranges...
+		case ANY_DIGIT:
 			// a number!
 			if (char_types && !in_single_line_comment && !in_multi_line_comment && !in_string && !in_number && !in_char) {
 				in_number = true;
@@ -170,41 +190,17 @@ static void syntax_highlight_c_cpp(SyntaxState *state_ptr, bool cpp, char32_t *l
 			// keywords don't matter for advancing the state
 			if (char_types && !in_single_line_comment && !in_multi_line_comment && !in_string && !in_preprocessor && !in_char) {
 				u32 keyword_len = syntax_keyword_len(cpp ? LANG_CPP : LANG_C, line, i, line_len);
-				char const *const *keywords = c < arr_count(syntax_all_keywords_c) ? syntax_all_keywords_c[c] : NULL;
-				char const *keyword = NULL;
-				if (keywords) {
-					for (size_t k = 0; keywords[k]; ++k) {
-						if (keyword_matches(&line[i], keyword_len, keywords[k])) {
-							keyword = keywords[k];
-							break;
-						}
-					}
-				}
-				if (cpp && !keyword) {
-					// check C++'s keywords too!
-					keywords = c < arr_count(syntax_all_keywords_cpp) ? syntax_all_keywords_cpp[c] : NULL;
-					if (keywords) {
-						for (size_t k = 0; keywords[k]; ++k) {
-							if (keyword_matches(&line[i], keyword_len, keywords[k])) {
-								keyword = keywords[k];
-								break;
-							}
-						}
-					}
-				}
+				Keyword const *keyword = NULL;
+				if (cpp)
+					keyword = syntax_keyword_lookup(syntax_all_keywords_cpp, arr_count(syntax_all_keywords_cpp),
+						&line[i], keyword_len);
+				if (!keyword)
+					keyword = syntax_keyword_lookup(syntax_all_keywords_c, arr_count(syntax_all_keywords_c),
+					&line[i], keyword_len);
 				
 				if (keyword) {
-					// it's a keyword
-					// let's highlight all of it now
-					SyntaxCharType type = SYNTAX_KEYWORD;
-					if (isupper(keyword[0]) || 
-						(keyword_len == 4 && streq(keyword, "true")) ||
-						(keyword_len == 5 && streq(keyword, "false")) ||
-						(keyword_len == 6 && (streq(keyword, "stderr") || streq(keyword, "stdout")))
-						) {
-						type = SYNTAX_CONSTANT; // these are constants, not keywords
-						}
-					for (size_t j = 0; keyword[j]; ++j) {
+					SyntaxCharType type = keyword->type;
+					for (size_t j = 0; j < keyword_len; ++j) {
 						char_types[i++] = type;
 					}
 					--i; // we'll increment i from the for loop
@@ -322,11 +318,12 @@ static void syntax_highlight_rust(SyntaxState *state, char32_t *line, u32 line_l
 				}
 				if (char_end < line_len && line[char_end] == '\'') {
 					// a character literal
-					if (char_types)
+					if (char_types) {
 						for (u32 j = i; j <= char_end; ++j)
 							char_types[j] = SYNTAX_CHARACTER;
 						dealt_with = true;
-						i = char_end;
+					}
+					i = char_end;
 				} else {
 					// a lifetime or something else
 				}
@@ -335,7 +332,7 @@ static void syntax_highlight_rust(SyntaxState *state, char32_t *line, u32 line_l
 		case '\\':
 			++backslashes;
 			break;
-		case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9': // don't you wish C had case ranges...
+		case ANY_DIGIT:
 			// a number!
 			if (char_types && !comment_depth && !in_string && !in_number) {
 				in_number = true;
@@ -354,28 +351,16 @@ static void syntax_highlight_rust(SyntaxState *state, char32_t *line, u32 line_l
 			
 			if (char_types && !in_string && !comment_depth && !in_number) {
 				u32 keyword_len = syntax_keyword_len(LANG_RUST, line, i, line_len);
-				char const *keyword = NULL;
-				char const *const *keywords = c < arr_count(syntax_all_keywords_rust) ? syntax_all_keywords_rust[c] : NULL;
-				if (keywords) {
-					for (size_t k = 0; keywords[k]; ++k) {
-						if (keyword_matches(&line[i], keyword_len, keywords[k])) {
-							keyword = keywords[k];
-							break;
-						}
+				Keyword const *keyword = syntax_keyword_lookup(syntax_all_keywords_rust, arr_count(syntax_all_keywords_rust),
+					&line[i], keyword_len);
+				if (keyword) {
+					SyntaxCharType type = keyword->type;
+					for (size_t j = 0; j < keyword_len; ++j) {
+						char_types[i++] = type;
 					}
-					if (keyword) {
-						SyntaxCharType type = SYNTAX_KEYWORD;
-						if ((keyword_len == 4 && streq(keyword, "true"))
-							|| (keyword_len == 5 && streq(keyword, "false"))
-							) {
-							type = SYNTAX_CONSTANT; // these are constants, not keywords
-						}
-						for (size_t j = 0; keyword[j]; ++j) {
-							char_types[i++] = type;
-						}
-						--i; // we'll increment i from the for loop
-						dealt_with = true;
-					}
+					--i; // we'll increment i from the for loop
+					dealt_with = true;
+					break;
 				}
 			}
 		} break;

@@ -24,6 +24,7 @@ ENUM_U16 {
 	COLOR_CANCEL,
 
 	COLOR_KEYWORD,
+	COLOR_BUILTIN,
 	COLOR_COMMENT,
 	COLOR_PREPROCESSOR,
 	COLOR_STRING,
@@ -58,6 +59,7 @@ static ColorName const color_names[COLOR_COUNT] = {
 	{COLOR_ERROR_BORDER, "error-border"},
 	{COLOR_ACTIVE_TAB_HL, "active-tab-hl"},
 	{COLOR_KEYWORD, "keyword"},
+	{COLOR_BUILTIN, "builtin"},
 	{COLOR_COMMENT, "comment"},
 	{COLOR_PREPROCESSOR, "preprocessor"},
 	{COLOR_STRING, "string"},
