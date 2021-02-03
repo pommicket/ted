@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 import ast
 
 types = [
@@ -153,7 +154,9 @@ keywords_cpp = [
 def cant_overlap(*args):
 	for i in range(len(args)):
 		for j in range(i):
-			assert not set(args[i]).intersection(args[j])
+			intersection = set(args[i]).intersection(args[j])
+			if intersection:
+				raise ValueError("Argument {} intersects with {}: {}".format(i, j, intersection))
 cant_overlap(keywords_c, keywords_cpp)
 
 keywords_rust = [
@@ -186,7 +189,6 @@ constants_rust = ['false', 'true']
 
 
 
-constants_python = ['False', 'None', 'True']
 keywords_python = ['await', 'else', 'import', 'pass', 'break', 'except', 'in', 'raise', 'class', 'finally',
     'is', 'return', 'and', 'continue', 'for', 'lambda', 'try', 'as', 'def', 'from', 'nonlocal',
     'while', 'assert', 'del', 'global', 'not', 'with', 'async', 'elif', 'if', 'or', 'yield',
@@ -225,6 +227,7 @@ def label(kwds, l):
 
 cant_overlap(keywords_c, constants_c, builtins_c)
 cant_overlap(keywords_rust, builtins_rust, constants_rust)
+cant_overlap(keywords_python, builtins_python)
 c_things = label(keywords_c, SYNTAX_KEYWORD) + label(constants_c, SYNTAX_CONSTANT) + label(builtins_c, SYNTAX_BUILTIN)
 output_keywords(file, c_things, 'c')
 cpp_things = c_things + label(keywords_cpp, SYNTAX_KEYWORD)
@@ -232,5 +235,5 @@ cpp_things.remove((SYNTAX_BUILTIN, 'bool'))
 cpp_things.remove((SYNTAX_BUILTIN, 'wchar_t'))
 output_keywords(file, cpp_things, 'cpp')
 output_keywords(file, label(keywords_rust, SYNTAX_KEYWORD) + label(builtins_rust, SYNTAX_BUILTIN) + label(constants_rust, SYNTAX_CONSTANT), 'rust')
-output_keywords(file, label(keywords_python, SYNTAX_KEYWORD) + label(builtins_python, SYNTAX_BUILTIN) + label(constants_python, SYNTAX_CONSTANT), 'python')
+output_keywords(file, label(keywords_python, SYNTAX_KEYWORD) + label(builtins_python, SYNTAX_BUILTIN), 'python')
 file.close()

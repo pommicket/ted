@@ -1,4 +1,5 @@
 // @TODO:
+// - ensure buffer->filename never contains / on windows
 // - split
 // - Windows installation
 #include "base.h"
@@ -433,6 +434,24 @@ int main(int argc, char **argv) {
 			// I was getting a bunch of those even when I was holding down the mouse.
 			// This makes it much smoother.
 			ted->drag_buffer = NULL;
+		}
+
+		{ // ted->cwd should be the directory containing the last active buffer
+			TextBuffer *buffer = ted->active_buffer;
+			if (buffer) {
+				char const *buffer_path = buffer_get_filename(buffer);
+				if (buffer_path && !buffer_is_untitled(buffer)) {
+					assert(*buffer_path);
+					char *last_sep = strrchr(buffer_path, PATH_SEPARATOR);
+					if (last_sep) {
+						size_t dirname_len = (size_t)(last_sep - buffer_path);
+						if (dirname_len == 0) dirname_len = 1; // make sure "/x" sets our cwd to "/", not ""
+						// set cwd to buffer's directory
+						memcpy(ted->cwd, buffer_path, dirname_len);
+						ted->cwd[dirname_len] = 0;
+					}
+				}
+			}
 		}
 
 
