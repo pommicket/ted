@@ -37,6 +37,7 @@ a simple editor that starts up practically instantaneously, and performs well on
 - Multiple tabs, each with a different file
 - Auto-indent
 - Customization of (pretty much) all colours and keyboard commands.
+- Syntax highlighting for C, C++, Rust, and Python.
 
 ## Building from source
 
@@ -46,6 +47,14 @@ On Windows, you will need the SDL2 VC development libraries: https://www.libsdl.
 Copy SDL2-2.x.y into the ted directory, and rename it to SDL2. Additionally, copy SDL2\lib\x64\SDL2.dll
 to the ted directory.  
 Then run `make.bat`.
+
+## Version history
+
+<table>
+<tr><th>Version</th> <th>Description</th> <th>Date</th></tr>
+<tr><td>0.0</td> <td>Very basic editor</td> <td>2021 Jan 31</td></tr>
+<tr><td>0.1</td> <td>Syntax highlighting</td> <td>2021 Feb 3</td></tr>
+</table>
 
 ## License
 

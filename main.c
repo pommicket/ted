@@ -1,6 +1,9 @@
 // @TODO:
+// - line numbering
 // - popup to reload files and config on change
+// - find & replace (with regex)
 // - split
+// - completion
 // - Windows installation
 #include "base.h"
 no_warn_start
