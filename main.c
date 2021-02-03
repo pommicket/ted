@@ -1,9 +1,10 @@
 // @TODO:
-// - line numbering
 // - popup to reload files and config on change
+// - shouldn't be possible to open the same file twice
 // - find & replace (with regex)
 // - split
 // - completion
+// - view-only
 // - Windows installation
 #include "base.h"
 no_warn_start

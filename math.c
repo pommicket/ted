@@ -70,6 +70,14 @@ static inline u32 clamp_u32(u32 x, u32 a, u32 b) {
 	return x;
 }
 
+static inline u8 ndigits_u64(u64 x) {
+	u8 ndigits = 1;
+	while (x > 9) {
+		x /= 10;
+		++ndigits;
+	}
+	return ndigits;
+}
 
 // remap x from the interval [from_a, from_b] to the interval [to_a, to_b], NOT clamping if x is outside the "from" interval.
 static inline float remapf(float x, float from_a, float from_b, float to_a, float to_b) {

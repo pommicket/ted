@@ -1898,8 +1898,8 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	Ted *ted = buffer->ted;
 	Settings const *settings = buffer_settings(buffer);
 	u32 const *colors = settings->colors;
-
-	float border_thickness = settings->border_thickness;
+	float const padding = settings->padding;
+	float const border_thickness = settings->border_thickness;
 
 
 	u32 border_color = colors[COLOR_BORDER]; // color of border around buffer
@@ -1914,18 +1914,45 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	x2 -= border_thickness * 0.5f;
 	y2 -= border_thickness * 0.5f;
 
+	u32 start_line = (u32)buffer->scroll_y; // line to start rendering from
+	float render_start_y = y1 - (float)(buffer->scroll_y - start_line) * char_height; // where the 1st line is rendered
+
+	// line numbering
+	if (!buffer->is_line_buffer && settings->line_numbers) {
+		float line_number_width = ndigits_u64(buffer->nlines) * char_width + padding;
+
+		TextRenderState text_state = text_render_state_default;
+		text_state.min_y = y1;
+		text_state.max_y = y2;
+
+		float y = render_start_y;
+		text_chars_begin(font);
+		gl_color_rgba(colors[COLOR_LINE_NUMBERS]);
+		for (u32 line = start_line; line < buffer->nlines; ++line) {
+			char str[32] = {0};
+			strbuf_printf(str, U32_FMT, line + 1); // convert line number to string
+			float x = x1 + line_number_width - (float)strlen(str) * char_width; // right justify
+			text_render_with_state(font, &text_state, str, x, y);
+			y += char_height;
+			if (y > y2) break;
+		}
+		text_chars_end(font);
+
+		x1 += line_number_width;
+		x1 += 2; // a little bit of padding
+		// line separating line numbers from text
+		glBegin(GL_LINES);
+		gl_color_rgba(colors[COLOR_LINE_NUMBERS_SEPARATOR]);
+		glVertex2f(x1, y1);
+		glVertex2f(x1, y2);
+		glEnd();
+		x1 += padding;
+	}
 
 	// get screen coordinates of cursor
 	v2 cursor_display_pos = buffer_pos_to_pixels(buffer, buffer->cursor_pos);
 	// the rectangle that the cursor is rendered as
 	Rect cursor_rect = rect(cursor_display_pos, V2(settings->cursor_width, char_height));
-
-	TextRenderState text_state = {
-		.x = 0, .y = 0,
-		.min_x = x1, .min_y = y1,
-		.max_x = x2, .max_y = y2,
-		.render = true
-	};
 
 	buffer->x1 = x1; buffer->y1 = y1; buffer->x2 = x2; buffer->y2 = y2;
 
@@ -1945,7 +1972,6 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	float render_start_x = x1 - (float)buffer->scroll_x * char_width;
 	u32 column = 0;
 
-	u32 start_line = (u32)buffer->scroll_y; // line to start rendering from
 
 	if (buffer->selection) { // draw selection
 		glBegin(GL_QUADS);
@@ -1992,17 +2018,6 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	}
 	
 
-	text_chars_begin(font);
-
-	text_state = (TextRenderState){
-		.x = render_start_x, .y = y1,
-		.min_x = x1, .min_y = y1,
-		.max_x = x2, .max_y = y2,
-		.render = true
-	};
-
-	text_state.y -= (float)(buffer->scroll_y - start_line) * char_height;
-
 	Language language = buffer_language(buffer);
 	// dynamic array of character types, to be filled by syntax_highlight
 	SyntaxCharType *char_types = NULL;
@@ -2035,6 +2050,17 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 
 	buffer->longest_line_on_screen = 0;
 	
+
+	text_chars_begin(font);
+
+	TextRenderState text_state = text_render_state_default;
+	text_state.x = render_start_x;
+	text_state.y = render_start_y;
+	text_state.min_x = x1;
+	text_state.min_y = y1;
+	text_state.max_x = x2;
+	text_state.max_y = y2;
+
 	for (u32 line_idx = start_line; line_idx < nlines; ++line_idx) {
 		Line *line = &lines[line_idx];
 		buffer->longest_line_on_screen = max_u32(buffer->longest_line_on_screen, line->len);

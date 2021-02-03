@@ -31,6 +31,9 @@ ENUM_U16 {
 	COLOR_CHARACTER,
 	COLOR_CONSTANT,
 
+	COLOR_LINE_NUMBERS,
+	COLOR_LINE_NUMBERS_SEPARATOR,
+
 	COLOR_COUNT
 } ENUM_U16_END(ColorSetting);
 
@@ -67,7 +70,9 @@ static ColorName const color_names[COLOR_COUNT] = {
 	{COLOR_CONSTANT, "constant"},
 	{COLOR_YES, "yes"},
 	{COLOR_NO, "no"},
-	{COLOR_CANCEL, "cancel"}
+	{COLOR_CANCEL, "cancel"},
+	{COLOR_LINE_NUMBERS, "line-numbers"},
+	{COLOR_LINE_NUMBERS_SEPARATOR, "line-numbers-separator"},
 };
 
 static ColorSetting color_setting_from_str(char const *str) {

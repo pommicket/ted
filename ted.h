@@ -70,6 +70,7 @@ typedef struct {
 	bool auto_indent;
 	bool auto_add_newline;
 	bool syntax_highlighting;
+	bool line_numbers;
 	u8 tab_width;
 	u8 cursor_width;
 	u8 undo_save_time;
