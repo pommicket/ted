@@ -283,28 +283,31 @@ int main(int argc, char **argv) {
 
 	char const *vshader_code = "#version 110\n\
 attribute vec2 v_pos;\n\
+attribute vec4 v_color;\n\
+varying vec4 color;\n\
 uniform vec2 window_size;\n\
 void main() {\n\
 	float x = v_pos.x / window_size.x * 2.0 - 1.0;\n\
 	float y = 1.0 - v_pos.y / window_size.y * 2.0;\n\
 	gl_Position = vec4(x, y, 0.0, 1.0);\n\
+	color = v_color;\n\
 }\n\
 ";
 	char const *fshader_code = "#version 110\n\
-uniform vec4 color;\n\
+varying vec4 color;\n\
 void main() {\n\
 	gl_FragColor = color;\n\
 }\n\
 ";
-	float vertices[][2] = {
-		{0, 0},
-		{50, 0},
-		{0, 50},
+	float vertices[][6] = {
+		{0, 0,  1, 0, 0, 1},
+		{50, 0, 0, 1, 0, 1},
+		{0, 50, 0, 0, 1, 1},
 	};
 	GLuint program = gl_compile_and_link_shaders(vshader_code, fshader_code);
 	GLuint v_pos = gl_attrib_loc(program, "v_pos");
+	GLuint v_color = gl_attrib_loc(program, "v_color");
 	GLint u_window_size = gl_uniform_loc(program, "window_size");
-	GLint u_color = gl_uniform_loc(program, "color");
 
 	GLuint vbo = 0, vao = 0;
 	glGenBuffers(1, &vbo);
@@ -313,8 +316,10 @@ void main() {\n\
 	glBindVertexArray(vao);
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
 	glBufferData(GL_ARRAY_BUFFER, sizeof vertices, vertices, GL_STATIC_DRAW);
-	glVertexAttribPointer(v_pos, 2, GL_FLOAT, 0, 2 * sizeof(float), (void *)0);
+	glVertexAttribPointer(v_pos, 2, GL_FLOAT, 0, 6 * sizeof(float), (void *)0);
 	glEnableVertexAttribArray(v_pos);
+	glVertexAttribPointer(v_color, 4, GL_FLOAT, 0, 6 * sizeof(float), (void *)(2 * sizeof(float)));
+	glEnableVertexAttribArray(v_color);
 	glBindVertexArray(0);
 
 	while (1) {
@@ -330,7 +335,6 @@ void main() {\n\
 
 		
 		glUseProgram(program);
-		glUniform4f(u_color, 1, 1, 0, 1);
 		glUniform2f(u_window_size, (float)w, (float)h);
 		glBindVertexArray(vao);
 

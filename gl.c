@@ -125,4 +125,3 @@ static GLint gl_uniform_loc(GLuint program, char const *uniform) {
 	return loc;
 }
 
-
