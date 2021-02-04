@@ -71,6 +71,7 @@ typedef struct {
 	bool auto_add_newline;
 	bool syntax_highlighting;
 	bool line_numbers;
+	bool auto_reload;
 	u8 tab_width;
 	u8 cursor_width;
 	u8 undo_save_time;
@@ -124,6 +125,7 @@ typedef struct {
 	char *filename; // NULL if this buffer doesn't correspond to a file (e.g. line buffers)
 	struct Ted *ted; // we keep a back-pointer to the ted instance so we don't have to pass it in to every buffer function
 	double scroll_x, scroll_y; // number of characters scrolled in the x/y direction
+	struct timespec last_write_time; // last write time to filename.
 	BufferPos cursor_pos;
 	BufferPos selection_pos; // if selection is true, the text between selection_pos and cursor_pos is selected.
 	bool is_line_buffer; // "line buffers" are buffers which can only have one line of text (used for inputs)
@@ -151,7 +153,7 @@ ENUM_U16 {
 	MENU_NONE,
 	MENU_OPEN,
 	MENU_SAVE_AS,
-	MENU_WARN_UNSAVED // warn about unsaved changes
+	MENU_WARN_UNSAVED, // warn about unsaved changes
 } ENUM_U16_END(Menu);
 
 // file entries for file selectors

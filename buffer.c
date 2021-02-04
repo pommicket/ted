@@ -570,179 +570,6 @@ void buffer_clear(TextBuffer *buffer) {
 	memcpy(buffer->error, error, sizeof error);
 }
 
-// if an error occurs, buffer is left untouched (except for the error field) and the function returns false.
-Status buffer_load_file(TextBuffer *buffer, char const *filename) {
-	FILE *fp = fopen(filename, "rb");
-	bool success = true;
-	if (fp) {
-		fseek(fp, 0, SEEK_END);
-		long file_pos = ftell(fp);
-		size_t file_size = (size_t)file_pos;
-		fseek(fp, 0, SEEK_SET);
-		if (file_pos == -1 || file_pos == LONG_MAX) {
-			buffer_seterr(buffer, "Couldn't get file position. There is something wrong with the file '%s'.", filename);
-			success = false;
-		} else if (file_size > 10L<<20) {
-			buffer_seterr(buffer, "File too big (size: %zu).", file_size);
-			success = false;
-		} else {
-			u8 *file_contents = buffer_calloc(buffer, 1, file_size);
-			if (file_contents) {
-				u32 lines_capacity = 4;
-				Line *lines = buffer_calloc(buffer, lines_capacity, sizeof *buffer->lines); // initial lines
-				if (lines) {
-					u32 nlines = 1;
-					size_t bytes_read = fread(file_contents, 1, file_size, fp);
-					if (bytes_read == file_size) {
-						char32_t c = 0;
-						for (u8 *p = file_contents, *end = p + file_size; p != end; ) {
-							if (*p == '\r' && p != end-1 && p[1] == '\n') {
-								// CRLF line endings
-								p += 2;
-								c = '\n';
-							} else {
-								size_t n = unicode_utf8_to_utf32(&c, (char *)p, (size_t)(end - p));
-								if (n == 0) {
-									// null character
-									c = 0;
-									++p;
-								} else if (n == (size_t)(-1)) {
-									// invalid UTF-8
-									success = false;
-									buffer_seterr(buffer, "Invalid UTF-8 (position: %td).", p - file_contents);
-									break;
-								} else {
-									p += n;
-								}
-							}
-							if (c == '\n') {
-								if (buffer_lines_set_min_capacity(buffer, &lines, &lines_capacity, nlines + 1))
-									++nlines;
-							} else {
-								u32 line_idx = nlines - 1;
-								Line *line = &lines[line_idx];
-								buffer_line_append_char(buffer, line, c);
-							}
-						}
-						if (success) {
-							char *filename_copy = buffer_strdup(buffer, filename);
-							if (!filename_copy) success = false;
-							if (success) {
-								// everything is good
-								buffer_clear(buffer);
-								buffer->lines = lines;
-								buffer->nlines = nlines;
-								buffer->frame_earliest_line_modified = 0;
-								buffer->frame_latest_line_modified = nlines - 1;
-								buffer->lines_capacity = lines_capacity;
-								buffer->filename = filename_copy;
-							}
-						}
-					} else {
-						success = false;
-					}
-					if (!success) {
-						// something went wrong; we need to free all the memory we used
-						for (u32 i = 0; i < nlines; ++i)
-							buffer_line_free(&lines[i]);
-						free(lines);
-					}
-				}
-				free(file_contents);
-			}
-			if (ferror(fp)) {	
-				buffer_seterr(buffer, "Error reading from file.");
-				success = false;
-			}
-		}
-		if (fclose(fp) != 0) {
-			buffer_seterr(buffer, "Error closing file.");
-			success = false;
-		}
-	} else {
-		buffer_seterr(buffer, "Couldn't open file %s: %s.", filename, strerror(errno));
-		success = false;
-	}
-	return success;
-}
-
-void buffer_new_file(TextBuffer *buffer, char const *filename) {
-	buffer_clear(buffer);
-
-	buffer->filename = buffer_strdup(buffer, filename);
-	buffer->lines_capacity = 4;
-	buffer->lines = buffer_calloc(buffer, buffer->lines_capacity, sizeof *buffer->lines);
-	buffer->nlines = 1;
-}
-
-// Save the buffer to its current filename. This will rewrite the entire file, regardless of
-// whether there are any unsaved changes.
-bool buffer_save(TextBuffer *buffer) {
-	Settings const *settings = buffer_settings(buffer);
-	if (!buffer->is_line_buffer && buffer->filename) {
-		FILE *out = fopen(buffer->filename, "wb");
-		if (out) {
-			for (Line *line = buffer->lines, *end = line + buffer->nlines; line != end; ++line) {
-				for (char32_t *p = line->str, *p_end = p + line->len; p != p_end; ++p) {
-					char utf8[4] = {0};
-					size_t bytes = unicode_utf32_to_utf8(utf8, *p);
-					if (bytes != (size_t)-1) {
-						if (fwrite(utf8, 1, bytes, out) != bytes) {
-							buffer_seterr(buffer, "Couldn't write to %s.", buffer->filename);
-						}
-					}
-				}
-
-				if (line != end-1) {
-					putc('\n', out);
-				} else {
-					if (settings->auto_add_newline) {
-						if (line->len) {
-							// if the last line isn't empty, add a newline.
-							putc('\n', out);
-						}
-					}
-				}
-			}
-			if (ferror(out)) {
-				if (!buffer_haserr(buffer))
-					buffer_seterr(buffer, "Couldn't write to %s.", buffer->filename);
-			}
-			if (fclose(out) != 0) {
-				if (!buffer_haserr(buffer))
-					buffer_seterr(buffer, "Couldn't close file %s.", buffer->filename);
-			}
-			bool success = !buffer_haserr(buffer);
-			if (success) {
-				buffer->modified = false;
-			}
-			return success;
-		} else {
-			buffer_seterr(buffer, "Couldn't open file %s for writing: %s.", buffer->filename, strerror(errno));
-			return false;
-		}
-	} else {
-		// user tried to save line buffer. whatever
-		return true;
-	}
-}
-
-// save, but with a different file name
-bool buffer_save_as(TextBuffer *buffer, char const *new_filename) {
-	char *prev_filename = buffer->filename;
-	if ((buffer->filename = buffer_strdup(buffer, new_filename))) {
-		if (buffer_save(buffer)) {
-			free(prev_filename);
-			return true;
-		} else {
-			free(buffer->filename);
-			buffer->filename = prev_filename;
-			return false;
-		}
-	} else {
-		return false;
-	}
-}
 
 // print the contents of a buffer to stdout
 static void buffer_print(TextBuffer const *buffer) {
@@ -1856,6 +1683,208 @@ void buffer_paste(TextBuffer *buffer) {
 			}
 			SDL_free(text);
 		}
+	}
+}
+
+
+// if an error occurs, buffer is left untouched (except for the error field) and the function returns false.
+Status buffer_load_file(TextBuffer *buffer, char const *filename) {
+	FILE *fp = fopen(filename, "rb");
+	bool success = true;
+	if (fp) {
+		fseek(fp, 0, SEEK_END);
+		long file_pos = ftell(fp);
+		size_t file_size = (size_t)file_pos;
+		fseek(fp, 0, SEEK_SET);
+		if (file_pos == -1 || file_pos == LONG_MAX) {
+			buffer_seterr(buffer, "Couldn't get file position. There is something wrong with the file '%s'.", filename);
+			success = false;
+		} else if (file_size > 10L<<20) {
+			buffer_seterr(buffer, "File too big (size: %zu).", file_size);
+			success = false;
+		} else {
+			u8 *file_contents = buffer_calloc(buffer, 1, file_size);
+			if (file_contents) {
+				u32 lines_capacity = 4;
+				Line *lines = buffer_calloc(buffer, lines_capacity, sizeof *buffer->lines); // initial lines
+				if (lines) {
+					u32 nlines = 1;
+					size_t bytes_read = fread(file_contents, 1, file_size, fp);
+					if (bytes_read == file_size) {
+						char32_t c = 0;
+						for (u8 *p = file_contents, *end = p + file_size; p != end; ) {
+							if (*p == '\r' && p != end-1 && p[1] == '\n') {
+								// CRLF line endings
+								p += 2;
+								c = '\n';
+							} else {
+								size_t n = unicode_utf8_to_utf32(&c, (char *)p, (size_t)(end - p));
+								if (n == 0) {
+									// null character
+									c = 0;
+									++p;
+								} else if (n == (size_t)(-1)) {
+									// invalid UTF-8
+									success = false;
+									buffer_seterr(buffer, "Invalid UTF-8 (position: %td).", p - file_contents);
+									break;
+								} else {
+									p += n;
+								}
+							}
+							if (c == '\n') {
+								if (buffer_lines_set_min_capacity(buffer, &lines, &lines_capacity, nlines + 1))
+									++nlines;
+							} else {
+								u32 line_idx = nlines - 1;
+								Line *line = &lines[line_idx];
+								buffer_line_append_char(buffer, line, c);
+							}
+						}
+						if (success) {
+							char *filename_copy = buffer_strdup(buffer, filename);
+							if (!filename_copy) success = false;
+							if (success) {
+								// everything is good
+								buffer_clear(buffer);
+								buffer->lines = lines;
+								buffer->nlines = nlines;
+								buffer->frame_earliest_line_modified = 0;
+								buffer->frame_latest_line_modified = nlines - 1;
+								buffer->lines_capacity = lines_capacity;
+								buffer->filename = filename_copy;
+							}
+						}
+					} else {
+						success = false;
+					}
+					if (!success) {
+						// something went wrong; we need to free all the memory we used
+						for (u32 i = 0; i < nlines; ++i)
+							buffer_line_free(&lines[i]);
+						free(lines);
+					}
+				}
+				free(file_contents);
+			}
+			if (ferror(fp)) {	
+				buffer_seterr(buffer, "Error reading from file.");
+				success = false;
+			}
+		}
+		if (fclose(fp) != 0) {
+			buffer_seterr(buffer, "Error closing file.");
+			success = false;
+		}
+	} else {
+		buffer_seterr(buffer, "Couldn't open file %s: %s.", filename, strerror(errno));
+		success = false;
+	}
+	return success;
+}
+
+// Reloads the file loaded in the buffer.
+// Note that this clears undo history, etc.
+void buffer_reload(TextBuffer *buffer) {
+	if (buffer->filename && !buffer_is_untitled(buffer)) {
+		BufferPos cursor_pos = buffer->cursor_pos;
+		buffer_load_file(buffer, buffer->filename);
+		buffer->cursor_pos = cursor_pos;
+		buffer_validate_cursor(buffer);
+	}
+}
+
+// has this buffer been changed by another program since last save?
+bool buffer_externally_changed(TextBuffer *buffer) {
+	if (!buffer->filename || buffer_is_untitled(buffer))
+		return false;
+	
+	if (!timespec_eq(buffer->last_write_time, time_last_modified(buffer->filename))) {
+		// the write time has been updated, but has the file actually been changed?
+		// @TODO
+	}
+	return false;
+}
+
+void buffer_new_file(TextBuffer *buffer, char const *filename) {
+	buffer_clear(buffer);
+
+	buffer->filename = buffer_strdup(buffer, filename);
+	buffer->lines_capacity = 4;
+	buffer->lines = buffer_calloc(buffer, buffer->lines_capacity, sizeof *buffer->lines);
+	buffer->nlines = 1;
+}
+
+// Save the buffer to its current filename. This will rewrite the entire file, regardless of
+// whether there are any unsaved changes.
+bool buffer_save(TextBuffer *buffer) {
+	Settings const *settings = buffer_settings(buffer);
+	if (!buffer->is_line_buffer && buffer->filename) {
+		FILE *out = fopen(buffer->filename, "wb");
+		if (out) {
+			for (u32 i = 0; i < buffer->nlines; ++i) {
+				Line *line = &buffer->lines[i];
+				for (char32_t *p = line->str, *p_end = p + line->len; p != p_end; ++p) {
+					char utf8[4] = {0};
+					size_t bytes = unicode_utf32_to_utf8(utf8, *p);
+					if (bytes != (size_t)-1) {
+						if (fwrite(utf8, 1, bytes, out) != bytes) {
+							buffer_seterr(buffer, "Couldn't write to %s.", buffer->filename);
+						}
+					}
+				}
+
+				if (i != buffer->nlines-1) {
+					putc('\n', out);
+				} else {
+					if (settings->auto_add_newline) {
+						if (line->len) {
+							// if the last line isn't empty, add a newline to the end of the file
+							char32_t c = '\n';
+							String32 s = {&c, 1};
+							buffer_insert_text_at_pos(buffer, buffer_end_of_file(buffer), s);
+						}
+					}
+				}
+			}
+			if (ferror(out)) {
+				if (!buffer_haserr(buffer))
+					buffer_seterr(buffer, "Couldn't write to %s.", buffer->filename);
+			}
+			if (fclose(out) != 0) {
+				if (!buffer_haserr(buffer))
+					buffer_seterr(buffer, "Couldn't close file %s.", buffer->filename);
+			}
+			bool success = !buffer_haserr(buffer);
+			if (success) {
+				buffer->modified = false;
+			}
+			buffer->last_write_time = time_last_modified(buffer->filename);
+			return success;
+		} else {
+			buffer_seterr(buffer, "Couldn't open file %s for writing: %s.", buffer->filename, strerror(errno));
+			return false;
+		}
+	} else {
+		// user tried to save line buffer. whatever
+		return true;
+	}
+}
+
+// save, but with a different file name
+bool buffer_save_as(TextBuffer *buffer, char const *new_filename) {
+	char *prev_filename = buffer->filename;
+	if ((buffer->filename = buffer_strdup(buffer, new_filename))) {
+		if (buffer_save(buffer)) {
+			free(prev_filename);
+			return true;
+		} else {
+			free(buffer->filename);
+			buffer->filename = prev_filename;
+			return false;
+		}
+	} else {
+		return false;
 	}
 }
 

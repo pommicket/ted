@@ -94,31 +94,33 @@ static void node_frame(Ted *ted, Node *node, Rect r) {
 		{ // tab bar
 			u16 ntabs = (u16)arr_len(node->tabs);
 			float tab_width = r.size.x / ntabs;
-			for (u16 c = 0; c < ted->nmouse_clicks[SDL_BUTTON_LEFT]; ++c) {
-				v2 click = ted->mouse_clicks[SDL_BUTTON_LEFT][c];
-				if (rect_contains_point(tab_bar_rect, click)) {
-					u16 tab_index = (u16)((click.x - r.pos.x) / tab_width);
-					node_switch_to_tab(ted, node, tab_index);
-				}
-			}
-			for (u16 c = 0; c < ted->nmouse_clicks[SDL_BUTTON_MIDDLE]; ++c) {
-				v2 click = ted->mouse_clicks[SDL_BUTTON_MIDDLE][c];
-				if (rect_contains_point(tab_bar_rect, click)) {
-					u16 tab_index = (u16)((click.x - r.pos.x) / tab_width);
-					u16 buffer_idx = node->tabs[tab_index];
-					TextBuffer *buffer = &ted->buffers[buffer_idx];
-					// close that tab
-					if (buffer_unsaved_changes(buffer)) {
-						// make sure unsaved changes dialog is opened
-						ted_switch_to_buffer(ted, buffer_idx);
-						command_execute(ted, CMD_TAB_CLOSE, 1);
-					} else {
-						if (!node_tab_close(ted, node, tab_index)) {
-							return; // node closed
-						}
+			if (!ted->menu) {
+				for (u16 c = 0; c < ted->nmouse_clicks[SDL_BUTTON_LEFT]; ++c) {
+					v2 click = ted->mouse_clicks[SDL_BUTTON_LEFT][c];
+					if (rect_contains_point(tab_bar_rect, click)) {
+						u16 tab_index = (u16)((click.x - r.pos.x) / tab_width);
+						node_switch_to_tab(ted, node, tab_index);
 					}
-					ntabs = (u16)arr_len(node->tabs);
-					tab_width = r.size.x / ntabs;
+				}
+				for (u16 c = 0; c < ted->nmouse_clicks[SDL_BUTTON_MIDDLE]; ++c) {
+					v2 click = ted->mouse_clicks[SDL_BUTTON_MIDDLE][c];
+					if (rect_contains_point(tab_bar_rect, click)) {
+						u16 tab_index = (u16)((click.x - r.pos.x) / tab_width);
+						u16 buffer_idx = node->tabs[tab_index];
+						TextBuffer *buffer = &ted->buffers[buffer_idx];
+						// close that tab
+						if (buffer_unsaved_changes(buffer)) {
+							// make sure unsaved changes dialog is opened
+							ted_switch_to_buffer(ted, buffer_idx);
+							command_execute(ted, CMD_TAB_CLOSE, 1);
+						} else {
+							if (!node_tab_close(ted, node, tab_index)) {
+								return; // node closed
+							}
+						}
+						ntabs = (u16)arr_len(node->tabs);
+						tab_width = r.size.x / ntabs;
+					}
 				}
 			}
 

@@ -39,8 +39,8 @@ no_warn_end
 
 #include "command.h"
 #include "colors.h"
-#include "ted.h"
 #include "time.c"
+#include "ted.h"
 #include "string32.c"
 #include "arr.c"
 #include "syntax.c"
@@ -460,6 +460,14 @@ int main(int argc, char **argv) {
 						ted->cwd[dirname_len] = 0;
 					}
 				}
+			}
+		}
+		
+		// check if active buffer should be reloaded
+		{
+			TextBuffer *active_buffer = ted->active_buffer;
+			if (active_buffer && buffer_externally_changed(active_buffer)) {
+				buffer_reload(active_buffer);
 			}
 		}
 

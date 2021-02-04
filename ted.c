@@ -193,6 +193,7 @@ static bool ted_open_file(Ted *ted, char const *filename) {
 	for (u16 i = 0; i < TED_MAX_BUFFERS; ++i) {
 		if (buffers_used[i]) {
 			if (streq(filename, buffer_get_filename(&buffers[i]))) {
+				buffer_reload(&buffers[i]); // make sure buffer is up to date with the file
 				ted_switch_to_buffer(ted, i);
 				return true;
 			}
