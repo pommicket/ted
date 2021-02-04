@@ -40,7 +40,12 @@ a simple editor that starts up practically instantaneously, and performs well on
 
 ## Building from source
 
-On Linux, run `make`; on Windows, run `make.bat`.
+On Linux, run `make`.
+
+On Windows, you will need the SDL2 VC development libraries: https://www.libsdl.org/download-2.0.php  
+Copy SDL2-2.x.y into the ted directory, and rename it to SDL2. Additionally, copy SDL2\lib\x64\SDL2.dll
+to the ted directory.  
+Then run `make.bat`.
 
 ## License
 

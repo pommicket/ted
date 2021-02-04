@@ -1,5 +1,5 @@
 // @TODO:
-// - ensure buffer->filename never contains / on windows
+// - popup to reload files and config on change
 // - split
 // - Windows installation
 #include "base.h"
@@ -110,12 +110,18 @@ int main(int argc, char **argv) {
 	switch (argc) {
 	case 0: case 1: break;
 	case 2:
+		// essentially, replace / with \ on windows.
+		for (char *p = argv[1]; *p; ++p)
+			if (strchr(ALL_PATH_SEPARATORS, *p))
+				*p = PATH_SEPARATOR;
 		starting_filename = argv[1];
 		break;
 	default:	
 		fprintf(stderr, "Usage: %s [filename]\n", argv[0]);
 		return EXIT_FAILURE;
 	}
+	
+	
 
 	SDL_SetHint(SDL_HINT_NO_SIGNAL_HANDLERS, "1"); // if this program is sent a SIGTERM/SIGINT, don't turn it into a quit event
 	if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER) < 0)

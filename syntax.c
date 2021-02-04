@@ -418,7 +418,6 @@ static void syntax_highlight_python(SyntaxState *state, char32_t *line, u32 line
 			break;
 		case '\'':
 		case '"': {
-			// @TODO: multi-line strings
 			bool dbl_quoted = c == '"';
 			bool is_triple = i < line_len - 2 &&
 				line[i+1] == c && line[i+2] == c;

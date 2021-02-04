@@ -71,7 +71,7 @@ static ColorName const color_names[COLOR_COUNT] = {
 };
 
 static ColorSetting color_setting_from_str(char const *str) {
-	// @OPTIM: sort color_names, binary search
+	// @OPTIMIZE: sort color_names, binary search
 	for (int i = 0; i < COLOR_COUNT; ++i) {
 		ColorName const *n = &color_names[i];
 		if (streq(n->name, str))
