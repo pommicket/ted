@@ -7,14 +7,12 @@ PROFILE_CFLAGS=$(ALL_CFLAGS) -O3 -DPROFILE=1
 GLOBAL_DATA_DIR=/usr/share/ted
 LOCAL_DATA_DIR=/home/`logname`/.local/share/ted
 INSTALL_BIN_DIR=/usr/bin
-ted: *.[ch] text.o
-	$(CC) main.c text.o -o ted $(DEBUG_CFLAGS) $(LIBS)
+ted: *.[ch]
+	$(CC) main.c -o ted $(DEBUG_CFLAGS) $(LIBS)
 release: *.[ch]
 	$(CC) main.c -o ted $(RELEASE_CFLAGS) $(LIBS)
 profile: *.[ch]
 	$(CC) main.c -o ted $(PROFILE_CFLAGS) $(LIBS)
-text.o: text.c text.h base.h lib/stb_truetype.h
-	$(CC) text.c -c -o $@ $(DEBUG_CFLAGS)
 clean:
 	rm -f ted *.o
 install: release

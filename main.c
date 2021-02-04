@@ -19,13 +19,10 @@ no_warn_end
 #if _WIN32
 #include <shellapi.h>
 #endif
+#include "gl.c"
 
 #include "unicode.h"
-#if DEBUG
-#include "text.h"
-#else
 #include "text.c"
-#endif
 #include "util.c"
 #define MATH_GL
 #include "math.c"
@@ -36,6 +33,7 @@ no_warn_end
 #else
 #error "Unrecognized operating system."
 #endif
+
 
 #include "command.h"
 #include "colors.h"
@@ -83,6 +81,15 @@ static Rect error_box_rect(Ted *ted) {
 	return rect_centered(V2(window_width * 0.5f, window_height * 0.9f),
 			V2(menu_get_width(ted), 3 * char_height + 2 * padding));
 }
+
+#if DEBUG
+static void APIENTRY gl_message_callback(GLenum source, GLenum type, unsigned int id, GLenum severity, 
+	GLsizei length, const char *message, const void *userParam) {
+	(void)source; (void)type; (void)id; (void)length; (void)userParam;
+	if (severity == GL_DEBUG_SEVERITY_NOTIFICATION) return;
+	debug_println("Message from OpenGL: %s.", message);
+}
+#endif
 
 #if _WIN32
 INT WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
@@ -237,14 +244,102 @@ int main(int argc, char **argv) {
 		} // if we can't find the icon file, it's no big deal
 	}
 
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+	gl_version_major = 4;
+	gl_version_minor = 3;
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, gl_version_major);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, gl_version_minor);
+#if DEBUG
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
+#endif
 	SDL_GLContext *glctx = SDL_GL_CreateContext(window);
 	if (!glctx) {
-		die("%s", SDL_GetError());
+		debug_println("Couldn't get GL 4.3 context. Falling back to 2.0.");
+		gl_version_major = 2;
+		gl_version_minor = 0;
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, gl_version_major);
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, gl_version_minor);
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
+		glctx = SDL_GL_CreateContext(window);
+		if (!glctx)
+			die("%s", SDL_GetError());
 	}
+	gl_get_procs();
+
+#if DEBUG
+	if (gl_version_major * 100 + gl_version_minor >= 403) {
+		GLint flags = 0;
+		glGetIntegerv(GL_CONTEXT_FLAGS, &flags);
+		glEnable(GL_DEBUG_OUTPUT);
+		glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+		if (flags & GL_CONTEXT_FLAG_DEBUG_BIT) {
+			// set up debug message callback
+			glDebugMessageCallback(gl_message_callback, NULL);
+			glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, NULL, GL_TRUE);
+		}
+	}
+#endif
 
 	SDL_GL_SetSwapInterval(1); // vsync
+
+	char const *vshader_code = "#version 110\n\
+attribute vec2 v_pos;\n\
+uniform vec2 window_size;\n\
+void main() {\n\
+	float x = v_pos.x / window_size.x * 2.0 - 1.0;\n\
+	float y = 1.0 - v_pos.y / window_size.y * 2.0;\n\
+	gl_Position = vec4(x, y, 0.0, 1.0);\n\
+}\n\
+";
+	char const *fshader_code = "#version 110\n\
+uniform vec4 color;\n\
+void main() {\n\
+	gl_FragColor = color;\n\
+}\n\
+";
+	float vertices[][2] = {
+		{0, 0},
+		{50, 0},
+		{0, 50},
+	};
+	GLuint program = gl_compile_and_link_shaders(vshader_code, fshader_code);
+	GLuint v_pos = gl_attrib_loc(program, "v_pos");
+	GLint u_window_size = gl_uniform_loc(program, "window_size");
+	GLint u_color = gl_uniform_loc(program, "color");
+
+	GLuint vbo = 0, vao = 0;
+	glGenBuffers(1, &vbo);
+	glGenVertexArrays(1, &vao);
+
+	glBindVertexArray(vao);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo);
+	glBufferData(GL_ARRAY_BUFFER, sizeof vertices, vertices, GL_STATIC_DRAW);
+	glVertexAttribPointer(v_pos, 2, GL_FLOAT, 0, 2 * sizeof(float), (void *)0);
+	glEnableVertexAttribArray(v_pos);
+	glBindVertexArray(0);
+
+	while (1) {
+		int w, h;
+		SDL_GetWindowSize(window, &w, &h);
+
+		SDL_Event event;
+		while (SDL_PollEvent(&event)) if (event.type == SDL_QUIT) return 0;
+
+		glViewport(0, 0, w, h);
+		glClearColor(0,0,0,1);
+		glClear(GL_COLOR_BUFFER_BIT);
+
+		
+		glUseProgram(program);
+		glUniform4f(u_color, 1, 1, 0, 1);
+		glUniform2f(u_window_size, (float)w, (float)h);
+		glBindVertexArray(vao);
+
+		glDrawArrays(GL_TRIANGLES, 0, 3);
+		SDL_GL_SwapWindow(window);
+	}
+
+	return 0;
+
 
 	ted_load_fonts(ted);
 	if (ted_haserr(ted))
@@ -339,6 +434,9 @@ int main(int argc, char **argv) {
 			case SDL_QUIT:
 				command_execute(ted, CMD_QUIT, 1);
 				break;
+		int w, h;
+		SDL_GetWindowSize(window, &w, &h);
+
 			case SDL_MOUSEWHEEL: {
 				// scroll with mouse wheel
 				Sint32 dx = event.wheel.x, dy = -event.wheel.y;
@@ -398,6 +496,7 @@ int main(int argc, char **argv) {
 								}
 							}
 							ted->drag_buffer = buffer;
+
 						}
 					}
 				} break;
@@ -549,6 +648,9 @@ int main(int argc, char **argv) {
 		}
 		for (u16 i = 0; i < TED_MAX_BUFFERS; ++i) {
 			TextBuffer *buffer = &ted->buffers[i];
+		int w, h;
+		SDL_GetWindowSize(window, &w, &h);
+
 			if (buffer_haserr(buffer)) {
 				ted_seterr_to_buferr(ted, buffer);
 				buffer_clearerr(buffer);

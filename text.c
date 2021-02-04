@@ -7,7 +7,6 @@ no_warn_start
 #include "lib/stb_truetype.h"
 no_warn_end
 #include <stdlib.h>
-#include <GL/gl.h>
 
 // We split up code points into a bunch of pages, so we don't have to load all of the font at
 // once into one texture.

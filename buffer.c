@@ -1788,9 +1788,10 @@ Status buffer_load_file(TextBuffer *buffer, char const *filename) {
 void buffer_reload(TextBuffer *buffer) {
 	if (buffer->filename && !buffer_is_untitled(buffer)) {
 		BufferPos cursor_pos = buffer->cursor_pos;
-		buffer_load_file(buffer, buffer->filename);
-		buffer->cursor_pos = cursor_pos;
-		buffer_validate_cursor(buffer);
+		if (buffer_load_file(buffer, buffer->filename)) {
+			buffer->cursor_pos = cursor_pos;
+			buffer_validate_cursor(buffer);
+		}
 	}
 }
 
