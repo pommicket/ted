@@ -165,8 +165,41 @@ static Status ted_open_buffer(Ted *ted, u16 *buffer_idx, u16 *tab) {
 	}
 }
 
+// sets the active buffer to this buffer, and updates active_node, etc. accordingly
+static void ted_switch_to_buffer(Ted *ted, u16 buffer_idx) {
+	ted->active_buffer = &ted->buffers[buffer_idx];
+	// now we need to figure out where this buffer is
+	bool *nodes_used = ted->nodes_used;
+	for (u16 i = 0; i < TED_MAX_NODES; ++i) {
+		if (nodes_used[i]) {
+			Node *node = &ted->nodes[i];
+			arr_foreach_ptr(node->tabs, u16, tab) {
+				if (buffer_idx == *tab) {
+					node->active_tab = (u16)(tab - node->tabs);
+					ted->active_node = node;
+					return;
+				}
+			}
+		}
+	}
+	assert(0);
+}
+
 // Returns true on success
 static bool ted_open_file(Ted *ted, char const *filename) {
+	// first, check if file is already open
+	bool *buffers_used = ted->buffers_used;
+	TextBuffer *buffers = ted->buffers;
+	for (u16 i = 0; i < TED_MAX_BUFFERS; ++i) {
+		if (buffers_used[i]) {
+			if (streq(filename, buffer_get_filename(&buffers[i]))) {
+				ted_switch_to_buffer(ted, i);
+				return true;
+			}
+		}
+	}
+	
+	// not open; we need to load it
 	u16 buffer_idx, tab_idx;
 	if (ted->active_buffer && buffer_is_untitled(ted->active_buffer) && buffer_empty(ted->active_buffer)) {
 		// the active buffer is just an empty untitled buffer. open it here.
@@ -204,25 +237,6 @@ static bool ted_new_file(Ted *ted) {
 	}
 }
 
-// sets the active buffer to this buffer, and updates active_node, etc. accordingly
-static void ted_switch_to_buffer(Ted *ted, u16 buffer_idx) {
-	ted->active_buffer = &ted->buffers[buffer_idx];
-	// now we need to figure out where this buffer is
-	bool *nodes_used = ted->nodes_used;
-	for (u16 i = 0; i < TED_MAX_NODES; ++i) {
-		if (nodes_used[i]) {
-			Node *node = &ted->nodes[i];
-			arr_foreach_ptr(node->tabs, u16, tab) {
-				if (buffer_idx == *tab) {
-					node->active_tab = (u16)(tab - node->tabs);
-					ted->active_node = node;
-					return;
-				}
-			}
-		}
-	}
-	assert(0);
-}
 
 // save all changes to all buffers with unsaved changes.
 // returns true if all buffers were saved successfully
