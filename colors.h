@@ -32,6 +32,7 @@ ENUM_U16 {
 	COLOR_CONSTANT,
 
 	COLOR_LINE_NUMBERS,
+	COLOR_CURSOR_LINE_NUMBER,
 	COLOR_LINE_NUMBERS_SEPARATOR,
 
 	COLOR_COUNT
@@ -72,6 +73,7 @@ static ColorName const color_names[COLOR_COUNT] = {
 	{COLOR_NO, "no"},
 	{COLOR_CANCEL, "cancel"},
 	{COLOR_LINE_NUMBERS, "line-numbers"},
+	{COLOR_CURSOR_LINE_NUMBER, "cursor-line-number"},
 	{COLOR_LINE_NUMBERS_SEPARATOR, "line-numbers-separator"},
 };
 

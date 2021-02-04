@@ -1927,11 +1927,12 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 
 		float y = render_start_y;
 		text_chars_begin(font);
-		gl_color_rgba(colors[COLOR_LINE_NUMBERS]);
-		for (u32 line = start_line; line < buffer->nlines; ++line) {
+		u32 cursor_line = buffer->cursor_pos.line;
+		for (u32 line = start_line; line < nlines; ++line) {
 			char str[32] = {0};
 			strbuf_printf(str, U32_FMT, line + 1); // convert line number to string
 			float x = x1 + line_number_width - (float)strlen(str) * char_width; // right justify
+			gl_color_rgba(colors[line == cursor_line ? COLOR_CURSOR_LINE_NUMBER : COLOR_LINE_NUMBERS]);
 			text_render_with_state(font, &text_state, str, x, y);
 			y += char_height;
 			if (y > y2) break;
