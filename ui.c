@@ -441,13 +441,11 @@ static void file_selector_render(Ted *ted, FileSelector *fs) {
 			if (rect_contains_point(r, ted->mouse_pos) || 
 				((!fs->create_menu || buffer_empty(&ted->line_buffer)) // only highlight selected for create menus if there is no search term (because that will be the name of the file)
 					&& fs->selected == i)) {
-				glBegin(GL_QUADS);
-				gl_color_rgba(colors[COLOR_MENU_HL]);
-				rect_render(r);
-				glEnd();
+				gl_geometry_rect(r, colors[COLOR_MENU_HL]);
 			}
 		}
 	}
+	gl_geometry_draw();
 	
 	TextRenderState text_state = text_render_state_default;
 	text_state.min_x = x1;
@@ -481,18 +479,18 @@ static void file_selector_render(Ted *ted, FileSelector *fs) {
 	text_chars_end(font);
 }
 
+// make sure you call gl_geometry_draw when you are ready to draw all the buttons that have been rendered!
 static void button_render(Ted *ted, Rect button, char const *text, u32 color) {
 	u32 const *colors = ted->settings.colors;
-
-	glBegin(GL_QUADS);
+	
 	if (rect_contains_point(button, ted->mouse_pos)) {
 		// highlight button when hovering over it
-		gl_color_rgba((color & 0xffffff00) | ((color & 0xff) / 3));
-		rect_render(button);
+		u32 new_color = (color & 0xffffff00) | ((color & 0xff) / 3);
+		gl_geometry_rect(button, new_color);
 	}
-	gl_color_rgba(colors[COLOR_BORDER]);
-	rect_render_border(button, 1);
-	glEnd();
+	
+	gl_geometry_rect_border(button, ted->settings.border_thickness, colors[COLOR_BORDER]);
+	gl_geometry_draw();
 
 	v2 pos = rect_center(button);
 	text_render_anchored(ted->font, text, pos.x, pos.y, color, ANCHOR_MIDDLE);
@@ -551,32 +549,28 @@ static void popup_render(Ted *ted, char const *title, char const *body) {
 	u32 const *colors = settings->colors;
 	float const char_height_bold = text_font_char_height(font_bold);
 	float const padding = settings->padding;
-
+	float const border_thickness = settings->border_thickness;
+	
 	popup_get_rects(ted, &r, &button_yes, &button_no, &button_cancel);
-
-	glBegin(GL_QUADS);
-	gl_color_rgba(colors[COLOR_MENU_BG]);
-	rect_render(r);
-	gl_color_rgba(colors[COLOR_BORDER]);
-	rect_render_border(r, 1);
-	glEnd();
-
+	
+	
 	float y = r.pos.y;
+	
+	// popup rectangle
+	gl_geometry_rect(r, colors[COLOR_MENU_BG]);
+	gl_geometry_rect_border(r, border_thickness, colors[COLOR_BORDER]);
+	// line separating text from body
+	gl_geometry_rect(rect(V2(r.pos.x, y + char_height_bold), V2(r.size.x, border_thickness)), colors[COLOR_BORDER]);
+	
+	button_render(ted, button_yes, "Yes", colors[COLOR_YES]);
+	button_render(ted, button_no, "No", colors[COLOR_NO]);
+	button_render(ted, button_cancel, "Cancel", colors[COLOR_CANCEL]);
+
 	// title text
 	v2 title_size = {0};
 	text_get_size(font_bold, title, &title_size.x, &title_size.y);
 	v2 title_pos = v2_sub(V2(window_width * 0.5f, y), V2(title_size.x * 0.5f, 0));
 	text_render(font_bold, title, title_pos.x, title_pos.y, colors[COLOR_TEXT]);
-
-	y += char_height_bold;
-	// line separating text from body
-	glBegin(GL_LINES);
-	gl_color_rgba(colors[COLOR_BORDER]);
-	glVertex2f(rect_x1(r), y);
-	glVertex2f(rect_x2(r), y);
-	glEnd();
-
-	y += padding;
 
 	// body text
 	float text_x1 = rect_x1(r) + padding;
@@ -587,9 +581,6 @@ static void popup_render(Ted *ted, char const *title, char const *body) {
 	state.max_x = text_x2;
 	state.wrap = true;
 	rgba_u32_to_floats(colors[COLOR_TEXT], state.color);
-	text_render_with_state(font, &state, body, text_x1, y);
+	text_render_with_state(font, &state, body, text_x1, y + char_height_bold + padding);
 
-	button_render(ted, button_yes, "Yes", colors[COLOR_YES]);
-	button_render(ted, button_no, "No", colors[COLOR_NO]);
-	button_render(ted, button_cancel, "Cancel", colors[COLOR_CANCEL]);
 }

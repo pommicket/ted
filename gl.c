@@ -194,6 +194,16 @@ static void gl_geometry_rect(Rect r, u32 color_rgba) {
 	arr_add(gl_geometry_triangles, triangle);
 }
 
+static void gl_geometry_rect_border(Rect r, float border_thickness, u32 color) {
+	float border_radius = border_thickness * 0.5f;
+	float x1 = r.pos.x, y1 = r.pos.y, x2 = x1 + r.size.x, y2 = y1 + r.size.y;
+
+	gl_geometry_rect(rect4(x1+border_radius, y1-border_radius, x2+border_radius, y1+border_radius), color);
+	gl_geometry_rect(rect4(x1-border_radius, y2-border_radius, x2-border_radius, y2+border_radius), color);
+	gl_geometry_rect(rect4(x1-border_radius, y1-border_radius, x1+border_radius, y2-border_radius), color);
+	gl_geometry_rect(rect4(x2-border_radius, y1+border_radius, x2+border_radius, y2+border_radius), color);
+}
+
 static void gl_geometry_draw(void) {
 	size_t ntriangles = arr_len(gl_geometry_triangles);
 	

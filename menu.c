@@ -167,10 +167,8 @@ static void menu_render(Ted *ted, Menu menu) {
 	float char_height_bold = text_font_char_height(font_bold);
 
 	// render backdrop
-	glBegin(GL_QUADS);
-	gl_color_rgba(colors[COLOR_MENU_BACKDROP]);
-	rect_render(rect(V2(0, 0), V2(window_width, window_height)));
-	glEnd();
+	gl_geometry_rect(rect(V2(0, 0), V2(window_width, window_height)), colors[COLOR_MENU_BACKDROP]);
+	gl_geometry_draw();
 
 	if (*ted->warn_overwrite) {
 		char const *path = ted->warn_overwrite;
@@ -196,12 +194,9 @@ static void menu_render(Ted *ted, Menu menu) {
 		rect_coords(rect, &menu_x1, &menu_y1, &menu_x2, &menu_y2);
 
 		// menu rectangle & border
-		glBegin(GL_QUADS);
-		gl_color_rgba(colors[COLOR_MENU_BG]);
-		rect_render(rect);
-		gl_color_rgba(colors[COLOR_BORDER]);
-		rect_render_border(rect, settings->border_thickness);
-		glEnd();
+		gl_geometry_rect(rect, colors[COLOR_MENU_BG]);
+		gl_geometry_rect_border(rect, settings->border_thickness, colors[COLOR_BORDER]);
+		gl_geometry_draw();
 		
 		menu_x1 += padding;
 		menu_y1 += padding;

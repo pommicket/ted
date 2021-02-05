@@ -1931,20 +1931,9 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	float const padding = settings->padding;
 	float const border_thickness = settings->border_thickness;
 
-
-	u32 border_color = colors[COLOR_BORDER]; // color of border around buffer
-
-	// bounding box around buffer
-	glBegin(GL_QUADS);
-	gl_color_rgba(border_color);
-	rect_render_border(rect4(x1, y1, x2, y2), border_thickness);
-	glEnd();
-	x1 += border_thickness * 0.5f;
-	y1 += border_thickness * 0.5f;
-	x2 -= border_thickness * 0.5f;
-	y2 -= border_thickness * 0.5f;
-
 	u32 start_line = (u32)buffer->scroll_y; // line to start rendering from
+	Rect bounding_box = rect4(x1, y1, x2, y2);
+	
 	float render_start_y = y1 - (float)(buffer->scroll_y - start_line) * char_height; // where the 1st line is rendered
 
 	// line numbering
@@ -1975,12 +1964,8 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 		x1 += line_number_width;
 		x1 += 2; // a little bit of padding
 		// line separating line numbers from text
-		glBegin(GL_LINES);
-		gl_color_rgba(colors[COLOR_LINE_NUMBERS_SEPARATOR]);
-		glVertex2f(x1, y1);
-		glVertex2f(x1, y2);
-		glEnd();
-		x1 += padding;
+		gl_geometry_rect(rect(V2(x1, y1), V2(border_thickness, y2 - y1)), colors[COLOR_LINE_NUMBERS_SEPARATOR]);
+		x1 += padding + border_thickness;
 	}
 
 	// get screen coordinates of cursor
@@ -1993,23 +1978,21 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	
 	// highlight line cursor is on
 	{
-		gl_color_rgba(colors[COLOR_CURSOR_LINE_BG]);
-		glBegin(GL_QUADS);
 		Rect hl_rect = rect(V2(x1, cursor_display_pos.y), V2(x2-x1-1, char_height));
 		buffer_clip_rect(buffer, &hl_rect);
-		rect_render(hl_rect);
-		glEnd();
+		gl_geometry_rect(hl_rect, colors[COLOR_CURSOR_LINE_BG]);
 	}
 
+	u32 border_color = colors[COLOR_BORDER]; // color of border around buffer
 
+	// bounding box around buffer
+	gl_geometry_rect_border(bounding_box, border_thickness, border_color);
+	
 	// what x coordinate to start rendering the text from
 	float render_start_x = x1 - (float)buffer->scroll_x * char_width;
 	u32 column = 0;
 
-
 	if (buffer->selection) { // draw selection
-		glBegin(GL_QUADS);
-		gl_color_rgba(colors[COLOR_SELECTION_BG]);
 		BufferPos sel_start = {0}, sel_end = {0};
 		int cmp = buffer_pos_cmp(buffer->cursor_pos, buffer->selection_pos);
 		if (cmp < 0) {
@@ -2043,14 +2026,12 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 					V2((float)n_columns_highlighted * char_width, char_height)
 				);
 				buffer_clip_rect(buffer, &hl_rect);
-				rect_render(hl_rect);
+				gl_geometry_rect(hl_rect, colors[COLOR_SELECTION_BG]);
 			}
 			index1 = 0;
 		}
-
-		glEnd();
 	}
-	
+	gl_geometry_draw();
 
 	Language language = buffer_language(buffer);
 	// dynamic array of character types, to be filled by syntax_highlight
@@ -2156,10 +2137,8 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 		}
 		if (is_on) {
 			if (buffer_clip_rect(buffer, &cursor_rect)) {
-				gl_color_rgba(colors[COLOR_CURSOR]);
-				glBegin(GL_QUADS);
-				rect_render(cursor_rect);
-				glEnd();
+				gl_geometry_rect(cursor_rect, colors[COLOR_CURSOR]);
+				gl_geometry_draw();
 			}
 		}
 	}

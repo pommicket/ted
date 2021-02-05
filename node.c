@@ -85,6 +85,7 @@ static void node_frame(Ted *ted, Node *node, Rect r) {
 		Settings const *settings = &ted->settings;
 		u32 const *colors = settings->colors;
 		Font *font = ted->font;
+		float const border_thickness = settings->border_thickness;
 		
 		float tab_bar_height = 20;
 		
@@ -124,35 +125,36 @@ static void node_frame(Ted *ted, Node *node, Rect r) {
 				}
 			}
 
+			TextRenderState text_state = text_render_state_default;
+			text_chars_begin(font);
 			for (u16 i = 0; i < ntabs; ++i) {
 				TextBuffer *buffer = &ted->buffers[node->tabs[i]];
 				char tab_title[256];
 				char const *path = buffer_get_filename(buffer);
 				char const *filename = path_filename(path);
 				Rect tab_rect = rect(V2(r.pos.x + tab_width * i, r.pos.y), V2(tab_width, tab_bar_height));
-				glBegin(GL_QUADS);
-				gl_color_rgba(colors[COLOR_BORDER]);
-
+				
 				// tab border
-				rect_render_border(tab_rect, 1);
+				gl_geometry_rect_border(tab_rect, border_thickness, colors[COLOR_BORDER]);
 				if (i == node->active_tab) {
 					// highlight active tab
-					gl_color_rgba(colors[is_active ? COLOR_ACTIVE_TAB_HL : COLOR_HL]);
-					rect_render(tab_rect);
+					gl_geometry_rect(tab_rect, colors[is_active ? COLOR_ACTIVE_TAB_HL : COLOR_HL]);
 				}
-				glEnd();
-
+				
 				// tab title
 				{
 					char const *surround = buffer_unsaved_changes(buffer) ? "*" : "";
 					strbuf_printf(tab_title, "%s%s%s", surround, filename, surround);
 				}
-				TextRenderState text_state = text_render_state_default;
 				text_state.max_x = rect_x2(tab_rect);
 				rgba_u32_to_floats(colors[COLOR_TEXT], text_state.color);
-				text_render_with_state(font, &text_state, tab_title, tab_rect.pos.x, tab_rect.pos.y);
+				text_state.x = tab_rect.pos.x;
+				text_state.y = tab_rect.pos.y;
+				text_render_chars_utf8(font, &text_state, tab_title);
 				
 			}
+			gl_geometry_draw();
+			text_chars_end(font);
 		}
 
 		u16 buffer_index = node->tabs[node->active_tab];

@@ -10,4 +10,5 @@ if _%1 == _ (
 	cl main.c ted.res /DDEBUG /DEBUG /Zi %CFLAGS% /Fe:ted
 )
 if _%1 == _release cl main.c ted.res /O2 %CFLAGS% /Fe:ted
+if _%1 == _release_with_debug_info cl main.c ted.res /DEBUG /Zi /O2 %CFLAGS% /Fe:ted
 if _%1 == _profile cl main.c ted.res /O2 /DPROFILE %CFLAGS% /Fe:ted

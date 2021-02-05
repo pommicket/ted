@@ -112,11 +112,8 @@ typedef unsigned long long ullong;
 #define no_warn_end
 #endif
 
-#if DEBUG
-#if __unix__
-#define debug_print(...) printf(__VA_ARGS__)
-#else // __unix__
-static void debug_print(char const *fmt, ...) {
+#if _WIN32
+static void print(char const *fmt, ...) {
 	char buf[256];
 	va_list args;
 	va_start(args, fmt);
@@ -124,9 +121,15 @@ static void debug_print(char const *fmt, ...) {
 	va_end(args);
 	OutputDebugStringA(buf);
 }
-#endif // __unix__
-#define debug_println(...) debug_print(__VA_ARGS__), debug_print("\n")
-#else // DEBUG
+#else
+#define print printf
+#endif
+#define println(...) print(__VA_ARGS__), print("\n")
+
+#if DEBUG
+#define debug_print print
+#define debug_println println
+#else
 #define debug_print(...)
 #define debug_println(...)
 #endif

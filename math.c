@@ -720,6 +720,8 @@ static void rect_print(Rect r) {
 }
 
 #if MATH_GL
+
+#if 0
 // must be rendering GL_QUADS to use these functions! 
 
 static void rect_render(Rect r) {
@@ -754,7 +756,7 @@ static void rect_render_border(Rect r, float border_thickness) {
 	glVertex2f(x2+border_radius, y2+border_radius);
 	glVertex2f(x2-border_radius, y2+border_radius);
 }
-
+#endif
 
 /* 
 	gl grayscale color

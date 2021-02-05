@@ -286,7 +286,6 @@ int main(int argc, char **argv) {
 	text_init();
 	
 	SDL_GL_SetSwapInterval(1); // vsync
-
 	ted_load_fonts(ted);
 	if (ted_haserr(ted))
 		die("Error loading font: %s", ted_geterr(ted));
@@ -343,6 +342,7 @@ int main(int argc, char **argv) {
 	#if DEBUG
 		//printf("\033[H\033[2J");
 	#endif
+		PROFILE_TIME(frame_start);
 
 
 		SDL_Event event;
@@ -563,7 +563,6 @@ int main(int argc, char **argv) {
 		}
 		glClear(GL_COLOR_BUFFER_BIT);
 		
-		PROFILE_TIME(frame_start);
 
 		Font *font = ted->font;
 
@@ -622,13 +621,8 @@ int main(int argc, char **argv) {
 				Rect r = error_box_rect(ted);
 				float padding = settings->padding;
 
-				glBegin(GL_QUADS);
-				gl_color_rgba(colors[COLOR_ERROR_BG]);
-				rect_render(r);
-				gl_color_rgba(colors[COLOR_ERROR_BORDER]);
-				rect_render_border(r, settings->border_thickness);
-				glEnd();
-
+				gl_geometry_rect(r, colors[COLOR_ERROR_BG]);
+				gl_geometry_rect_border(r, settings->border_thickness, colors[COLOR_ERROR_BORDER]);
 
 				float text_x1 = rect_x1(r) + padding, text_x2 = rect_x2(r) - padding;
 				float text_y1 = rect_y1(r) + padding;
@@ -651,16 +645,24 @@ int main(int argc, char **argv) {
 		buffer_check_valid(&ted->line_buffer);
 	#endif
 
+		PROFILE_TIME(frame_end_noswap);
 
+	#if PROFILE
+		{
+			print("Frame (noswap): %.1f ms\n", (frame_end_noswap - frame_start) * 1000);
+		}
+	#endif
+
+
+		SDL_GL_SwapWindow(window);
 		PROFILE_TIME(frame_end);
 
 	#if PROFILE
 		{
-			printf("Frame: %.1f ms\n", (frame_end - frame_start) * 1000);
+			print("Frame: %.1f ms\n", (frame_end - frame_start) * 1000);
 		}
 	#endif
 
-		SDL_GL_SwapWindow(window);
 	}
 
 
