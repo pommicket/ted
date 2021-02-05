@@ -16,6 +16,7 @@
 	do(VIEWPORT, Viewport)\
 	do(CLEARCOLOR, ClearColor)\
 	do(CLEAR, Clear)\
+	do(FINISH, Finish)\
 	do(CREATESHADER, CreateShader)\
 	do(DELETESHADER, DeleteShader)\
 	do(CREATEPROGRAM, CreateProgram)\

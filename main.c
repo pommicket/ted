@@ -341,7 +341,7 @@ int main(int argc, char **argv) {
 	#if DEBUG
 		//printf("\033[H\033[2J");
 	#endif
-		PROFILE_TIME(frame_start);
+		double frame_start = time_get_seconds();
 
 
 		SDL_Event event;
@@ -643,18 +643,23 @@ int main(int argc, char **argv) {
 				buffer_check_valid(&ted->buffers[i]);
 		buffer_check_valid(&ted->line_buffer);
 	#endif
-
-		PROFILE_TIME(frame_end_noswap);
-
+	
+		glFinish();
+		
+		double frame_end_noswap = time_get_seconds();
 	#if PROFILE
 		{
 			print("Frame (noswap): %.1f ms\n", (frame_end_noswap - frame_start) * 1000);
 		}
 	#endif
-
-
+	
+		u32 ms_wait = (u32)((frame_end_noswap - frame_start) * 1000);
+		if (ms_wait) ms_wait -= 1; // give swap an extra ms to make sure it's actually vsynced
+		SDL_Delay(ms_wait);
 		SDL_GL_SwapWindow(window);
 		PROFILE_TIME(frame_end);
+
+		assert(glGetError() == 0);
 
 	#if PROFILE
 		{
