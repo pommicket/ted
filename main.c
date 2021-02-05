@@ -13,7 +13,6 @@ no_warn_start
 #include <SDL2/SDL.h>
 #endif
 no_warn_end
-#include <GL/gl.h>
 #include <locale.h>
 #include <wctype.h>
 #if _WIN32

@@ -276,28 +276,10 @@ static void v2_print(v2 v) {
 	printf("(%f, %f)\n", v.x, v.y);
 }
 
-#if MATH_GL
-static void v2_gl_vertex(v2 v) {
-	glVertex2f(v.x, v.y);
-}
-#endif
-
 static v2 v2_rand_unit(void) {
 	float theta = rand_uniform(0, TAUf);
 	return V2(cosf(theta), sinf(theta));
 }
-
-#if MATH_GL
-static void v2_rand_unit_test(void) {
-	int i;
-	glColor3f(1.0f, 0.0f, 0.0f);
-	glBegin(GL_POINTS);
-	for (i = 0; i < 100000; ++i) {
-		v2_gl_vertex(v2_rand_unit());
-	}
-	glEnd();
-}
-#endif
 
 static v2 v2_polar(float r, float theta) {
 	return V2(r * cosf(theta), r * sinf(theta));
@@ -320,20 +302,6 @@ static v3 V3(float x, float y, float z) {
 static v3 v3_from_v2(v2 v) {
 	return V3(v.x, v.y, 0);
 }
-
-#if MATH_GL
-static void v3_gl_vertex(v3 v) {
-	glVertex3f(v.x, v.y, v.z);
-}
-
-static void v3_gl_color(v3 v) {
-	glColor3f(v.x, v.y, v.z);
-}
-
-static void v3_gl_color_alpha(v3 v, float alpha) {
-	glColor4f(v.x, v.y, v.z, alpha);
-}
-#endif
 
 static v3 v3_add(v3 a, v3 b) {
 	return V3(a.x + b.x, a.y + b.y, a.z + b.z);
@@ -413,18 +381,6 @@ static v3 v3_rand_unit(void) {
 	return V3(0, 0, 0);
 }
 
-#if MATH_GL
-static void v3_rand_unit_test(void) {
-	int i;
-	glColor3f(1.0f, 0.0f, 0.0f);
-	glBegin(GL_POINTS);
-	for (i = 0; i < 100000; ++i) {
-		v3_gl_vertex(v3_rand_unit());
-	}
-	glEnd();
-}
-#endif
-
 typedef struct {
 	float x, y, z, w;
 } v4;
@@ -439,12 +395,6 @@ static v4 V4(float x, float y, float z, float w) {
 	v.w = w;
 	return v;
 }
-
-#if MATH_GL
-static void v4_gl_color(v4 v) {
-	glColor4f(v.x, v.y, v.z, v.w);
-}
-#endif
 
 static v4 v4_add(v4 a, v4 b) {
 	return V4(a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w);
@@ -719,60 +669,6 @@ static void rect_print(Rect r) {
 	printf("Position: (%f, %f), Size: (%f, %f)\n", r.pos.x, r.pos.y, r.size.x, r.size.y);
 }
 
-#if MATH_GL
-
-#if 0
-// must be rendering GL_QUADS to use these functions! 
-
-static void rect_render(Rect r) {
-	float x1 = r.pos.x, y1 = r.pos.y, x2 = x1 + r.size.x, y2 = y1 + r.size.y;
-	glVertex2f(x1, y1);
-	glVertex2f(x2, y1);
-	glVertex2f(x2, y2);
-	glVertex2f(x1, y2);
-}
-
-static void rect_render_border(Rect r, float border_thickness) {
-	float border_radius = border_thickness * 0.5f;
-	float x1 = r.pos.x, y1 = r.pos.y, x2 = x1 + r.size.x, y2 = y1 + r.size.y;
-
-	glVertex2f(x1+border_radius, y1-border_radius);
-	glVertex2f(x1+border_radius, y1+border_radius);
-	glVertex2f(x2+border_radius, y1+border_radius);
-	glVertex2f(x2+border_radius, y1-border_radius);
-	
-	glVertex2f(x1-border_radius, y2-border_radius);
-	glVertex2f(x1-border_radius, y2+border_radius);
-	glVertex2f(x2-border_radius, y2+border_radius);
-	glVertex2f(x2-border_radius, y2-border_radius);
-	
-	glVertex2f(x1-border_radius, y1-border_radius);
-	glVertex2f(x1+border_radius, y1-border_radius);
-	glVertex2f(x1+border_radius, y2-border_radius);
-	glVertex2f(x1-border_radius, y2-border_radius);
-	
-	glVertex2f(x2-border_radius, y1+border_radius);
-	glVertex2f(x2+border_radius, y1+border_radius);
-	glVertex2f(x2+border_radius, y2+border_radius);
-	glVertex2f(x2-border_radius, y2+border_radius);
-}
-#endif
-
-/* 
-	gl grayscale color
-	i am tired of not having this
-*/
-static void gl_color1f(float v) {
-	glColor3f(v,v,v);
-}
-
-/* 
-	gl grayscale+alpha color
-*/
-static void gl_color2f(float v, float a) {
-	glColor4f(v,v,v,a);
-}
-
 static void rgba_u32_to_floats(u32 rgba, float floats[4]) {
 	floats[0] = (float)((rgba >> 24) & 0xFF) / 255.f;
 	floats[1] = (float)((rgba >> 16) & 0xFF) / 255.f;
@@ -784,23 +680,6 @@ static v4 rgba_u32_to_v4(u32 rgba) {
 	float c[4];
 	rgba_u32_to_floats(rgba, c);
 	return V4(c[0], c[1], c[2], c[3]);
-}
-
-// color is 0xRRGGBBAA
-static void gl_color_rgba(u32 color) {
-	glColor4ub((u8)(color >> 24), (u8)(color >> 16), (u8)(color >> 8), (u8)color);
-}
-
-// color is 0xRRGGBB
-static void gl_color_rgb(u32 color) {
-	gl_color_rgba((color << 8) | 0xff);
-}
-
-static void gl_quad(float x1, float y1, float x2, float y2) {
-	glVertex2f(x1, y1);
-	glVertex2f(x2, y1);
-	glVertex2f(x2, y2);
-	glVertex2f(x1, y2);
 }
 
 // returns average of red green and blue components of color
@@ -828,5 +707,3 @@ static bool rect_clip_to_rect(Rect *clipped, Rect clipper) {
 	clipped->size.y = clampf(clipped->size.y, 0, clipper.pos.y + clipper.size.y - clipped->pos.y);
 	return clipped->size.x > 0 && clipped->size.y > 0;
 }
-#endif
-

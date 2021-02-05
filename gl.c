@@ -2,6 +2,20 @@
 
 // macro trickery to avoid having to write everything twice
 #define gl_for_each_proc(do)\
+	do(DRAWARRAYS, DrawArrays)\
+	do(GENTEXTURES, GenTextures)\
+	do(DELETETEXTURES, DeleteTextures)\
+	do(TEXIMAGE2D, TexImage2D)\
+	do(BINDTEXTURE, BindTexture)\
+	do(TEXPARAMETERI, TexParameteri)\
+	do(GETERROR, GetError)\
+	do(GETINTEGERV, GetIntegerv)\
+	do(ENABLE, Enable)\
+	do(DISABLE, Disable)\
+	do(BLENDFUNC, BlendFunc)\
+	do(VIEWPORT, Viewport)\
+	do(CLEARCOLOR, ClearColor)\
+	do(CLEAR, Clear)\
 	do(CREATESHADER, CreateShader)\
 	do(DELETESHADER, DeleteShader)\
 	do(CREATEPROGRAM, CreateProgram)\
