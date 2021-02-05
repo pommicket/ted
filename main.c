@@ -19,13 +19,10 @@ no_warn_end
 #if _WIN32
 #include <shellapi.h>
 #endif
-#include "gl.c"
+
 
 #include "unicode.h"
-#include "text.c"
 #include "util.c"
-#define MATH_GL
-#include "math.c"
 #if _WIN32
 #include "filesystem-win.c"
 #elif __unix__
@@ -33,14 +30,20 @@ no_warn_end
 #else
 #error "Unrecognized operating system."
 #endif
+#include "arr.c"
 
+#define MATH_GL
+#include "math.c"
 
+#include "text.h"
 #include "command.h"
 #include "colors.h"
 #include "time.c"
 #include "ted.h"
+#include "gl.c"
+#include "text.c"
+
 #include "string32.c"
-#include "arr.c"
 #include "syntax.c"
 #include "buffer.c"
 #include "ted.c"
@@ -278,32 +281,34 @@ int main(int argc, char **argv) {
 		}
 	}
 #endif
-
+	
+	gl_geometry_init();
+	
 	SDL_GL_SetSwapInterval(1); // vsync
-
-	char const *vshader_code = "#version 110\n\
-attribute vec2 v_pos;\n\
-attribute vec4 v_color;\n\
-varying vec4 color;\n\
-uniform vec2 window_size;\n\
-void main() {\n\
-	float x = v_pos.x / window_size.x * 2.0 - 1.0;\n\
-	float y = 1.0 - v_pos.y / window_size.y * 2.0;\n\
-	gl_Position = vec4(x, y, 0.0, 1.0);\n\
-	color = v_color;\n\
-}\n\
-";
-	char const *fshader_code = "#version 110\n\
-varying vec4 color;\n\
-void main() {\n\
-	gl_FragColor = color;\n\
-}\n\
-";
+	#if 0
 	float vertices[][6] = {
 		{0, 0,  1, 0, 0, 1},
 		{50, 0, 0, 1, 0, 1},
 		{0, 50, 0, 0, 1, 1},
 	};
+	char const *vshader_code = "#version 110\n\
+	attribute vec2 v_pos;\n\
+	attribute vec4 v_color;\n\
+	varying vec4 color;\n\
+	uniform vec2 window_size;\n\
+	void main() {\n\
+		float x = v_pos.x / window_size.x * 2.0 - 1.0;\n\
+		float y = 1.0 - v_pos.y / window_size.y * 2.0;\n\
+		gl_Position = vec4(x, y, 0.0, 1.0);\n\
+		color = v_color;\n\
+	}\n\
+	";
+	char const *fshader_code = "#version 110\n\
+	varying vec4 color;\n\
+	void main() {\n\
+		gl_FragColor = color;\n\
+	}\n\
+	";
 	GLuint program = gl_compile_and_link_shaders(vshader_code, fshader_code);
 	GLuint v_pos = gl_attrib_loc(program, "v_pos");
 	GLuint v_color = gl_attrib_loc(program, "v_color");
@@ -339,6 +344,29 @@ void main() {\n\
 		glBindVertexArray(vao);
 
 		glDrawArrays(GL_TRIANGLES, 0, 3);
+		SDL_GL_SwapWindow(window);
+	}
+	#endif
+
+	while (1) {
+		int w, h;
+		SDL_GetWindowSize(window, &w, &h);
+		ted->window_width = (float)w;
+		ted->window_height = (float)h;
+
+		SDL_Event event;
+		while (SDL_PollEvent(&event)) if (event.type == SDL_QUIT) return 0;
+
+		glViewport(0, 0, w, h);
+		glClearColor(0,0,0,1);
+		glClear(GL_COLOR_BUFFER_BIT);
+
+		for (int i = 0; i < 20; ++i) {
+			gl_geometry_rect(rect(V2(0, 10*(float)i), V2(100, 100)), 0xffffffff >> i);
+		
+			gl_geometry_draw(ted);
+		}
+
 		SDL_GL_SwapWindow(window);
 	}
 

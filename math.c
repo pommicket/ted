@@ -772,10 +772,16 @@ static void gl_color2f(float v, float a) {
 }
 
 static void rgba_u32_to_floats(u32 rgba, float floats[4]) {
-	floats[0] = (float)(rgba >> 24) / 255.f;
-	floats[1] = (float)(rgba >> 16) / 255.f;
-	floats[2] = (float)(rgba >>  8) / 255.f;
-	floats[3] = (float)(rgba >>  0) / 255.f;
+	floats[0] = (float)((rgba >> 24) & 0xFF) / 255.f;
+	floats[1] = (float)((rgba >> 16) & 0xFF) / 255.f;
+	floats[2] = (float)((rgba >>  8) & 0xFF) / 255.f;
+	floats[3] = (float)((rgba >>  0) & 0xFF) / 255.f;
+}
+
+static v4 rgba_u32_to_v4(u32 rgba) {
+	float c[4];
+	rgba_u32_to_floats(rgba, c);
+	return V4(c[0], c[1], c[2], c[3]);
 }
 
 // color is 0xRRGGBBAA
