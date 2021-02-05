@@ -13,6 +13,16 @@ no_warn_end
 #define CHAR_PAGE_SIZE 2048
 #define CHAR_PAGE_COUNT UNICODE_CODE_POINTS / CHAR_PAGE_SIZE
 
+typedef struct {
+	v2 pos;
+	v2 tex_coord;
+	v4 color;
+} TextVertex;
+
+typedef struct {
+	TextVertex v1, v2, v3;
+} TextTriangle;
+
 struct Font {
 	float char_width; // width of the character 'a'. calculated when font is loaded.
 	float char_height;
@@ -21,6 +31,7 @@ struct Font {
 	stbtt_bakedchar *char_pages[CHAR_PAGE_COUNT]; // character pages. NULL if the page hasn't been loaded yet.
 	// TTF data (i.e. the contents of the TTF file)
 	u8 *ttf_data;
+	TextTriangle *triangles[CHAR_PAGE_COUNT]; // triangles to render for each page
 	int curr_page;
 };
 
@@ -29,7 +40,8 @@ TextRenderState const text_render_state_default = {
 	.wrap = false,
 	.x = 0, .y = 0,
 	.min_x = -FLT_MAX, .max_x = +FLT_MAX,
-	.min_y = -FLT_MAX, .max_y = +FLT_MAX
+	.min_y = -FLT_MAX, .max_y = +FLT_MAX,
+	.r = 1, .g = 0, .b = 1, .a = 1,
 };
 
 static char text_err[200];
@@ -54,6 +66,45 @@ static void text_set_err(char const *fmt, ...) {
 	}
 }
 
+static GLuint text_program;
+static GLuint text_vbo, text_vao;
+static GLuint text_v_pos, text_v_color, text_v_tex_coord;
+static GLint  text_u_sampler;
+
+static bool text_init(void) {
+	char const *vshader_code = "#version 110\n\
+attribute vec4 v_color;\n\
+attribute vec2 v_pos;\n\
+attribute vec2 v_tex_coord;\n\
+varying vec4 color;\n\
+varying vec2 tex_coord;\n\
+void main() {\n\
+	color = v_color;\n\
+	tex_coord = v_tex_coord;\n\
+	gl_Position = vec4(v_pos, 0.0, 1.0);\n\
+}\n\
+";
+	char const *fshader_code = "#version 110\n\
+varying vec4 color;\n\
+varying vec2 tex_coord;\n\
+uniform sampler2D sampler;\n\
+void main() {\n\
+	vec4 tex_color = texture2D(sampler, tex_coord);\n\
+	gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);//vec4(1.0, 1.0, 1.0, tex_color.x * color);\n\
+}\n\
+";
+
+	text_program = gl_compile_and_link_shaders(vshader_code, fshader_code);
+	text_v_pos = gl_attrib_loc(text_program, "v_pos");
+	text_v_color = gl_attrib_loc(text_program, "v_color");
+	text_v_tex_coord = gl_attrib_loc(text_program, "v_tex_coord");
+	text_u_sampler = gl_uniform_loc(text_program, "sampler");
+	glGenBuffers(1, &text_vbo);
+	glGenVertexArrays(1, &text_vao);
+
+	return true;
+}
+
 static Status text_load_char_page(Font *font, int page) {
 	if (font->char_pages[page]) {
 		// already loaded
@@ -70,7 +121,7 @@ static Status text_load_char_page(Font *font, int page) {
 				GLuint texture = 0;
 				glGenTextures(1, &texture);
 				glBindTexture(GL_TEXTURE_2D, texture);
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, bitmap_width, bitmap_height, 0, GL_ALPHA, GL_UNSIGNED_BYTE, bitmap);
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, bitmap_width, bitmap_height, 0, GL_RED, GL_UNSIGNED_BYTE, bitmap);
 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 			#if DEBUG
@@ -162,18 +213,7 @@ float text_font_char_width(Font *font) {
 }
 
 static void text_render_with_page(Font *font, int page) {
-	if (font->curr_page != page) {
-		if (font->curr_page != -1) {
-			// we were rendering chars from another page.
-			glEnd(); // stop doing that
-		}
-		if (text_load_char_page(font, page)) { // load the page if necessary
-			glEnable(GL_TEXTURE_2D);
-			glBindTexture(GL_TEXTURE_2D, font->textures[page]);
-			font->curr_page = page;
-		}
-		glBegin(GL_QUADS);
-	}
+	font->curr_page = page;
 }
 
 void text_chars_begin(Font *font) {
@@ -181,9 +221,37 @@ void text_chars_begin(Font *font) {
 }
 
 void text_chars_end(Font *font) {
-	glEnd();
-	glDisable(GL_TEXTURE_2D);
-	font->curr_page = -1;
+	for (uint i = 0; i < CHAR_PAGE_COUNT; ++i) {
+		if (font->triangles[i]) {
+			// render these triangles
+			size_t ntriangles = arr_len(font->triangles[i]);
+
+			// convert coordinates to NDC
+			for (size_t t = 0; t < ntriangles; ++t) {
+				TextTriangle *triangle = &font->triangles[i][t];
+				gl_convert_to_ndc(&triangle->v1.pos);
+				gl_convert_to_ndc(&triangle->v2.pos);
+				gl_convert_to_ndc(&triangle->v3.pos);
+			}
+		
+			if (gl_version_major >= 3)
+				glBindVertexArray(text_vao);
+			glBindBuffer(GL_ARRAY_BUFFER, text_vbo);
+			glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(ntriangles * sizeof(TextTriangle)), font->triangles, GL_STREAM_DRAW);
+			glVertexAttribPointer(text_v_pos, 2, GL_FLOAT, 0, sizeof(TextVertex), (void *)offsetof(TextVertex, pos));
+			glEnableVertexAttribArray(text_v_pos);
+			glVertexAttribPointer(text_v_tex_coord, 2, GL_FLOAT, 0, sizeof(TextVertex), (void *)offsetof(TextVertex, tex_coord));
+			glEnableVertexAttribArray(text_v_tex_coord);
+			glVertexAttribPointer(text_v_color, 4, GL_FLOAT, 0, sizeof(TextVertex), (void *)offsetof(TextVertex, color));
+			glEnableVertexAttribArray(text_v_color);
+			glUseProgram(text_program);
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, font->textures[i]);
+			glUniform1i(text_u_sampler, 0);
+			glDrawArrays(GL_TRIANGLES, 0, (GLsizei)(3 * ntriangles));
+			arr_clear(font->triangles[i]);
+		}
+	}
 }
 
 void text_render_char(Font *font, TextRenderState *state, char32_t c) {
@@ -242,10 +310,15 @@ top:
 			y1 = max_y-1;
 		}
 		if (state->render) {
-			glTexCoord2f(s0,t0); glVertex2f(x0,y0);
-			glTexCoord2f(s0,t1); glVertex2f(x0,y1);
-			glTexCoord2f(s1,t1); glVertex2f(x1,y1);
-			glTexCoord2f(s1,t0); glVertex2f(x1,y0);
+			float r = state->r, g = state->g, b = state->b, a = state->a;
+			TextVertex v1 = {{x0, y0}, {s0, t0}, {r, g, b, a}};
+			TextVertex v2 = {{x0, y1}, {s0, t1}, {r, g, b, a}};
+			TextVertex v3 = {{x1, y1}, {s1, t1}, {r, g, b, a}};
+			TextVertex v4 = {{x1, y0}, {s1, t0}, {r, g, b, a}};
+			TextTriangle triangle1 = {v1, v2, v3};
+			TextTriangle triangle2 = {v3, v4, v1};
+			arr_add(font->triangles[font->curr_page], triangle1);
+			arr_add(font->triangles[font->curr_page], triangle2);
 		}
 	}
 }
@@ -330,6 +403,7 @@ void text_font_free(Font *font) {
 		if (char_pages[i]) {
 			free(char_pages[i]);
 		}
+		arr_clear(font->triangles[i]);
 	}
 	free(font);
 }

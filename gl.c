@@ -138,7 +138,6 @@ static GLSimpleTriangle *gl_geometry_triangles;
 static GLuint gl_geometry_program;
 static GLuint gl_geometry_v_pos;
 static GLuint gl_geometry_v_color;
-static GLint  gl_geometry_u_window_size;
 static GLuint gl_geometry_vbo, gl_geometry_vao;
 
 static void gl_geometry_init(void) {
@@ -146,11 +145,8 @@ static void gl_geometry_init(void) {
 	attribute vec2 v_pos;\n\
 	attribute vec4 v_color;\n\
 	varying vec4 color;\n\
-	uniform vec2 window_size;\n\
 	void main() {\n\
-		float x = v_pos.x / window_size.x * 2.0 - 1.0;\n\
-		float y = 1.0 - v_pos.y / window_size.y * 2.0;\n\
-		gl_Position = vec4(x, y, 0.0, 1.0);\n\
+		gl_Position = vec4(v_pos, 0.0, 1.0);\n\
 		color = v_color;\n\
 	}\n\
 	";
@@ -164,11 +160,17 @@ static void gl_geometry_init(void) {
 	gl_geometry_program = gl_compile_and_link_shaders(vshader_code, fshader_code);
 	gl_geometry_v_pos = gl_attrib_loc(gl_geometry_program, "v_pos");
 	gl_geometry_v_color = gl_attrib_loc(gl_geometry_program, "v_color");
-	gl_geometry_u_window_size = gl_uniform_loc(gl_geometry_program, "window_size");
 
 	glGenBuffers(1, &gl_geometry_vbo);
 	if (gl_version_major >= 3)
 		glGenVertexArrays(1, &gl_geometry_vao);
+}
+
+static float gl_window_width, gl_window_height;
+
+static void gl_convert_to_ndc(v2 *pos) {
+	pos->x = pos->x / gl_window_width * 2.0f - 1.0f;
+	pos->y = 1.0f - pos->y / gl_window_height * 2.0f;
 }
 
 static void gl_geometry_rect(Rect r, u32 color_rgba) {
@@ -177,26 +179,35 @@ static void gl_geometry_rect(Rect r, u32 color_rgba) {
 	v2 p1 = r.pos;
 	v2 p2 = v2_add(r.pos, V2(0, r.size.y));
 	v2 p3 = v2_add(r.pos, V2(r.size.x, r.size.y));
-	v2 p4 = p3;
-	v2 p5 = v2_add(r.pos, V2(r.size.x, 0));
-	v2 p6 = p1;
+	v2 p4 = v2_add(r.pos, V2(r.size.x, 0));
+
 	GLSimpleTriangle triangle = {
 		{p1, color},
 		{p2, color},
 		{p3, color}
 	};
 	arr_add(gl_geometry_triangles, triangle);
-	triangle.v1.pos = p4;
-	triangle.v2.pos = p5;
-	triangle.v3.pos = p6;
+	triangle.v1.pos = p3;
+	triangle.v2.pos = p4;
+	triangle.v3.pos = p1;
 	arr_add(gl_geometry_triangles, triangle);
 }
 
-static void gl_geometry_draw(Ted *ted) {
+static void gl_geometry_draw(void) {
 	size_t ntriangles = arr_len(gl_geometry_triangles);
 	
+	
+	// convert coordinates to NDC
+	for (size_t i = 0; i < ntriangles; ++i) {
+		GLSimpleTriangle *triangle = &gl_geometry_triangles[i];
+		gl_convert_to_ndc(&triangle->v1.pos);
+		gl_convert_to_ndc(&triangle->v2.pos);
+		gl_convert_to_ndc(&triangle->v3.pos);
+	}
+
 	if (gl_version_major >= 3)
 		glBindVertexArray(gl_geometry_vao);
+
 	glBindBuffer(GL_ARRAY_BUFFER, gl_geometry_vbo);
 	glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(ntriangles * sizeof(GLSimpleTriangle)), gl_geometry_triangles, GL_STREAM_DRAW);
 	glVertexAttribPointer(gl_geometry_v_pos,   2, GL_FLOAT, 0, sizeof(GLSimpleVertex), (void *)offsetof(GLSimpleVertex, pos));
@@ -205,7 +216,6 @@ static void gl_geometry_draw(Ted *ted) {
 	glEnableVertexAttribArray(gl_geometry_v_color);
 
 	glUseProgram(gl_geometry_program);
-	glUniform2f(gl_geometry_u_window_size, ted->window_width, ted->window_height);
 	glDrawArrays(GL_TRIANGLES, 0, (GLsizei)(3 * ntriangles));
 	
 	arr_clear(gl_geometry_triangles);
