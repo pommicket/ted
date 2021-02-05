@@ -41,7 +41,7 @@ TextRenderState const text_render_state_default = {
 	.x = 0, .y = 0,
 	.min_x = -FLT_MAX, .max_x = +FLT_MAX,
 	.min_y = -FLT_MAX, .max_y = +FLT_MAX,
-	.r = 1, .g = 0, .b = 1, .a = 1,
+	.color = {1, 0, 1, 1},
 };
 
 static char text_err[200];
@@ -90,7 +90,7 @@ varying vec2 tex_coord;\n\
 uniform sampler2D sampler;\n\
 void main() {\n\
 	vec4 tex_color = texture2D(sampler, tex_coord);\n\
-	gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);//vec4(1.0, 1.0, 1.0, tex_color.x * color);\n\
+	gl_FragColor = vec4(1.0, 1.0, 1.0, tex_color.x) * color;\n\
 }\n\
 ";
 
@@ -237,7 +237,7 @@ void text_chars_end(Font *font) {
 			if (gl_version_major >= 3)
 				glBindVertexArray(text_vao);
 			glBindBuffer(GL_ARRAY_BUFFER, text_vbo);
-			glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(ntriangles * sizeof(TextTriangle)), font->triangles, GL_STREAM_DRAW);
+			glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(ntriangles * sizeof(TextTriangle)), font->triangles[i], GL_STREAM_DRAW);
 			glVertexAttribPointer(text_v_pos, 2, GL_FLOAT, 0, sizeof(TextVertex), (void *)offsetof(TextVertex, pos));
 			glEnableVertexAttribArray(text_v_pos);
 			glVertexAttribPointer(text_v_tex_coord, 2, GL_FLOAT, 0, sizeof(TextVertex), (void *)offsetof(TextVertex, tex_coord));
@@ -310,7 +310,7 @@ top:
 			y1 = max_y-1;
 		}
 		if (state->render) {
-			float r = state->r, g = state->g, b = state->b, a = state->a;
+			float r = state->color[0], g = state->color[1], b = state->color[2], a = state->color[3];
 			TextVertex v1 = {{x0, y0}, {s0, t0}, {r, g, b, a}};
 			TextVertex v2 = {{x0, y1}, {s0, t1}, {r, g, b, a}};
 			TextVertex v3 = {{x1, y1}, {s1, t1}, {r, g, b, a}};
@@ -349,19 +349,20 @@ void text_render_with_state(Font *font, TextRenderState *render_state, char cons
 	
 }
 
-static void text_render_internal(Font *font, char const *text, float *x, float *y, bool render) {
+static void text_render_internal(Font *font, char const *text, float *x, float *y, u32 color, bool render) {
 	TextRenderState render_state = text_render_state_default;
 	render_state.render = render;
+	rgba_u32_to_floats(color, render_state.color);
 	text_render_with_state(font, &render_state, text, *x, *y);
 	*x = render_state.x;
 	*y = render_state.y;
 }
 
-void text_render(Font *font, char const *text, float x, float y) {
-	text_render_internal(font, text, &x, &y, true);
+void text_render(Font *font, char const *text, float x, float y, u32 color) {
+	text_render_internal(font, text, &x, &y, color, true);
 }
 
-void text_render_anchored(Font *font, char const *text, float x, float y, Anchor anchor) {
+void text_render_anchored(Font *font, char const *text, float x, float y, u32 color, Anchor anchor) {
 	float w = 0, h = 0; // width, height of text
 	text_get_size(font, text, &w, &h);
 	float hw = w * 0.5f, hh = h * 0.5f; // half-width, half-height
@@ -376,12 +377,12 @@ void text_render_anchored(Font *font, char const *text, float x, float y, Anchor
 	case ANCHOR_BOTTOM_MIDDLE: x -= hw; y -= h; break;
 	case ANCHOR_BOTTOM_RIGHT: x -= w; y -= h; break;
 	}
-	text_render(font, text, x, y);
+	text_render(font, text, x, y, color);
 }
 
 void text_get_size(Font *font, char const *text, float *width, float *height) {
 	float x = 0, y = 0;
-	text_render_internal(font, text, &x, &y, false);
+	text_render_internal(font, text, &x, &y, 0, false);
 	if (width)  *width = x;
 	if (height) *height = y + font->char_height;
 }

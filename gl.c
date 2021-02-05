@@ -28,6 +28,7 @@
 	do(GENVERTEXARRAYS, GenVertexArrays)\
 	do(DELETEVERTEXARRAYS, DeleteVertexArrays)\
 	do(BINDVERTEXARRAY, BindVertexArray)\
+	do(ACTIVETEXTURE, ActiveTexture)\
 	do(UNIFORM1F, Uniform1f)\
 	do(UNIFORM2F, Uniform2f)\
 	do(UNIFORM3F, Uniform3f)\

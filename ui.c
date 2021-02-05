@@ -423,8 +423,7 @@ static void file_selector_render(Ted *ted, FileSelector *fs) {
 	rect_coords(bounds, &x1, &y1, &x2, &y2);
 
 	// current working directory
-	gl_color_rgba(colors[COLOR_TEXT]);
-	text_render(font, fs->cwd, x1, y1);
+	text_render(font, fs->cwd, x1, y1, colors[COLOR_TEXT]);
 	y1 += char_height + padding;
 
 	// search buffer
@@ -485,9 +484,8 @@ static void button_render(Ted *ted, Rect button, char const *text, u32 color) {
 	rect_render_border(button, 1);
 	glEnd();
 
-	gl_color_rgba(color);
 	v2 pos = rect_center(button);
-	text_render_anchored(ted->font, text, pos.x, pos.y, ANCHOR_MIDDLE);
+	text_render_anchored(ted->font, text, pos.x, pos.y, color, ANCHOR_MIDDLE);
 }
 
 // returns true if the button was clicked on.
@@ -558,8 +556,7 @@ static void popup_render(Ted *ted, char const *title, char const *body) {
 	v2 title_size = {0};
 	text_get_size(font_bold, title, &title_size.x, &title_size.y);
 	v2 title_pos = v2_sub(V2(window_width * 0.5f, y), V2(title_size.x * 0.5f, 0));
-	gl_color_rgba(colors[COLOR_TEXT]);
-	text_render(font_bold, title, title_pos.x, title_pos.y);
+	text_render(font_bold, title, title_pos.x, title_pos.y, colors[COLOR_TEXT]);
 
 	y += char_height_bold;
 	// line separating text from body

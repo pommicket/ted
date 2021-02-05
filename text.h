@@ -18,8 +18,8 @@ typedef struct {
 	float x, y;
 	// points at which the text should be cut off
 	float min_x, max_x, min_y, max_y;
-	// color
-	float r, g, b, a;
+	// [0] = r, [1] = g, [2] = b, [3] = a.
+	float color[4];
 } TextRenderState;
 
 typedef enum {
@@ -47,13 +47,13 @@ extern float text_font_char_height(Font *font);
 // This is meant to be only used for monospace fonts.
 extern float text_font_char_width(Font *font);
 // Render some UTF-8 text to the screen (simple interface).
-extern void text_render(Font *font, char const *text, float x, float y);
+extern void text_render(Font *font, char const *text, float x, float y, u32 color);
 // Get the dimensions of some text.
 extern void text_get_size(Font *font, char const *text, float *width, float *height);
 extern void text_get_size32(Font *font, char32_t const *text, u64 len, float *width, float *height);
 // Write text, but using a state, starting at (x, y) -- state->x and state->y are ignored. This allows you to control min/max_x/y.
 extern void text_render_with_state(Font *font, TextRenderState *state, char const *text, float x, float y);
-extern void text_render_anchored(Font *font, char const *text, float x, float y, Anchor anchor);
+extern void text_render_anchored(Font *font, char const *text, float x, float y, u32 color, Anchor anchor);
 // Begin writing characters.
 extern void text_chars_begin(Font *font);
 // Finish writing characters.

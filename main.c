@@ -305,13 +305,10 @@ int main(int argc, char **argv) {
 		glViewport(0, 0, w, h);
 		glClearColor(0,0,0,1);
 		glClear(GL_COLOR_BUFFER_BIT);
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-		for (int i = 0; i < 200; ++i) {
-			gl_geometry_rect(rect(V2(0, 4*(float)i), V2(100, 100)), 0xffffffff >> i);
-		
-			gl_geometry_draw();
-		}
-		text_render(font, "hello", 5, 5);
+		text_render(font, "Hello how are you?", 5, 5, 0xff00aaff);
 
 		SDL_GL_SwapWindow(window);
 	}
