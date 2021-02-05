@@ -323,28 +323,29 @@ top:
 	}
 }
 
+void text_render_chars_utf8(Font *font, TextRenderState *state, char const *str) {
+	char const *end = str + strlen(str);
+	while (str != end) {
+		char32_t c = 0;
+		size_t ret = unicode_utf8_to_utf32(&c, str, (size_t)(end - str));
+		if (ret == 0) {
+			break;
+		} else if (ret == (size_t)-1) {
+			// invalid UTF-8
+			text_render_char(font, state, '?');
+			++str;
+		} else {
+			str += ret;
+			text_render_char(font, state, c);
+		}
+	}
+}
+
 void text_render_with_state(Font *font, TextRenderState *render_state, char const *text, float x, float y) {
 	if (render_state->render) text_chars_begin(font);
 	render_state->x = x;
 	render_state->y = y;
-	char32_t c = 0;
-	char const *end = text + strlen(text);
-	while (text != end) {
-		size_t ret = unicode_utf8_to_utf32(&c, text, (size_t)(end - text));
-		if (ret == 0) break;
-		if (ret == (size_t)(-1)) {
-			// invalid UTF-8; skip this byte
-			text_render_char(font, render_state, '?');
-			++text;
-		} else {
-			text += ret; // character consists of `ret` bytes
-			switch (c) {
-			default:
-				text_render_char(font, render_state, c);
-				break;
-			}
-		}
-	}
+	text_render_chars_utf8(font, render_state, text);
 	if (render_state->render) text_chars_end(font);
 	
 }

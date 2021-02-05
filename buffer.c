@@ -1962,8 +1962,11 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 			char str[32] = {0};
 			strbuf_printf(str, U32_FMT, line + 1); // convert line number to string
 			float x = x1 + line_number_width - (float)strlen(str) * char_width; // right justify
-			gl_color_rgba(colors[line == cursor_line ? COLOR_CURSOR_LINE_NUMBER : COLOR_LINE_NUMBERS]);
-			text_render_with_state(font, &text_state, str, x, y);
+			// set color
+			rgba_u32_to_floats(colors[line == cursor_line ? COLOR_CURSOR_LINE_NUMBER : COLOR_LINE_NUMBERS],
+				text_state.color);
+			text_state.x = x; text_state.y = y;
+			text_render_chars_utf8(font, &text_state, str);
 			y += char_height;
 			if (y > y2) break;
 		}
@@ -2053,9 +2056,6 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	// dynamic array of character types, to be filled by syntax_highlight
 	SyntaxCharType *char_types = NULL;
 	bool syntax_highlighting = language && settings->syntax_highlighting;
-	if (!syntax_highlighting) {
-		gl_color_rgba(colors[COLOR_TEXT]);
-	}
 
 	if (buffer->frame_latest_line_modified >= buffer->frame_earliest_line_modified
 		&& syntax_highlighting) {
@@ -2091,7 +2091,8 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	text_state.min_y = y1;
 	text_state.max_x = x2;
 	text_state.max_y = y2;
-
+	if (!syntax_highlighting)
+		rgba_u32_to_floats(colors[COLOR_TEXT], text_state.color);
 	for (u32 line_idx = start_line; line_idx < nlines; ++line_idx) {
 		Line *line = &lines[line_idx];
 		buffer->longest_line_on_screen = max_u32(buffer->longest_line_on_screen, line->len);
@@ -2106,7 +2107,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 			char32_t c = line->str[i];
 			if (syntax_highlighting) {
 				SyntaxCharType type = char_types[i];
-				gl_color_rgba(colors[syntax_char_type_to_color(type)]);
+				rgba_u32_to_floats(colors[syntax_char_type_to_color(type)], text_state.color);
 			}
 			switch (c) {
 			case '\n': assert(0); break;

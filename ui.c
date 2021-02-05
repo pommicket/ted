@@ -449,26 +449,36 @@ static void file_selector_render(Ted *ted, FileSelector *fs) {
 		}
 	}
 	
-	TextRenderState text_render_state = {.min_x = x1, .max_x = x2, .min_y = y1, .max_y = y2, .render = true};
+	TextRenderState text_state = text_render_state_default;
+	text_state.min_x = x1;
+	text_state.max_x = x2;
+	text_state.min_y = y1;
+	text_state.max_y = y2;
+	text_state.render = true;
+	text_chars_begin(font);
 	// render file names themselves
 	for (u32 i = 0; i < n_entries; ++i) {
 		Rect r;
 		if (file_selector_entry_pos(ted, fs, i, &r)) {
 			float x = r.pos.x, y = r.pos.y;
+			ColorSetting color = 0;
 			switch (entries[i].type) {
 			case FS_FILE:
-				gl_color_rgba(colors[COLOR_TEXT]);
+				color = COLOR_TEXT;
 				break;
 			case FS_DIRECTORY:
-				gl_color_rgba(colors[COLOR_TEXT_FOLDER]);
+				color = COLOR_TEXT_FOLDER;
 				break;
 			default:
-				gl_color_rgba(colors[COLOR_TEXT_OTHER]);
+				color = COLOR_TEXT_OTHER;
 				break;
 			}
-			text_render_with_state(font, &text_render_state, entries[i].name, x, y);
+			text_state.x = x; text_state.y = y;
+			rgba_u32_to_floats(colors[color], text_state.color);
+			text_render_chars_utf8(font, &text_state, entries[i].name);
 		}
 	}
+	text_chars_end(font);
 }
 
 static void button_render(Ted *ted, Rect button, char const *text, u32 color) {
@@ -569,7 +579,6 @@ static void popup_render(Ted *ted, char const *title, char const *body) {
 	y += padding;
 
 	// body text
-	gl_color_rgba(colors[COLOR_TEXT]);
 	float text_x1 = rect_x1(r) + padding;
 	float text_x2 = rect_x2(r) - padding;
 
@@ -577,6 +586,7 @@ static void popup_render(Ted *ted, char const *title, char const *body) {
 	state.min_x = text_x1;
 	state.max_x = text_x2;
 	state.wrap = true;
+	rgba_u32_to_floats(colors[COLOR_TEXT], state.color);
 	text_render_with_state(font, &state, body, text_x1, y);
 
 	button_render(ted, button_yes, "Yes", colors[COLOR_YES]);

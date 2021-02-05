@@ -147,9 +147,9 @@ static void node_frame(Ted *ted, Node *node, Rect r) {
 					char const *surround = buffer_unsaved_changes(buffer) ? "*" : "";
 					strbuf_printf(tab_title, "%s%s%s", surround, filename, surround);
 				}
-				gl_color_rgba(colors[COLOR_TEXT]);
 				TextRenderState text_state = text_render_state_default;
 				text_state.max_x = rect_x2(tab_rect);
+				rgba_u32_to_floats(colors[COLOR_TEXT], text_state.color);
 				text_render_with_state(font, &text_state, tab_title, tab_rect.pos.x, tab_rect.pos.y);
 				
 			}

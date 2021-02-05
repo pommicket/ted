@@ -286,36 +286,7 @@ int main(int argc, char **argv) {
 	text_init();
 	
 	SDL_GL_SetSwapInterval(1); // vsync
-	Font *font = text_font_load("assets/font.ttf", 16);
-	if (!font) {
-		die("%s", text_get_err());
-	}
 
-	while (1) {
-		int w, h;
-		SDL_GetWindowSize(window, &w, &h);
-		ted->window_width = (float)w;
-		ted->window_height = (float)h;
-		gl_window_width = (float)w, gl_window_height = (float)h;
-
-		SDL_Event event;
-		while (SDL_PollEvent(&event)) if (event.type == SDL_QUIT) return 0;
-
-		(void)settings;
-		glViewport(0, 0, w, h);
-		glClearColor(0,0,0,1);
-		glClear(GL_COLOR_BUFFER_BIT);
-		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-		text_render(font, "Hello how are you?", 5, 5, 0xff00aaff);
-
-		SDL_GL_SwapWindow(window);
-	}
-
-	return 0;
-
-#if 0
 	ted_load_fonts(ted);
 	if (ted_haserr(ted))
 		die("Error loading font: %s", ted_geterr(ted));
@@ -410,9 +381,6 @@ int main(int argc, char **argv) {
 			case SDL_QUIT:
 				command_execute(ted, CMD_QUIT, 1);
 				break;
-		int w, h;
-		SDL_GetWindowSize(window, &w, &h);
-
 			case SDL_MOUSEWHEEL: {
 				// scroll with mouse wheel
 				Sint32 dx = event.wheel.x, dy = -event.wheel.y;
@@ -588,10 +556,6 @@ int main(int argc, char **argv) {
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glViewport(0, 0, (GLsizei)window_width, (GLsizei)window_height);
-		glMatrixMode(GL_MODELVIEW);
-		glLoadIdentity();
-		// pixel coordinates; down is positive y
-		glOrtho(0, window_width, window_height, 0, -1, +1);
 		{ // clear (background)
 			float bg_color[4];
 			rgba_u32_to_floats(settings->colors[COLOR_BG], bg_color);
@@ -608,9 +572,8 @@ int main(int argc, char **argv) {
 			Node *node = ted->root;
 			node_frame(ted, node, rect4(x1, y1, x2, y2));
 		} else {
-			gl_color_rgba(colors[COLOR_TEXT_SECONDARY]);
 			text_render_anchored(font, "Press Ctrl+O to open a file or Ctrl+N to create a new one.",
-				window_width * 0.5f, window_height * 0.5f, ANCHOR_MIDDLE);
+				window_width * 0.5f, window_height * 0.5f, colors[COLOR_TEXT_SECONDARY], ANCHOR_MIDDLE);
 		}
 
 		Menu menu = ted->menu;
@@ -624,9 +587,6 @@ int main(int argc, char **argv) {
 		}
 		for (u16 i = 0; i < TED_MAX_BUFFERS; ++i) {
 			TextBuffer *buffer = &ted->buffers[i];
-		int w, h;
-		SDL_GetWindowSize(window, &w, &h);
-
 			if (buffer_haserr(buffer)) {
 				ted_seterr_to_buferr(ted, buffer);
 				buffer_clearerr(buffer);
@@ -668,7 +628,6 @@ int main(int argc, char **argv) {
 				gl_color_rgba(colors[COLOR_ERROR_BORDER]);
 				rect_render_border(r, settings->border_thickness);
 				glEnd();
-				gl_color_rgba(colors[COLOR_ERROR_TEXT]);
 
 
 				float text_x1 = rect_x1(r) + padding, text_x2 = rect_x2(r) - padding;
@@ -679,6 +638,7 @@ int main(int argc, char **argv) {
 				text_state.min_x = text_x1;
 				text_state.max_x = text_x2;
 				text_state.wrap = true;
+				rgba_u32_to_floats(colors[COLOR_ERROR_TEXT], text_state.color);
 				text_render_with_state(font, &text_state, ted->error_shown, text_x1, text_y1);
 			}
 		}
@@ -730,5 +690,4 @@ int main(int argc, char **argv) {
 #endif
 
 	return 0;
-#endif
 }

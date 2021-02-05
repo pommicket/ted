@@ -60,6 +60,8 @@ extern void text_chars_begin(Font *font);
 extern void text_chars_end(Font *font);
 // Render a single character.
 extern void text_render_char(Font *font, TextRenderState *state, char32_t c);
+// Render a null-terminated UTF-8 string (must be within text_chars_begin/end).
+extern void text_render_chars_utf8(Font *font, TextRenderState *state, char const *str);
 // Free memory used by font.
 extern void text_font_free(Font *font);
 
