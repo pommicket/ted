@@ -54,6 +54,7 @@ Then run `make.bat`.
 <tr><th>Version</th> <th>Description</th> <th>Date</th></tr>
 <tr><td>0.0</td> <td>Very basic editor</td> <td>2021 Jan 31</td></tr>
 <tr><td>0.1</td> <td>Syntax highlighting</td> <td>2021 Feb 3</td></tr>
+<tr><td>0.2</td> <td>Line numbers, check if file changed by another program</td> <td>2021 Feb 5</ted></tr>
 </table>
 
 ## License
