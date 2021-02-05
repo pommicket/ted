@@ -289,6 +289,28 @@ char *buffer_get_utf8_text_at_pos(TextBuffer *buffer, BufferPos pos, size_t ncha
 	return ret;
 }
 
+// Puts a UTF-8 string containing the contents of the buffer into out.
+// Returns the number of bytes.
+// To use, first pass NULL for out to get the number of bytes you need to allocate.
+size_t buffer_contents_utf8(TextBuffer *buffer, char *out) {
+	size_t size = 0;
+	char *p = out, x[4];
+	for (Line *line = buffer->lines, *end = line + buffer->nlines; line != end; ++line) {
+		char32_t *str = line->str;
+		for (u32 i = 0, len = line->len; i < len; ++i) {
+			size_t bytes = unicode_utf32_to_utf8(p ? p : x, str[i]);
+			if (p) p += bytes;
+			size += bytes;
+		}
+		if (line != end - 1) {
+			// newline
+			if (p) *p++ = '\n';
+			size += 1;
+		}
+	}
+	return size;
+}
+
 static BufferPos buffer_pos_advance(TextBuffer *buffer, BufferPos pos, size_t nchars) {
 	buffer_pos_validate(buffer, &pos);
 	size_t chars_left = nchars;
@@ -1753,6 +1775,7 @@ Status buffer_load_file(TextBuffer *buffer, char const *filename) {
 								buffer->frame_latest_line_modified = nlines - 1;
 								buffer->lines_capacity = lines_capacity;
 								buffer->filename = filename_copy;
+								buffer->last_write_time = time_last_modified(buffer->filename);
 							}
 						}
 					} else {
@@ -1788,9 +1811,15 @@ Status buffer_load_file(TextBuffer *buffer, char const *filename) {
 void buffer_reload(TextBuffer *buffer) {
 	if (buffer->filename && !buffer_is_untitled(buffer)) {
 		BufferPos cursor_pos = buffer->cursor_pos;
+		float x1 = buffer->x1, y1 = buffer->y1, x2 = buffer->x2, y2 = buffer->y2;
+		double scroll_x = buffer->scroll_x; double scroll_y = buffer->scroll_y;
 		if (buffer_load_file(buffer, buffer->filename)) {
+			buffer->x1 = x1; buffer->y1 = y1; buffer->x2 = x2; buffer->y2 = y2;
 			buffer->cursor_pos = cursor_pos;
+			buffer->scroll_x = scroll_x;
+			buffer->scroll_y = scroll_y;
 			buffer_validate_cursor(buffer);
+			buffer_correct_scroll(buffer);
 		}
 	}
 }
@@ -1799,12 +1828,7 @@ void buffer_reload(TextBuffer *buffer) {
 bool buffer_externally_changed(TextBuffer *buffer) {
 	if (!buffer->filename || buffer_is_untitled(buffer))
 		return false;
-	
-	if (!timespec_eq(buffer->last_write_time, time_last_modified(buffer->filename))) {
-		// the write time has been updated, but has the file actually been changed?
-		// @TODO
-	}
-	return false;
+	return !timespec_eq(buffer->last_write_time, time_last_modified(buffer->filename));
 }
 
 void buffer_new_file(TextBuffer *buffer, char const *filename) {
@@ -1968,12 +1992,12 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 		x1 += padding + border_thickness;
 	}
 
+	buffer->x1 = x1; buffer->y1 = y1; buffer->x2 = x2; buffer->y2 = y2;
+
 	// get screen coordinates of cursor
 	v2 cursor_display_pos = buffer_pos_to_pixels(buffer, buffer->cursor_pos);
 	// the rectangle that the cursor is rendered as
 	Rect cursor_rect = rect(cursor_display_pos, V2(settings->cursor_width, char_height));
-
-	buffer->x1 = x1; buffer->y1 = y1; buffer->x2 = x2; buffer->y2 = y2;
 
 	
 	// highlight line cursor is on

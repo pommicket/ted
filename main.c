@@ -5,6 +5,7 @@
 // - completion
 // - view-only
 // - Windows installation
+
 #include "base.h"
 no_warn_start
 #if _WIN32
@@ -19,7 +20,6 @@ no_warn_end
 #include <shellapi.h>
 #endif
 
-
 #include "unicode.h"
 #include "util.c"
 #if _WIN32
@@ -31,7 +31,6 @@ no_warn_end
 #endif
 #include "arr.c"
 
-#define MATH_GL
 #include "math.c"
 
 #include "text.h"
