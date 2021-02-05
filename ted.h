@@ -154,6 +154,7 @@ ENUM_U16 {
 	MENU_OPEN,
 	MENU_SAVE_AS,
 	MENU_WARN_UNSAVED, // warn about unsaved changes
+	MENU_ASK_RELOAD, // prompt about whether to reload file which has ben changed by another program
 } ENUM_U16_END(Menu);
 
 // file entries for file selectors
@@ -216,6 +217,7 @@ typedef struct Ted {
 	Command warn_unsaved; // if non-zero, the user is trying to execute this command, but there are unsaved changes
 	char warn_unsaved_names[TED_PATH_MAX]; // comma-separated list of files with unsaved changes (only applicable if warn_unsaved != 0)
 	char warn_overwrite[TED_PATH_MAX]; // file name user is trying to overwrite
+	char ask_reload[TED_PATH_MAX]; // file name which we want to reload
 	char local_data_dir[TED_PATH_MAX];
 	char global_data_dir[TED_PATH_MAX];
 	char home[TED_PATH_MAX];

@@ -1,8 +1,8 @@
-static u32 util_popcount(u64 x) {
+static u8 util_popcount(u64 x) {
 #ifdef __GNUC__
-	return (u32)__builtin_popcountll(x);
+	return (u8)__builtin_popcountll(x);
 #else
-	u32 count = 0;
+	u8 count = 0;
 	while (x) {
 		x &= x-1;
 		++count;

@@ -508,29 +508,40 @@ static bool button_update(Ted *ted, Rect button) {
 
 typedef enum {
 	POPUP_NONE,
-	POPUP_YES,
-	POPUP_NO,
-	POPUP_CANCEL
+	POPUP_YES = 1<<1,
+	POPUP_NO = 1<<2,
+	POPUP_CANCEL = 1<<3,
 } PopupOption;
 
+#define POPUP_YES_NO (POPUP_YES | POPUP_NO)
+#define POPUP_YES_NO_CANCEL (POPUP_YES | POPUP_NO | POPUP_CANCEL)
 
-static void popup_get_rects(Ted const *ted, Rect *popup, Rect *button_yes, Rect *button_no, Rect *button_cancel) {
+static void popup_get_rects(Ted const *ted, u32 options, Rect *popup, Rect *button_yes, Rect *button_no, Rect *button_cancel) {
 	float window_width = ted->window_width, window_height = ted->window_height;
 	
 	*popup = rect_centered(V2(window_width * 0.5f, window_height * 0.5f), V2(300, 200));
 	float button_height = 30;
-	u16 nbuttons = 3;
+	u16 nbuttons = util_popcount(options);
 	float button_width = popup->size.x / nbuttons;
 	popup->size = v2_clamp(popup->size, v2_zero, V2(window_width, window_height));
-	*button_yes    = rect(V2(popup->pos.x, rect_y2(*popup) - button_height), V2(button_width, button_height));
-	*button_no     = rect_translate(*button_yes, V2(button_width, 0));
-	*button_cancel = rect_translate(*button_no, V2(button_width, 0));
-	
+	Rect r = rect(V2(popup->pos.x, rect_y2(*popup) - button_height), V2(button_width, button_height));
+	if (options & POPUP_YES) {
+		*button_yes = r;
+		r = rect_translate(r, V2(button_width, 0));
+	}
+	if (options & POPUP_NO) {
+		*button_no = r;
+		r = rect_translate(r, V2(button_width, 0));
+	}
+	if (options & POPUP_CANCEL) {
+		*button_cancel = r;
+		r = rect_translate(r, V2(button_width, 0));
+	}	
 }
 
-static PopupOption popup_update(Ted *ted) {
+static PopupOption popup_update(Ted *ted, u32 options) {
 	Rect r, button_yes, button_no, button_cancel;
-	popup_get_rects(ted, &r, &button_yes, &button_no, &button_cancel);
+	popup_get_rects(ted, options, &r, &button_yes, &button_no, &button_cancel);
 	if (button_update(ted, button_yes))
 		return POPUP_YES;
 	if (button_update(ted, button_no))
@@ -540,7 +551,7 @@ static PopupOption popup_update(Ted *ted) {
 	return POPUP_NONE;
 }
 
-static void popup_render(Ted *ted, char const *title, char const *body) {
+static void popup_render(Ted *ted, u32 options, char const *title, char const *body) {
 	float window_width = ted->window_width;
 	Font *font = ted->font;
 	Font *font_bold = ted->font_bold;
@@ -551,7 +562,7 @@ static void popup_render(Ted *ted, char const *title, char const *body) {
 	float const padding = settings->padding;
 	float const border_thickness = settings->border_thickness;
 	
-	popup_get_rects(ted, &r, &button_yes, &button_no, &button_cancel);
+	popup_get_rects(ted, options, &r, &button_yes, &button_no, &button_cancel);
 	
 	
 	float y = r.pos.y;
@@ -562,9 +573,9 @@ static void popup_render(Ted *ted, char const *title, char const *body) {
 	// line separating text from body
 	gl_geometry_rect(rect(V2(r.pos.x, y + char_height_bold), V2(r.size.x, border_thickness)), colors[COLOR_BORDER]);
 	
-	button_render(ted, button_yes, "Yes", colors[COLOR_YES]);
-	button_render(ted, button_no, "No", colors[COLOR_NO]);
-	button_render(ted, button_cancel, "Cancel", colors[COLOR_CANCEL]);
+	if (options & POPUP_YES) button_render(ted, button_yes, "Yes", colors[COLOR_YES]);
+	if (options & POPUP_NO) button_render(ted, button_no, "No", colors[COLOR_NO]);
+	if (options & POPUP_CANCEL) button_render(ted, button_cancel, "Cancel", colors[COLOR_CANCEL]);
 
 	// title text
 	v2 title_size = {0};

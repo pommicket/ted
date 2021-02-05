@@ -3,7 +3,6 @@ static void menu_open(Ted *ted, Menu menu) {
 	ted->prev_active_buffer = ted->active_buffer;
 	ted->active_buffer = NULL;
 	*ted->warn_overwrite = 0; // clear warn_overwrite
-
 	switch (menu) {
 	case MENU_NONE: assert(0); break;
 	case MENU_OPEN:
@@ -16,6 +15,9 @@ static void menu_open(Ted *ted, Menu menu) {
 	case MENU_WARN_UNSAVED:
 		assert(ted->warn_unsaved);
 		assert(*ted->warn_unsaved_names);
+		break;
+	case MENU_ASK_RELOAD:
+		assert(*ted->ask_reload);
 		break;
 	}
 }
@@ -33,6 +35,9 @@ static void menu_close(Ted *ted) {
 	case MENU_WARN_UNSAVED:
 		ted->warn_unsaved = 0;
 		*ted->warn_unsaved_names = 0;
+		break;
+	case MENU_ASK_RELOAD:
+		*ted->ask_reload = 0;
 		break;
 	}
 	ted->menu = MENU_NONE;
@@ -70,7 +75,7 @@ static void menu_update(Ted *ted, Menu menu) {
 	case MENU_NONE: break;
 	case MENU_SAVE_AS: {
 		if (*ted->warn_overwrite) {
-			switch (popup_update(ted)) {
+			switch (popup_update(ted, POPUP_YES_NO_CANCEL)) {
 			case POPUP_NONE:
 				// no option selected
 				break;
@@ -120,8 +125,25 @@ static void menu_update(Ted *ted, Menu menu) {
 			free(selected_file);
 		}
 	} break;
+	case MENU_ASK_RELOAD: {
+		TextBuffer *buffer = ted->prev_active_buffer;
+		switch (popup_update(ted, POPUP_YES_NO)) {
+		case POPUP_NONE: break;
+		case POPUP_YES:
+			menu_close(ted);
+			if (buffer)
+				buffer_reload(buffer);
+			break;
+		case POPUP_NO:
+			menu_close(ted);
+			if (buffer)
+				buffer->last_write_time = time_last_modified(buffer->filename);
+			break;
+		case POPUP_CANCEL: assert(0); break;
+		}
+	} break;
 	case MENU_WARN_UNSAVED:
-		switch (popup_update(ted)) {
+		switch (popup_update(ted, POPUP_YES_NO_CANCEL)) {
 		case POPUP_NONE: break;
 		case POPUP_YES:
 			// save changes
@@ -176,18 +198,24 @@ static void menu_render(Ted *ted, Menu menu) {
 		char title[64] = {0}, body[1024] = {0};
 		strbuf_printf(title, "Overwrite %s?", filename);
 		strbuf_printf(body, "Are you sure you want to overwrite %s?", path);
-		popup_render(ted, title, body);
+		popup_render(ted, POPUP_YES_NO_CANCEL, title, body);
 		return;
 	}
-	if (menu == MENU_WARN_UNSAVED) {
+	switch (menu) {
+	case MENU_WARN_UNSAVED: {
 		char title[64] = {0}, body[1024] = {0};
 		strbuf_printf(title, "Save changes?");
 		strbuf_printf(body, "Do you want to save your changes to %s?", ted->warn_unsaved_names);
-		popup_render(ted, title, body);
-		return;
-	}
-	
-	if (menu == MENU_OPEN || menu == MENU_SAVE_AS) {
+		popup_render(ted, POPUP_YES_NO_CANCEL, title, body);
+	} break;
+	case MENU_ASK_RELOAD: {
+		char title[64] = {0}, body[1024] = {0};
+		strbuf_printf(title, "Reload %s?", ted->ask_reload);
+		strbuf_printf(body, "%s has been changed by another program. Do you want to reload it?", ted->ask_reload);
+		popup_render(ted, POPUP_YES_NO, title, body);
+	} break;
+	case MENU_OPEN:
+	case MENU_SAVE_AS: {
 		float padding = settings->padding;
 		Rect rect = menu_rect(ted);
 		float menu_x1, menu_y1, menu_x2, menu_y2;
@@ -215,6 +243,7 @@ static void menu_render(Ted *ted, Menu menu) {
 		FileSelector *fs = &ted->file_selector;
 		fs->bounds = rect4(menu_x1, menu_y1, menu_x2, menu_y2);
 		file_selector_render(ted, fs);
+	} break;
 	}
 }
 

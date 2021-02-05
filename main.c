@@ -1,5 +1,4 @@
 // @TODO:
-// - popup to reload files and config on change
 // - find & replace (with regex)
 // - split
 // - completion
@@ -508,7 +507,12 @@ int main(int argc, char **argv) {
 		{
 			TextBuffer *active_buffer = ted->active_buffer;
 			if (active_buffer && buffer_externally_changed(active_buffer)) {
-				buffer_reload(active_buffer);
+				if (settings->auto_reload)
+					buffer_reload(active_buffer);
+				else {
+					strbuf_cpy(ted->ask_reload, buffer_get_filename(active_buffer));
+					menu_open(ted, MENU_ASK_RELOAD);
+				}
 			}
 		}
 
