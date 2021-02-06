@@ -202,6 +202,7 @@ static void menu_render(Ted *ted, Menu menu) {
 		return;
 	}
 	switch (menu) {
+	case MENU_NONE: assert(0); break;
 	case MENU_WARN_UNSAVED: {
 		char title[64] = {0}, body[1024] = {0};
 		strbuf_printf(title, "Save changes?");

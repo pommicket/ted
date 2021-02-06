@@ -1847,6 +1847,16 @@ bool buffer_save(TextBuffer *buffer) {
 	if (!buffer->is_line_buffer && buffer->filename) {
 		FILE *out = fopen(buffer->filename, "wb");
 		if (out) {
+			if (settings->auto_add_newline) {
+				Line *last_line = &buffer->lines[buffer->nlines - 1];
+				if (last_line->len) {
+					// if the last line isn't empty, add a newline to the end of the file
+					char32_t c = '\n';
+					String32 s = {&c, 1};
+					buffer_insert_text_at_pos(buffer, buffer_end_of_file(buffer), s);
+				}
+			}
+
 			for (u32 i = 0; i < buffer->nlines; ++i) {
 				Line *line = &buffer->lines[i];
 				for (char32_t *p = line->str, *p_end = p + line->len; p != p_end; ++p) {
@@ -1861,15 +1871,6 @@ bool buffer_save(TextBuffer *buffer) {
 
 				if (i != buffer->nlines-1) {
 					putc('\n', out);
-				} else {
-					if (settings->auto_add_newline) {
-						if (line->len) {
-							// if the last line isn't empty, add a newline to the end of the file
-							char32_t c = '\n';
-							String32 s = {&c, 1};
-							buffer_insert_text_at_pos(buffer, buffer_end_of_file(buffer), s);
-						}
-					}
 				}
 			}
 			if (ferror(out)) {
@@ -1989,7 +1990,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 		x1 += 2; // a little bit of padding
 		// line separating line numbers from text
 		gl_geometry_rect(rect(V2(x1, y1), V2(border_thickness, y2 - y1)), colors[COLOR_LINE_NUMBERS_SEPARATOR]);
-		x1 += padding + border_thickness;
+		x1 += border_thickness;
 	}
 
 	buffer->x1 = x1; buffer->y1 = y1; buffer->x2 = x2; buffer->y2 = y2;

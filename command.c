@@ -104,14 +104,14 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		if (!buffer) {
 		} else if (buffer->is_line_buffer) {
 			switch (ted->menu) {
+			case MENU_ASK_RELOAD:
+			case MENU_WARN_UNSAVED:
 			case MENU_NONE:
-				assert(0);
 				break;
 			case MENU_OPEN:
 			case MENU_SAVE_AS: {
 				ted->file_selector.submitted = true;
 			} break;
-			case MENU_WARN_UNSAVED: break;
 			}
 		} else {
 			buffer_newline(buffer);
