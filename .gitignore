@@ -10,4 +10,7 @@ TAGS
 *.pdb
 *.ilk
 *.res
+*.zip
+*.a
+pcre2-10.36
 SDL2

@@ -18,6 +18,8 @@ no_warn_end
 #if _WIN32
 #include <shellapi.h>
 #endif
+#define PCRE2_CODE_UNIT_WIDTH 32
+#include "pcre2.h"
 
 #include "unicode.h"
 #include "util.c"
@@ -114,6 +116,42 @@ INT WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 int main(int argc, char **argv) {
 #endif
 	setlocale(LC_ALL, ""); // allow unicode
+
+	int error = 0;
+	PCRE2_SIZE error_pos = 0;
+	pcre2_code *regex = pcre2_compile(U"a(.)b", 5, 0, &error, &error_pos, NULL);
+	if (regex) {
+		print("Compiled to %p\n",(void *)regex);
+		pcre2_match_data *match_data = pcre2_match_data_create(100, NULL);
+		if (match_data) {
+			int ret = pcre2_match(regex, U"acb", 3, 0, 0, match_data, NULL);
+			if (ret > 0) {
+				size_t group_count = (size_t)ret;
+				PCRE2_SIZE *groups = pcre2_get_ovector_pointer(match_data);
+				for (size_t i = 0; i < group_count; ++i) {
+					size_t start = (size_t)groups[2*i];
+					size_t end = (size_t)groups[2*i+1];
+					print("%zu-%zu\n", start, end);
+				}
+				print("Match\n");
+			} else {
+				print("No match\n");
+			}
+			pcre2_match_data_free(match_data);
+		} else {
+			print("Couldn't create match data.\n");
+		}
+		pcre2_code_free(regex);
+	} else {
+		char32_t buf[256] = {0};
+		size_t len = (size_t)pcre2_get_error_message(error, buf, sizeof buf - 1);
+		char *error_cstr = str32_to_utf8_cstr(str32(buf, len));
+		if (error_cstr) {
+			print("Error %d at %zu: %s\n", error, error_pos, error_cstr);
+			free(error_cstr);
+		}
+	}
+
 
 	// read command-line arguments
 	char const *starting_filename = NULL;

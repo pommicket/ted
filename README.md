@@ -21,6 +21,7 @@ sudo apt install gcc libsdl2-dev libgl-dev
 Then run
 
 ```
+wget https://ftp.pcre.org/pub/pcre/pcre2-10.36.zip
 sudo make install -j4
 ```
 
