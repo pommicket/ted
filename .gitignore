@@ -7,6 +7,7 @@ TAGS
 *.obj
 *.exe
 *.dll
+*.lib
 *.pdb
 *.ilk
 *.res

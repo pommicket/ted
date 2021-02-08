@@ -18,6 +18,7 @@ no_warn_end
 #if _WIN32
 #include <shellapi.h>
 #endif
+#define PCRE2_STATIC
 #define PCRE2_CODE_UNIT_WIDTH 32
 #include "pcre2.h"
 

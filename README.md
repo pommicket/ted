@@ -45,8 +45,11 @@ a simple editor that starts up practically instantaneously, and performs well on
 On Linux, run `make`.
 
 On Windows, you will need the SDL2 VC development libraries: https://www.libsdl.org/download-2.0.php  
-Copy SDL2-2.x.y into the ted directory, and rename it to SDL2. Additionally, copy SDL2\lib\x64\SDL2.dll
+Copy SDL2-2.x.y into the ted directory, and rename it to SDL2. Also copy SDL2\lib\x64\SDL2.dll
 to the ted directory.  
+You will also need PCRE2. Download it here: https://ftp.pcre.org/pub/pcre/pcre2-10.36.zip,
+unzip it, and put pcre2-10.36 in the same folder as ted.
+
 Then run `make.bat`.
 
 ## Version history
