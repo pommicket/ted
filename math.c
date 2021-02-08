@@ -657,6 +657,8 @@ static float rect_x1(Rect r) { return r.pos.x; }
 static float rect_y1(Rect r) { return r.pos.y; }
 static float rect_x2(Rect r) { return r.pos.x + r.size.x; }
 static float rect_y2(Rect r) { return r.pos.y + r.size.y; }
+static float rect_xmid(Rect r) { return r.pos.x + r.size.x * 0.5f; }
+static float rect_ymid(Rect r) { return r.pos.y + r.size.y * 0.5f; }
 
 static void rect_coords(Rect r, float *x1, float *y1, float *x2, float *y2) {
 	*x1 = r.pos.x;

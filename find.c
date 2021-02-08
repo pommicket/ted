@@ -3,6 +3,8 @@ static void find_open(Ted *ted) {
 		ted->prev_active_buffer = ted->active_buffer;
 		ted->active_buffer = &ted->find_buffer;
 		ted->find = true;
+		ted->find_match_count = 0;
+		buffer_clear(&ted->find_buffer);
 	}
 }
 
@@ -35,10 +37,12 @@ static void find_menu_frame(Ted *ted) {
 	u32 const *colors = settings->colors;
 
 	bool invalid_search_term = false;
-	TextBuffer *buffer = ted->prev_active_buffer;
+	TextBuffer *buffer = ted->prev_active_buffer, *find_buffer = &ted->find_buffer;
 	assert(buffer);
+	
+	
 
-	String32 term = buffer_get_line(&ted->find_buffer, 0);
+	String32 term = buffer_get_line(find_buffer, 0);
 	if (term.len) {
 		pcre2_match_data *match_data = pcre2_match_data_create(FIND_MAX_GROUPS, NULL);
 		if (match_data) {
@@ -46,10 +50,31 @@ static void find_menu_frame(Ted *ted) {
 			// compile search term
 			int error = 0; PCRE2_SIZE error_pos = 0;
 			pcre2_code *code = pcre2_compile(term.str, term.len, PCRE2_LITERAL, &error, &error_pos, NULL);
-
-			// @TODO: scroll to first match
 			if (code) {
-				for (u32 line_idx = 0, nlines = buffer->nlines; line_idx < nlines; ++line_idx) {
+				if (find_buffer->modified) { // if search term has been changed,
+					// recompute match count
+					u32 match_count = 0;
+					for (u32 line_idx = 0, end = buffer->nlines; line_idx < end; ++line_idx) {
+						Line *line = &buffer->lines[line_idx];
+						char32_t *str = line->str;
+						u32 len = line->len;
+						u32 start_index = 0;
+						while (start_index < len) {
+							int ret = pcre2_match(code, str, len, start_index, 0, match_data, NULL);
+							if (ret > 0) {
+								u32 match_end = (u32)groups[1];
+								++match_count;
+								start_index = match_end;
+							} else break;
+						}
+					}
+					ted->find_match_count = match_count;
+					find_buffer->modified = false;
+				}
+				
+				// highlight matches
+				for (u32 line_idx = buffer_first_rendered_line(buffer), end = buffer_last_rendered_line(buffer);
+					line_idx < end; ++line_idx) {
 					Line *line = &buffer->lines[line_idx];
 					char32_t *str = line->str;
 					u32 len = line->len;
@@ -75,33 +100,48 @@ static void find_menu_frame(Ted *ted) {
 			}
 			pcre2_match_data_free(match_data);
 		}
+	} else {
+		ted->find_match_count = 0;
+	}
+	
+	
+	float x1 = padding, y1 = window_height - menu_height, x2 = window_width - padding, y2 = window_height - padding;
+
+	Rect menu_bounds = rect4(x1, y1, x2, y2);
+	Rect find_buffer_bounds = rect4(x1 + padding, y1 + char_height_bold, x2 - padding, y1 + char_height_bold + char_height);
+
+	gl_geometry_rect(menu_bounds, colors[COLOR_MENU_BG]);
+	gl_geometry_rect_border(menu_bounds, 1, colors[COLOR_BORDER]);
+	{
+		float w = 0, h = 0;
+		char str[32];
+		strbuf_printf(str, U32_FMT " matches", ted->find_match_count);
+		text_get_size(font, str, &w, &h);
+		text_utf8(font, str, x2 - (w + padding), rect_ymid(find_buffer_bounds) - h * 0.5f, colors[COLOR_TEXT]);
+		x2 -= w + padding;
+		find_buffer_bounds.size.x -= w + padding;
 	}
 
-	float x1 = padding, y1 = window_height - menu_height, x2 = window_width - padding, y2 = window_height - padding;
-	Rect menu_bounds = rect4(x1, y1, x2, y2);
-
-	gl_geometry_rect_border(menu_bounds, 1, colors[COLOR_BORDER]);
-
-
 	text_utf8(font_bold, "Find...", x1 + padding, y1, colors[COLOR_TEXT]);
-	text_render(font_bold);
 
 	y1 += char_height_bold;
-
-	Rect find_buffer_bounds = rect4(x1 + padding, y1, x2 - padding, y1 + char_height);
-	buffer_render(&ted->find_buffer, find_buffer_bounds);
-
+	
 	if (invalid_search_term) {
 		gl_geometry_rect(find_buffer_bounds, colors[COLOR_ERROR_BG] & 0xFFFFFF7F);
 	}
 
 	gl_geometry_draw();
+	text_render(font_bold);
+
+	buffer_render(&ted->find_buffer, find_buffer_bounds);
+
 }
 
 
 // go to next find result
 static void find_next(Ted *ted) {
 	TextBuffer *buffer = ted->prev_active_buffer;
+	
 	// create match data
 	pcre2_match_data *match_data = pcre2_match_data_create(FIND_MAX_GROUPS, NULL);
 	if (match_data) {

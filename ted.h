@@ -190,6 +190,7 @@ typedef struct Node {
 #define TED_MAX_NODES 256
 // max tabs per node
 #define TED_MAX_TABS 100
+
 typedef struct Ted {
 	SDL_Window *window;
 	Font *font_bold;
@@ -218,6 +219,7 @@ typedef struct Ted {
 	bool search_cwd; // should the working directory be searched for files? set to true if the executable isn't "installed"
 	bool quit; // if set to true, the window will close next frame. NOTE: this doesn't check for unsaved changes!!
 	bool find; // is the find menu open?
+	u32 find_match_count; // how many matches of the search term were there?
 	Command warn_unsaved; // if non-zero, the user is trying to execute this command, but there are unsaved changes
 	char warn_unsaved_names[TED_PATH_MAX]; // comma-separated list of files with unsaved changes (only applicable if warn_unsaved != 0)
 	char warn_overwrite[TED_PATH_MAX]; // file name user is trying to overwrite

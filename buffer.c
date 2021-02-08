@@ -1937,6 +1937,15 @@ void buffer_check_valid(TextBuffer *buffer) {
 }
 #endif
 
+u32 buffer_first_rendered_line(TextBuffer *buffer) {
+	return (u32)buffer->scroll_y;
+}
+
+u32 buffer_last_rendered_line(TextBuffer *buffer) {
+	u32 line = buffer_first_rendered_line(buffer) + (u32)buffer_display_lines(buffer) + 1;
+	return clamp_u32(line, 0, buffer->nlines);
+}
+
 // Render the text buffer in the given rectangle
 void buffer_render(TextBuffer *buffer, Rect r) {
 	float x1, y1, x2, y2;
@@ -1956,7 +1965,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	float const padding = settings->padding;
 	float const border_thickness = settings->border_thickness;
 
-	u32 start_line = (u32)buffer->scroll_y; // line to start rendering from
+	u32 start_line = buffer_first_rendered_line(buffer); // line to start rendering from
 	Rect bounding_box = rect4(x1, y1, x2, y2);
 	
 	float render_start_y = y1 - (float)(buffer->scroll_y - start_line) * char_height; // where the 1st line is rendered
