@@ -574,7 +574,6 @@ int main(int argc, char **argv) {
 			node_frame(ted, node, rect4(x1, y1, x2, y2));
 			if (ted->find) {
 				find_menu_frame(ted);
-				if (ted->find) y2 -= find_menu_height(ted);
 			}
 		} else {
 			text_utf8_anchored(font, "Press Ctrl+O to open a file or Ctrl+N to create a new one.",
