@@ -569,12 +569,12 @@ int main(int argc, char **argv) {
 
 		if (ted->active_node) {
 			float x1 = 25, y1 = 25, x2 = window_width-25, y2 = window_height-25;
+			Node *node = ted->root;
+			node_frame(ted, node, rect4(x1, y1, x2, y2));
 			if (ted->find) {
 				find_menu_frame(ted);
 				if (ted->find) y2 -= find_menu_height(ted);
 			}
-			Node *node = ted->root;
-			node_frame(ted, node, rect4(x1, y1, x2, y2));
 		} else {
 			text_utf8_anchored(font, "Press Ctrl+O to open a file or Ctrl+N to create a new one.",
 				window_width * 0.5f, window_height * 0.5f, colors[COLOR_TEXT_SECONDARY], ANCHOR_MIDDLE);

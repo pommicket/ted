@@ -18,6 +18,7 @@ ENUM_U16 {
 	COLOR_ERROR_BG,
 	COLOR_ERROR_BORDER,
 	COLOR_ACTIVE_TAB_HL,
+	COLOR_FIND_HL,
 
 	COLOR_YES,
 	COLOR_NO,
@@ -62,6 +63,7 @@ static ColorName const color_names[COLOR_COUNT] = {
 	{COLOR_ERROR_BG, "error-bg"},
 	{COLOR_ERROR_BORDER, "error-border"},
 	{COLOR_ACTIVE_TAB_HL, "active-tab-hl"},
+	{COLOR_FIND_HL, "find-hl"},
 	{COLOR_KEYWORD, "keyword"},
 	{COLOR_BUILTIN, "builtin"},
 	{COLOR_COMMENT, "comment"},
