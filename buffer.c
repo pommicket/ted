@@ -786,32 +786,36 @@ static bool buffer_clip_rect(TextBuffer *buffer, Rect *r) {
 }
 
 
-// if the cursor is offscreen, this will scroll to make it onscreen.
-static void buffer_scroll_to_cursor(TextBuffer *buffer) {
+void buffer_scroll_to_pos(TextBuffer *buffer, BufferPos pos) {
 	Settings const *settings = buffer_settings(buffer);
-	double cursor_line = buffer->cursor_pos.line;
-	double cursor_col  = buffer_index_to_column(buffer, (u32)cursor_line, buffer->cursor_pos.index);
+	double line = pos.line;
+	double col = buffer_index_to_column(buffer, pos.line, pos.index);
 	double display_lines = buffer_display_lines(buffer);
 	double display_cols = buffer_display_cols(buffer);
 	double scroll_x = buffer->scroll_x, scroll_y = buffer->scroll_y;
 	double scrolloff = settings->scrolloff;
 
-	// scroll left if cursor is off screen in that direction
-	double max_scroll_x = cursor_col - scrolloff;
+	// scroll left if pos is off screen in that direction
+	double max_scroll_x = col - scrolloff;
 	scroll_x = mind(scroll_x, max_scroll_x);
 	// scroll right
-	double min_scroll_x = cursor_col - display_cols + scrolloff;
+	double min_scroll_x = col - display_cols + scrolloff;
 	scroll_x = maxd(scroll_x, min_scroll_x);
 	// scroll up
-	double max_scroll_y = cursor_line - scrolloff;
+	double max_scroll_y = line - scrolloff;
 	scroll_y = mind(scroll_y, max_scroll_y);
 	// scroll down
-	double min_scroll_y = cursor_line - display_lines + scrolloff;
+	double min_scroll_y = line - display_lines + scrolloff;
 	scroll_y = maxd(scroll_y, min_scroll_y);
 
 	buffer->scroll_x = scroll_x;
 	buffer->scroll_y = scroll_y;
 	buffer_correct_scroll(buffer); // it's possible that min/max_scroll_x/y go too far
+}
+
+// if the cursor is offscreen, this will scroll to make it onscreen.
+void buffer_scroll_to_cursor(TextBuffer *buffer) {
+	buffer_scroll_to_pos(buffer, buffer->cursor_pos);
 }
 
 // scroll so that the cursor is in the center of the screen

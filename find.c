@@ -35,13 +35,10 @@ static void find_menu_frame(Ted *ted) {
 	float const menu_height = find_menu_height(ted);
 	float const window_width = ted->window_width, window_height = ted->window_height;
 	u32 const *colors = settings->colors;
-
-	bool invalid_search_term = false;
+	
 	TextBuffer *buffer = ted->prev_active_buffer, *find_buffer = &ted->find_buffer;
 	assert(buffer);
 	
-	
-
 	String32 term = buffer_get_line(find_buffer, 0);
 	if (term.len) {
 		pcre2_match_data *match_data = pcre2_match_data_create(FIND_MAX_GROUPS, NULL);
@@ -53,6 +50,9 @@ static void find_menu_frame(Ted *ted) {
 			if (code) {
 				if (find_buffer->modified) { // if search term has been changed,
 					// recompute match count
+					BufferPos best_scroll_candidate = {U32_MAX, U32_MAX}; // pos we will scroll to (scroll to first match)
+					BufferPos cursor_pos = buffer->cursor_pos;
+					
 					u32 match_count = 0;
 					for (u32 line_idx = 0, end = buffer->nlines; line_idx < end; ++line_idx) {
 						Line *line = &buffer->lines[line_idx];
@@ -62,6 +62,13 @@ static void find_menu_frame(Ted *ted) {
 						while (start_index < len) {
 							int ret = pcre2_match(code, str, len, start_index, 0, match_data, NULL);
 							if (ret > 0) {
+								// a match!
+								
+								BufferPos match_start_pos = {.line = line_idx, .index = (u32)groups[0]};
+								if (best_scroll_candidate.line == U32_MAX 
+								|| (buffer_pos_cmp(best_scroll_candidate, cursor_pos) < 0 && buffer_pos_cmp(match_start_pos, cursor_pos) >= 0))
+									best_scroll_candidate = match_start_pos;
+									
 								u32 match_end = (u32)groups[1];
 								++match_count;
 								start_index = match_end;
@@ -70,6 +77,8 @@ static void find_menu_frame(Ted *ted) {
 					}
 					ted->find_match_count = match_count;
 					find_buffer->modified = false;
+					if (best_scroll_candidate.line != U32_MAX)
+						buffer_scroll_to_pos(buffer, best_scroll_candidate);
 				}
 				
 				// highlight matches
@@ -95,13 +104,16 @@ static void find_menu_frame(Ted *ted) {
 					}
 				}
 				pcre2_code_free(code);
+				ted->find_invalid_pattern = false;
 			} else {
-				invalid_search_term = true;
+				ted->find_invalid_pattern = true;
 			}
 			pcre2_match_data_free(match_data);
 		}
-	} else {
+	} else if (find_buffer->modified) {
 		ted->find_match_count = 0;
+		ted->find_invalid_pattern = false;
+		buffer_scroll_to_cursor(buffer);
 	}
 	
 	
@@ -126,14 +138,16 @@ static void find_menu_frame(Ted *ted) {
 
 	y1 += char_height_bold;
 	
-	if (invalid_search_term) {
-		gl_geometry_rect(find_buffer_bounds, colors[COLOR_ERROR_BG] & 0xFFFFFF7F);
-	}
-
 	gl_geometry_draw();
 	text_render(font_bold);
 
 	buffer_render(&ted->find_buffer, find_buffer_bounds);
+	
+	if (ted->find_invalid_pattern)
+		gl_geometry_rect(find_buffer_bounds, colors[COLOR_NO] & 0xFFFFFF3F); // invalid regex
+	else if (term.len && ted->find_match_count == 0)
+		gl_geometry_rect(find_buffer_bounds, colors[COLOR_CANCEL] & 0xFFFFFF3F); // no matches
+	gl_geometry_draw();
 
 }
 

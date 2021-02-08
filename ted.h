@@ -220,6 +220,7 @@ typedef struct Ted {
 	bool quit; // if set to true, the window will close next frame. NOTE: this doesn't check for unsaved changes!!
 	bool find; // is the find menu open?
 	u32 find_match_count; // how many matches of the search term were there?
+	bool find_invalid_pattern; // invalid regex?
 	Command warn_unsaved; // if non-zero, the user is trying to execute this command, but there are unsaved changes
 	char warn_unsaved_names[TED_PATH_MAX]; // comma-separated list of files with unsaved changes (only applicable if warn_unsaved != 0)
 	char warn_overwrite[TED_PATH_MAX]; // file name user is trying to overwrite
