@@ -1,5 +1,3 @@
-// @TODO : show ted->find_match_pos
-
 #define FIND_MAX_GROUPS 50
 
 static bool find_compile_pattern(Ted *ted, bool error_on_invalid_pattern) {
@@ -47,6 +45,7 @@ static void find_free_pattern(Ted *ted) {
 		pcre2_match_data_free(ted->find_match_data);
 		ted->find_match_data = NULL;
 	}
+	arr_clear(ted->find_results);
 }
 
 static void find_open(Ted *ted) {
@@ -54,7 +53,6 @@ static void find_open(Ted *ted) {
 		ted->prev_active_buffer = ted->active_buffer;
 		ted->active_buffer = &ted->find_buffer;
 		ted->find = true;
-		ted->find_match_count = 0;
 		buffer_clear(&ted->find_buffer);
 	}
 }
@@ -66,13 +64,12 @@ static void find_close(Ted *ted) {
 }
 
 static float find_menu_height(Ted *ted) {
-	Font *font = ted->font, *font_bold = ted->font_bold;
-	float char_height = text_font_char_height(font),
-		char_height_bold = text_font_char_height(font_bold);
+	Font *font = ted->font;
+	float char_height = text_font_char_height(font);
 	Settings const *settings = &ted->settings;
 	float padding = settings->padding;
 
-	return char_height_bold + char_height + 2 * padding;
+	return char_height + 4 * padding;
 }
 
 // finds the next match in the buffer, returning false if there is no match this line.
@@ -106,7 +103,7 @@ static WarnUnusedResult bool find_match(Ted *ted, BufferPos *pos, u32 *match_sta
 		pos->index = (u32)groups[1];
 		return true;
 	} else {
-		pos->line += buffer->nlines + direction;
+		pos->line += (u32)((i64)buffer->nlines + direction);
 		pos->line %= buffer->nlines;
 		if (direction == +1)
 			pos->index = 0;
@@ -123,28 +120,28 @@ static void find_update(Ted *ted, bool error_on_invalid_pattern) {
 	TextBuffer *buffer = ted->prev_active_buffer;
 
 	find_free_pattern(ted);
+
 	if (find_compile_pattern(ted, error_on_invalid_pattern)) {
 		BufferPos pos = buffer_start_of_file(buffer);
 		BufferPos best_scroll_candidate = {U32_MAX, U32_MAX};
 		BufferPos cursor_pos = buffer->cursor_pos;
-		u32 match_count = 0;
-		// count number of matches
+		// find all matches
 		for (u32 nsearches = 0; nsearches < buffer->nlines; ++nsearches) {
-			u32 match_start;
-			while (find_match(ted, &pos, &match_start, NULL, +1)) {
+			u32 match_start, match_end;
+			while (find_match(ted, &pos, &match_start, &match_end, +1)) {
 				BufferPos match_start_pos = {.line = pos.line, .index = match_start};
+				BufferPos match_end_pos = {.line = pos.line, .index = match_end};
+				FindResult result = {match_start_pos, match_end_pos};
+				arr_add(ted->find_results, result);
 				if (best_scroll_candidate.line == U32_MAX 
 				|| (buffer_pos_cmp(best_scroll_candidate, cursor_pos) < 0 && buffer_pos_cmp(match_start_pos, cursor_pos) >= 0))
 					best_scroll_candidate = match_start_pos;
-				++match_count;
 			}
 		}
-		ted->find_match_count = match_count;
 		find_buffer->modified = false;
 		if (best_scroll_candidate.line != U32_MAX) // scroll to first match (if there is one)
 			buffer_scroll_to_pos(buffer, best_scroll_candidate);
 	} else {
-		ted->find_match_count = 0;
 		buffer_scroll_to_cursor(buffer);
 	}
 }
@@ -165,17 +162,18 @@ static void find_menu_frame(Ted *ted) {
 	
 	u32 first_rendered_line = buffer_first_rendered_line(buffer);
 	u32 last_rendered_line = buffer_last_rendered_line(buffer);
-	BufferPos pos = {first_rendered_line, 0};
 	
 	find_update(ted, false);
 	
-	for (u32 nsearches = 0; nsearches < buffer->nlines && pos.line >= first_rendered_line && pos.line <= last_rendered_line; ++nsearches) {
+	u32 match_pos = U32_MAX; // index of result we are on
+	arr_foreach_ptr(ted->find_results, FindResult, result) {
 		// highlight matches
-
-		u32 match_start, match_end;
-		while (find_match(ted, &pos, &match_start, &match_end, +1)) {
-			BufferPos p1 = {.line = pos.line, .index = match_start};
-			BufferPos p2 = {.line = pos.line, .index = match_end};
+		BufferPos p1 = result->start, p2 = result->end;
+		if (buffer->selection 
+			&& buffer_pos_eq(p1, buffer->selection_pos)
+			&& buffer_pos_eq(p2, buffer->cursor_pos))
+			match_pos = (u32)(result - ted->find_results);
+		if (p2.line >= first_rendered_line && p1.line <= last_rendered_line) {
 			v2 pos1 = buffer_pos_to_pixels(buffer, p1);
 			v2 pos2 = buffer_pos_to_pixels(buffer, p2);
 			pos2.y += char_height;
@@ -186,25 +184,38 @@ static void find_menu_frame(Ted *ted) {
 	}
 	
 	
-	float x1 = padding, y1 = window_height - menu_height, x2 = window_width - padding, y2 = window_height - padding;
+	float x1 = padding, y1 = window_height - menu_height + padding, x2 = window_width - padding, y2 = window_height - padding;
+
+	char const *find_text = "Find...";
+	float find_text_width = 0;
+	text_get_size(font_bold, find_text, &find_text_width, NULL);
 
 	Rect menu_bounds = rect4(x1, y1, x2, y2);
-	Rect find_buffer_bounds = rect4(x1 + padding, y1 + char_height_bold, x2 - padding, y1 + char_height_bold + char_height);
+
+	x1 += padding;
+	y1 += padding;
+	x2 -= padding;
+	y2 -= padding;
+
+	Rect find_buffer_bounds = rect4(x1 + find_text_width + padding, y1, x2 - padding, y1 + char_height);
 
 	gl_geometry_rect(menu_bounds, colors[COLOR_MENU_BG]);
 	gl_geometry_rect_border(menu_bounds, 1, colors[COLOR_BORDER]);
 	{
 		float w = 0, h = 0;
 		char str[32];
-		strbuf_printf(str, U32_FMT " matches", ted->find_match_count);
+		if (match_pos == U32_MAX) {
+			strbuf_printf(str, U32_FMT " matches", arr_len(ted->find_results));
+		} else if (buffer->selection) {
+			strbuf_printf(str, U32_FMT " of " U32_FMT, match_pos + 1, arr_len(ted->find_results));
+		}
 		text_get_size(font, str, &w, &h);
-		text_utf8(font, str, x2 - (w + padding), rect_ymid(find_buffer_bounds) - h * 0.5f, colors[COLOR_TEXT]);
-		x2 -= w + padding;
-		find_buffer_bounds.size.x -= w + padding;
+		text_utf8(font, str, x2 - w, rect_ymid(find_buffer_bounds) - h * 0.5f, colors[COLOR_TEXT]);
+		x2 -= w;
+		find_buffer_bounds.size.x -= w;
 	}
 
-	text_utf8(font_bold, "Find...", x1 + padding, y1, colors[COLOR_TEXT]);
-
+	text_utf8(font_bold, "Find...", x1, y1, colors[COLOR_TEXT]);
 	y1 += char_height_bold;
 	
 	gl_geometry_draw();
@@ -216,7 +227,7 @@ static void find_menu_frame(Ted *ted) {
 	
 	if (ted->find_invalid_pattern)
 		gl_geometry_rect(find_buffer_bounds, colors[COLOR_NO] & 0xFFFFFF3F); // invalid regex
-	else if (term.len && ted->find_match_count == 0)
+	else if (term.len && !ted->find_results)
 		gl_geometry_rect(find_buffer_bounds, colors[COLOR_CANCEL] & 0xFFFFFF3F); // no matches
 	gl_geometry_draw();
 
@@ -239,8 +250,6 @@ static void find_next_in_direction(Ted *ted, int direction) {
 			BufferPos pos_end = {.line = pos.line, .index = match_end};
 			buffer_cursor_move_to_pos(buffer, pos_start);
 			buffer_select_to_pos(buffer, pos_end);
-			ted->find_match_pos += ted->find_match_count + direction;
-			ted->find_match_pos %= ted->find_match_count;
 			break;
 		}
 	}
@@ -254,3 +263,4 @@ static void find_next(Ted *ted) {
 static void find_prev(Ted *ted) {
 	find_next_in_direction(ted, -1);
 }
+

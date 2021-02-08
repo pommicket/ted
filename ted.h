@@ -191,6 +191,11 @@ typedef struct Node {
 // max tabs per node
 #define TED_MAX_TABS 100
 
+typedef struct {
+	BufferPos start;
+	BufferPos end;
+} FindResult;
+
 typedef struct Ted {
 	SDL_Window *window;
 	Font *font_bold;
@@ -221,8 +226,7 @@ typedef struct Ted {
 	bool find; // is the find menu open?
 	pcre2_code *find_code;
 	pcre2_match_data *find_match_data;
-	u32 find_match_count; // how many matches of the search term were there?
-	u32 find_match_pos; // which match we are on, or U32_MAX if not on a match.
+	FindResult *find_results;
 	bool find_invalid_pattern; // invalid regex?
 	Command warn_unsaved; // if non-zero, the user is trying to execute this command, but there are unsaved changes
 	char warn_unsaved_names[TED_PATH_MAX]; // comma-separated list of files with unsaved changes (only applicable if warn_unsaved != 0)
