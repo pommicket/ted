@@ -32,7 +32,6 @@ struct Font {
 	// TTF data (i.e. the contents of the TTF file)
 	u8 *ttf_data;
 	TextTriangle *triangles[CHAR_PAGE_COUNT]; // triangles to render for each page
-	int curr_page;
 };
 
 TextRenderState const text_render_state_default = {
@@ -182,7 +181,6 @@ Font *text_font_load(char const *ttf_filename, float font_size) {
 							'a', &x, &y, &q, 1);
 						font->char_width = x;
 					}
-					font->curr_page = -1;
 				} else {
 					text_set_err("Couldn't read font file.");
 				}
@@ -212,15 +210,7 @@ float text_font_char_width(Font *font) {
 	return font->char_width;
 }
 
-static void text_render_with_page(Font *font, int page) {
-	font->curr_page = page;
-}
-
-void text_chars_begin(Font *font) {
-	text_render_with_page(font, 0); // start by loading Latin text
-}
-
-void text_chars_end(Font *font) {
+void text_render(Font *font) {
 	for (uint i = 0; i < CHAR_PAGE_COUNT; ++i) {
 		if (font->triangles[i]) {
 			// render these triangles
@@ -254,7 +244,7 @@ void text_chars_end(Font *font) {
 	}
 }
 
-void text_render_char(Font *font, TextRenderState *state, char32_t c) {
+void text_char_with_state(Font *font, TextRenderState *state, char32_t c) {
 top:
 	if (c >= 0x40000 && c < 0xE0000){
 		// these Unicode code points are currently unassigned. replace them with a Unicode box.
@@ -265,8 +255,11 @@ top:
 	if (c >= UNICODE_CODE_POINTS) c = UNICODE_BOX_CHARACTER; // code points this big should never appear in valid Unicode
 	uint page = c / CHAR_PAGE_SIZE;
 	uint index = c % CHAR_PAGE_SIZE;
-	if (state->render)
-		text_render_with_page(font, (int)page);
+	if (state->render) {
+		if (!font->char_pages[page])
+			if (!text_load_char_page(font, (int)page))
+				return;
+	}
 	stbtt_bakedchar *char_data = font->char_pages[page];
 	float const char_height = font->char_height;
 	if (char_data) { // if page was successfully loaded
@@ -317,13 +310,13 @@ top:
 			TextVertex v4 = {{x1, y0}, {s1, t0}, {r, g, b, a}};
 			TextTriangle triangle1 = {v1, v2, v3};
 			TextTriangle triangle2 = {v3, v4, v1};
-			arr_add(font->triangles[font->curr_page], triangle1);
-			arr_add(font->triangles[font->curr_page], triangle2);
+			arr_add(font->triangles[page], triangle1);
+			arr_add(font->triangles[page], triangle2);
 		}
 	}
 }
 
-void text_render_chars_utf8(Font *font, TextRenderState *state, char const *str) {
+void text_utf8_with_state(Font *font, TextRenderState *state, char const *str) {
 	char const *end = str + strlen(str);
 	while (str != end) {
 		char32_t c = 0;
@@ -332,38 +325,31 @@ void text_render_chars_utf8(Font *font, TextRenderState *state, char const *str)
 			break;
 		} else if (ret == (size_t)-1) {
 			// invalid UTF-8
-			text_render_char(font, state, '?');
+			text_char_with_state(font, state, '?');
 			++str;
 		} else {
 			str += ret;
-			text_render_char(font, state, c);
+			text_char_with_state(font, state, c);
 		}
 	}
 }
 
-void text_render_with_state(Font *font, TextRenderState *render_state, char const *text, float x, float y) {
-	if (render_state->render) text_chars_begin(font);
-	render_state->x = x;
-	render_state->y = y;
-	text_render_chars_utf8(font, render_state, text);
-	if (render_state->render) text_chars_end(font);
-	
-}
-
-static void text_render_internal(Font *font, char const *text, float *x, float *y, u32 color, bool render) {
+static void text_render_utf8_internal(Font *font, char const *text, float *x, float *y, u32 color, bool render) {
 	TextRenderState render_state = text_render_state_default;
 	render_state.render = render;
+	render_state.x = *x;
+	render_state.y = *y;
 	rgba_u32_to_floats(color, render_state.color);
-	text_render_with_state(font, &render_state, text, *x, *y);
+	text_utf8_with_state(font, &render_state, text);
 	*x = render_state.x;
 	*y = render_state.y;
 }
 
-void text_render(Font *font, char const *text, float x, float y, u32 color) {
-	text_render_internal(font, text, &x, &y, color, true);
+void text_utf8(Font *font, char const *text, float x, float y, u32 color) {
+	text_render_utf8_internal(font, text, &x, &y, color, true);
 }
 
-void text_render_anchored(Font *font, char const *text, float x, float y, u32 color, Anchor anchor) {
+void text_utf8_anchored(Font *font, char const *text, float x, float y, u32 color, Anchor anchor) {
 	float w = 0, h = 0; // width, height of text
 	text_get_size(font, text, &w, &h);
 	float hw = w * 0.5f, hh = h * 0.5f; // half-width, half-height
@@ -378,12 +364,12 @@ void text_render_anchored(Font *font, char const *text, float x, float y, u32 co
 	case ANCHOR_BOTTOM_MIDDLE: x -= hw; y -= h; break;
 	case ANCHOR_BOTTOM_RIGHT: x -= w; y -= h; break;
 	}
-	text_render(font, text, x, y, color);
+	text_utf8(font, text, x, y, color);
 }
 
 void text_get_size(Font *font, char const *text, float *width, float *height) {
 	float x = 0, y = 0;
-	text_render_internal(font, text, &x, &y, 0, false);
+	text_render_utf8_internal(font, text, &x, &y, 0, false);
 	if (width)  *width = x;
 	if (height) *height = y + font->char_height;
 }
@@ -392,7 +378,7 @@ void text_get_size32(Font *font, char32_t const *text, u64 len, float *width, fl
 	TextRenderState render_state = text_render_state_default;
 	render_state.render = false;
 	for (u64 i = 0; i < len; ++i) {
-		text_render_char(font, &render_state, text[i]);
+		text_char_with_state(font, &render_state, text[i]);
 	}
 	if (width) *width = render_state.x;
 	if (height) *height = render_state.y + font->char_height * (2/3.0f);

@@ -234,10 +234,11 @@ static void menu_render(Ted *ted, Menu menu) {
 		
 
 		if (menu == MENU_OPEN) {
-			text_render(font_bold, "Open...", menu_x1, menu_y1, colors[COLOR_TEXT]);
+			text_utf8(font_bold, "Open...", menu_x1, menu_y1, colors[COLOR_TEXT]);
 		} else if (menu == MENU_SAVE_AS) {
-			text_render(font_bold, "Save as...", menu_x1, menu_y1, colors[COLOR_TEXT]);
+			text_utf8(font_bold, "Save as...", menu_x1, menu_y1, colors[COLOR_TEXT]);
 		}
+		text_render(font_bold);
 			
 		menu_y1 += char_height_bold * 0.75f + padding;
 

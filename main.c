@@ -51,6 +51,7 @@ no_warn_end
 #include "menu.c"
 #include "command.c"
 #include "config.c"
+#include "find.c"
 
 #if PROFILE
 #define PROFILE_TIME(var) double var = time_get_seconds();
@@ -93,6 +94,13 @@ static void APIENTRY gl_message_callback(GLenum source, GLenum type, unsigned in
 }
 #endif
 
+static void ted_update_window_dimensions(Ted *ted) {
+	int w = 0, h = 0;
+	SDL_GetWindowSize(ted->window, &w, &h);
+	gl_window_width = ted->window_width = (float)w;
+	gl_window_height = ted->window_height = (float)h;
+}
+
 #if _WIN32
 INT WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
     PSTR lpCmdLine, INT nCmdShow) {
@@ -116,41 +124,6 @@ INT WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 int main(int argc, char **argv) {
 #endif
 	setlocale(LC_ALL, ""); // allow unicode
-
-	int error = 0;
-	PCRE2_SIZE error_pos = 0;
-	pcre2_code *regex = pcre2_compile(U"a(.)b", 5, 0, &error, &error_pos, NULL);
-	if (regex) {
-		print("Compiled to %p\n",(void *)regex);
-		pcre2_match_data *match_data = pcre2_match_data_create(100, NULL);
-		if (match_data) {
-			int ret = pcre2_match(regex, U"acb", 3, 0, 0, match_data, NULL);
-			if (ret > 0) {
-				size_t group_count = (size_t)ret;
-				PCRE2_SIZE *groups = pcre2_get_ovector_pointer(match_data);
-				for (size_t i = 0; i < group_count; ++i) {
-					size_t start = (size_t)groups[2*i];
-					size_t end = (size_t)groups[2*i+1];
-					print("%zu-%zu\n", start, end);
-				}
-				print("Match\n");
-			} else {
-				print("No match\n");
-			}
-			pcre2_match_data_free(match_data);
-		} else {
-			print("Couldn't create match data.\n");
-		}
-		pcre2_code_free(regex);
-	} else {
-		char32_t buf[256] = {0};
-		size_t len = (size_t)pcre2_get_error_message(error, buf, sizeof buf - 1);
-		char *error_cstr = str32_to_utf8_cstr(str32(buf, len));
-		if (error_cstr) {
-			print("Error %d at %zu: %s\n", error, error_pos, error_cstr);
-			free(error_cstr);
-		}
-	}
 
 
 	// read command-line arguments
@@ -272,6 +245,8 @@ int main(int argc, char **argv) {
 		SDL_WINDOWPOS_UNDEFINED, 1280, 720, SDL_WINDOW_SHOWN|SDL_WINDOW_OPENGL|SDL_WINDOW_RESIZABLE);
 	if (!window)
 		die("%s", SDL_GetError());
+
+	ted->window = window;
 		
 	{ // set icon
 		char icon_filename[TED_PATH_MAX];
@@ -397,15 +372,7 @@ int main(int argc, char **argv) {
 
 		//printf("%p\n",(void *)ted->drag_buffer);
 
-		float window_width = 0, window_height = 0;
-		{
-			int window_width_int = 0, window_height_int = 0;
-			SDL_GetWindowSize(window, &window_width_int, &window_height_int);
-			ted->window_width = (float)window_width_int;
-			ted->window_height = (float)window_height_int;
-		}
-		window_width = ted->window_width, window_height = ted->window_height;
-		gl_window_width = window_width, gl_window_height = window_height;
+		ted_update_window_dimensions(ted);
 
 		while (SDL_PollEvent(&event)) {
 			TextBuffer *buffer = ted->active_buffer;
@@ -582,15 +549,8 @@ int main(int argc, char **argv) {
 				buffer_scroll(active_buffer, +scroll_amount_x, 0);
 		}
 		
-		// update window dimensions
-		{
-			int window_width_int = 0, window_height_int = 0;
-			SDL_GetWindowSize(window, &window_width_int, &window_height_int);
-			ted->window_width = (float)window_width_int;
-			ted->window_height = (float)window_height_int;
-		}
-		window_width = ted->window_width, window_height = ted->window_height;
-
+		ted_update_window_dimensions(ted);
+		float window_width = ted->window_width, window_height = ted->window_height;
 
 		// set up GL
 		glEnable(GL_BLEND);
@@ -603,16 +563,20 @@ int main(int argc, char **argv) {
 		}
 		glClear(GL_COLOR_BUFFER_BIT);
 		
-
 		Font *font = ted->font;
 
 		if (ted->active_node) {
 			float x1 = 25, y1 = 25, x2 = window_width-25, y2 = window_height-25;
+			if (ted->find) {
+				find_menu_frame(ted);
+				if (ted->find) y2 -= find_menu_height(ted);
+			}
 			Node *node = ted->root;
 			node_frame(ted, node, rect4(x1, y1, x2, y2));
 		} else {
-			text_render_anchored(font, "Press Ctrl+O to open a file or Ctrl+N to create a new one.",
+			text_utf8_anchored(font, "Press Ctrl+O to open a file or Ctrl+N to create a new one.",
 				window_width * 0.5f, window_height * 0.5f, colors[COLOR_TEXT_SECONDARY], ANCHOR_MIDDLE);
+			text_render(font);
 		}
 
 		Menu menu = ted->menu;
@@ -671,9 +635,12 @@ int main(int argc, char **argv) {
 				TextRenderState text_state = text_render_state_default;
 				text_state.min_x = text_x1;
 				text_state.max_x = text_x2;
+				text_state.x = text_x1;
+				text_state.y = text_y1;
 				text_state.wrap = true;
 				rgba_u32_to_floats(colors[COLOR_ERROR_TEXT], text_state.color);
-				text_render_with_state(font, &text_state, ted->error_shown, text_x1, text_y1);
+				text_utf8_with_state(font, &text_state, ted->error_shown);
+				text_render(font);
 			}
 		}
 

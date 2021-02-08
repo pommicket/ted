@@ -1970,7 +1970,6 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 		text_state.max_y = y2;
 
 		float y = render_start_y;
-		text_chars_begin(font);
 		u32 cursor_line = buffer->cursor_pos.line;
 		for (u32 line = start_line; line < nlines; ++line) {
 			char str[32] = {0};
@@ -1980,11 +1979,10 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 			rgba_u32_to_floats(colors[line == cursor_line ? COLOR_CURSOR_LINE_NUMBER : COLOR_LINE_NUMBERS],
 				text_state.color);
 			text_state.x = x; text_state.y = y;
-			text_render_chars_utf8(font, &text_state, str);
+			text_utf8_with_state(font, &text_state, str);
 			y += char_height;
 			if (y > y2) break;
 		}
-		text_chars_end(font);
 
 		x1 += line_number_width;
 		x1 += 2; // a little bit of padding
@@ -2088,8 +2086,6 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	buffer->longest_line_on_screen = 0;
 	
 
-	text_chars_begin(font);
-
 	TextRenderState text_state = text_render_state_default;
 	text_state.x = render_start_x;
 	text_state.y = render_start_y;
@@ -2121,12 +2117,12 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 			case '\t': {
 				uint tab_width = settings->tab_width;
 				do {
-					text_render_char(font, &text_state, ' ');
+					text_char_with_state(font, &text_state, ' ');
 					++column;
 				} while (column % tab_width);
 			} break;
 			default:
-				text_render_char(font, &text_state, c);
+				text_char_with_state(font, &text_state, c);
 				++column;
 				break;
 			}
@@ -2144,9 +2140,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	
 	arr_free(char_types);
 
-	
-
-	text_chars_end(font);
+	text_render(font);
 
 	if (buffer == ted->active_buffer) {
 		// render cursor

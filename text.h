@@ -4,8 +4,13 @@
 #include <uchar.h>
 
 // A text-rendering interface.
-// You can either use the simple API (text_render)
-// or the character-by-character API (text_chars_begin, text_chars_end, text_render_char)
+// Example usage:
+// Font *font = text_font_load("font.ttf", 18);
+// if (font) {
+//   text_utf8(font, "Hello", 5, 5, 0xFF0000FF);
+//   text_utf8(font, "Goodbye", 5, 100, 0x00FF00FF);
+//   text_render(font);
+// }
 
 
 typedef struct Font Font;
@@ -46,24 +51,16 @@ extern float text_font_char_height(Font *font);
 // Width of the character 'a' of this font in pixels.
 // This is meant to be only used for monospace fonts.
 extern float text_font_char_width(Font *font);
-// Render some UTF-8 text to the screen (simple interface).
-extern void text_render(Font *font, char const *text, float x, float y, u32 color);
 // Get the dimensions of some text.
 extern void text_get_size(Font *font, char const *text, float *width, float *height);
 extern void text_get_size32(Font *font, char32_t const *text, u64 len, float *width, float *height);
-// Write text, but using a state, starting at (x, y) -- state->x and state->y are ignored. This allows you to control min/max_x/y.
-extern void text_render_with_state(Font *font, TextRenderState *state, char const *text, float x, float y);
-extern void text_render_anchored(Font *font, char const *text, float x, float y, u32 color, Anchor anchor);
-// Begin writing characters.
-extern void text_chars_begin(Font *font);
-// Finish writing characters.
-extern void text_chars_end(Font *font);
-// Render a single character.
-extern void text_render_char(Font *font, TextRenderState *state, char32_t c);
-// Render a null-terminated UTF-8 string (must be within text_chars_begin/end).
-extern void text_render_chars_utf8(Font *font, TextRenderState *state, char const *str);
+extern void text_utf8(Font *font, char const *text, float x, float y, u32 color);
+extern void text_utf8_anchored(Font *font, char const *text, float x, float y, u32 color, Anchor anchor);
+extern void text_char_with_state(Font *font, TextRenderState *state, char32_t c);
+extern void text_utf8_with_state(Font *font, TextRenderState *state, char const *str);
 // Free memory used by font.
 extern void text_font_free(Font *font);
+extern void text_render(Font *font);
 
 // The "default" text rendering state - everything you need to just render text normally.
 // This lets you do stuff like:

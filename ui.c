@@ -8,7 +8,7 @@ static float file_selector_entries_start_y(Ted const *ted, FileSelector const *f
 	float char_height = text_font_char_height(ted->font);
 	return bounds.pos.y
 		+ char_height * 0.75f + padding // make room for cwd
-		+ char_height * 1.75f + padding; // make room for line buffer
+		+ char_height * 1.25f + padding; // make room for line buffer
 }
 
 // number of file entries that can be displayed on the screen
@@ -423,7 +423,7 @@ static void file_selector_render(Ted *ted, FileSelector *fs) {
 	rect_coords(bounds, &x1, &y1, &x2, &y2);
 
 	// current working directory
-	text_render(font, fs->cwd, x1, y1, colors[COLOR_TEXT]);
+	text_utf8(font, fs->cwd, x1, y1, colors[COLOR_TEXT]);
 	y1 += char_height + padding;
 
 	// search buffer
@@ -438,7 +438,7 @@ static void file_selector_render(Ted *ted, FileSelector *fs) {
 		Rect r;
 		if (file_selector_entry_pos(ted, fs, i, &r)) {
 			rect_clip_to_rect(&r, text_bounds);
-			if (rect_contains_point(r, ted->mouse_pos) || 
+			if (rect_contains_point(r, ted->mouse_pos) ||
 				((!fs->create_menu || buffer_empty(&ted->line_buffer)) // only highlight selected for create menus if there is no search term (because that will be the name of the file)
 					&& fs->selected == i)) {
 				gl_geometry_rect(r, colors[COLOR_MENU_HL]);
@@ -453,7 +453,7 @@ static void file_selector_render(Ted *ted, FileSelector *fs) {
 	text_state.min_y = y1;
 	text_state.max_y = y2;
 	text_state.render = true;
-	text_chars_begin(font);
+
 	// render file names themselves
 	for (u32 i = 0; i < n_entries; ++i) {
 		Rect r;
@@ -473,13 +473,12 @@ static void file_selector_render(Ted *ted, FileSelector *fs) {
 			}
 			text_state.x = x; text_state.y = y;
 			rgba_u32_to_floats(colors[color], text_state.color);
-			text_render_chars_utf8(font, &text_state, entries[i].name);
+			text_utf8_with_state(font, &text_state, entries[i].name);
 		}
 	}
-	text_chars_end(font);
+	text_render(font);
 }
 
-// make sure you call gl_geometry_draw when you are ready to draw all the buttons that have been rendered!
 static void button_render(Ted *ted, Rect button, char const *text, u32 color) {
 	u32 const *colors = ted->settings.colors;
 	
@@ -493,7 +492,8 @@ static void button_render(Ted *ted, Rect button, char const *text, u32 color) {
 	gl_geometry_draw();
 
 	v2 pos = rect_center(button);
-	text_render_anchored(ted->font, text, pos.x, pos.y, color, ANCHOR_MIDDLE);
+	text_utf8_anchored(ted->font, text, pos.x, pos.y, color, ANCHOR_MIDDLE);
+	text_render(ted->font);
 }
 
 // returns true if the button was clicked on.
@@ -581,7 +581,7 @@ static void popup_render(Ted *ted, u32 options, char const *title, char const *b
 	v2 title_size = {0};
 	text_get_size(font_bold, title, &title_size.x, &title_size.y);
 	v2 title_pos = v2_sub(V2(window_width * 0.5f, y), V2(title_size.x * 0.5f, 0));
-	text_render(font_bold, title, title_pos.x, title_pos.y, colors[COLOR_TEXT]);
+	text_utf8(font_bold, title, title_pos.x, title_pos.y, colors[COLOR_TEXT]);
 
 	// body text
 	float text_x1 = rect_x1(r) + padding;
@@ -591,7 +591,10 @@ static void popup_render(Ted *ted, u32 options, char const *title, char const *b
 	state.min_x = text_x1;
 	state.max_x = text_x2;
 	state.wrap = true;
+	state.x = text_x1;
+	state.y = y + char_height_bold + padding;
 	rgba_u32_to_floats(colors[COLOR_TEXT], state.color);
-	text_render_with_state(font, &state, body, text_x1, y + char_height_bold + padding);
+	text_utf8_with_state(font, &state, body);
 
+	text_render(font);
 }

@@ -126,7 +126,6 @@ static void node_frame(Ted *ted, Node *node, Rect r) {
 			}
 
 			TextRenderState text_state = text_render_state_default;
-			text_chars_begin(font);
 			for (u16 i = 0; i < ntabs; ++i) {
 				TextBuffer *buffer = &ted->buffers[node->tabs[i]];
 				char tab_title[256];
@@ -150,11 +149,11 @@ static void node_frame(Ted *ted, Node *node, Rect r) {
 				rgba_u32_to_floats(colors[COLOR_TEXT], text_state.color);
 				text_state.x = tab_rect.pos.x;
 				text_state.y = tab_rect.pos.y;
-				text_render_chars_utf8(font, &text_state, tab_title);
+				text_utf8_with_state(font, &text_state, tab_title);
 				
 			}
 			gl_geometry_draw();
-			text_chars_end(font);
+			text_render(font);
 		}
 
 		u16 buffer_index = node->tabs[node->active_tab];

@@ -251,6 +251,12 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		if (ted->active_node) node_tab_switch(ted, ted->active_node, argument);
 		break;
 	
+	case CMD_FIND:
+		ted->find = true;
+		buffer_clear(&ted->find_buffer);
+		ted->active_buffer = &ted->find_buffer;
+		break;
+	
 	case CMD_ESCAPE:
 		if (*ted->error_shown) {
 			// dismiss error box
