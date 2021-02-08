@@ -27,6 +27,7 @@ ENUM_U16 {
 	// insertion
 	CMD_TAB, // insert '\t'
 	CMD_NEWLINE, // insert '\n' + autoindent -- also used to submit line buffers
+	CMD_NEWLINE_BACK,
 
 	// scrolling
 	CMD_PAGE_UP, // move cursor up one page up (where one page is however tall the buffer is)
@@ -97,6 +98,7 @@ static CommandName const command_names[CMD_COUNT] = {
 	{"page-down", CMD_PAGE_DOWN},
 	{"tab", CMD_TAB},
 	{"newline", CMD_NEWLINE},
+	{"newline-back", CMD_NEWLINE_BACK},
 	{"backspace", CMD_BACKSPACE},
 	{"delete", CMD_DELETE},
 	{"backspace-word", CMD_BACKSPACE_WORD},

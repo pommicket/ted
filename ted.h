@@ -219,7 +219,10 @@ typedef struct Ted {
 	bool search_cwd; // should the working directory be searched for files? set to true if the executable isn't "installed"
 	bool quit; // if set to true, the window will close next frame. NOTE: this doesn't check for unsaved changes!!
 	bool find; // is the find menu open?
+	pcre2_code *find_code;
+	pcre2_match_data *find_match_data;
 	u32 find_match_count; // how many matches of the search term were there?
+	u32 find_match_pos; // which match we are on, or U32_MAX if not on a match.
 	bool find_invalid_pattern; // invalid regex?
 	Command warn_unsaved; // if non-zero, the user is trying to execute this command, but there are unsaved changes
 	char warn_unsaved_names[TED_PATH_MAX]; // comma-separated list of files with unsaved changes (only applicable if warn_unsaved != 0)

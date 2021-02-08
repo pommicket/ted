@@ -1,5 +1,56 @@
+// @TODO : show ted->find_match_pos
+
+#define FIND_MAX_GROUPS 50
+
+static bool find_compile_pattern(Ted *ted, bool error_on_invalid_pattern) {
+	TextBuffer *find_buffer = &ted->find_buffer;
+	String32 term = buffer_get_line(find_buffer, 0);
+	if (term.len) {
+		pcre2_match_data *match_data = pcre2_match_data_create(FIND_MAX_GROUPS, NULL);
+		if (match_data) {
+			int error = 0;
+			PCRE2_SIZE error_pos = 0;
+			pcre2_code *code = pcre2_compile(term.str, term.len, PCRE2_LITERAL, &error, &error_pos, NULL);
+			if (code) {
+				ted->find_code = code;
+				ted->find_match_data = match_data;
+				ted->find_invalid_pattern = false;
+				return true;
+			} else {
+				ted->find_invalid_pattern = true;
+				if (error_on_invalid_pattern) {
+					char32_t buf[256] = {0};
+					size_t len = (size_t)pcre2_get_error_message(error, buf, sizeof buf - 1);
+					char *error_cstr = str32_to_utf8_cstr(str32(buf, len));
+					if (error_cstr) {
+						ted_seterr(ted, "Invalid search term (position %zu): %s.", (size_t)error_pos, error_cstr);
+						free(error_cstr);
+					}
+				}
+			}
+			pcre2_match_data_free(match_data);
+		} else {
+			ted_seterr(ted, "Out of memory.");
+		}
+	} else {
+		ted->find_invalid_pattern = false;
+	}
+	return false;
+}
+
+static void find_free_pattern(Ted *ted) {
+	if (ted->find_code) {
+		pcre2_code_free(ted->find_code);
+		ted->find_code = NULL;
+	}
+	if (ted->find_match_data) {
+		pcre2_match_data_free(ted->find_match_data);
+		ted->find_match_data = NULL;
+	}
+}
+
 static void find_open(Ted *ted) {
-	if (ted->active_buffer) {
+	if (!ted->find && ted->active_buffer) {
 		ted->prev_active_buffer = ted->active_buffer;
 		ted->active_buffer = &ted->find_buffer;
 		ted->find = true;
@@ -11,6 +62,7 @@ static void find_open(Ted *ted) {
 static void find_close(Ted *ted) {
 	ted->find = false;
 	ted->active_buffer = ted->prev_active_buffer;
+	find_free_pattern(ted);
 }
 
 static float find_menu_height(Ted *ted) {
@@ -23,7 +75,79 @@ static float find_menu_height(Ted *ted) {
 	return char_height_bold + char_height + 2 * padding;
 }
 
-#define FIND_MAX_GROUPS 50
+// finds the next match in the buffer, returning false if there is no match this line.
+// sets *match_start and *match_end (if not NULL) to the start and end of the match, respectively
+// advances *pos to the end of the match or the start of the next line if there is no match.
+// direction should be either +1 (forwards) or -1 (backwards)
+static WarnUnusedResult bool find_match(Ted *ted, BufferPos *pos, u32 *match_start, u32 *match_end, int direction) {
+	TextBuffer *buffer = ted->prev_active_buffer;
+	assert(buffer);
+	String32 str = buffer_get_line(buffer, pos->line);
+	PCRE2_SIZE *groups = pcre2_get_ovector_pointer(ted->find_match_data);
+	
+	int ret;
+	if (direction == +1)
+		ret = pcre2_match(ted->find_code, str.str, str.len, pos->index, 0, ted->find_match_data, NULL);
+	else {
+		// unfortunately PCRE does not have a backwards option, so we need to do the search multiple times
+		u32 last_pos = 0;
+		ret = -1;
+		while (1) {
+			int next_ret = pcre2_match(ted->find_code, str.str, pos->index, last_pos, 0, ted->find_match_data, NULL);
+			if (next_ret > 0) {
+				ret = next_ret;
+				last_pos = (u32)groups[1];
+			} else break;
+		}
+	}
+	if (ret > 0) {
+		if (match_start) *match_start = (u32)groups[0];
+		if (match_end)   *match_end   = (u32)groups[1];
+		pos->index = (u32)groups[1];
+		return true;
+	} else {
+		pos->line += buffer->nlines + direction;
+		pos->line %= buffer->nlines;
+		if (direction == +1)
+			pos->index = 0;
+		else
+			pos->index = (u32)buffer_get_line(buffer, pos->line).len;
+		return false;
+	}
+}
+
+static void find_update(Ted *ted, bool error_on_invalid_pattern) {
+	TextBuffer *find_buffer = &ted->find_buffer;
+	if (!find_buffer->modified) return;
+	
+	TextBuffer *buffer = ted->prev_active_buffer;
+
+	find_free_pattern(ted);
+	if (find_compile_pattern(ted, error_on_invalid_pattern)) {
+		BufferPos pos = buffer_start_of_file(buffer);
+		BufferPos best_scroll_candidate = {U32_MAX, U32_MAX};
+		BufferPos cursor_pos = buffer->cursor_pos;
+		u32 match_count = 0;
+		// count number of matches
+		for (u32 nsearches = 0; nsearches < buffer->nlines; ++nsearches) {
+			u32 match_start;
+			while (find_match(ted, &pos, &match_start, NULL, +1)) {
+				BufferPos match_start_pos = {.line = pos.line, .index = match_start};
+				if (best_scroll_candidate.line == U32_MAX 
+				|| (buffer_pos_cmp(best_scroll_candidate, cursor_pos) < 0 && buffer_pos_cmp(match_start_pos, cursor_pos) >= 0))
+					best_scroll_candidate = match_start_pos;
+				++match_count;
+			}
+		}
+		ted->find_match_count = match_count;
+		find_buffer->modified = false;
+		if (best_scroll_candidate.line != U32_MAX) // scroll to first match (if there is one)
+			buffer_scroll_to_pos(buffer, best_scroll_candidate);
+	} else {
+		ted->find_match_count = 0;
+		buffer_scroll_to_cursor(buffer);
+	}
+}
 
 static void find_menu_frame(Ted *ted) {
 	Font *font = ted->font, *font_bold = ted->font_bold;
@@ -39,81 +163,26 @@ static void find_menu_frame(Ted *ted) {
 	TextBuffer *buffer = ted->prev_active_buffer, *find_buffer = &ted->find_buffer;
 	assert(buffer);
 	
-	String32 term = buffer_get_line(find_buffer, 0);
-	if (term.len) {
-		pcre2_match_data *match_data = pcre2_match_data_create(FIND_MAX_GROUPS, NULL);
-		if (match_data) {
-			PCRE2_SIZE *groups = pcre2_get_ovector_pointer(match_data);
-			// compile search term
-			int error = 0; PCRE2_SIZE error_pos = 0;
-			pcre2_code *code = pcre2_compile(term.str, term.len, PCRE2_LITERAL, &error, &error_pos, NULL);
-			if (code) {
-				if (find_buffer->modified) { // if search term has been changed,
-					// recompute match count
-					BufferPos best_scroll_candidate = {U32_MAX, U32_MAX}; // pos we will scroll to (scroll to first match)
-					BufferPos cursor_pos = buffer->cursor_pos;
-					
-					u32 match_count = 0;
-					for (u32 line_idx = 0, end = buffer->nlines; line_idx < end; ++line_idx) {
-						Line *line = &buffer->lines[line_idx];
-						char32_t *str = line->str;
-						u32 len = line->len;
-						u32 start_index = 0;
-						while (start_index < len) {
-							int ret = pcre2_match(code, str, len, start_index, 0, match_data, NULL);
-							if (ret > 0) {
-								// a match!
-								
-								BufferPos match_start_pos = {.line = line_idx, .index = (u32)groups[0]};
-								if (best_scroll_candidate.line == U32_MAX 
-								|| (buffer_pos_cmp(best_scroll_candidate, cursor_pos) < 0 && buffer_pos_cmp(match_start_pos, cursor_pos) >= 0))
-									best_scroll_candidate = match_start_pos;
-									
-								u32 match_end = (u32)groups[1];
-								++match_count;
-								start_index = match_end;
-							} else break;
-						}
-					}
-					ted->find_match_count = match_count;
-					find_buffer->modified = false;
-					if (best_scroll_candidate.line != U32_MAX)
-						buffer_scroll_to_pos(buffer, best_scroll_candidate);
-				}
-				
-				// highlight matches
-				for (u32 line_idx = buffer_first_rendered_line(buffer), end = buffer_last_rendered_line(buffer);
-					line_idx < end; ++line_idx) {
-					Line *line = &buffer->lines[line_idx];
-					char32_t *str = line->str;
-					u32 len = line->len;
-					u32 start_index = 0;
-					while (start_index < len) {
-						int ret = pcre2_match(code, str, len, start_index, 0, match_data, NULL);
-						if (ret > 0) {
-							u32 match_start = (u32)groups[0];
-							u32 match_end = (u32)groups[1];
-							BufferPos p1 = {.line = line_idx, .index = match_start};
-							BufferPos p2 = {.line = line_idx, .index = match_end};
-							v2 pos1 = buffer_pos_to_pixels(buffer, p1);
-							v2 pos2 = buffer_pos_to_pixels(buffer, p2);
-							pos2.y += char_height;
-							gl_geometry_rect(rect4(pos1.x, pos1.y, pos2.x, pos2.y), colors[COLOR_FIND_HL]);
-							start_index = match_end;
-						} else break;
-					}
-				}
-				pcre2_code_free(code);
-				ted->find_invalid_pattern = false;
-			} else {
-				ted->find_invalid_pattern = true;
-			}
-			pcre2_match_data_free(match_data);
+	u32 first_rendered_line = buffer_first_rendered_line(buffer);
+	u32 last_rendered_line = buffer_last_rendered_line(buffer);
+	BufferPos pos = {first_rendered_line, 0};
+	
+	find_update(ted, false);
+	
+	for (u32 nsearches = 0; nsearches < buffer->nlines && pos.line >= first_rendered_line && pos.line <= last_rendered_line; ++nsearches) {
+		// highlight matches
+
+		u32 match_start, match_end;
+		while (find_match(ted, &pos, &match_start, &match_end, +1)) {
+			BufferPos p1 = {.line = pos.line, .index = match_start};
+			BufferPos p2 = {.line = pos.line, .index = match_end};
+			v2 pos1 = buffer_pos_to_pixels(buffer, p1);
+			v2 pos2 = buffer_pos_to_pixels(buffer, p2);
+			pos2.y += char_height;
+			Rect hl_rect = rect4(pos1.x, pos1.y, pos2.x, pos2.y);
+			if (buffer_clip_rect(buffer, &hl_rect))
+				gl_geometry_rect(hl_rect, colors[COLOR_FIND_HL]);
 		}
-	} else if (find_buffer->modified) {
-		ted->find_match_count = 0;
-		ted->find_invalid_pattern = false;
-		buffer_scroll_to_cursor(buffer);
 	}
 	
 	
@@ -141,7 +210,9 @@ static void find_menu_frame(Ted *ted) {
 	gl_geometry_draw();
 	text_render(font_bold);
 
-	buffer_render(&ted->find_buffer, find_buffer_bounds);
+	buffer_render(find_buffer, find_buffer_bounds);
+	
+	String32 term = buffer_get_line(find_buffer, 0);
 	
 	if (ted->find_invalid_pattern)
 		gl_geometry_rect(find_buffer_bounds, colors[COLOR_NO] & 0xFFFFFF3F); // invalid regex
@@ -152,58 +223,34 @@ static void find_menu_frame(Ted *ted) {
 }
 
 
-// go to next find result
-static void find_next(Ted *ted) {
+static void find_next_in_direction(Ted *ted, int direction) {
 	TextBuffer *buffer = ted->prev_active_buffer;
 	
-	// create match data
-	pcre2_match_data *match_data = pcre2_match_data_create(FIND_MAX_GROUPS, NULL);
-	if (match_data) {
-		String32 term = buffer_get_line(&ted->find_buffer, 0);
-		int error = 0;
-		PCRE2_SIZE error_pos = 0;
-		// compile the search term
-		pcre2_code *code = pcre2_compile(term.str, term.len, PCRE2_LITERAL, &error, &error_pos, NULL);
-		if (code) {
-			// do the searching
-			BufferPos pos = buffer->cursor_pos;
-			size_t nsearches = 0;
-			u32 nlines = buffer->nlines;
-
-			// we need to search the starting line twice, because we might start at a non-zero index
-			while (nsearches < nlines + 1) {
-				Line *line = &buffer->lines[pos.line];
-				char32_t *str = line->str;
-				size_t len = line->len;
-				int ret = pcre2_match(code, str, len, pos.index, 0, match_data, NULL);
-				if (ret > 0) {
-					PCRE2_SIZE *groups = pcre2_get_ovector_pointer(match_data);
-					u32 match_start = (u32)groups[0];
-					u32 match_end = (u32)groups[1];
-					BufferPos pos_start = {.line = pos.line, .index = match_start};
-					BufferPos pos_end = {.line = pos.line, .index = match_end};
-					buffer_cursor_move_to_pos(buffer, pos_start);
-					buffer_select_to_pos(buffer, pos_end);
-					break;
-				}
-
-				++nsearches;
-				pos.index = 0;
-				pos.line += 1;
-				pos.line %= nlines;
-			}
-			pcre2_code_free(code);
-		} else {
-			char32_t buf[256] = {0};
-			size_t len = (size_t)pcre2_get_error_message(error, buf, sizeof buf - 1);
-			char *error_cstr = str32_to_utf8_cstr(str32(buf, len));
-			if (error_cstr) {
-				ted_seterr(ted, "Invalid search term (position %zu): %s.", (size_t)error_pos, error_cstr);
-				free(error_cstr);
-			}
+	BufferPos pos = direction == +1 || !buffer->selection ? buffer->cursor_pos : buffer->selection_pos;
+	u32 nlines = buffer->nlines;
+	
+	find_update(ted, true);
+	
+	// we need to search the starting line twice, because we might start at a non-zero index
+	for (size_t nsearches = 0; nsearches < nlines + 1; ++nsearches) {
+		u32 match_start, match_end;
+		if (find_match(ted, &pos, &match_start, &match_end, direction)) {
+			BufferPos pos_start = {.line = pos.line, .index = match_start};
+			BufferPos pos_end = {.line = pos.line, .index = match_end};
+			buffer_cursor_move_to_pos(buffer, pos_start);
+			buffer_select_to_pos(buffer, pos_end);
+			ted->find_match_pos += ted->find_match_count + direction;
+			ted->find_match_pos %= ted->find_match_count;
+			break;
 		}
-		pcre2_match_data_free(match_data);
-	} else {
-		ted_seterr(ted, "Out of memory.");
 	}
+}
+
+// go to next find result
+static void find_next(Ted *ted) {
+	find_next_in_direction(ted, +1);
+}
+
+static void find_prev(Ted *ted) {
+	find_next_in_direction(ted, -1);
 }

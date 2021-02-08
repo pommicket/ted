@@ -101,13 +101,17 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		buffer_insert_char_at_cursor(buffer, '\t');
 		break;
 	case CMD_NEWLINE:
+	case CMD_NEWLINE_BACK:
 		if (!buffer) {
 		} else if (buffer->is_line_buffer) {
 			switch (ted->menu) {
 			case MENU_NONE:
 				if (ted->find) {
 					if (buffer == &ted->find_buffer) {
-						find_next(ted);
+						if (c == CMD_NEWLINE)
+							find_next(ted);
+						else
+							find_prev(ted);
 					}
 				}
 				break;

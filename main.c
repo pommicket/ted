@@ -688,6 +688,7 @@ int main(int argc, char **argv) {
 	SDL_GL_DeleteContext(glctx);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
+	find_close(ted);
 	for (u16 i = 0; i < TED_MAX_BUFFERS; ++i)
 		if (ted->buffers_used[i])
 			buffer_free(&ted->buffers[i]);
