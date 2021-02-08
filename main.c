@@ -46,12 +46,12 @@ no_warn_end
 #include "syntax.c"
 #include "buffer.c"
 #include "ted.c"
+#include "find.c"
 #include "ui.c"
 #include "node.c"
 #include "menu.c"
 #include "command.c"
 #include "config.c"
-#include "find.c"
 
 #if PROFILE
 #define PROFILE_TIME(var) double var = time_get_seconds();
@@ -305,6 +305,8 @@ int main(int argc, char **argv) {
 		if (buffer_haserr(lbuffer))
 			die("Error creating line buffer: %s", buffer_geterr(lbuffer));
 	}
+	line_buffer_create(&ted->find_buffer, ted);
+	line_buffer_create(&ted->replace_buffer, ted);
 	
 	
 	{
@@ -693,6 +695,8 @@ int main(int argc, char **argv) {
 		if (ted->nodes_used[i])
 			node_free(&ted->nodes[i]);
 	buffer_free(&ted->line_buffer);
+	buffer_free(&ted->find_buffer);
+	buffer_free(&ted->replace_buffer);
 	text_font_free(ted->font);
 	text_font_free(ted->font_bold);
 	settings_free(&ted->settings);

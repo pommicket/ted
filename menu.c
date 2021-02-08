@@ -1,4 +1,5 @@
 static void menu_open(Ted *ted, Menu menu) {
+	if (ted->find) find_close(ted);
 	ted->menu = menu;
 	ted->prev_active_buffer = ted->active_buffer;
 	ted->active_buffer = NULL;

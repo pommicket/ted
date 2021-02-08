@@ -212,6 +212,7 @@ typedef struct Ted {
 	FileSelector file_selector;
 	TextBuffer line_buffer; // general-purpose line buffer for inputs -- used for menus
 	TextBuffer find_buffer; // use for "find" term in find/find+replace
+	TextBuffer replace_buffer; // "replace" for find+replace
 	double error_time; // time error box was opened (in seconds -- see time_get_seconds)
 	KeyAction key_actions[KEY_COMBO_COUNT];
 	bool search_cwd; // should the working directory be searched for files? set to true if the executable isn't "installed"

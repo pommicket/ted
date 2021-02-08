@@ -104,9 +104,15 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		if (!buffer) {
 		} else if (buffer->is_line_buffer) {
 			switch (ted->menu) {
+			case MENU_NONE:
+				if (ted->find) {
+					if (buffer == &ted->find_buffer) {
+						find_next(ted);
+					}
+				}
+				break;
 			case MENU_ASK_RELOAD:
 			case MENU_WARN_UNSAVED:
-			case MENU_NONE:
 				break;
 			case MENU_OPEN:
 			case MENU_SAVE_AS: {
@@ -252,9 +258,7 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		break;
 	
 	case CMD_FIND:
-		ted->find = true;
-		buffer_clear(&ted->find_buffer);
-		ted->active_buffer = &ted->find_buffer;
+		find_open(ted);
 		break;
 	
 	case CMD_ESCAPE:
@@ -263,6 +267,8 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 			*ted->error_shown = '\0';
 		} else if (ted->menu) {
 			menu_escape(ted);
+		} else if (ted->find) {
+			find_close(ted);
 		} else if (buffer) {
 			buffer_disable_selection(buffer);
 		}
