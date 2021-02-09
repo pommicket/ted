@@ -52,6 +52,7 @@ ENUM_U16 {
 	CMD_CUT,
 	CMD_PASTE,
 	CMD_FIND,
+	CMD_FIND_REPLACE,
 
 	CMD_TAB_CLOSE,
 	CMD_TAB_SWITCH, // argument = index of tab (starting at 0)
@@ -115,6 +116,7 @@ static CommandName const command_names[CMD_COUNT] = {
 	{"cut", CMD_CUT},
 	{"paste", CMD_PASTE},
 	{"find", CMD_FIND},
+	{"find-replace", CMD_FIND_REPLACE},
 	{"tab-close", CMD_TAB_CLOSE},
 	{"tab-switch", CMD_TAB_SWITCH},
 	{"tab-next", CMD_TAB_NEXT},

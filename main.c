@@ -642,6 +642,7 @@ int main(int argc, char **argv) {
 				text_state.wrap = true;
 				rgba_u32_to_floats(colors[COLOR_ERROR_TEXT], text_state.color);
 				text_utf8_with_state(font, &text_state, ted->error_shown);
+				gl_geometry_draw();
 				text_render(font);
 			}
 		}

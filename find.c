@@ -5,6 +5,20 @@ static u32 find_compilation_flags(Ted *ted) {
 		| (ted->find_regex ? 0 : PCRE2_LITERAL);
 }
 
+static u32 find_replace_flags(Ted *ted) {
+	return (ted->find_regex ? 0 : PCRE2_SUBSTITUTE_LITERAL);
+}
+
+static void ted_seterr_to_pcre2_err(Ted *ted, int err) {
+	char32_t buf[256] = {0};
+	size_t len = (size_t)pcre2_get_error_message(err, buf, arr_count(buf) - 1);
+	char *error_cstr = str32_to_utf8_cstr(str32(buf, len));
+	if (error_cstr) {
+		ted_seterr(ted, "Search error: %s.", error_cstr);
+		free(error_cstr);
+	}
+}
+
 static bool find_compile_pattern(Ted *ted) {
 	TextBuffer *find_buffer = &ted->find_buffer;
 	String32 term = buffer_get_line(find_buffer, 0);
@@ -21,16 +35,6 @@ static bool find_compile_pattern(Ted *ted) {
 				return true;
 			} else {
 				ted->find_invalid_pattern = true;
-			#if 0
-				// @TODO: write this to a buffer and check it in find_next_in_direction
-					char32_t buf[256] = {0};
-					size_t len = (size_t)pcre2_get_error_message(error, buf, sizeof buf - 1);
-					char *error_cstr = str32_to_utf8_cstr(str32(buf, len));
-					if (error_cstr) {
-						ted_seterr(ted, "Invalid search term (position %zu): %s.", (size_t)error_pos, error_cstr);
-						free(error_cstr);
-					}
-			#endif
 			}
 			pcre2_match_data_free(match_data);
 		} else {
@@ -54,12 +58,16 @@ static void find_free_pattern(Ted *ted) {
 	arr_clear(ted->find_results);
 }
 
-static void find_open(Ted *ted) {
+static void find_open(Ted *ted, bool replace) {
 	if (!ted->find && ted->active_buffer) {
 		ted->prev_active_buffer = ted->active_buffer;
 		ted->active_buffer = &ted->find_buffer;
 		ted->find = true;
 		buffer_clear(&ted->find_buffer);
+	}
+	if (!ted->replace && replace) {
+		ted->replace = true;
+		buffer_clear(&ted->replace_buffer);
 	}
 }
 
@@ -75,7 +83,7 @@ static float find_menu_height(Ted *ted) {
 	Settings const *settings = &ted->settings;
 	float padding = settings->padding;
 
-	return 2 * char_height + 5 * padding;
+	return 2 * char_height + (padding + char_height) * ted->replace + 5 * padding;
 }
 
 // finds the next match in the buffer, returning false if there is no match this line.
@@ -158,6 +166,19 @@ static void find_update(Ted *ted) {
 	}
 }
 
+// returns the index of the match we are "on", or U32_MAX for none.
+static u32 find_match_idx(Ted *ted) {
+	TextBuffer *buffer = ted->prev_active_buffer;
+	if (!buffer->selection) return U32_MAX;
+	u32 match_idx = U32_MAX;
+	arr_foreach_ptr(ted->find_results, FindResult, result) {
+		if (buffer_pos_eq(result->start, buffer->selection_pos)
+			&& buffer_pos_eq(result->end, buffer->cursor_pos))
+			match_idx = (u32)(result - ted->find_results);
+	}
+	return match_idx;
+}
+
 static void find_menu_frame(Ted *ted) {
 	Font *font = ted->font, *font_bold = ted->font_bold;
 	float const char_height = text_font_char_height(font),
@@ -169,7 +190,7 @@ static void find_menu_frame(Ted *ted) {
 	float const window_width = ted->window_width, window_height = ted->window_height;
 	u32 const *colors = settings->colors;
 	
-	TextBuffer *buffer = ted->prev_active_buffer, *find_buffer = &ted->find_buffer;
+	TextBuffer *buffer = ted->prev_active_buffer, *find_buffer = &ted->find_buffer, *replace_buffer = &ted->replace_buffer;
 	assert(buffer);
 	
 	u32 first_rendered_line = buffer_first_rendered_line(buffer);
@@ -177,14 +198,9 @@ static void find_menu_frame(Ted *ted) {
 	
 	find_update(ted);
 	
-	u32 match_pos = U32_MAX; // index of result we are on
 	arr_foreach_ptr(ted->find_results, FindResult, result) {
 		// highlight matches
 		BufferPos p1 = result->start, p2 = result->end;
-		if (buffer->selection 
-			&& buffer_pos_eq(p1, buffer->selection_pos)
-			&& buffer_pos_eq(p2, buffer->cursor_pos))
-			match_pos = (u32)(result - ted->find_results);
 		if (p2.line >= first_rendered_line && p1.line <= last_rendered_line) {
 			v2 pos1 = buffer_pos_to_pixels(buffer, p1);
 			v2 pos2 = buffer_pos_to_pixels(buffer, p2);
@@ -195,12 +211,13 @@ static void find_menu_frame(Ted *ted) {
 		}
 	}
 	
-	
+	bool replace = ted->replace;
 	float x1 = padding, y1 = window_height - menu_height + padding, x2 = window_width - padding, y2 = window_height - padding;
 
-	char const *find_text = "Find...";
-	float find_text_width = 0;
-	text_get_size(font_bold, find_text, &find_text_width, NULL);
+	char const *find_text = "Find...", *replace_text = "Replace with";
+	float text_width = 0;
+	text_get_size(font_bold, replace ? replace_text : find_text, &text_width, NULL);
+	
 
 	Rect menu_bounds = rect4(x1, y1, x2, y2);
 
@@ -209,17 +226,19 @@ static void find_menu_frame(Ted *ted) {
 	x2 -= padding;
 	y2 -= padding;
 
-	Rect find_buffer_bounds = rect4(x1 + find_text_width + padding, y1, x2 - padding, y1 + char_height);
+	Rect find_buffer_bounds = rect4(x1 + text_width + padding, y1, x2 - padding, y1 + char_height);
+	Rect replace_buffer_bounds = rect_translate(find_buffer_bounds, V2(0, char_height + padding));
 
 	gl_geometry_rect(menu_bounds, colors[COLOR_MENU_BG]);
 	gl_geometry_rect_border(menu_bounds, 1, colors[COLOR_BORDER]);
 	{
 		float w = 0, h = 0;
 		char str[32];
-		if (match_pos == U32_MAX) {
+		u32 match_idx = find_match_idx(ted);
+		if (match_idx == U32_MAX) {
 			strbuf_printf(str, U32_FMT " matches", arr_len(ted->find_results));
 		} else if (buffer->selection) {
-			strbuf_printf(str, U32_FMT " of " U32_FMT, match_pos + 1, arr_len(ted->find_results));
+			strbuf_printf(str, U32_FMT " of " U32_FMT, match_idx + 1, arr_len(ted->find_results));
 		}
 		text_get_size(font, str, &w, &h);
 		text_utf8(font, str, x2 - w, rect_ymid(find_buffer_bounds) - h * 0.5f, colors[COLOR_TEXT]);
@@ -227,8 +246,13 @@ static void find_menu_frame(Ted *ted) {
 		find_buffer_bounds.size.x -= w;
 	}
 
-	text_utf8(font_bold, "Find...", x1, y1, colors[COLOR_TEXT]);
+	text_utf8(font_bold, find_text, x1, y1, colors[COLOR_TEXT]);
 	y1 += char_height_bold + padding;
+	
+	if (replace) {
+		text_utf8(font_bold, replace_text, x1, y1, colors[COLOR_TEXT]);
+		y1 += char_height_bold + padding;
+	}
 	
 	gl_geometry_draw();
 	text_render(font_bold);
@@ -237,7 +261,20 @@ static void find_menu_frame(Ted *ted) {
 	x += checkbox_frame(ted, &ted->find_case_sensitive, "Case sensitive", V2(x, y1)).x + 2*padding;
 	x += checkbox_frame(ted, &ted->find_regex, "Regular expression", V2(x, y1)).x + 2*padding;
 
+	if (replace) {
+		// check if the find or replace line buffer was clicked on
+		for (u32 i = 0; i < ted->nmouse_clicks[SDL_BUTTON_LEFT]; ++i) {
+			v2 point = ted->mouse_clicks[SDL_BUTTON_LEFT][i];
+			if (rect_contains_point(find_buffer_bounds, point))
+				ted->active_buffer = find_buffer;
+			else if (rect_contains_point(replace_buffer_bounds, point))
+				ted->active_buffer = replace_buffer;
+			
+		}
+	}
+
 	buffer_render(find_buffer, find_buffer_bounds);
+	if (replace) buffer_render(replace_buffer, replace_buffer_bounds);
 	
 	String32 term = buffer_get_line(find_buffer, 0);
 	
@@ -256,7 +293,6 @@ static void find_next_in_direction(Ted *ted, int direction) {
 	BufferPos pos = direction == +1 || !buffer->selection ? buffer->cursor_pos : buffer->selection_pos;
 	u32 nlines = buffer->nlines;
 	
-	find_update(ted);
 	
 	// we need to search the starting line twice, because we might start at a non-zero index
 	for (size_t nsearches = 0; nsearches < nlines + 1; ++nsearches) {
@@ -273,10 +309,66 @@ static void find_next_in_direction(Ted *ted, int direction) {
 
 // go to next find result
 static void find_next(Ted *ted) {
+	find_update(ted);
+	if (!ted->find_code) return;
+	
+	if (ted->replace) {
+		TextBuffer *buffer = ted->prev_active_buffer;
+		u32 match_idx = find_match_idx(ted);
+		if (match_idx != U32_MAX) {
+			FindResult match = ted->find_results[match_idx];
+			assert(match.start.line == match.end.line);
+			String32 line = buffer_get_line(buffer, match.start.line);
+			String32 replacement = buffer_get_line(&ted->replace_buffer, 0);
+			// we are currently highlighting the find pattern, let's replace it
+			
+			// get size of buffer needed.
+			PCRE2_SIZE output_size = 0;
+			u32 flags = find_replace_flags(ted);
+			char32_t *str = line.str + match.start.index;
+			u32 len = match.end.index - match.start.index;
+			
+			int ret = pcre2_substitute(ted->find_code, str, len, 0,
+				PCRE2_SUBSTITUTE_OVERFLOW_LENGTH|flags, ted->find_match_data, NULL, replacement.str,
+				replacement.len, NULL, &output_size);
+			char32_t *output_buffer = output_size
+				? calloc(output_size, sizeof *output_buffer)
+				: NULL;
+			if (output_buffer || !output_size) {
+				ret = pcre2_substitute(ted->find_code, str, len, 0,
+					flags, ted->find_match_data, NULL, replacement.str,
+					replacement.len, output_buffer, &output_size);
+				if (ret > 0) {
+					buffer->selection = false; // stop selecting match
+					buffer_delete_chars_at_pos(buffer, match.start, len);
+					if (output_buffer)
+						buffer_insert_text_at_pos(buffer, match.start, str32(output_buffer, output_size));
+					
+					// remove this match
+					arr_remove(ted->find_results, match_idx);
+					
+					i64 diff = (i64)output_size - len; // change in number of characters
+					arr_foreach_ptr(ted->find_results, FindResult, result) {
+						if (result->start.line == match.start.line && result->start.index > match.end.index) {
+							// fix indices of other find results
+							result->start.index = (u32)(result->start.index + diff);
+							result->end.index = (u32)(result->end.index + diff);
+						}
+					}
+				} else if (ret < 0) {
+					ted_seterr_to_pcre2_err(ted, ret);
+				}
+				free(output_buffer);
+			} else {
+				ted_seterr(ted, "Out of memory.");
+			}
+		}
+	}
 	find_next_in_direction(ted, +1);
 }
 
 static void find_prev(Ted *ted) {
+	find_update(ted);
 	find_next_in_direction(ted, -1);
 }
 

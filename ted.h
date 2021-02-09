@@ -226,7 +226,8 @@ typedef struct Ted {
 	KeyAction key_actions[KEY_COMBO_COUNT];
 	bool search_cwd; // should the working directory be searched for files? set to true if the executable isn't "installed"
 	bool quit; // if set to true, the window will close next frame. NOTE: this doesn't check for unsaved changes!!
-	bool find; // is the find menu open?
+	bool find; // is the find or find+replace menu open?
+	bool replace; // is the find+replace menu open?
 	bool find_regex, find_case_sensitive; // find options
 	u32 find_flags; // flags used last time search term was compiled
 	pcre2_code *find_code;

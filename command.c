@@ -107,7 +107,7 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 			switch (ted->menu) {
 			case MENU_NONE:
 				if (ted->find) {
-					if (buffer == &ted->find_buffer) {
+					if (buffer == &ted->find_buffer || buffer == &ted->replace_buffer) {
 						if (c == CMD_NEWLINE)
 							find_next(ted);
 						else
@@ -262,7 +262,10 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		break;
 	
 	case CMD_FIND:
-		find_open(ted);
+		find_open(ted, false);
+		break;
+	case CMD_FIND_REPLACE:
+		find_open(ted, true);
 		break;
 	
 	case CMD_ESCAPE:
