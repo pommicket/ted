@@ -227,6 +227,8 @@ typedef struct Ted {
 	bool search_cwd; // should the working directory be searched for files? set to true if the executable isn't "installed"
 	bool quit; // if set to true, the window will close next frame. NOTE: this doesn't check for unsaved changes!!
 	bool find; // is the find menu open?
+	bool find_regex, find_case_sensitive; // find options
+	u32 find_flags; // flags used last time search term was compiled
 	pcre2_code *find_code;
 	pcre2_match_data *find_match_data;
 	FindResult *find_results;

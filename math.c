@@ -607,6 +607,25 @@ static v2i V2I(int x, int y) {
 	return v;
 }
 
+static void rgba_u32_to_floats(u32 rgba, float floats[4]) {
+	floats[0] = (float)((rgba >> 24) & 0xFF) / 255.f;
+	floats[1] = (float)((rgba >> 16) & 0xFF) / 255.f;
+	floats[2] = (float)((rgba >>  8) & 0xFF) / 255.f;
+	floats[3] = (float)((rgba >>  0) & 0xFF) / 255.f;
+}
+
+static v4 rgba_u32_to_v4(u32 rgba) {
+	float c[4];
+	rgba_u32_to_floats(rgba, c);
+	return V4(c[0], c[1], c[2], c[3]);
+}
+
+// returns average of red green and blue components of color
+static float rgba_brightness(u32 color) {
+	u8 r = (u8)(color >> 24), g = (u8)(color >> 16), b = (u8)(color >> 8);
+	return ((float)r+(float)g+(float)b) * (1.0f / 3);
+}
+
 static bool rect_contains_point_v2(v2 pos, v2 size, v2 point) {
 	float x1 = pos.x, y1 = pos.y, x2 = pos.x + size.x, y2 = pos.y + size.y,
 		x = point.x, y = point.y;
@@ -671,24 +690,6 @@ static void rect_print(Rect r) {
 	printf("Position: (%f, %f), Size: (%f, %f)\n", r.pos.x, r.pos.y, r.size.x, r.size.y);
 }
 
-static void rgba_u32_to_floats(u32 rgba, float floats[4]) {
-	floats[0] = (float)((rgba >> 24) & 0xFF) / 255.f;
-	floats[1] = (float)((rgba >> 16) & 0xFF) / 255.f;
-	floats[2] = (float)((rgba >>  8) & 0xFF) / 255.f;
-	floats[3] = (float)((rgba >>  0) & 0xFF) / 255.f;
-}
-
-static v4 rgba_u32_to_v4(u32 rgba) {
-	float c[4];
-	rgba_u32_to_floats(rgba, c);
-	return V4(c[0], c[1], c[2], c[3]);
-}
-
-// returns average of red green and blue components of color
-static float rgba_brightness(u32 color) {
-	u8 r = (u8)(color >> 24), g = (u8)(color >> 16), b = (u8)(color >> 8);
-	return ((float)r+(float)g+(float)b) * (1.0f / 3);
-}
 
 static float rects_intersect(Rect r1, Rect r2) {
 	if (r1.pos.x >= r2.pos.x + r2.size.x) return false; // r1 is to the right of r2
@@ -708,4 +709,15 @@ static bool rect_clip_to_rect(Rect *clipped, Rect clipper) {
 	clipped->size.x = clampf(clipped->size.x, 0, clipper.pos.x + clipper.size.x - clipped->pos.x);
 	clipped->size.y = clampf(clipped->size.y, 0, clipper.pos.y + clipper.size.y - clipped->pos.y);
 	return clipped->size.x > 0 && clipped->size.y > 0;
+}
+
+// removes `amount` from all sides of r
+static Rect rect_shrink(Rect r, float amount) {
+	r.pos.x += amount;
+	r.pos.y += amount;
+	r.size.x -= 2 * amount;
+	r.size.y -= 2 * amount;
+	r.size.x = maxf(r.size.x, 0);
+	r.size.y = maxf(r.size.y, 0);
+	return r;
 }

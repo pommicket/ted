@@ -53,6 +53,7 @@ extern float text_font_char_height(Font *font);
 extern float text_font_char_width(Font *font);
 // Get the dimensions of some text.
 extern void text_get_size(Font *font, char const *text, float *width, float *height);
+extern v2 text_get_size_v2(Font *font, char const *text);
 extern void text_get_size32(Font *font, char32_t const *text, u64 len, float *width, float *height);
 extern void text_utf8(Font *font, char const *text, float x, float y, u32 color);
 extern void text_utf8_anchored(Font *font, char const *text, float x, float y, u32 color, Anchor anchor);

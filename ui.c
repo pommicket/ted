@@ -600,12 +600,14 @@ static void popup_render(Ted *ted, u32 options, char const *title, char const *b
 	text_render(font);
 }
 
-static void checkbox_frame(Ted *ted, bool *value, char const *label, v2 pos) {
+// returns the size of the checkbox, including the label
+static v2 checkbox_frame(Ted *ted, bool *value, char const *label, v2 pos) {
 	Font *font = ted->font;
 	float char_height = text_font_char_height(font);
 	float checkbox_size = char_height;
 	Settings const *settings = &ted->settings;
 	u32 const *colors = settings->colors;
+	float padding = settings->padding;
 	
 	Rect checkbox_rect = rect(pos, V2(checkbox_size, checkbox_size));
 	
@@ -615,13 +617,17 @@ static void checkbox_frame(Ted *ted, bool *value, char const *label, v2 pos) {
 		}
 	}
 	
-	if (*value)
-		gl_geometry_rect(checkbox_rect, colors[COLOR_TEXT]);
-	else
-		gl_geometry_rect_border(checkbox_rect, 1, colors[COLOR_TEXT]);
-	v2 text_pos = v2_add(pos, V2(checkbox_size, 0));
+	checkbox_rect.pos = v2_add(checkbox_rect.pos, V2(0.5f, 0.5f));
+	gl_geometry_rect_border(checkbox_rect, 1, colors[COLOR_TEXT]);
+	if (*value) {
+		gl_geometry_rect(rect_shrink(checkbox_rect, checkbox_size * 0.2f), colors[COLOR_TEXT]);
+	}
+	
+	v2 text_pos = v2_add(pos, V2(checkbox_size + padding * 0.5f, 0));
+	v2 size = text_get_size_v2(font, label);
 	text_utf8(font, label, text_pos.x, text_pos.y, colors[COLOR_TEXT]);
 	
 	gl_geometry_draw();
 	text_render(font);
+	return v2_add(size, V2(checkbox_size + padding * 0.5f, 0));
 }

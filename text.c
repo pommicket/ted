@@ -374,6 +374,13 @@ void text_get_size(Font *font, char const *text, float *width, float *height) {
 	if (height) *height = y + font->char_height;
 }
 
+v2 text_get_size_v2(Font *font, char const *text) {
+	v2 v;
+	text_get_size(font, text, &v.x, &v.y);
+	return v;
+}
+
+
 void text_get_size32(Font *font, char32_t const *text, u64 len, float *width, float *height) {
 	TextRenderState render_state = text_render_state_default;
 	render_state.render = false;

@@ -1,6 +1,11 @@
 #define FIND_MAX_GROUPS 50
 
-static bool find_compile_pattern(Ted *ted, bool error_on_invalid_pattern) {
+static u32 find_compilation_flags(Ted *ted) {
+	return (ted->find_case_sensitive ? 0 : PCRE2_CASELESS)
+		| (ted->find_regex ? 0 : PCRE2_LITERAL);
+}
+
+static bool find_compile_pattern(Ted *ted) {
 	TextBuffer *find_buffer = &ted->find_buffer;
 	String32 term = buffer_get_line(find_buffer, 0);
 	if (term.len) {
@@ -8,7 +13,7 @@ static bool find_compile_pattern(Ted *ted, bool error_on_invalid_pattern) {
 		if (match_data) {
 			int error = 0;
 			PCRE2_SIZE error_pos = 0;
-			pcre2_code *code = pcre2_compile(term.str, term.len, PCRE2_LITERAL, &error, &error_pos, NULL);
+			pcre2_code *code = pcre2_compile(term.str, term.len, find_compilation_flags(ted), &error, &error_pos, NULL);
 			if (code) {
 				ted->find_code = code;
 				ted->find_match_data = match_data;
@@ -16,7 +21,8 @@ static bool find_compile_pattern(Ted *ted, bool error_on_invalid_pattern) {
 				return true;
 			} else {
 				ted->find_invalid_pattern = true;
-				if (error_on_invalid_pattern) {
+			#if 0
+				// @TODO: write this to a buffer and check it in find_next_in_direction
 					char32_t buf[256] = {0};
 					size_t len = (size_t)pcre2_get_error_message(error, buf, sizeof buf - 1);
 					char *error_cstr = str32_to_utf8_cstr(str32(buf, len));
@@ -24,7 +30,7 @@ static bool find_compile_pattern(Ted *ted, bool error_on_invalid_pattern) {
 						ted_seterr(ted, "Invalid search term (position %zu): %s.", (size_t)error_pos, error_cstr);
 						free(error_cstr);
 					}
-				}
+			#endif
 			}
 			pcre2_match_data_free(match_data);
 		} else {
@@ -69,7 +75,7 @@ static float find_menu_height(Ted *ted) {
 	Settings const *settings = &ted->settings;
 	float padding = settings->padding;
 
-	return char_height + 4 * padding;
+	return 2 * char_height + 5 * padding;
 }
 
 // finds the next match in the buffer, returning false if there is no match this line.
@@ -93,11 +99,13 @@ static WarnUnusedResult bool find_match(Ted *ted, BufferPos *pos, u32 *match_sta
 			int next_ret = pcre2_match(ted->find_code, str.str, pos->index, last_pos, 0, ted->find_match_data, NULL);
 			if (next_ret > 0) {
 				ret = next_ret;
+				if (groups[0] == groups[1]) ++groups[1]; // ensure we don't have an infinite loop
 				last_pos = (u32)groups[1];
 			} else break;
 		}
 	}
 	if (ret > 0) {
+		if (groups[0] == groups[1]) ++groups[1];
 		if (match_start) *match_start = (u32)groups[0];
 		if (match_end)   *match_end   = (u32)groups[1];
 		pos->index = (u32)groups[1];
@@ -113,15 +121,19 @@ static WarnUnusedResult bool find_match(Ted *ted, BufferPos *pos, u32 *match_sta
 	}
 }
 
-static void find_update(Ted *ted, bool error_on_invalid_pattern) {
+// check if the search term needs to be recompiled
+static void find_update(Ted *ted) {
 	TextBuffer *find_buffer = &ted->find_buffer;
-	if (!find_buffer->modified) return;
-	
+	u32 flags = find_compilation_flags(ted);
+	if (!find_buffer->modified // check if buffer has been modified,
+		&& ted->find_flags == flags) // or checkboxes have been (un)checked
+		return;
+	ted->find_flags = flags;
 	TextBuffer *buffer = ted->prev_active_buffer;
 
 	find_free_pattern(ted);
 
-	if (find_compile_pattern(ted, error_on_invalid_pattern)) {
+	if (find_compile_pattern(ted)) {
 		BufferPos pos = buffer_start_of_file(buffer);
 		BufferPos best_scroll_candidate = {U32_MAX, U32_MAX};
 		BufferPos cursor_pos = buffer->cursor_pos;
@@ -163,7 +175,7 @@ static void find_menu_frame(Ted *ted) {
 	u32 first_rendered_line = buffer_first_rendered_line(buffer);
 	u32 last_rendered_line = buffer_last_rendered_line(buffer);
 	
-	find_update(ted, false);
+	find_update(ted);
 	
 	u32 match_pos = U32_MAX; // index of result we are on
 	arr_foreach_ptr(ted->find_results, FindResult, result) {
@@ -216,10 +228,14 @@ static void find_menu_frame(Ted *ted) {
 	}
 
 	text_utf8(font_bold, "Find...", x1, y1, colors[COLOR_TEXT]);
-	y1 += char_height_bold;
+	y1 += char_height_bold + padding;
 	
 	gl_geometry_draw();
 	text_render(font_bold);
+	
+	float x = x1;
+	x += checkbox_frame(ted, &ted->find_case_sensitive, "Case sensitive", V2(x, y1)).x + 2*padding;
+	x += checkbox_frame(ted, &ted->find_regex, "Regular expression", V2(x, y1)).x + 2*padding;
 
 	buffer_render(find_buffer, find_buffer_bounds);
 	
@@ -240,7 +256,7 @@ static void find_next_in_direction(Ted *ted, int direction) {
 	BufferPos pos = direction == +1 || !buffer->selection ? buffer->cursor_pos : buffer->selection_pos;
 	u32 nlines = buffer->nlines;
 	
-	find_update(ted, true);
+	find_update(ted);
 	
 	// we need to search the starting line twice, because we might start at a non-zero index
 	for (size_t nsearches = 0; nsearches < nlines + 1; ++nsearches) {
