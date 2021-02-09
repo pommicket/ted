@@ -34,6 +34,9 @@ static void buffer_clear_redo_history(TextBuffer *buffer) {
 		buffer_edit_free(edit);
 	}
 	arr_clear(buffer->redo_history);
+	// if the write pos is in the redo history,
+	if (buffer->undo_history_write_pos > arr_len(buffer->undo_history))
+		buffer->undo_history_write_pos = U32_MAX; // get rid of it
 }
 
 static void buffer_clear_undo_history(TextBuffer *buffer) {
@@ -41,8 +44,13 @@ static void buffer_clear_undo_history(TextBuffer *buffer) {
 		buffer_edit_free(edit);
 	}
 	arr_clear(buffer->undo_history);
+	buffer->undo_history_write_pos = U32_MAX;
 }
 
+static void buffer_clear_undo_redo(TextBuffer *buffer) {
+	buffer_clear_undo_history(buffer);
+	buffer_clear_redo_history(buffer);
+}
 
 bool buffer_empty(TextBuffer *buffer) {
 	return buffer->nlines == 1 && buffer->lines[0].len == 0;
@@ -54,12 +62,6 @@ char const *buffer_get_filename(TextBuffer *buffer) {
 
 bool buffer_is_untitled(TextBuffer *buffer) {
 	return streq(buffer->filename, TED_UNTITLED);
-}
-
-// clear all undo and redo events
-void buffer_clear_undo_redo(TextBuffer *buffer) {
-	buffer_clear_undo_history(buffer);
-	buffer_clear_redo_history(buffer);
 }
 
 // add this edit to the undo history
@@ -138,7 +140,7 @@ static bool buffer_pos_valid(TextBuffer *buffer, BufferPos p) {
 bool buffer_unsaved_changes(TextBuffer *buffer) {
 	if (buffer_is_untitled(buffer) && buffer_empty(buffer))
 		return false; // don't worry about empty untitled buffers
-	return buffer->modified;
+	return arr_len(buffer->undo_history) != buffer->undo_history_write_pos;
 }
 
 // code point at position.
@@ -1885,11 +1887,10 @@ bool buffer_save(TextBuffer *buffer) {
 				if (!buffer_haserr(buffer))
 					buffer_seterr(buffer, "Couldn't close file %s.", buffer->filename);
 			}
-			bool success = !buffer_haserr(buffer);
-			if (success) {
-				buffer->modified = false;
-			}
 			buffer->last_write_time = time_last_modified(buffer->filename);
+			bool success = !buffer_haserr(buffer);
+			if (success)
+				buffer->undo_history_write_pos = arr_len(buffer->undo_history);
 			return success;
 		} else {
 			buffer_seterr(buffer, "Couldn't open file %s for writing: %s.", buffer->filename, strerror(errno));

@@ -582,6 +582,7 @@ static void popup_render(Ted *ted, u32 options, char const *title, char const *b
 	text_get_size(font_bold, title, &title_size.x, &title_size.y);
 	v2 title_pos = v2_sub(V2(window_width * 0.5f, y), V2(title_size.x * 0.5f, 0));
 	text_utf8(font_bold, title, title_pos.x, title_pos.y, colors[COLOR_TEXT]);
+	text_render(font_bold);
 
 	// body text
 	float text_x1 = rect_x1(r) + padding;
@@ -596,5 +597,31 @@ static void popup_render(Ted *ted, u32 options, char const *title, char const *b
 	rgba_u32_to_floats(colors[COLOR_TEXT], state.color);
 	text_utf8_with_state(font, &state, body);
 
+	text_render(font);
+}
+
+static void checkbox_frame(Ted *ted, bool *value, char const *label, v2 pos) {
+	Font *font = ted->font;
+	float char_height = text_font_char_height(font);
+	float checkbox_size = char_height;
+	Settings const *settings = &ted->settings;
+	u32 const *colors = settings->colors;
+	
+	Rect checkbox_rect = rect(pos, V2(checkbox_size, checkbox_size));
+	
+	for (u32 i = 0; i < ted->nmouse_clicks[SDL_BUTTON_LEFT]; ++i) {
+		if (rect_contains_point(checkbox_rect, ted->mouse_clicks[SDL_BUTTON_LEFT][i])) {
+			*value = !*value;
+		}
+	}
+	
+	if (*value)
+		gl_geometry_rect(checkbox_rect, colors[COLOR_TEXT]);
+	else
+		gl_geometry_rect_border(checkbox_rect, 1, colors[COLOR_TEXT]);
+	v2 text_pos = v2_add(pos, V2(checkbox_size, 0));
+	text_utf8(font, label, text_pos.x, text_pos.y, colors[COLOR_TEXT]);
+	
+	gl_geometry_draw();
 	text_render(font);
 }

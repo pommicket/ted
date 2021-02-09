@@ -131,11 +131,14 @@ typedef struct {
 	bool is_line_buffer; // "line buffers" are buffers which can only have one line of text (used for inputs)
 	bool selection;
 	bool store_undo_events; // set to false to disable undo events
-	bool modified; // has the buffer been modified since it was loaded/saved?
+	// This is set to true whenever a change is made to the buffer, and never set to false by buffer_ functions.
+	// (Distinct from buffer_unsaved_changes)
+	bool modified;
 	float x1, y1, x2, y2;
 	u32 nlines;
 	u32 lines_capacity;
 
+	u32 undo_history_write_pos; // where in the undo history was the last write? used by buffer_unsaved_changes
 	u32 longest_line_on_screen; // length of the longest line on screen. used to determine how far right we can scroll.
 
 	// to cache syntax highlighting properly, it is important to keep track of the
