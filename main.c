@@ -1,6 +1,7 @@
 // @TODO:
 // - chained undos (replace all = one undo action)
 // - highlight matching parentheses
+// - indent/dedent region
 // - split
 // - completion
 // - view-only

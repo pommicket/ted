@@ -58,25 +58,6 @@ static void find_free_pattern(Ted *ted) {
 	arr_clear(ted->find_results);
 }
 
-static void find_open(Ted *ted, bool replace) {
-	if (!ted->find && ted->active_buffer) {
-		ted->prev_active_buffer = ted->active_buffer;
-		ted->active_buffer = &ted->find_buffer;
-		ted->find = true;
-		buffer_clear(&ted->find_buffer);
-	}
-	if (!ted->replace && replace) {
-		ted->replace = true;
-		buffer_clear(&ted->replace_buffer);
-	}
-}
-
-static void find_close(Ted *ted) {
-	ted->find = false;
-	ted->active_buffer = ted->prev_active_buffer;
-	find_free_pattern(ted);
-}
-
 static float find_menu_height(Ted *ted) {
 	Font *font = ted->font;
 	float char_height = text_font_char_height(font);
@@ -130,10 +111,11 @@ static WarnUnusedResult bool find_match(Ted *ted, BufferPos *pos, u32 *match_sta
 }
 
 // check if the search term needs to be recompiled
-static void find_update(Ted *ted) {
+static void find_update(Ted *ted, bool force) {
 	TextBuffer *find_buffer = &ted->find_buffer;
 	u32 flags = find_compilation_flags(ted);
-	if (!find_buffer->modified // check if buffer has been modified,
+	if (!force
+		&& !find_buffer->modified // check if buffer has been modified,
 		&& ted->find_flags == flags) // or checkboxes have been (un)checked
 		return;
 	ted->find_flags = flags;
@@ -202,6 +184,9 @@ static void find_next_in_direction(Ted *ted, int direction) {
 
 // returns true if successful
 static bool find_replace_match(Ted *ted, u32 match_idx) {
+	find_update(ted, false);
+	if (!ted->find_code) return false;
+	
 	bool success = false;
 	FindResult match = ted->find_results[match_idx];
 	TextBuffer *buffer = ted->prev_active_buffer;
@@ -268,16 +253,12 @@ static void find_replace(Ted *ted) {
 	
 // go to next find result
 static void find_next(Ted *ted) {
-	find_update(ted);
-	if (!ted->find_code) return;
-	
 	if (ted->replace)
 		find_replace(ted);
 	find_next_in_direction(ted, +1);
 }
 
 static void find_prev(Ted *ted) {
-	find_update(ted);
 	find_next_in_direction(ted, -1);
 }
 
@@ -296,7 +277,7 @@ static void find_replace_all(Ted *ted) {
 				if (!find_replace_match(ted, i))
 					break;
 			}
-			find_update(ted);
+			find_update(ted, true);
 		}
 	}
 }
@@ -363,7 +344,7 @@ static void find_menu_frame(Ted *ted) {
 			find_replace_all(ted);
 	}
 	
-	find_update(ted);
+	find_update(ted, false);
 	arr_foreach_ptr(ted->find_results, FindResult, result) {
 		// highlight matches
 		BufferPos p1 = result->start, p2 = result->end;
@@ -449,4 +430,23 @@ static void find_menu_frame(Ted *ted) {
 		gl_geometry_rect(find_buffer_bounds, colors[COLOR_CANCEL] & 0xFFFFFF3F); // no matches
 	gl_geometry_draw();
 
+}
+
+static void find_open(Ted *ted, bool replace) {
+	if (!ted->find && ted->active_buffer) {
+		ted->prev_active_buffer = ted->active_buffer;
+		ted->active_buffer = &ted->find_buffer;
+		ted->find = true;
+		buffer_select_all(ted->active_buffer);
+	}
+	if (!ted->replace && replace) {
+		ted->replace = true;
+	}
+	find_update(ted, true);
+}
+
+static void find_close(Ted *ted) {
+	ted->find = false;
+	ted->active_buffer = ted->prev_active_buffer;
+	find_free_pattern(ted);
 }

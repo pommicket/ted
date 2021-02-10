@@ -98,7 +98,18 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		break;
 
 	case CMD_TAB:
-		buffer_insert_char_at_cursor(buffer, '\t');
+		if (ted->replace && ted->active_buffer == &ted->find_buffer) {
+			ted->active_buffer = &ted->replace_buffer;
+			buffer_select_all(ted->active_buffer);
+		} else {
+			buffer_insert_char_at_cursor(buffer, '\t');
+		}
+		break;
+	case CMD_BACKTAB:
+		if (ted->replace && ted->active_buffer == &ted->replace_buffer) {
+			ted->active_buffer = &ted->find_buffer;
+			buffer_select_all(ted->active_buffer);
+		}
 		break;
 	case CMD_NEWLINE:
 	case CMD_NEWLINE_BACK:
