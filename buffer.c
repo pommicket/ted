@@ -2199,12 +2199,69 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 //  buffer_insert_text_at_pos(buffer, another position, "text2")
 //  buffer_end_edit_chain(buffer)
 // pressing ctrl+z will undo both the insertion of text1 and text2.
-static void buffer_start_edit_chain(TextBuffer *buffer) {
+void buffer_start_edit_chain(TextBuffer *buffer) {
 	assert(!buffer->chaining_edits);
 	assert(!buffer->will_chain_edits);
 	buffer->will_chain_edits = true;
 }
 
-static void buffer_end_edit_chain(TextBuffer *buffer) {
+void buffer_end_edit_chain(TextBuffer *buffer) {
 	buffer->chaining_edits = buffer->will_chain_edits = false;
+}
+
+void buffer_indent_lines(TextBuffer *buffer, u32 first_line, u32 last_line) {
+	assert(first_line <= last_line);
+	buffer_start_edit_chain(buffer);
+	for (u32 i = first_line; i <= last_line; ++i) {
+		BufferPos pos = {.line = i, .index = 0};
+		char32_t c = '\t';
+		buffer_insert_text_at_pos(buffer, pos, str32(&c, 1));
+	}
+	buffer_end_edit_chain(buffer);
+}
+
+void buffer_dedent_lines(TextBuffer *buffer, u32 first_line, u32 last_line) {
+	assert(first_line <= last_line);
+	buffer_start_edit_chain(buffer);
+	Settings const *settings = buffer_settings(buffer);
+	u8 const tab_width = settings->tab_width;
+	
+	for (u32 line_idx = first_line; line_idx <= last_line; ++line_idx) {
+		Line *line = &buffer->lines[line_idx];
+		if (line->len) {
+			u32 chars_to_delete = 0;
+			if (line->str[0] == '\t') {
+				chars_to_delete = 1;
+			} else {
+				u32 i;
+				for (i = 0; i < line->len && i < tab_width; ++i) {
+					char32_t c = line->str[i];
+					if (c == '\t' || !is32_space(c))
+						break;
+				}
+				chars_to_delete = i;
+			}
+			if (chars_to_delete) {
+				BufferPos pos = {.line = line_idx, .index = 0};
+				buffer_delete_chars_at_pos(buffer, pos, chars_to_delete);
+			}
+		}
+	}
+	buffer_end_edit_chain(buffer);
+}
+
+void buffer_indent_selection(TextBuffer *buffer) {
+	if (!buffer->selection) return;
+	u32 l1 = buffer->cursor_pos.line;
+	u32 l2 = buffer->selection_pos.line;
+	sort2_u32(&l1, &l2); // ensure l1 <= l2
+	buffer_indent_lines(buffer, l1, l2);
+}
+
+void buffer_dedent_selection(TextBuffer *buffer) {
+	if (!buffer->selection) return;
+	u32 l1 = buffer->cursor_pos.line;
+	u32 l2 = buffer->selection_pos.line;
+	sort2_u32(&l1, &l2); // ensure l1 <= l2
+	buffer_dedent_lines(buffer, l1, l2);
 }

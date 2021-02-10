@@ -109,6 +109,15 @@ static inline u32 max_u32(u32 a, u32 b) {
 	return a > b ? a : b;
 }
 
+// set *a to the minimum of *a and *b, and *b to the maximum
+static inline void sort2_u32(u32 *a, u32 *b) {
+	u32 x = *a, y = *b;
+	if (x > y) {
+		*a = y;
+		*b = x;
+	}
+}
+
 static inline i32 min_i32(i32 a, i32 b) {
 	return a < b ? a : b;
 }

@@ -1,5 +1,4 @@
 // @TODO:
-// - indent/dedent region
 // - highlight matching parentheses
 // - split
 // - completion
