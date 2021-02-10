@@ -446,6 +446,8 @@ static void buffer_print_undo_history(TextBuffer *buffer) {
 static void buffer_edit(TextBuffer *buffer, BufferPos start, u32 prev_len, u32 new_len) {
 	BufferEdit edit = {0};
 	if (buffer_edit_create(buffer, &edit, start, prev_len, new_len)) {
+		edit.chain = buffer->chaining_edits;
+		if (buffer->will_chain_edits) buffer->chaining_edits = true;
 		buffer_append_edit(buffer, &edit);
 	}
 }
@@ -489,10 +491,11 @@ static bool buffer_edit_does_anything(TextBuffer *buffer, BufferEdit *edit) {
 
 // has enough time passed since the last edit that we should create a new one?
 static bool buffer_edit_split(TextBuffer *buffer) {
-	double curr_time = time_get_seconds();
-	double undo_time_cutoff = buffer_settings(buffer)->undo_save_time; // only keep around edits for this long (in seconds).
 	BufferEdit *last_edit = arr_lastp(buffer->undo_history);
 	if (!last_edit) return true;
+	if (buffer->chaining_edits) return false;
+	double curr_time = time_get_seconds();
+	double undo_time_cutoff = buffer_settings(buffer)->undo_save_time; // only keep around edits for this long (in seconds).
 	return curr_time - last_edit->time > undo_time_cutoff;
 }
 
@@ -1632,12 +1635,18 @@ static void buffer_cursor_to_edit(TextBuffer *buffer, BufferEdit *edit) {
 	buffer_center_cursor(buffer); // whenever we undo an edit, put the cursor in the center, to make it clear where the undo happened
 }
 
+// a <-b <-c
+// c <-b <-a
+
 void buffer_undo(TextBuffer *buffer, i64 ntimes) {
+	bool chain_next = false;
 	for (i64 i = 0; i < ntimes; ++i) {
 		BufferEdit *edit = arr_lastp(buffer->undo_history);
 		if (edit) {
+			bool chain = edit->chain;
 			BufferEdit inverse = {0};
 			if (buffer_undo_edit(buffer, edit, &inverse)) {
+				inverse.chain = chain_next;
 				if (i == ntimes - 1) {
 					// if we're on the last undo, put cursor where edit is
 					buffer_cursor_to_edit(buffer, edit);
@@ -1647,16 +1656,21 @@ void buffer_undo(TextBuffer *buffer, i64 ntimes) {
 				buffer_edit_free(edit);
 				arr_remove_last(buffer->undo_history);
 			}
-		}
+			if (chain) --i;
+			chain_next = chain;
+		} else break;
 	}
 }
 
 void buffer_redo(TextBuffer *buffer, i64 ntimes) {
+	bool chain_next = false;
 	for (i64 i = 0; i < ntimes; ++i) {
 		BufferEdit *edit = arr_lastp(buffer->redo_history);
 		if (edit) {
+			bool chain = edit->chain;
 			BufferEdit inverse = {0};
 			if (buffer_undo_edit(buffer, edit, &inverse)) {
+				inverse.chain = chain_next;
 				if (i == ntimes - 1)
 					buffer_cursor_to_edit(buffer, edit);
 				
@@ -1667,7 +1681,9 @@ void buffer_redo(TextBuffer *buffer, i64 ntimes) {
 				buffer_edit_free(edit);
 				arr_remove_last(buffer->redo_history);
 			}
-		}
+			if (chain) --i;
+			chain_next = chain;
+		} else break;
 	}
 }
 
@@ -2175,4 +2191,20 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 			}
 		}
 	}
+}
+
+// if you do:
+//  buffer_start_edit_chain(buffer)
+//  buffer_insert_text_at_pos(buffer, some position, "text1")
+//  buffer_insert_text_at_pos(buffer, another position, "text2")
+//  buffer_end_edit_chain(buffer)
+// pressing ctrl+z will undo both the insertion of text1 and text2.
+static void buffer_start_edit_chain(TextBuffer *buffer) {
+	assert(!buffer->chaining_edits);
+	assert(!buffer->will_chain_edits);
+	buffer->will_chain_edits = true;
+}
+
+static void buffer_end_edit_chain(TextBuffer *buffer) {
+	buffer->chaining_edits = buffer->will_chain_edits = false;
 }

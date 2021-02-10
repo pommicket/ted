@@ -272,11 +272,13 @@ static void find_replace_all(Ted *ted) {
 				FindResult *last_result = arr_lastp(ted->find_results);
 				buffer_cursor_move_to_pos(buffer, last_result->start);
 			}
+			buffer_start_edit_chain(buffer);
 			// NOTE: we don't need to increment i because the matches will be removed from the find_results array.
 			for (u32 i = match_idx; i < arr_len(ted->find_results); ) {
 				if (!find_replace_match(ted, i))
 					break;
 			}
+			buffer_end_edit_chain(buffer);
 			find_update(ted, true);
 		}
 	}

@@ -114,6 +114,7 @@ typedef struct {
 
 // this refers to replacing prev_len characters (found in prev_text) at pos with new_len characters
 typedef struct BufferEdit {
+	bool chain; // should this + the next edit be treated as one?
 	BufferPos pos;
 	u32 new_len;
 	u32 prev_len;
@@ -134,6 +135,8 @@ typedef struct {
 	// This is set to true whenever a change is made to the buffer, and never set to false by buffer_ functions.
 	// (Distinct from buffer_unsaved_changes)
 	bool modified;
+	bool will_chain_edits;
+	bool chaining_edits; // are we chaining undo events together?
 	float x1, y1, x2, y2;
 	u32 nlines;
 	u32 lines_capacity;
