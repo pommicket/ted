@@ -1,5 +1,6 @@
 // @TODO:
-// - find & replace (with regex)
+// - chained undos (replace all = one undo action)
+// - highlight matching parentheses
 // - split
 // - completion
 // - view-only
