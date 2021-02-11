@@ -4,6 +4,8 @@
 // - completion
 // - view-only
 // - Windows installation
+// - restore previously opened files (setting: restore-session)
+// - on crash, output backtrace to log, save buffers to temp directory
 
 #include "base.h"
 no_warn_start

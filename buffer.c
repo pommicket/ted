@@ -160,6 +160,31 @@ char32_t buffer_char_at_pos(TextBuffer *buffer, BufferPos p) {
 	}
 }
 
+// returns 0 if pos is at the start of a line
+char32_t buffer_char_before_pos(TextBuffer *buffer, BufferPos pos) {
+	assert(buffer_pos_valid(buffer, pos));
+	if (pos.index == 0) return 0;
+	return buffer->lines[pos.line].str[pos.index - 1];
+}
+
+// returns 0 if pos is at the end of a line (unlike buffer_char_at_pos)
+char32_t buffer_char_after_pos(TextBuffer *buffer, BufferPos pos) {
+	assert(buffer_pos_valid(buffer, pos));
+	Line *line = &buffer->lines[pos.line];
+	if (pos.index >= line->len) return 0;
+	return line->str[pos.index];
+}
+
+// returns the character to the left of the cursor, or 0 if the cursor at the start of the line.
+char32_t buffer_char_before_cursor(TextBuffer *buffer) {
+	return buffer_char_before_pos(buffer, buffer->cursor_pos);
+}
+
+// returns 0 if cursor is at end of line
+char32_t buffer_char_after_cursor(TextBuffer *buffer) {
+	return buffer_char_after_pos(buffer, buffer->cursor_pos);
+}
+
 BufferPos buffer_start_of_file(TextBuffer *buffer) {
 	(void)buffer;
 	return (BufferPos){.line = 0, .index = 0};
@@ -2184,12 +2209,42 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 			double t = fmod(absolute_time, period);
 			is_on = t < time_on; // are we in the "on" part of the period?
 		}
+		
+		// highlight matching brackets
+		char32_t cursor_bracket = buffer_char_before_cursor(buffer);
+		char32_t matching_bracket = syntax_matching_bracket(language, cursor_bracket);
+		if (cursor_bracket && matching_bracket) {
+			int direction = syntax_is_opening_bracket(language, cursor_bracket) ? +1 : -1;
+			int depth = 1;
+			BufferPos pos = buffer->cursor_pos;
+			buffer_pos_move_left(buffer, &pos, 1);
+			while (pos.line >= start_line) {
+				if (buffer_pos_move_right(buffer, &pos, direction)) {
+					char32_t c = buffer_char_after_pos(buffer, pos);
+					if (c == cursor_bracket) depth += 1;
+					else if (c == matching_bracket) depth -= 1;
+					if (depth == 0) break;
+				} else {
+					break;
+				}
+			}
+			if (depth == 0) {
+				// highlight it
+				v2 gl_pos = buffer_pos_to_pixels(buffer, pos);
+				Rect hl_rect = rect(gl_pos, V2(char_width, char_height));
+				if (buffer_clip_rect(buffer, &hl_rect)) {
+					gl_geometry_rect(hl_rect, colors[COLOR_MATCHING_BRACKET_HL]);
+				}
+			}
+		}
+		
+		
 		if (is_on) {
 			if (buffer_clip_rect(buffer, &cursor_rect)) {
 				gl_geometry_rect(cursor_rect, colors[COLOR_CURSOR]);
-				gl_geometry_draw();
 			}
 		}
+		gl_geometry_draw();
 	}
 }
 

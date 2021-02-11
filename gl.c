@@ -222,6 +222,7 @@ static void gl_geometry_rect_border(Rect r, float border_thickness, u32 color) {
 static void gl_geometry_draw(void) {
 	size_t ntriangles = arr_len(gl_geometry_triangles);
 	
+	if (ntriangles == 0) return;
 	
 	// convert coordinates to NDC
 	for (size_t i = 0; i < ntriangles; ++i) {

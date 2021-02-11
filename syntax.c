@@ -45,6 +45,32 @@ static inline bool syntax_keyword_matches(char32_t *text, size_t len, char const
 	}
 }
 
+// returns ')' for '(', etc., or 0 if c is not an opening bracket
+char32_t syntax_matching_bracket(Language lang, char32_t c) {
+	(void)lang; // not needed yet
+	switch (c) {
+	case '(': return ')';
+	case ')': return '(';
+	case '[': return ']';
+	case ']': return '[';
+	case '{': return '}';
+	case '}': return '{';
+	}
+	return 0;
+}
+
+// returns true for opening brackets, false for closing brackets/non-brackets
+bool syntax_is_opening_bracket(Language lang, char32_t c) {
+	(void)lang;
+	switch (c) {
+	case '(':
+	case '[':
+	case '{':
+		return true;
+	}
+	return false;
+}
+
 // lookup the given string in the keywords table
 static Keyword const *syntax_keyword_lookup(Keyword const *const *all_keywords, size_t n_all_keywords, char32_t *str, size_t len) {
 	if (!len) return NULL;

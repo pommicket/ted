@@ -7,6 +7,7 @@ ENUM_U16 {
 	COLOR_HL,
 	COLOR_CURSOR,
 	COLOR_CURSOR_LINE_BG,
+	COLOR_MATCHING_BRACKET_HL,
 	COLOR_BORDER,
 	COLOR_TEXT_FOLDER,
 	COLOR_TEXT_OTHER,
@@ -35,6 +36,7 @@ ENUM_U16 {
 	COLOR_LINE_NUMBERS,
 	COLOR_CURSOR_LINE_NUMBER,
 	COLOR_LINE_NUMBERS_SEPARATOR,
+	
 
 	COLOR_COUNT
 } ENUM_U16_END(ColorSetting);
@@ -52,6 +54,7 @@ static ColorName const color_names[COLOR_COUNT] = {
 	{COLOR_HL, "hl"},
 	{COLOR_CURSOR, "cursor"},
 	{COLOR_CURSOR_LINE_BG, "cursor-line-bg"},
+	{COLOR_MATCHING_BRACKET_HL, "matching-bracket-hl"},
 	{COLOR_BORDER, "border"},
 	{COLOR_TEXT_FOLDER, "text-folder"},
 	{COLOR_TEXT_OTHER, "text-other"},
