@@ -518,6 +518,7 @@ static bool buffer_edit_does_anything(TextBuffer *buffer, BufferEdit *edit) {
 static bool buffer_edit_split(TextBuffer *buffer) {
 	BufferEdit *last_edit = arr_lastp(buffer->undo_history);
 	if (!last_edit) return true;
+	if (buffer->will_chain_edits) return true;
 	if (buffer->chaining_edits) return false;
 	double curr_time = time_get_seconds();
 	double undo_time_cutoff = buffer_settings(buffer)->undo_save_time; // only keep around edits for this long (in seconds).

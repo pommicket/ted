@@ -150,6 +150,7 @@ static void find_update(Ted *ted, bool force) {
 
 // returns the index of the match we are "on", or U32_MAX for none.
 static u32 find_match_idx(Ted *ted) {
+	find_update(ted, false);
 	TextBuffer *buffer = ted->prev_active_buffer;
 	if (!buffer->selection) return U32_MAX;
 	u32 match_idx = U32_MAX;
@@ -173,11 +174,16 @@ static void find_next_in_direction(Ted *ted, int direction) {
 	for (size_t nsearches = 0; nsearches < nlines + 1; ++nsearches) {
 		u32 match_start, match_end;
 		if (find_match(ted, &pos, &match_start, &match_end, direction)) {
-			BufferPos pos_start = {.line = pos.line, .index = match_start};
-			BufferPos pos_end = {.line = pos.line, .index = match_end};
-			buffer_cursor_move_to_pos(buffer, pos_start);
-			buffer_select_to_pos(buffer, pos_end);
-			break;
+			if (nsearches == 0 && match_start == buffer->cursor_pos.index) {
+				// if you click "next" and your cursor is on a match, it should go to the next
+				// one, not the one you're on
+			} else {
+				BufferPos pos_start = {.line = pos.line, .index = match_start};
+				BufferPos pos_end = {.line = pos.line, .index = match_end};
+				buffer_cursor_move_to_pos(buffer, pos_start);
+				buffer_select_to_pos(buffer, pos_end);
+				break;
+			}
 		}
 	}
 }
@@ -248,13 +254,16 @@ static void find_replace(Ted *ted) {
 	if (match_idx != U32_MAX) {
 		buffer_cursor_move_to_pos(buffer, ted->find_results[match_idx].start); // move to start of match
 		find_replace_match(ted, match_idx);
+		find_update(ted, true);
 	}
 }
 	
 // go to next find result
 static void find_next(Ted *ted) {
-	if (ted->replace)
+	if (ted->replace) {
 		find_replace(ted);
+		find_update(ted, true);
+	}
 	find_next_in_direction(ted, +1);
 }
 
