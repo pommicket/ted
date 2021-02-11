@@ -76,25 +76,25 @@ static WarnUnusedResult bool find_match(Ted *ted, BufferPos *pos, u32 *match_sta
 	assert(buffer);
 	String32 str = buffer_get_line(buffer, pos->line);
 	PCRE2_SIZE *groups = pcre2_get_ovector_pointer(ted->find_match_data);
+
+	u32 match_flags = PCRE2_NOTEMPTY;
 	
 	int ret;
 	if (direction == +1)
-		ret = pcre2_match(ted->find_code, str.str, str.len, pos->index, 0, ted->find_match_data, NULL);
+		ret = pcre2_match(ted->find_code, str.str, str.len, pos->index, match_flags, ted->find_match_data, NULL);
 	else {
 		// unfortunately PCRE does not have a backwards option, so we need to do the search multiple times
 		u32 last_pos = 0;
 		ret = -1;
 		while (1) {
-			int next_ret = pcre2_match(ted->find_code, str.str, pos->index, last_pos, 0, ted->find_match_data, NULL);
+			int next_ret = pcre2_match(ted->find_code, str.str, pos->index, last_pos, match_flags, ted->find_match_data, NULL);
 			if (next_ret > 0) {
 				ret = next_ret;
-				if (groups[0] == groups[1]) ++groups[1]; // ensure we don't have an infinite loop
 				last_pos = (u32)groups[1];
 			} else break;
 		}
 	}
 	if (ret > 0) {
-		if (groups[0] == groups[1]) ++groups[1];
 		if (match_start) *match_start = (u32)groups[0];
 		if (match_end)   *match_end   = (u32)groups[1];
 		pos->index = (u32)groups[1];
