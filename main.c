@@ -1,5 +1,4 @@
 // @TODO:
-// - highlight matching parentheses
 // - split
 // - completion
 // - view-only

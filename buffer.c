@@ -2320,3 +2320,4 @@ void buffer_dedent_selection(TextBuffer *buffer) {
 	sort2_u32(&l1, &l2); // ensure l1 <= l2
 	buffer_dedent_lines(buffer, l1, l2);
 }
+
