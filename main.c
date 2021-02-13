@@ -1,8 +1,16 @@
 // @TODO:
-// - open file in view-only mode menu
+// - menu for opening file in view-only mode
+
+// - :build (F4) -- cargo build if editing .rs file or file called Cargo.toml, otherwise make.
+
+// - go to definition (with ctags) -- ctrl+click would be nice
+
+// - :run -- if .html file, open in browser, otherwise figure out a way of sending a command to bash??
+
 // - split
+
 // - completion
-// - view-only
+
 // - Windows installation
 // - restore previously opened files (setting: restore-session)
 // - on crash, output backtrace to log, save buffers to temp directory
