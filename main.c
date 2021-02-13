@@ -356,8 +356,9 @@ int main(int argc, char **argv) {
 	#if DEBUG
 		//printf("\033[H\033[2J");
 	#endif
+	#if PROFILE
 		double frame_start = time_get_seconds();
-
+	#endif
 
 		SDL_Event event;
 		Uint8 const *keyboard_state = SDL_GetKeyboardState(NULL);
@@ -398,14 +399,6 @@ int main(int argc, char **argv) {
 			} break;
 			case SDL_MOUSEBUTTONDOWN: {
 				Uint32 button = event.button.button;
-				
-				if (button == SDL_BUTTON_LEFT) {
-					// shift+left click = right click
-					if (shift_down) button = SDL_BUTTON_RIGHT;
-					// ctrl+left click = middle click
-					if (ctrl_down)  button = SDL_BUTTON_MIDDLE;
-				}
-
 
 				float x = (float)event.button.x, y = (float)event.button.y;
 				if (button < arr_count(ted->nmouse_clicks) 
@@ -658,16 +651,13 @@ int main(int argc, char **argv) {
 	
 		glFinish();
 		
-		double frame_end_noswap = time_get_seconds();
 	#if PROFILE
+		double frame_end_noswap = time_get_seconds();
 		{
 			print("Frame (noswap): %.1f ms\n", (frame_end_noswap - frame_start) * 1000);
 		}
 	#endif
 	
-		u32 ms_wait = (u32)((frame_end_noswap - frame_start) * 1000);
-		if (ms_wait) ms_wait -= 1; // give swap an extra ms to make sure it's actually vsynced
-		SDL_Delay(ms_wait);
 		SDL_GL_SwapWindow(window);
 		PROFILE_TIME(frame_end);
 

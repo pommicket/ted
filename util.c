@@ -1,3 +1,7 @@
+#if _WIN32
+#include <intrin.h>
+#endif
+
 static u8 util_popcount(u64 x) {
 #ifdef __GNUC__
 	return (u8)__builtin_popcountll(x);
@@ -7,6 +11,20 @@ static u8 util_popcount(u64 x) {
 		x &= x-1;
 		++count;
 	}
+	return count;
+#endif
+}
+
+static u8 util_count_leading_zeroes(u64 x) {
+#if __GNUC__
+	return (u8)__builtin_clzll(x);
+#elif _WIN32
+	return (u8)__lzcnt64(x);
+#else
+	u8 count = 0;
+	for (int i = 63; i >= 0; --i)
+		if (x & ((u64)1<<i))
+			++count;
 	return count;
 #endif
 }

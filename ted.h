@@ -108,7 +108,6 @@ typedef struct {
 typedef struct {
 	SyntaxState syntax;
 	u32 len;
-	u32 capacity;
 	char32_t *str;
 } Line;
 
@@ -142,7 +141,7 @@ typedef struct {
 	u32 lines_capacity;
 
 	u32 undo_history_write_pos; // where in the undo history was the last write? used by buffer_unsaved_changes
-	u32 longest_line_on_screen; // length of the longest line on screen. used to determine how far right we can scroll.
+	u32 first_line_on_screen, last_line_on_screen; // which lines are on screen? updated when buffer_render is called.
 
 	// to cache syntax highlighting properly, it is important to keep track of the
 	// first and last line modified since last frame.

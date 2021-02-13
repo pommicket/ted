@@ -536,26 +536,37 @@ static void buffer_remove_last_edit_if_empty(TextBuffer *buffer) {
 	}
 }
 
-// grow capacity of line to at least minimum_capacity
 // returns true if allocation was succesful
-static Status buffer_line_set_min_capacity(TextBuffer *buffer, Line *line, u32 minimum_capacity) {
-	while (line->capacity < minimum_capacity) {
-		// double capacity of line
-		u32 new_capacity = line->capacity == 0 ? 4 : line->capacity * 2;
-		if (new_capacity < line->capacity) {
-			// this could only happen if line->capacity * 2 overflows.
-			buffer_seterr(buffer, "Line %td is too large.", line - buffer->lines);
+static Status buffer_line_set_len(TextBuffer *buffer, Line *line, u32 new_len) {
+	if (new_len >= 8) {
+		u32 curr_capacity = (u32)1 << (32 - util_count_leading_zeroes(line->len));
+
+		if (new_len >= curr_capacity) {
+			u8 leading_zeroes = util_count_leading_zeroes(new_len);
+			if (leading_zeroes == 0) {
+				// this line is too big
+				return false;
+			} else {
+				u32 new_capacity = (u32)1 << (32 - leading_zeroes);
+				assert(new_capacity > new_len);
+				char32_t *new_str = buffer_realloc(buffer, line->str, new_capacity * sizeof *line->str);
+				if (!new_str) {
+					// allocation failed ):
+					return false;
+				}
+				// allocation successful
+				line->str = new_str;
+			}
+		}
+	} else if (line->len == 0) {
+		// start by allocating 8 code points
+		line->str = buffer_malloc(buffer, 8 * sizeof *line->str);
+		if (!line->str) {
+			// ):
 			return false;
 		}
-		char32_t *new_str = buffer_realloc(buffer, line->str, new_capacity * sizeof *line->str);
-		if (!new_str) {
-			// allocation failed ):
-			return false;
-		}
-		// allocation successful
-		line->str = new_str;
-		line->capacity = new_capacity;
 	}
+	line->len = new_len;
 	return true;
 }
 
@@ -579,8 +590,8 @@ static Status buffer_lines_set_min_capacity(TextBuffer *buffer, Line **lines, u3
 }
 
 static void buffer_line_append_char(TextBuffer *buffer, Line *line, char32_t c) {
-	if (buffer_line_set_min_capacity(buffer, line, line->len + 1))
-		line->str[line->len++] = c;
+	if (buffer_line_set_len(buffer, line, line->len + 1))
+		line->str[line->len-1] = c;
 }
 
 static void buffer_line_free(Line *line) {
@@ -695,7 +706,13 @@ void buffer_text_dimensions(TextBuffer *buffer, u32 *lines, u32 *columns) {
 		*lines = buffer->nlines;
 	}
 	if (columns) {
-		*columns = buffer->longest_line_on_screen;
+		u32 longest_line = 0;
+		// which line on screen is the longest?
+		for (u32 l = buffer->first_line_on_screen; l <= buffer->last_line_on_screen && l < buffer->nlines; ++l) {
+			Line *line = &buffer->lines[l];
+			longest_line = max_u32(longest_line, line->len);
+		}
+		*columns = longest_line;
 	}
 }
 
@@ -719,6 +736,7 @@ static void buffer_correct_scroll(TextBuffer *buffer) {
 	u32 nlines, ncols;
 	buffer_text_dimensions(buffer, &nlines, &ncols);
 	double max_scroll_x = (double)ncols  - buffer_display_cols(buffer);
+	max_scroll_x += 2; // allow "overscroll" (makes it so you can see the cursor when it's on the right side of the screen)
 	double max_scroll_y = (double)nlines - buffer_display_lines(buffer);
 	if (max_scroll_x <= 0) {
 		buffer->scroll_x = 0;
@@ -1225,10 +1243,9 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 			Line *last_line = &buffer->lines[line_idx + n_added_lines];
 			u32 chars_moved = line->len - index;
 			if (chars_moved) {
-				if (buffer_line_set_min_capacity(buffer, last_line, chars_moved)) {
+				if (buffer_line_set_len(buffer, last_line, chars_moved)) {
 					memcpy(last_line->str, line->str + index, chars_moved * sizeof(char32_t));
 					line->len  -= chars_moved;
-					last_line->len += chars_moved;
 				}
 			}
 		}
@@ -1240,15 +1257,13 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 		u32 old_len = line->len;
 		u32 new_len = old_len + text_line_len;
 		if (new_len > old_len) { // handles both overflow and empty text lines
-			if (buffer_line_set_min_capacity(buffer, line, new_len)) {
+			if (buffer_line_set_len(buffer, line, new_len)) {
 				// make space for text
 				memmove(line->str + index + (new_len - old_len),
 					line->str + index,
 					(old_len - index) * sizeof(char32_t));
 				// insert text
 				memcpy(line->str + index, str.str, text_line_len * sizeof(char32_t));
-				
-				line->len = new_len;
 			}
 
 			str.str += text_line_len;
@@ -1490,11 +1505,11 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 			}
 			buffer_shorten(buffer, line_idx + 1);
 		} else {
-			// join last_line to line.
+			// join last_line[nchars:] to line.
 			u32 last_line_chars_left = (u32)(last_line->len - nchars);
-			if (buffer_line_set_min_capacity(buffer, line, line->len + last_line_chars_left)) {
-				memcpy(line->str + line->len, last_line->str + nchars, last_line_chars_left * sizeof(char32_t));
-				line->len += last_line_chars_left;
+			u32 old_len = line->len;
+			if (buffer_line_set_len(buffer, line, old_len + last_line_chars_left)) {
+				memcpy(line->str + old_len, last_line->str + nchars, last_line_chars_left * sizeof(char32_t));
 			}
 			// remove all lines between line + 1 and last_line (inclusive).
 			buffer_delete_lines(buffer, line_idx + 1, (u32)(last_line - line));
@@ -2139,8 +2154,6 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	buffer->frame_earliest_line_modified = U32_MAX;
 	buffer->frame_latest_line_modified = 0;
 
-	buffer->longest_line_on_screen = 0;
-	
 
 	TextRenderState text_state = text_render_state_default;
 	text_state.x = render_start_x;
@@ -2151,9 +2164,10 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	text_state.max_y = y2;
 	if (!syntax_highlighting)
 		rgba_u32_to_floats(colors[COLOR_TEXT], text_state.color);
+
+	buffer->first_line_on_screen = start_line;
 	for (u32 line_idx = start_line; line_idx < nlines; ++line_idx) {
 		Line *line = &lines[line_idx];
-		buffer->longest_line_on_screen = max_u32(buffer->longest_line_on_screen, line->len);
 		if (arr_len(char_types) < line->len) {
 			arr_set_len(char_types, line->len);
 		}
@@ -2187,6 +2201,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 		// next line
 		text_state.x = render_start_x;
 		if (text_state.y > text_state.max_y) {
+			buffer->last_line_on_screen = line_idx;
 			// made it to the bottom of the buffer view.
 			break;
 		}

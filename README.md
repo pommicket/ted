@@ -39,6 +39,7 @@ a simple editor that starts up practically instantaneously, and performs well on
 - Auto-indent
 - Customization of (pretty much) all colours and keyboard commands.
 - Syntax highlighting for C, C++, Rust, and Python.
+- Find and replace (with regular expressions!)
 
 ## Building from source
 
