@@ -135,21 +135,28 @@ static void node_frame(Ted *ted, Node *node, Rect r) {
 				
 				// tab border
 				gl_geometry_rect_border(tab_rect, border_thickness, colors[COLOR_BORDER]);
-				if (i == node->active_tab) {
-					// highlight active tab
-					gl_geometry_rect(tab_rect, colors[is_active ? COLOR_ACTIVE_TAB_HL : COLOR_HL]);
-				}
 				
 				// tab title
 				{
-					char const *surround = buffer_unsaved_changes(buffer) ? "*" : "";
-					strbuf_printf(tab_title, "%s%s%s", surround, filename, surround);
+					if (buffer_unsaved_changes(buffer))
+						strbuf_printf(tab_title, "*%s*", filename);
+					else if (buffer->view_only)
+						strbuf_printf(tab_title, "VIEW %s", filename);
+					else
+						strbuf_printf(tab_title, "%s", filename);
 				}
 				text_state.max_x = rect_x2(tab_rect);
 				rgba_u32_to_floats(colors[COLOR_TEXT], text_state.color);
 				text_state.x = tab_rect.pos.x;
 				text_state.y = tab_rect.pos.y;
 				text_utf8_with_state(font, &text_state, tab_title);
+
+				if (i == node->active_tab) {
+					// highlight active tab
+					gl_geometry_rect(tab_rect, colors[is_active ? COLOR_ACTIVE_TAB_HL : COLOR_HL]);
+					// set window title to active tab's title
+					strbuf_printf(ted->window_title, "ted %s", tab_title);
+				}
 				
 			}
 			gl_geometry_draw();

@@ -8,8 +8,15 @@ typedef enum {
 	FS_OTHER
 } FsType;
 
+enum {
+	FS_PERMISSION_READ = 0x01,
+	FS_PERMISSION_WRITE = 0x02,
+};
+typedef u8 FsPermission;
+
 // returns what kind of thing this is.
 FsType fs_path_type(char const *path);
+FsPermission fs_path_permission(char const *path);
 // Does this file exist? Returns false for directories.
 bool fs_file_exists(char const *path);
 // Returns a NULL-terminated array of the files/directories in this directory, or NULL if the directory does not exist.
@@ -28,6 +35,7 @@ int fs_mkdir(char const *path);
 // 0  if buf is too short to hold the cwd
 // -1 if we can't get the cwd for whatever reason.
 int fs_get_cwd(char *buf, size_t buflen);
+
 
 #endif // FILESYSTEM_H_
 

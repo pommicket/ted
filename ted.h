@@ -136,6 +136,7 @@ typedef struct {
 	bool modified;
 	bool will_chain_edits;
 	bool chaining_edits; // are we chaining undo events together?
+	bool view_only;
 	float x1, y1, x2, y2;
 	u32 nlines;
 	u32 lines_capacity;
@@ -248,6 +249,7 @@ typedef struct Ted {
 	Node nodes[TED_MAX_NODES];
 	bool buffers_used[TED_MAX_BUFFERS];
 	TextBuffer buffers[TED_MAX_BUFFERS];
+	char window_title[256];
 	char error[512];
 	char error_shown[512]; // error display in box on screen
 } Ted;

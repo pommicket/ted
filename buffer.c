@@ -1196,6 +1196,8 @@ static Status buffer_insert_lines(TextBuffer *buffer, u32 where, u32 number) {
 
 // inserts the given text, returning the position of the end of the text
 BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 str) {
+	if (buffer->view_only)
+		return pos;
 	if (str.len > U32_MAX) {
 		buffer_seterr(buffer, "Inserting too much text (length: %zu).", str.len);
 		BufferPos ret = {0,0};
@@ -1407,11 +1409,13 @@ static void buffer_delete_lines(TextBuffer *buffer, u32 first_line_idx, u32 nlin
 }
 
 void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) {
+	if (buffer->view_only) return;
 	if (nchars_ < 0) {
 		buffer_seterr(buffer, "Deleting negative characters (specifically, " I64_FMT ").", nchars_);
 		return;
 	}
 	if (nchars_ <= 0) return;
+
 	if (nchars_ > U32_MAX) nchars_ = U32_MAX;
 	u32 nchars = (u32)nchars_;
 
@@ -1839,6 +1843,10 @@ Status buffer_load_file(TextBuffer *buffer, char const *filename) {
 								buffer->lines_capacity = lines_capacity;
 								buffer->filename = filename_copy;
 								buffer->last_write_time = time_last_modified(buffer->filename);
+								if (!(fs_path_permission(filename) & FS_PERMISSION_WRITE)) {
+									// can't write to this file; make the buffer view only.
+									buffer->view_only = true;
+								}
 							}
 						}
 					} else {
@@ -1908,6 +1916,11 @@ void buffer_new_file(TextBuffer *buffer, char const *filename) {
 bool buffer_save(TextBuffer *buffer) {
 	Settings const *settings = buffer_settings(buffer);
 	if (!buffer->is_line_buffer && buffer->filename) {
+		if (buffer->view_only) {
+			buffer_seterr(buffer, "Can't save view-only file.");
+			return false;
+		}
+
 		FILE *out = fopen(buffer->filename, "wb");
 		if (out) {
 			if (settings->auto_add_newline) {
@@ -2120,7 +2133,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 					V2((float)n_columns_highlighted * char_width, char_height)
 				);
 				buffer_clip_rect(buffer, &hl_rect);
-				gl_geometry_rect(hl_rect, colors[COLOR_SELECTION_BG]);
+				gl_geometry_rect(hl_rect, colors[buffer->view_only ? COLOR_VIEW_ONLY_SELECTION_BG : COLOR_SELECTION_BG]);
 			}
 			index1 = 0;
 		}
@@ -2257,7 +2270,8 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 		
 		if (is_on) {
 			if (buffer_clip_rect(buffer, &cursor_rect)) {
-				gl_geometry_rect(cursor_rect, colors[COLOR_CURSOR]);
+				// draw cursor
+				gl_geometry_rect(cursor_rect, colors[buffer->view_only ? COLOR_VIEW_ONLY_CURSOR : COLOR_CURSOR]);
 			}
 		}
 		gl_geometry_draw();

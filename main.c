@@ -1,4 +1,5 @@
 // @TODO:
+// - open file in view-only mode menu
 // - split
 // - completion
 // - view-only
@@ -657,6 +658,8 @@ int main(int argc, char **argv) {
 			print("Frame (noswap): %.1f ms\n", (frame_end_noswap - frame_start) * 1000);
 		}
 	#endif
+		
+		SDL_SetWindowTitle(window, ted->window_title);
 	
 		SDL_GL_SwapWindow(window);
 		PROFILE_TIME(frame_end);

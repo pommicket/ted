@@ -13,6 +13,8 @@ FsType fs_path_type(char const *path) {
 	return FS_OTHER;
 }
 
+#error "TODO: fs_path_permission"
+
 bool fs_file_exists(char const *path) {
 	return fs_path_type(path) == FS_FILE;
 }
