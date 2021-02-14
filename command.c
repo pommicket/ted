@@ -245,6 +245,10 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		}
 	} break;
 
+	case CMD_VIEW_ONLY:
+		if (buffer) buffer->view_only = !buffer->view_only;
+		break;
+
 	case CMD_TAB_CLOSE: {
 		if (ted->menu) {
 			menu_close(ted);

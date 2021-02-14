@@ -1,7 +1,4 @@
 // @TODO:
-// - fix replace all (with regex)
-// - menu for opening file in view-only mode
-
 // - :build (F4) -- cargo build if editing .rs file or file called Cargo.toml, otherwise make.
 
 // - go to definition (with ctags) -- ctrl+click would be nice
@@ -575,6 +572,7 @@ int main(int argc, char **argv) {
 		if (ted->active_node) {
 			float x1 = 25, y1 = 25, x2 = window_width-25, y2 = window_height-25;
 			Node *node = ted->root;
+			if (ted->find) y2 -= find_menu_height(ted);
 			node_frame(ted, node, rect4(x1, y1, x2, y2));
 			if (ted->find) {
 				find_menu_frame(ted);

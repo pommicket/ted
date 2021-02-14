@@ -63,6 +63,8 @@ ENUM_U16 {
 	CMD_TEXT_SIZE_INCREASE,
 	CMD_TEXT_SIZE_DECREASE,
 
+	CMD_VIEW_ONLY, // toggle view-only mode
+
 	CMD_ESCAPE, // by default this is the escape key. closes menus, etc.
 
 	CMD_COUNT
@@ -125,6 +127,7 @@ static CommandName const command_names[CMD_COUNT] = {
 	{"tab-prev", CMD_TAB_PREV},
 	{"increase-text-size", CMD_TEXT_SIZE_INCREASE},
 	{"decrease-text-size", CMD_TEXT_SIZE_DECREASE},
-	{"escape", CMD_ESCAPE}
+	{"view-only", CMD_VIEW_ONLY},
+	{"escape", CMD_ESCAPE},
 };
 
