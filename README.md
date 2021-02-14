@@ -61,6 +61,7 @@ Then run `make.bat`.
 <tr><td>0.1</td> <td>Syntax highlighting</td> <td>2021 Feb 3</td></tr>
 <tr><td>0.2</td> <td>Line numbers, check if file changed by another program</td> <td>2021 Feb 5</td></tr>
 <tr><td>0.3</td> <td>Find+replace, highlight matching parentheses, indent/dedent selection</td> <td>2021 Feb 11</td></tr>
+<tr><td>0.3a</td> <td>Find+replace bug fixes, view-only mode</td> <td>2021 Feb 14</td></tr>
 </table>
 
 ## License
