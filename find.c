@@ -152,14 +152,13 @@ static void find_update(Ted *ted, bool force) {
 static u32 find_match_idx(Ted *ted) {
 	find_update(ted, false);
 	TextBuffer *buffer = ted->prev_active_buffer;
-	if (!buffer->selection) return U32_MAX;
-	u32 match_idx = U32_MAX;
 	arr_foreach_ptr(ted->find_results, FindResult, result) {
-		if (buffer_pos_eq(result->start, buffer->selection_pos)
+		if ((buffer_pos_eq(result->start, buffer->selection_pos)
 			&& buffer_pos_eq(result->end, buffer->cursor_pos))
-			match_idx = (u32)(result - ted->find_results);
+			|| buffer_pos_eq(result->start, buffer->cursor_pos))
+			return (u32)(result - ted->find_results);
 	}
-	return match_idx;
+	return U32_MAX;
 }
 
 
@@ -188,7 +187,9 @@ static void find_next_in_direction(Ted *ted, int direction) {
 	}
 }
 
-// returns true if successful
+// returns true if successful.
+// this function zeroes but keeps around the old find result! make sure you call find_update(ted, true) after calling this function
+// one or more times!
 static bool find_replace_match(Ted *ted, u32 match_idx) {
 	find_update(ted, false);
 	if (!ted->find_code) return false;
@@ -223,18 +224,14 @@ static bool find_replace_match(Ted *ted, u32 match_idx) {
 			if (output_buffer)
 				buffer_insert_text_at_pos(buffer, match.start, str32(output_buffer, output_size));
 			
-			// remove this match
-			arr_remove(ted->find_results, match_idx);
-			
 			i64 diff = (i64)output_size - len; // change in number of characters
-			// @OPTIMIZE: binary search for find results on the right line
-			for (u32 i = 0; i < arr_len(ted->find_results); ++i) {
+			for (u32 i = match_idx; i < arr_len(ted->find_results); ++i) {
 				FindResult *result = &ted->find_results[i];
-				if (result->start.line == match.start.line && result->start.index > match.end.index) {
-					// fix indices of other find results
+				if (result->start.line == match.start.line) {
+					// fix indices of find results on this line to the right of match.
 					result->start.index = (u32)(result->start.index + diff);
 					result->end.index = (u32)(result->end.index + diff);
-				}
+				} else break;
 			}
 			success = true;
 		} else if (ret < 0) {
@@ -262,7 +259,6 @@ static void find_replace(Ted *ted) {
 static void find_next(Ted *ted) {
 	if (ted->replace) {
 		find_replace(ted);
-		find_update(ted, true);
 	}
 	find_next_in_direction(ted, +1);
 }
@@ -274,16 +270,19 @@ static void find_prev(Ted *ted) {
 static void find_replace_all(Ted *ted) {
 	TextBuffer *buffer = ted->prev_active_buffer;
 	if (ted->replace) {
-		find_next(ted);
 		u32 match_idx = find_match_idx(ted);
+		if (match_idx == U32_MAX) {
+			// if we're not on a match, go to the next one
+			find_next(ted);
+			match_idx = find_match_idx(ted);
+		}
 		if (match_idx != U32_MAX) {
 			{
 				FindResult *last_result = arr_lastp(ted->find_results);
 				buffer_cursor_move_to_pos(buffer, last_result->start);
 			}
 			buffer_start_edit_chain(buffer);
-			// NOTE: we don't need to increment i because the matches will be removed from the find_results array.
-			for (u32 i = match_idx; i < arr_len(ted->find_results); ) {
+			for (u32 i = match_idx; i < arr_len(ted->find_results); ++i) {
 				if (!find_replace_match(ted, i))
 					break;
 			}

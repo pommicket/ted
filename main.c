@@ -1,4 +1,5 @@
 // @TODO:
+// - fix replace all (with regex)
 // - menu for opening file in view-only mode
 
 // - :build (F4) -- cargo build if editing .rs file or file called Cargo.toml, otherwise make.
