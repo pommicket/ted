@@ -58,8 +58,10 @@ long long process_read(Process *proc, char *data, size_t size) {
 
 }
 
-void process_stop(Process *proc) {
+void process_kill(Process *proc) {
 	kill(proc->pid, SIGKILL);
+	// get rid of zombie process
+	waitpid(proc->pid, NULL, 0);
 	close(proc->pipe);
 	proc->pid = 0;
 	proc->pipe = 0;
@@ -67,8 +69,13 @@ void process_stop(Process *proc) {
 
 int process_check_status(Process *proc, char *message, size_t message_size) {
 	int wait_status = 0;
-	if (waitpid(proc->pid, &wait_status, WNOHANG) >= 0) {
+	int ret = waitpid(proc->pid, &wait_status, WNOHANG);
+	if (ret == 0) {
+		// process still running
+		return 0;
+	} else if (ret > 0) {
 		if (WIFEXITED(wait_status)) {
+			close(proc->pipe); proc->pipe = 0;
 			int code = WEXITSTATUS(wait_status);
 			if (code == 0) {
 				str_printf(message, message_size, "exited successfully");
@@ -78,16 +85,15 @@ int process_check_status(Process *proc, char *message, size_t message_size) {
 				return -1;
 			}
 		} else if (WIFSIGNALED(wait_status)) {
+			close(proc->pipe);
 			str_printf(message, message_size, "terminated by signal %d", WTERMSIG(wait_status));
 			return -1;
 		}
 		return 0;
-	} else if (errno == ECHILD) {
+	} else {
 		// this process is gone or something?
+		close(proc->pipe); proc->pipe = 0;
 		str_printf(message, message_size, "process ended unexpectedly");
 		return -1;
-	} else {
-		// probably shouldn't happen
-		return 0;
 	}
 }

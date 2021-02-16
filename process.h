@@ -20,7 +20,7 @@ long long process_read(Process *process, char *data, size_t size);
 // 0  if the process hasn't exited.
 // If message is not NULL, it will be set to a description of what happened (e.g. "exited successfully")
 int process_check_status(Process *process, char *message, size_t message_size);
-// kills process if still running, and frees data associated with it.
-void process_stop(Process *process);
+// kills process if still running
+void process_kill(Process *process);
 
 #endif

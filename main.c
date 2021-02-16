@@ -155,7 +155,7 @@ int main(int argc, char **argv) {
 		printf("Error: %s\n", process_geterr(proc));
 		return EXIT_FAILURE;
 	}
-	#if 1
+	#if 0
 	{
 		i64 bytes = 0;
 		char buf[256];
@@ -172,6 +172,8 @@ int main(int argc, char **argv) {
 			}
 		}
 	}
+	#endif
+	#if 1
 	{
 		char message[256];
 		while (1) {
