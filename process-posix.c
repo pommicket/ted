@@ -10,6 +10,8 @@ struct Process {
 };
 
 bool process_exec(Process *proc, char const *program, char **argv) {
+	memset(proc, 0, sizeof *proc);
+
 	bool success = false;
 
 	int pipefd[2];

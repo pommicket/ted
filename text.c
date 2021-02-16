@@ -323,7 +323,7 @@ void text_utf8_with_state(Font *font, TextRenderState *state, char const *str) {
 		size_t ret = unicode_utf8_to_utf32(&c, str, (size_t)(end - str));
 		if (ret == 0) {
 			break;
-		} else if (ret == (size_t)-1) {
+		} else if (ret >= (size_t)-2) {
 			// invalid UTF-8
 			text_char_with_state(font, state, '?');
 			++str;

@@ -36,7 +36,7 @@ String32 str32_from_utf8(char const *utf8) {
 				char32_t c = 0;
 				size_t n = unicode_utf8_to_utf32(&c, utf8_p, (size_t)(utf8_end - utf8_p));
 				if (n == 0 // null character. this shouldn't happen.
-					|| n == (size_t)(-1) // invalid UTF-8
+					|| n >= (size_t)(-2) // invalid UTF-8
 					) {
 					free(widestr);
 					widestr = wide_p = NULL;

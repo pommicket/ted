@@ -1291,6 +1291,11 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 	return b;
 }
 
+void buffer_insert_char_at_pos(TextBuffer *buffer, BufferPos pos, char32_t c) {
+	String32 s = {&c, 1};
+	buffer_insert_text_at_pos(buffer, pos, s);
+}
+
 // Select (or add to selection) everything between the cursor and pos, and move the cursor to pos
 void buffer_select_to_pos(TextBuffer *buffer, BufferPos pos) {
 	if (!buffer->selection)
@@ -1812,7 +1817,7 @@ Status buffer_load_file(TextBuffer *buffer, char const *filename) {
 									// null character
 									c = 0;
 									++p;
-								} else if (n == (size_t)(-1)) {
+								} else if (n >= (size_t)(-2)) {
 									// invalid UTF-8
 									success = false;
 									buffer_seterr(buffer, "Invalid UTF-8 (position: %td).", p - file_contents);
@@ -1905,7 +1910,8 @@ bool buffer_externally_changed(TextBuffer *buffer) {
 void buffer_new_file(TextBuffer *buffer, char const *filename) {
 	buffer_clear(buffer);
 
-	buffer->filename = buffer_strdup(buffer, filename);
+	if (filename)
+		buffer->filename = buffer_strdup(buffer, filename);
 	buffer->lines_capacity = 4;
 	buffer->lines = buffer_calloc(buffer, buffer->lines_capacity, sizeof *buffer->lines);
 	buffer->nlines = 1;
@@ -2045,6 +2051,8 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	
 	float render_start_y = y1 - (float)(buffer->scroll_y - start_line) * char_height; // where the 1st line is rendered
 
+	bool render_cursor = buffer == ted->active_buffer;
+
 	// line numbering
 	if (!buffer->is_line_buffer && settings->line_numbers) {
 		float line_number_width = ndigits_u64(buffer->nlines) * char_width + padding;
@@ -2054,7 +2062,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 		text_state.max_y = y2;
 
 		float y = render_start_y;
-		u32 cursor_line = buffer->cursor_pos.line;
+		u32 cursor_line = render_cursor ? buffer->cursor_pos.line : U32_MAX;
 		for (u32 line = start_line; line < nlines; ++line) {
 			char str[32] = {0};
 			strbuf_printf(str, U32_FMT, line + 1); // convert line number to string
@@ -2082,9 +2090,8 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	// the rectangle that the cursor is rendered as
 	Rect cursor_rect = rect(cursor_display_pos, V2(settings->cursor_width, char_height));
 
-	
-	// highlight line cursor is on
-	{
+	if (render_cursor) {
+		// highlight line cursor is on
 		Rect hl_rect = rect(V2(x1, cursor_display_pos.y), V2(x2-x1-1, char_height));
 		buffer_clip_rect(buffer, &hl_rect);
 		gl_geometry_rect(hl_rect, colors[COLOR_CURSOR_LINE_BG]);
@@ -2226,7 +2233,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 
 	text_render(font);
 
-	if (buffer == ted->active_buffer) {
+	if (render_cursor) {
 		// render cursor
 		float time_on = settings->cursor_blink_time_on;
 		float time_off = settings->cursor_blink_time_off;

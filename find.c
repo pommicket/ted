@@ -292,15 +292,13 @@ static void find_replace_all(Ted *ted) {
 	}
 }
 
-static void find_menu_frame(Ted *ted) {
+static void find_menu_frame(Ted *ted, float x1, float y1, float x2, float y2) {
 	Font *font = ted->font, *font_bold = ted->font_bold;
 	float const char_height = text_font_char_height(font),
 		char_height_bold = text_font_char_height(font_bold);
 
 	Settings const *settings = &ted->settings;
 	float const padding = settings->padding;
-	float const menu_height = find_menu_height(ted);
-	float const window_width = ted->window_width, window_height = ted->window_height;
 	u32 const *colors = settings->colors;
 	bool const replace = ted->replace;
 	
@@ -310,8 +308,6 @@ static void find_menu_frame(Ted *ted) {
 	u32 first_rendered_line = buffer_first_rendered_line(buffer);
 	u32 last_rendered_line = buffer_last_rendered_line(buffer);
 	
-
-	float x1 = padding, y1 = window_height - menu_height + padding, x2 = window_width - padding, y2 = window_height - padding;
 
 	Rect menu_bounds = rect4(x1, y1, x2, y2);
 

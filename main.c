@@ -66,6 +66,7 @@ no_warn_end
 #include "find.c"
 #include "node.c"
 #include "menu.c"
+#include "build.c"
 #include "command.c"
 #include "config.c"
 
@@ -145,52 +146,6 @@ INT WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 int main(int argc, char **argv) {
 #endif
 	setlocale(LC_ALL, ""); // allow unicode
-
-
-	char *program = "/usr/bin/sleep";
-	char *args[] = {program, "5",  NULL};
-	Process process = {0}, *proc = &process;
-
-	if (!process_exec(proc, program, args)) {
-		printf("Error: %s\n", process_geterr(proc));
-		return EXIT_FAILURE;
-	}
-	#if 0
-	{
-		i64 bytes = 0;
-		char buf[256];
-		while (1) {
-			bytes = process_read(proc, buf, sizeof buf);
-			if (bytes == -2) {
-				printf("Error: %s\n", process_geterr(proc));
-			} else if (bytes == -1) {
-				usleep(1000);
-			} else if (bytes == 0) {
-				break;
-			} else {
-				fwrite(buf, 1, (size_t)bytes, stdout);
-			}
-		}
-	}
-	#endif
-	#if 1
-	{
-		char message[256];
-		while (1) {
-			int status = process_check_status(proc, message, sizeof message);
-			if (status == -1) {
-				printf("%s!!!\n",message);
-				break;
-			} else if (status == +1) {
-				printf("%s\n", message);
-				break;
-			} else {
-				usleep(1000);
-			}
-		}
-	}
-	#endif
-	return 0;
 
 	// read command-line arguments
 	char const *starting_filename = NULL;
@@ -373,8 +328,8 @@ int main(int argc, char **argv) {
 	}
 	line_buffer_create(&ted->find_buffer, ted);
 	line_buffer_create(&ted->replace_buffer, ted);
-	
-	
+	buffer_create(&ted->build_buffer, ted);
+
 	{
 		u16 buffer_index = (u16)ted_new_buffer(ted);
 		assert(buffer_index == 0);
@@ -627,13 +582,24 @@ int main(int argc, char **argv) {
 		Font *font = ted->font;
 
 		if (ted->active_node) {
-			float x1 = 25, y1 = 25, x2 = window_width-25, y2 = window_height-25;
+			float const padding = settings->padding;
+			float x1 = padding, y = window_height-padding, x2 = window_width-padding;
 			Node *node = ted->root;
-			if (ted->find) y2 -= find_menu_height(ted);
-			node_frame(ted, node, rect4(x1, y1, x2, y2));
 			if (ted->find) {
-				find_menu_frame(ted);
+				float y2 = y;
+				y -= find_menu_height(ted);
+				find_menu_frame(ted, x1, y, x2, y2);
+				y -= padding;
 			}
+			if (ted->build_shown) {
+				float y2 = y;
+				y -= 0.3f * ted->window_height;
+				build_frame(ted, x1, y, x2, y2);
+				y -= padding;
+			}
+
+			float y1 = padding;
+			node_frame(ted, node, rect4(x1, y1, x2, y));
 		} else {
 			text_utf8_anchored(font, "Press Ctrl+O to open a file or Ctrl+N to create a new one.",
 				window_width * 0.5f, window_height * 0.5f, colors[COLOR_TEXT_SECONDARY], ANCHOR_MIDDLE);
@@ -738,6 +704,8 @@ int main(int argc, char **argv) {
 
 	}
 
+	build_stop(ted);
+
 
 	if (ted->menu)
 		menu_close(ted); // free any memory used by the current menu
@@ -757,6 +725,7 @@ int main(int argc, char **argv) {
 	buffer_free(&ted->line_buffer);
 	buffer_free(&ted->find_buffer);
 	buffer_free(&ted->replace_buffer);
+	buffer_free(&ted->build_buffer);
 	text_font_free(ted->font);
 	text_font_free(ted->font_bold);
 	settings_free(&ted->settings);

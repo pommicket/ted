@@ -225,6 +225,7 @@ typedef struct Ted {
 	TextBuffer line_buffer; // general-purpose line buffer for inputs -- used for menus
 	TextBuffer find_buffer; // use for "find" term in find/find+replace
 	TextBuffer replace_buffer; // "replace" for find+replace
+	TextBuffer build_buffer; // buffer for build output (view only)
 	double error_time; // time error box was opened (in seconds -- see time_get_seconds)
 	KeyAction key_actions[KEY_COMBO_COUNT];
 	bool search_cwd; // should the working directory be searched for files? set to true if the executable isn't "installed"
@@ -238,6 +239,13 @@ typedef struct Ted {
 	FindResult *find_results;
 	bool find_invalid_pattern; // invalid regex?
 	Command warn_unsaved; // if non-zero, the user is trying to execute this command, but there are unsaved changes
+	bool build_shown; // are we showing the build output?
+	bool building; // is the build process running?
+	Process build_process;
+	// When we read the stdout from the build process, the tail end of the read could be an
+	// incomplete UTF-8 code point. This is where we store that "tail end" until more
+	// data is available. (This is up to 3 bytes, null terminated)
+	char build_incomplete_codepoint[4];
 	char warn_unsaved_names[TED_PATH_MAX]; // comma-separated list of files with unsaved changes (only applicable if warn_unsaved != 0)
 	char warn_overwrite[TED_PATH_MAX]; // file name user is trying to overwrite
 	char ask_reload[TED_PATH_MAX]; // file name which we want to reload

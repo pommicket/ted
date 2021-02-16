@@ -164,7 +164,7 @@ static char *stristr(char const *haystack, char const *needle) {
 			char32_t pchar = 0, qchar = 0;
 			size_t bytes_p = unicode_utf8_to_utf32(&pchar, p, (size_t)(haystack_end - p));
 			size_t bytes_q = unicode_utf8_to_utf32(&qchar, q, (size_t)(needle_end - q));
-			if (bytes_p == (size_t)-1 || bytes_q == (size_t)-1) return NULL; // invalid UTF-8
+			if (bytes_p >= (size_t)-2 || bytes_q >= (size_t)-2) return NULL; // invalid UTF-8
 			bool same = pchar == qchar;
 			if (pchar < WINT_MAX && qchar < WINT_MAX) // on Windows, there is no way of finding the lower-case version of a codepoint outside the BMP. ):
 				same = towlower((wint_t)pchar) == towlower((wint_t)qchar);

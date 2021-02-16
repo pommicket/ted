@@ -14,7 +14,8 @@ static bool unicode_is_start_of_code_point(u8 byte) {
 // number of bytes that can be read from `str`.
 // Returns:
 // 0 - if a NULL character was encountered
-// (size_t)-1 - on invalid UTF-8 / incomplete code point
+// (size_t)-1 - on invalid UTF-8
+// (size_t)-2 - on incomplete code point (str should be longer)
 // other - the number of bytes read from `str`.
 static size_t unicode_utf8_to_utf32(char32_t *c, char const *str, size_t bytes) {
 	if (bytes == 0) {
@@ -39,7 +40,7 @@ static size_t unicode_utf8_to_utf32(char32_t *c, char const *str, size_t bytes) 
 			} else {
 				// incomplete code point
 				*c = 0;
-				return (size_t)-1;
+				return (size_t)-2;
 			}
 		}
 		if ((first_byte & 0xF0) == 0xE0) {
@@ -63,7 +64,7 @@ static size_t unicode_utf8_to_utf32(char32_t *c, char const *str, size_t bytes) 
 			} else {
 				// incomplete
 				*c = 0;
-				return (size_t)-1;
+				return (size_t)-2;
 			}
 		}
 		if ((first_byte & 0xF8) == 0xF0) {
@@ -90,7 +91,7 @@ static size_t unicode_utf8_to_utf32(char32_t *c, char const *str, size_t bytes) 
 			} else {
 				// incomplete
 				*c = 0;
-				return (size_t)-1;
+				return (size_t)-2;
 			}
 		}
 		// invalid UTF-8
