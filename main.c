@@ -412,9 +412,6 @@ int main(int argc, char **argv) {
 				Sint32 dx = event.wheel.x, dy = -event.wheel.y;
 				ted->scroll_total_x += dx;
 				ted->scroll_total_y += dy;
-				double scroll_speed = 2.5;
-				if (ted->active_buffer)
-					buffer_scroll(ted->active_buffer, dx * scroll_speed, dy * scroll_speed);
 			} break;
 			case SDL_MOUSEBUTTONDOWN: {
 				Uint32 button = event.button.button;
@@ -435,33 +432,11 @@ int main(int argc, char **argv) {
 							add = false;
 						}
 					}
-					if (add)
-						ted->mouse_clicks[button][ted->nmouse_clicks[button]++] = pos;
-				}
-				switch (button) {
-				case SDL_BUTTON_LEFT: {
-					if (buffer) {
-						BufferPos pos = {0};
-						if (buffer_pixels_to_pos(buffer, V2(x, y), &pos)) {
-							if (key_modifier == KEY_MODIFIER_SHIFT) {
-								buffer_select_to_pos(buffer, pos);
-							} else if (key_modifier == 0) {
-								buffer_cursor_move_to_pos(buffer, pos);
-								switch ((event.button.clicks - 1) % 3) {
-								case 0: break; // single-click
-								case 1: // double-click: select word
-									buffer_select_word(buffer);
-									break;
-								case 2: // triple-click: select line
-									buffer_select_line(buffer);
-									break;
-								}
-							}
-							ted->drag_buffer = buffer;
-
-						}
+					if (add) {
+						ted->mouse_clicks[button][ted->nmouse_clicks[button]] = pos;
+						ted->mouse_click_times[button][ted->nmouse_clicks[button]] = event.button.clicks;
+						++ted->nmouse_clicks[button];
 					}
-				} break;
 				}
 			} break;
 			case SDL_MOUSEMOTION: {

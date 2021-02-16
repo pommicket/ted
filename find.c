@@ -413,18 +413,6 @@ static void find_menu_frame(Ted *ted, float x1, float y1, float x2, float y2) {
 	x += checkbox_frame(ted, &ted->find_case_sensitive, "Case sensitive", V2(x, y1)).x + 2*padding;
 	x += checkbox_frame(ted, &ted->find_regex, "Regular expression", V2(x, y1)).x + 2*padding;
 
-	if (replace) {
-		// check if the find or replace line buffer was clicked on
-		for (u32 i = 0; i < ted->nmouse_clicks[SDL_BUTTON_LEFT]; ++i) {
-			v2 point = ted->mouse_clicks[SDL_BUTTON_LEFT][i];
-			if (rect_contains_point(find_buffer_bounds, point))
-				ted->active_buffer = find_buffer;
-			else if (rect_contains_point(replace_buffer_bounds, point))
-				ted->active_buffer = replace_buffer;
-			
-		}
-	}
-
 	buffer_render(find_buffer, find_buffer_bounds);
 	if (replace) buffer_render(replace_buffer, replace_buffer_bounds);
 	

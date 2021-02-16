@@ -202,6 +202,12 @@ typedef struct {
 	BufferPos end;
 } FindResult;
 
+typedef struct {
+	char *filename;
+	u32 line;
+	u32 build_output_line; // which line in the build output corresponds to this error
+} BuildError;
+
 typedef struct Ted {
 	SDL_Window *window;
 	Font *font_bold;
@@ -219,6 +225,8 @@ typedef struct Ted {
 	v2 mouse_pos;
 	u8 nmouse_clicks[4]; // nmouse_clicks[i] = length of mouse_clicks[i]
 	v2 mouse_clicks[4][32]; // mouse_clicks[SDL_BUTTON_RIGHT], for example, is all the right mouse-clicks that have happened this frame
+	// number of times mouse was clicked at each position
+	u8 mouse_click_times[4][32];
 	int scroll_total_x, scroll_total_y; // total amount scrolled in the x and y direction this frame
 	Menu menu;
 	FileSelector file_selector;
@@ -241,6 +249,9 @@ typedef struct Ted {
 	Command warn_unsaved; // if non-zero, the user is trying to execute this command, but there are unsaved changes
 	bool build_shown; // are we showing the build output?
 	bool building; // is the build process running?
+	
+	BuildError *build_errors; // dynamic array of build errors
+
 	Process build_process;
 	// When we read the stdout from the build process, the tail end of the read could be an
 	// incomplete UTF-8 code point. This is where we store that "tail end" until more

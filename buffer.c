@@ -2085,6 +2085,38 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 
 	buffer->x1 = x1; buffer->y1 = y1; buffer->x2 = x2; buffer->y2 = y2;
 
+	// handle mouse clicks
+	for (u32 i = 0; i < ted->nmouse_clicks[SDL_BUTTON_LEFT]; ++i) {
+		v2 point = ted->mouse_clicks[SDL_BUTTON_LEFT][i];
+		u8 times = ted->mouse_click_times[SDL_BUTTON_LEFT][i];
+		BufferPos pos;
+		if (buffer_pixels_to_pos(buffer, point, &pos)) {
+			// user clicked on buffer
+			if (!ted->menu)
+				ted->active_buffer = buffer;
+			if (buffer == ted->active_buffer) {
+				buffer_cursor_move_to_pos(buffer, pos);
+
+				switch ((times - 1) % 3) {
+				case 0: break; // single-click
+				case 1: // double-click: select word
+					buffer_select_word(buffer);
+					break;
+				case 2: // triple-click: select line
+					buffer_select_line(buffer);
+					break;
+				}
+				ted->drag_buffer = buffer;
+			}
+		}
+	}
+
+	if (rect_contains_point(rect4(x1, y1, x2, y2), ted->mouse_pos)) {
+		// scroll with mouse wheel
+		double scroll_speed = 2.5;
+		buffer_scroll(buffer, ted->scroll_total_x * scroll_speed, ted->scroll_total_y * scroll_speed);
+	}
+
 	// get screen coordinates of cursor
 	v2 cursor_display_pos = buffer_pos_to_pixels(buffer, buffer->cursor_pos);
 	// the rectangle that the cursor is rendered as
@@ -2283,6 +2315,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 		}
 		gl_geometry_draw();
 	}
+
 }
 
 // if you do:

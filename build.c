@@ -1,4 +1,5 @@
 static void build_start(Ted *ted) {
+	chdir(ted->cwd);
 #if __unix__
 	char *program = "/bin/sh";
 	char *argv[] = {
@@ -19,6 +20,9 @@ static void build_start(Ted *ted) {
 static void build_stop(Ted *ted) {
 	if (ted->building)
 		process_kill(&ted->build_process);
+	arr_foreach_ptr(ted->build_errors, BuildError, err) {
+		free(err->filename);
+	}
 	ted->building = false;
 	ted->build_shown = false;
 }
@@ -89,6 +93,62 @@ static void build_frame(Ted *ted, float x1, float y1, float x2, float y2) {
 		} else {
 			buffer_insert_utf8_at_cursor(buffer, message);
 			ted->building = false;
+
+			// check for errors
+			for (u32 line_idx = 0; line_idx < buffer->nlines; ++line_idx) {
+				Line *line = &buffer->lines[line_idx];
+				if (line->len < 3) {
+					continue;
+				}
+				bool is_error = true;
+				u32 i = 0;
+				char32_t *str = line->str; u32 len = line->len;
+				
+				// we have something like main.c:5
+				
+				// get file name
+				while (i < len) {
+					if (str[i] == ':') break;
+					if (!is32_alnum(str[i]) && str[i] != '/' && str[i] != '.' && str[i] != '\\') {
+						is_error = false;
+						break;
+					}
+					++i;
+				}
+				if (i >= len) is_error = false;
+
+				if (is_error) {
+					u32 filename_len = i;
+					u32 line_number_len = 0;
+					++i;
+					while (i < len) {
+						if (str[i] == ':') break;
+						if (str[i] < '0' || str[i] > '9') {
+							is_error = false;
+							break;
+						}
+						++i;
+						++line_number_len;
+					}
+					if (i >= len) is_error = false;
+					if (line_number_len == 0) is_error = false;
+
+					if (is_error) {
+						char *line_number_str = str32_to_utf8_cstr(str32(str + filename_len + 1, line_number_len));
+						if (line_number_str) {
+							int line_number = atoi(line_number_str);
+							free(line_number_str);
+							
+							char *filename = str32_to_utf8_cstr(str32(str, filename_len));
+							if (filename) {
+								char full_path[TED_PATH_MAX];
+								ted_full_path(ted, filename, full_path, sizeof full_path);
+								printf("File %s line %d\n",full_path,line_number);
+							}
+						}
+					}
+				}
+			}
 		}
 		buffer->view_only = true;
 	}
