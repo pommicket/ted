@@ -6,40 +6,11 @@
 struct Process {
 	pid_t pid;
 	int pipe;
-	bool stopped;
-	int exit_status; // INT_MAX if process was terminated
+	char error[64];
 };
 
-static char process_error[64];
-static Process *processes;
-
-static void process_sigaction_sigchld(int signal, siginfo_t *info, void *context) {
-	(void)context;
-	if (signal == SIGCHLD) {
-		pid_t pid = info->si_pid;
-		arr_foreach_ptr(processes, Process, process) {
-			if (process->pid == pid) {
-				process->stopped = true;
-				if (info->si_code == CLD_EXITED)
-					process->exit_status = info->si_status;
-				else
-					process->exit_status = INT_MAX;
-			}
-		}
-	}
-}
-
-void process_init(void) {
-	struct sigaction act = {0};
-	act.sa_sigaction = process_sigaction_sigchld;
-	act.sa_flags = SA_SIGINFO | SA_NOCLDSTOP;
-	sigaction(SIGCHLD, &act, NULL);
-}
-
-
-
-Process *process_exec(char const *program, char **argv) {
-	Process *proc = NULL;
+bool process_exec(Process *proc, char const *program, char **argv) {
+	bool success = false;
 
 	int pipefd[2];
 	if (pipe(pipefd) == 0) {
@@ -56,21 +27,21 @@ Process *process_exec(char const *program, char **argv) {
 				exit(127);
 			}
 		} else if (pid > 0) {
-			proc = arr_addp(processes);
 			// parent process
 			close(pipefd[1]);
 			fcntl(pipefd[0], F_SETFL, fcntl(pipefd[0], F_GETFL) | O_NONBLOCK); // set pipe to non-blocking
 			proc->pid = pid;
 			proc->pipe = pipefd[0];
+			success = true;
 		}
 	} else {
-		strbuf_printf(process_error, "%s", strerror(errno));
+		strbuf_printf(proc->error, "%s", strerror(errno));
 	}
-	return proc;
+	return success;
 }
 
-char const *process_geterr(void) {
-	return *process_error ? process_error : NULL;
+char const *process_geterr(Process *p) {
+	return p->error;
 }
 
 long long process_read(Process *proc, char *data, size_t size) {
@@ -81,7 +52,7 @@ long long process_read(Process *proc, char *data, size_t size) {
 	} else if (errno == EAGAIN) {
 		return -1;
 	} else {
-		strbuf_printf(process_error, "%s", strerror(errno));
+		strbuf_printf(proc->error, "%s", strerror(errno));
 		return -2;
 	}
 
@@ -89,31 +60,34 @@ long long process_read(Process *proc, char *data, size_t size) {
 
 void process_stop(Process *proc) {
 	kill(proc->pid, SIGKILL);
-	// get rid of zombie process
-	waitpid(proc->pid, NULL, 0);
 	close(proc->pipe);
-	for (u32 i = 0; i < arr_len(processes); ++i)
-		if (processes[i].pid == proc->pid)
-			arr_remove(processes, i);
+	proc->pid = 0;
+	proc->pipe = 0;
 }
-#include <sys/resource.h>
-int process_check_status(Process *proc, char *message, size_t message_size) {
-	if (proc->stopped) {
-		int status = proc->exit_status;
-		process_stop(proc);
 
-		switch (status) {
-		case 0:
-			if (message) str_printf(message, message_size, "exited successfully");
-			return +1;
-		case INT_MAX:
-			if (message) str_printf(message, message_size, "terminated by a signal");
-			return -1;
-		default:
-			if (message) str_printf(message, message_size, "exited with code %d", status);
+int process_check_status(Process *proc, char *message, size_t message_size) {
+	int wait_status = 0;
+	if (waitpid(proc->pid, &wait_status, WNOHANG) >= 0) {
+		if (WIFEXITED(wait_status)) {
+			int code = WEXITSTATUS(wait_status);
+			if (code == 0) {
+				str_printf(message, message_size, "exited successfully");
+				return +1;
+			} else {
+				str_printf(message, message_size, "exited with code %d", code);
+				return -1;
+			}
+		} else if (WIFSIGNALED(wait_status)) {
+			str_printf(message, message_size, "terminated by signal %d", WTERMSIG(wait_status));
 			return -1;
 		}
+		return 0;
+	} else if (errno == ECHILD) {
+		// this process is gone or something?
+		str_printf(message, message_size, "process ended unexpectedly");
+		return -1;
 	} else {
+		// probably shouldn't happen
 		return 0;
 	}
 }

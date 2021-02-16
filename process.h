@@ -5,9 +5,9 @@
 typedef struct Process Process;
 
 // returns NULL on failure
-Process *process_exec(char const *program, char **argv);
+bool process_exec(Process *process, char const *program, char **argv);
 // returns the error last error produced, or NULL if there was no error.
-char const *process_geterr(void);
+char const *process_geterr(Process *process);
 // returns:
 // -2 on error
 // -1 if no data is available right now

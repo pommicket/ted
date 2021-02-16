@@ -146,14 +146,13 @@ int main(int argc, char **argv) {
 #endif
 	setlocale(LC_ALL, ""); // allow unicode
 
-	process_init();
 
+	char *program = "/usr/bin/sleep";
+	char *args[] = {program, "5",  NULL};
+	Process process = {0}, *proc = &process;
 
-	char *program = "/usr/bin/make";
-	char *args[] = {program,  NULL};
-	Process *process = process_exec(program, args);
-	if (!process) {
-		printf("Error: %s\n", process_geterr());
+	if (!process_exec(proc, program, args)) {
+		printf("Error: %s\n", process_geterr(proc));
 		return EXIT_FAILURE;
 	}
 	#if 1
@@ -161,9 +160,9 @@ int main(int argc, char **argv) {
 		i64 bytes = 0;
 		char buf[256];
 		while (1) {
-			bytes = process_read(process, buf, sizeof buf);
+			bytes = process_read(proc, buf, sizeof buf);
 			if (bytes == -2) {
-				printf("Error: %s\n", process_geterr());
+				printf("Error: %s\n", process_geterr(proc));
 			} else if (bytes == -1) {
 				usleep(1000);
 			} else if (bytes == 0) {
@@ -176,7 +175,7 @@ int main(int argc, char **argv) {
 	{
 		char message[256];
 		while (1) {
-			int status = process_check_status(process, message, sizeof message);
+			int status = process_check_status(proc, message, sizeof message);
 			if (status == -1) {
 				printf("%s!!!\n",message);
 				break;
