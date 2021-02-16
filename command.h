@@ -66,6 +66,8 @@ ENUM_U16 {
 	CMD_VIEW_ONLY, // toggle view-only mode
 
 	CMD_BUILD,
+	CMD_BUILD_PREV_ERROR,
+	CMD_BUILD_NEXT_ERROR,
 	
 	CMD_ESCAPE, // by default this is the escape key. closes menus, etc.
 
@@ -131,6 +133,8 @@ static CommandName const command_names[CMD_COUNT] = {
 	{"decrease-text-size", CMD_TEXT_SIZE_DECREASE},
 	{"view-only", CMD_VIEW_ONLY},
 	{"build", CMD_BUILD},
+	{"build-prev-error", CMD_BUILD_PREV_ERROR},
+	{"build-next-error", CMD_BUILD_NEXT_ERROR},
 	{"escape", CMD_ESCAPE},
 };
 

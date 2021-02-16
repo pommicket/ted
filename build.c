@@ -1,4 +1,15 @@
+// clear build errors.
+static void build_clear(Ted *ted) {
+	arr_foreach_ptr(ted->build_errors, BuildError, err) {
+		free(err->filename);
+	}
+	arr_clear(ted->build_errors);
+}
+
 static void build_start(Ted *ted) {
+	// get rid of any old build errors
+	build_clear(ted);
+
 	chdir(ted->cwd);
 #if __unix__
 	char *program = "/bin/sh";
@@ -13,19 +24,54 @@ static void build_start(Ted *ted) {
 	ted->building = true;
 	ted->build_shown = true;
 	buffer_new_file(&ted->build_buffer, NULL);
-	ted->build_buffer.store_undo_events = false;
+	ted->build_buffer.store_undo_events = false; // don't need undo events for build output buffer
 	ted->build_buffer.view_only = true;
 }
 
 static void build_stop(Ted *ted) {
 	if (ted->building)
 		process_kill(&ted->build_process);
-	arr_foreach_ptr(ted->build_errors, BuildError, err) {
-		free(err->filename);
-	}
 	ted->building = false;
 	ted->build_shown = false;
+	build_clear(ted);
 }
+
+static void build_go_to_error(Ted *ted) {
+	if (ted->build_error < arr_len(ted->build_errors)) {
+		BuildError error = ted->build_errors[ted->build_error];
+		// open the file where the error happened
+		if (ted_open_file(ted, error.filename)) {
+			TextBuffer *buffer = ted->active_buffer;
+			assert(buffer);
+			// move cursor to error
+			buffer_cursor_move_to_pos(buffer, error.pos);
+			buffer->center_cursor_next_frame = true;
+
+			// move cursor to error in build output
+			TextBuffer *build_buffer = &ted->build_buffer;
+			BufferPos error_pos = {.line = error.build_output_line, .index = 0};
+			buffer_cursor_move_to_pos(build_buffer, error_pos);
+			buffer_center_cursor(build_buffer);
+		}
+	}
+}
+
+static void build_next_error(Ted *ted) {
+	if (ted->build_errors) {
+		ted->build_error += 1;
+		ted->build_error %= arr_len(ted->build_errors);
+		build_go_to_error(ted);
+	}
+}
+
+static void build_prev_error(Ted *ted) {
+	if (ted->build_errors) {
+		ted->build_error += arr_len(ted->build_errors) - 1;
+		ted->build_error %= arr_len(ted->build_errors);
+		build_go_to_error(ted);
+	}
+}
+
 
 static void build_frame(Ted *ted, float x1, float y1, float x2, float y2) {
 	TextBuffer *buffer = &ted->build_buffer;
@@ -82,6 +128,7 @@ static void build_frame(Ted *ted, float x1, float y1, float x2, float y2) {
 		}
 
 		if (any_text_inserted) {
+			// show bottom of output (only relevant if there are no build errors)
 			buffer->cursor_pos = buffer_end_of_file(buffer);
 			buffer_scroll_to_cursor(buffer);
 		}
@@ -132,23 +179,60 @@ static void build_frame(Ted *ted, float x1, float y1, float x2, float y2) {
 					}
 					if (i >= len) is_error = false;
 					if (line_number_len == 0) is_error = false;
+					
 
 					if (is_error) {
 						char *line_number_str = str32_to_utf8_cstr(str32(str + filename_len + 1, line_number_len));
 						if (line_number_str) {
 							int line_number = atoi(line_number_str);
 							free(line_number_str);
-							
-							char *filename = str32_to_utf8_cstr(str32(str, filename_len));
-							if (filename) {
-								char full_path[TED_PATH_MAX];
-								ted_full_path(ted, filename, full_path, sizeof full_path);
-								printf("File %s line %d\n",full_path,line_number);
+
+							if (line_number > 0) {
+								// it's an error
+
+								// check if there's a column number
+								u32 column_len = 0;
+								++i;
+								while (i < len) {
+									if (str[i] >= '0' && str[i] <= '9')
+										++column_len;
+									else
+										break;
+									++i;
+								}
+								int column = 0;
+								if (column_len) {
+									// file:line:column syntax
+									char *column_str = str32_to_utf8_cstr(str32(str + filename_len + 1 + line_number_len + 1, column_len));
+									if (column_str) {
+										column = atoi(column_str);
+										column -= 1;
+										if (column < 0) column = 0;
+										free(column_str);
+									}
+								}
+
+								line_number -= 1; // line numbers in output start from 1.
+								char *filename = str32_to_utf8_cstr(str32(str, filename_len));
+								if (filename) {
+									char full_path[TED_PATH_MAX];
+									ted_full_path(ted, filename, full_path, sizeof full_path);
+									BuildError error = {
+										.filename = str_dup(full_path),
+										.pos = {.line = (u32)line_number, .index = (u32)column},
+										.build_output_line = line_idx
+									};
+									arr_add(ted->build_errors, error);
+								}
 							}
 						}
 					}
 				}
 			}
+
+			// go to the first error (if there is one)
+			ted->build_error = 0;
+			build_go_to_error(ted);
 		}
 		buffer->view_only = true;
 	}

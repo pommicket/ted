@@ -310,5 +310,11 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		}
 		build_start(ted);
 		break;
+	case CMD_BUILD_NEXT_ERROR:
+		build_next_error(ted);
+		break;
+	case CMD_BUILD_PREV_ERROR:
+		build_prev_error(ted);
+		break;
 	}
 }

@@ -137,6 +137,9 @@ typedef struct {
 	bool will_chain_edits;
 	bool chaining_edits; // are we chaining undo events together?
 	bool view_only;
+	// If set to true, buffer will be scrolled to the cursor position next frame.
+	// This is to fix the problem that x1,y1,x2,y2 are not updated until the buffer is rendered.
+	bool center_cursor_next_frame; 
 	float x1, y1, x2, y2;
 	u32 nlines;
 	u32 lines_capacity;
@@ -204,7 +207,7 @@ typedef struct {
 
 typedef struct {
 	char *filename;
-	u32 line;
+	BufferPos pos;
 	u32 build_output_line; // which line in the build output corresponds to this error
 } BuildError;
 
@@ -251,6 +254,7 @@ typedef struct Ted {
 	bool building; // is the build process running?
 	
 	BuildError *build_errors; // dynamic array of build errors
+	u32 build_error; // build error we are currently "on"
 
 	Process build_process;
 	// When we read the stdout from the build process, the tail end of the read could be an

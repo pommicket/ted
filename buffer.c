@@ -1889,7 +1889,8 @@ void buffer_reload(TextBuffer *buffer) {
 		BufferPos cursor_pos = buffer->cursor_pos;
 		float x1 = buffer->x1, y1 = buffer->y1, x2 = buffer->x2, y2 = buffer->y2;
 		double scroll_x = buffer->scroll_x; double scroll_y = buffer->scroll_y;
-		if (buffer_load_file(buffer, buffer->filename)) {
+		char *filename = str_dup(buffer->filename);
+		if (buffer_load_file(buffer, filename)) {
 			buffer->x1 = x1; buffer->y1 = y1; buffer->x2 = x2; buffer->y2 = y2;
 			buffer->cursor_pos = cursor_pos;
 			buffer->scroll_x = scroll_x;
@@ -1897,6 +1898,7 @@ void buffer_reload(TextBuffer *buffer) {
 			buffer_validate_cursor(buffer);
 			buffer_correct_scroll(buffer);
 		}
+		free(filename);
 	}
 }
 
@@ -2051,7 +2053,6 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	
 	float render_start_y = y1 - (float)(buffer->scroll_y - start_line) * char_height; // where the 1st line is rendered
 
-	bool render_cursor = buffer == ted->active_buffer;
 
 	// line numbering
 	if (!buffer->is_line_buffer && settings->line_numbers) {
@@ -2062,7 +2063,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 		text_state.max_y = y2;
 
 		float y = render_start_y;
-		u32 cursor_line = render_cursor ? buffer->cursor_pos.line : U32_MAX;
+		u32 cursor_line = buffer->cursor_pos.line;
 		for (u32 line = start_line; line < nlines; ++line) {
 			char str[32] = {0};
 			strbuf_printf(str, U32_FMT, line + 1); // convert line number to string
@@ -2084,6 +2085,11 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	}
 
 	buffer->x1 = x1; buffer->y1 = y1; buffer->x2 = x2; buffer->y2 = y2;
+
+	if (buffer->center_cursor_next_frame) {
+		buffer_center_cursor(buffer);
+		buffer->center_cursor_next_frame = false;
+	}
 
 	// handle mouse clicks
 	for (u32 i = 0; i < ted->nmouse_clicks[SDL_BUTTON_LEFT]; ++i) {
@@ -2122,8 +2128,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	// the rectangle that the cursor is rendered as
 	Rect cursor_rect = rect(cursor_display_pos, V2(settings->cursor_width, char_height));
 
-	if (render_cursor) {
-		// highlight line cursor is on
+	{ // highlight line cursor is on
 		Rect hl_rect = rect(V2(x1, cursor_display_pos.y), V2(x2-x1-1, char_height));
 		buffer_clip_rect(buffer, &hl_rect);
 		gl_geometry_rect(hl_rect, colors[COLOR_CURSOR_LINE_BG]);
@@ -2265,7 +2270,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 
 	text_render(font);
 
-	if (render_cursor) {
+	if (ted->active_buffer == buffer) {
 		// render cursor
 		float time_on = settings->cursor_blink_time_on;
 		float time_off = settings->cursor_blink_time_off;
