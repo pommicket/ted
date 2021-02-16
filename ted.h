@@ -112,7 +112,7 @@ typedef struct {
 } Line;
 
 // this refers to replacing prev_len characters (found in prev_text) at pos with new_len characters
-typedef struct BufferEdit {
+typedef struct {
 	bool chain; // should this + the next edit be treated as one?
 	BufferPos pos;
 	u32 new_len;

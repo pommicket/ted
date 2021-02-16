@@ -42,6 +42,13 @@ no_warn_end
 #include "arr.c"
 
 #include "math.c"
+#if _WIN32
+#include "process-win.c"
+#elif __unix__
+#include "process-posix.c"
+#else
+#error "Unrecognized operating system."
+#endif
 
 #include "text.h"
 #include "command.h"
@@ -110,6 +117,11 @@ static void ted_update_window_dimensions(Ted *ted) {
 	gl_window_height = ted->window_height = (float)h;
 }
 
+void chld_handler(int x, siginfo_t *y, void *z) {
+	(void)x; (void)y; (void)z;
+	printf("got singal!\n");
+}
+
 #if _WIN32
 INT WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
     PSTR lpCmdLine, INT nCmdShow) {
@@ -134,6 +146,50 @@ int main(int argc, char **argv) {
 #endif
 	setlocale(LC_ALL, ""); // allow unicode
 
+	process_init();
+
+
+	char *program = "/usr/bin/make";
+	char *args[] = {program,  NULL};
+	Process *process = process_exec(program, args);
+	if (!process) {
+		printf("Error: %s\n", process_geterr());
+		return EXIT_FAILURE;
+	}
+	#if 1
+	{
+		i64 bytes = 0;
+		char buf[256];
+		while (1) {
+			bytes = process_read(process, buf, sizeof buf);
+			if (bytes == -2) {
+				printf("Error: %s\n", process_geterr());
+			} else if (bytes == -1) {
+				usleep(1000);
+			} else if (bytes == 0) {
+				break;
+			} else {
+				fwrite(buf, 1, (size_t)bytes, stdout);
+			}
+		}
+	}
+	{
+		char message[256];
+		while (1) {
+			int status = process_check_status(process, message, sizeof message);
+			if (status == -1) {
+				printf("%s!!!\n",message);
+				break;
+			} else if (status == +1) {
+				printf("%s\n", message);
+				break;
+			} else {
+				usleep(1000);
+			}
+		}
+	}
+	#endif
+	return 0;
 
 	// read command-line arguments
 	char const *starting_filename = NULL;

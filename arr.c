@@ -157,11 +157,16 @@ static void arr_set_len_(void **arr, size_t member_size, size_t n) {
 	}
 }
 
-static void arr_remove_(void *arr, size_t member_size, size_t index) {
+static void *arr_remove_(void *arr, size_t member_size, size_t index) {
 	ArrHeader *hdr = arr_hdr_(arr);
 	assert(index < hdr->len);
 	memmove((char *)arr + index * member_size, (char *)arr + (index+1) * member_size, (hdr->len - (index+1)) * member_size);
-	--hdr->len;
+	if (--hdr->len == 0) {
+		free(hdr);
+		return NULL;
+	} else {
+		return arr;
+	}
 }
 
 #ifdef __cplusplus
@@ -189,7 +194,7 @@ static void arr_remove_(void *arr, size_t member_size, size_t index) {
 // the newly-added elements are zero-initialized.
 #define arr_qsort(a, cmp) qsort((a), arr_len(a), sizeof *(a), (cmp))
 #define arr_remove_last(a) do { assert(a); if (--arr_hdr_(a)->len == 0) arr_free(a); } while (0)
-#define arr_remove(a, i) arr_remove_((a), sizeof *(a), (i))
+#define arr_remove(a, i) (void)((a) = arr_remove_((a), sizeof *(a), (i)))
 #define arr_pop_last(a) ((a)[--arr_hdr_(a)->len])
 #define arr_size_in_bytes(a) (arr_len(a) * sizeof *(a))
 #define arr_lastp(a) ((a) ? &(a)[arr_len(a)-1] : NULL)
