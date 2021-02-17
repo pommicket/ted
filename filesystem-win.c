@@ -1,6 +1,7 @@
 #include "filesystem.h"
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <io.h>
 
 FsType fs_path_type(char const *path) {
 	struct _stat statbuf = {0};
@@ -13,7 +14,12 @@ FsType fs_path_type(char const *path) {
 	return FS_OTHER;
 }
 
-#error "TODO: fs_path_permission"
+FsPermission fs_path_permission(char const *path) {
+	FsPermission permission = 0;
+	if (_access(path, 04) == 0) permission |= FS_PERMISSION_READ;
+	if (_access(path, 02) == 0) permission |= FS_PERMISSION_WRITE;
+	return permission;
+}
 
 bool fs_file_exists(char const *path) {
 	return fs_path_type(path) == FS_FILE;

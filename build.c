@@ -14,17 +14,17 @@ static void build_start(Ted *ted) {
 	
 	bool cargo = false;
 	
-	chdir(ted->cwd);
+	change_directory(ted->cwd);
 	strcpy(ted->build_dir, ted->cwd);
 	
 	if (fs_file_exists("Cargo.toml")) {
 		cargo = true;
 	} else if (fs_file_exists(".." PATH_SEPARATOR_STR "Cargo.toml")) {
-		chdir("..");
+		change_directory("..");
 		ted_full_path(ted, "..", ted->build_dir, sizeof ted->build_dir);
 		cargo = true;
 	} else if (fs_file_exists(".." PATH_SEPARATOR_STR ".." PATH_SEPARATOR_STR "Cargo.toml")) {
-		chdir(".." PATH_SEPARATOR_STR "..");
+		change_directory(".." PATH_SEPARATOR_STR "..");
 		ted_full_path(ted, "../..", ted->build_dir, sizeof ted->build_dir);
 		cargo = true;
 	}
@@ -40,7 +40,14 @@ static void build_start(Ted *ted) {
 		argv[2] = "make";
 	}
 #else
-	#error "TODO"
+	char *program = NULL;
+	char *argv[2] = {NULL, NULL};
+	if (cargo) {
+		program = "cargo";
+		argv[0] = "build";
+	} else {
+		program = "make";
+	}
 #endif
 
 	process_exec(&ted->build_process, program, argv);

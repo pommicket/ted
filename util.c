@@ -1,5 +1,6 @@
 #if _WIN32
 #include <intrin.h>
+#include <direct.h>
 #endif
 
 static u8 util_popcount(u64 x) {
@@ -274,3 +275,10 @@ static void path_full(char const *dir, char const *relpath, char *abspath, size_
 	}
 }
 
+static void change_directory(char const *path) {
+#if _WIN32
+	_chdir(path);
+#else
+	chdir(path);
+#endif
+}

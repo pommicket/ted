@@ -118,11 +118,6 @@ static void ted_update_window_dimensions(Ted *ted) {
 	gl_window_height = ted->window_height = (float)h;
 }
 
-void chld_handler(int x, siginfo_t *y, void *z) {
-	(void)x; (void)y; (void)z;
-	printf("got singal!\n");
-}
-
 #if _WIN32
 INT WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
     PSTR lpCmdLine, INT nCmdShow) {
