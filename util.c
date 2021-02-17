@@ -243,3 +243,34 @@ static bool path_is_absolute(char const *path) {
 	#endif
 		;
 }
+
+// assuming `dir` is an absolute path, returns the absolute path of `relpath`, relative to `dir`.
+static void path_full(char const *dir, char const *relpath, char *abspath, size_t abspath_size) {
+	str_cpy(abspath, abspath_size, dir);
+
+	while (1) {
+		size_t component_len = strcspn(relpath, ALL_PATH_SEPARATORS);
+		char const *component_end = relpath + component_len;
+
+		size_t len = strlen(abspath);
+		if (component_len == 1 && relpath[0] == '.') {
+			// ., do nothing
+		} else if (component_len == 2 && relpath[0] == '.' && relpath[1] == '.') {
+			// ..
+			char *lastsep = strrchr(abspath, PATH_SEPARATOR);
+			if (lastsep == abspath)
+				lastsep[1] = '\0';
+			else
+				lastsep[0] = '\0';
+		} else {
+			if (abspath[len - 1] != PATH_SEPARATOR)
+				str_cat(abspath, abspath_size, PATH_SEPARATOR_STR);
+			strn_cat(abspath, abspath_size, relpath, component_len);
+		}
+		if (*component_end == 0)
+			break;
+		else
+			relpath = component_end + 1;
+	}
+}
+

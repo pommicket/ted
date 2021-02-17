@@ -556,6 +556,9 @@ int main(int argc, char **argv) {
 		
 		Font *font = ted->font;
 
+		// default window title
+		strcpy(ted->window_title, "ted");
+
 		if (ted->active_node) {
 			float const padding = settings->padding;
 			float x1 = padding, y = window_height-padding, x2 = window_width-padding;

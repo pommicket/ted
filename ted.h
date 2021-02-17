@@ -268,6 +268,7 @@ typedef struct Ted {
 	char global_data_dir[TED_PATH_MAX];
 	char home[TED_PATH_MAX];
 	char cwd[TED_PATH_MAX]; // current working directory
+	char build_dir[TED_PATH_MAX]; // directory where we run the build command
 	bool nodes_used[TED_MAX_NODES];
 	Node nodes[TED_MAX_NODES];
 	bool buffers_used[TED_MAX_BUFFERS];

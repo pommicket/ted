@@ -7,20 +7,25 @@ static void build_clear(Ted *ted) {
 }
 
 static void build_start(Ted *ted) {
+	ted_save_all(ted);
+
 	// get rid of any old build errors
 	build_clear(ted);
 	
 	bool cargo = false;
 	
 	chdir(ted->cwd);
+	strcpy(ted->build_dir, ted->cwd);
 	
 	if (fs_file_exists("Cargo.toml")) {
 		cargo = true;
 	} else if (fs_file_exists(".." PATH_SEPARATOR_STR "Cargo.toml")) {
 		chdir("..");
+		ted_full_path(ted, "..", ted->build_dir, sizeof ted->build_dir);
 		cargo = true;
 	} else if (fs_file_exists(".." PATH_SEPARATOR_STR ".." PATH_SEPARATOR_STR "Cargo.toml")) {
 		chdir(".." PATH_SEPARATOR_STR "..");
+		ted_full_path(ted, "../..", ted->build_dir, sizeof ted->build_dir);
 		cargo = true;
 	}
 		
@@ -166,15 +171,31 @@ static void build_frame(Ted *ted, float x1, float y1, float x2, float y2) {
 					continue;
 				}
 				bool is_error = true;
-				u32 i = 0;
 				char32_t *str = line->str; u32 len = line->len;
+				{
+					// rust errors look like:
+					// "     --> file:line:column"
+					while (len > 0 && *str == ' ') {
+						--len;
+						++str;
+					}
+					if (len >= 4 && str[0] == '-' && str[1] == '-' && str[2] == '>' && str[3] == ' ') {
+						str += 4;
+						len -= 4;
+					}
+				}
 				
 				// we have something like main.c:5
 				
+				u32 i = 0;
 				// get file name
 				while (i < len) {
 					if (str[i] == ':') break;
-					if (!is32_alnum(str[i]) && str[i] != '/' && str[i] != '.' && str[i] != '\\') {
+					// make sure that the start of the line is a file name
+					char const *allowed_ascii_symbols_in_path = "./\\-_";
+					bool is_path = str[i] > CHAR_MAX || isalnum((char)str[i])
+						|| strchr(allowed_ascii_symbols_in_path, (char)str[i]);
+					if (!is_path) {
 						is_error = false;
 						break;
 					}
@@ -234,7 +255,7 @@ static void build_frame(Ted *ted, float x1, float y1, float x2, float y2) {
 								char *filename = str32_to_utf8_cstr(str32(str, filename_len));
 								if (filename) {
 									char full_path[TED_PATH_MAX];
-									ted_full_path(ted, filename, full_path, sizeof full_path);
+									path_full(ted->build_dir, filename, full_path, sizeof full_path);
 									BuildError error = {
 										.filename = str_dup(full_path),
 										.pos = {.line = (u32)line_number, .index = (u32)column},
