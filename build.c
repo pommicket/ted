@@ -9,13 +9,31 @@ static void build_clear(Ted *ted) {
 static void build_start(Ted *ted) {
 	// get rid of any old build errors
 	build_clear(ted);
-
+	
+	bool cargo = false;
+	
 	chdir(ted->cwd);
+	
+	if (fs_file_exists("Cargo.toml")) {
+		cargo = true;
+	} else if (fs_file_exists(".." PATH_SEPARATOR_STR "Cargo.toml")) {
+		chdir("..");
+		cargo = true;
+	} else if (fs_file_exists(".." PATH_SEPARATOR_STR ".." PATH_SEPARATOR_STR "Cargo.toml")) {
+		chdir(".." PATH_SEPARATOR_STR "..");
+		cargo = true;
+	}
+		
 #if __unix__
 	char *program = "/bin/sh";
-	char *argv[] = {
-		program, "-c", "make", NULL
+	char *argv[5] = {
+		program, "-c", NULL, NULL, NULL
 	};
+	if (cargo) {
+		argv[2] = "cargo build";
+	} else {
+		argv[2] = "make";
+	}
 #else
 	#error "TODO"
 #endif
@@ -83,7 +101,7 @@ static void build_frame(Ted *ted, float x1, float y1, float x2, float y2) {
 		bool any_text_inserted = false;
 		while (1) {
 			char incomplete[4];
-			memcpy(ted->build_incomplete_codepoint, incomplete, sizeof incomplete);
+			memcpy(incomplete, ted->build_incomplete_codepoint, sizeof incomplete);
 			*ted->build_incomplete_codepoint = 0;
 
 			i64 bytes_read = (i64)process_read(process, buf + 3, sizeof buf - 3);
