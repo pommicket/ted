@@ -1,6 +1,10 @@
 #if _WIN32
 #include <intrin.h>
 #include <direct.h>
+#elif __unix__
+#include <unistd.h>
+#else
+#error "Unrecognized operating system."
 #endif
 
 static u8 util_popcount(u64 x) {
@@ -282,3 +286,4 @@ static void change_directory(char const *path) {
 	chdir(path);
 #endif
 }
+

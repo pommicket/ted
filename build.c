@@ -58,12 +58,17 @@ static void build_start(Ted *ted) {
 	if (process_run(&ted->build_process, command)) {
 		ted->building = true;
 		ted->build_shown = true;
+		TextBuffer *build_buffer = &ted->build_buffer;
 		// new empty build output buffer
-		buffer_new_file(&ted->build_buffer, NULL);
-		ted->build_buffer.store_undo_events = false; // don't need undo events for build output buffer
-		ted->build_buffer.view_only = true;
+		buffer_new_file(build_buffer, NULL);
+		build_buffer->store_undo_events = false; // don't need undo events for build output buffer
+		char32_t text[] = {'$', ' '};
+		buffer_insert_text_at_cursor(build_buffer, str32(text, 2));
+		buffer_insert_utf8_at_cursor(build_buffer, command);
+		buffer_insert_char_at_cursor(build_buffer, '\n');
+		build_buffer->view_only = true;
 	} else {
-		ted_seterr("Couldn't start build: %s", process_geterr(&ted->build_process));
+		ted_seterr(ted, "Couldn't start build: %s", process_geterr(&ted->build_process));
 	}
 }
 
@@ -293,3 +298,4 @@ static void build_frame(Ted *ted, float x1, float y1, float x2, float y2) {
 	}
 	buffer_render(buffer, rect4(x1, y1, x2, y2));
 }
+

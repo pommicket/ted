@@ -6,26 +6,9 @@ A text editor.
 
 <img src="ted.png">
 
-To install `ted` on Linux, you will need:
 
-- A C compiler
-- SDL2
-- The GL development libraries
-
-These can be installed on Ubuntu/Debian with:
-
-```
-sudo apt install gcc libsdl2-dev libgl-dev
-```
-
-Then run
-
-```
-wget https://ftp.pcre.org/pub/pcre/pcre2-10.36.zip
-sudo make install -j4
-```
-
-There is no nice way of installing on Windows yet.
+To install ted, you will need to build it from source (see below). Eventually there will be a nice installer, but only when it's stable and bug-free enough for
+ordinary use.
 
 ## Why?
 
@@ -40,13 +23,31 @@ a simple editor that starts up practically instantaneously, and performs well on
 - Customization of (pretty much) all colours and keyboard commands.
 - Syntax highlighting for C, C++, Rust, and Python.
 - Find and replace (with regular expressions!)
+- Run build command (default keybinding F4)
 
 ## Building from source
 
-On Linux, run `make`.
+To install `ted` on Linux, you will need:
 
-On Windows, you will need the SDL2 VC development libraries: https://www.libsdl.org/download-2.0.php  
-Copy SDL2-2.x.y into the ted directory, and rename it to SDL2. Also copy SDL2\lib\x64\SDL2.dll
+- A C compiler
+- The SDL2 development libraries
+- wget, unzip (for downloading, extracting PCRE2)
+
+These can be installed on Ubuntu/Debian with:
+
+```
+sudo apt install gcc libsdl2-dev wget unzip
+```
+
+Then run
+
+```
+wget https://ftp.pcre.org/pub/pcre/pcre2-10.36.zip
+sudo make install -j4
+```
+
+On Windows (64-bit), you will need the SDL2 VC development libraries: https://www.libsdl.org/download-2.0.php  
+Extract the zip, copy SDL2-2.x.y into the ted directory, and rename it to SDL2. Also copy SDL2\lib\x64\SDL2.dll
 to the ted directory.  
 You will also need PCRE2. Download it here: https://ftp.pcre.org/pub/pcre/pcre2-10.36.zip,
 unzip it, and put pcre2-10.36 in the same folder as ted.
@@ -62,6 +63,7 @@ Then run `make.bat`.
 <tr><td>0.2</td> <td>Line numbers, check if file changed by another program</td> <td>2021 Feb 5</td></tr>
 <tr><td>0.3</td> <td>Find+replace, highlight matching parentheses, indent/dedent selection</td> <td>2021 Feb 11</td></tr>
 <tr><td>0.3a</td> <td>Find+replace bug fixes, view-only mode</td> <td>2021 Feb 14</td></tr>
+<tr><td>0.4</td> <td>:build</td> <td>2021 Feb 18</td></tr>
 </table>
 
 ## License
