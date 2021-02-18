@@ -45,17 +45,22 @@ static void build_start(Ted *ted) {
 	if (cargo) {
 		program = "cargo";
 		argv[0] = "build";
+	} else if (fs_file_exists("make.bat")) {
+		program = "make.bat";
 	} else {
 		program = "make";
 	}
 #endif
 
-	process_exec(&ted->build_process, program, argv);
-	ted->building = true;
-	ted->build_shown = true;
-	buffer_new_file(&ted->build_buffer, NULL);
-	ted->build_buffer.store_undo_events = false; // don't need undo events for build output buffer
-	ted->build_buffer.view_only = true;
+	if (process_exec(&ted->build_process, program, argv)) {
+		ted->building = true;
+		ted->build_shown = true;
+		buffer_new_file(&ted->build_buffer, NULL);
+		ted->build_buffer.store_undo_events = false; // don't need undo events for build output buffer
+		ted->build_buffer.view_only = true;
+	} else {
+		ted_seterr("Couldn't start build: %s", process_geterr(&ted->build_process));
+	}
 }
 
 static void build_stop(Ted *ted) {

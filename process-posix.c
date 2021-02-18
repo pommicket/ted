@@ -43,7 +43,7 @@ bool process_exec(Process *proc, char const *program, char **argv) {
 }
 
 char const *process_geterr(Process *p) {
-	return p->error;
+	return *p->error ? p->error : NULL;
 }
 
 long long process_read(Process *proc, char *data, size_t size) {
