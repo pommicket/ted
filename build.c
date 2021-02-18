@@ -211,8 +211,6 @@ static void build_frame(Ted *ted, float x1, float y1, float x2, float y2) {
 			buffer_insert_utf8_at_cursor(buffer, message);
 			ted->building = false;
 
-			buffer_print(buffer);
-
 			// check for errors
 			for (u32 line_idx = 0; line_idx < buffer->nlines; ++line_idx) {
 				Line *line = &buffer->lines[line_idx];
