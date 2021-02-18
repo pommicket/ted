@@ -6,7 +6,19 @@ static void build_clear(Ted *ted) {
 	arr_clear(ted->build_errors);
 }
 
+static void build_stop(Ted *ted) {
+	if (ted->building)
+		process_kill(&ted->build_process);
+	ted->building = false;
+	ted->build_shown = false;
+	build_clear(ted);
+}
+
+
 static void build_start(Ted *ted) {
+	if (ted->building) {
+		build_stop(ted);
+	}
 	Settings *settings = &ted->settings;
 	
 	ted_save_all(ted);
@@ -47,7 +59,7 @@ static void build_start(Ted *ted) {
 		make = true;
 	}
 	
-	// @TODO(eventually): go build
+	// @TODO(eventually): `go build`
 	
 	if (cargo) {
 		command = "cargo build";
@@ -70,14 +82,6 @@ static void build_start(Ted *ted) {
 	} else {
 		ted_seterr(ted, "Couldn't start build: %s", process_geterr(&ted->build_process));
 	}
-}
-
-static void build_stop(Ted *ted) {
-	if (ted->building)
-		process_kill(&ted->build_process);
-	ted->building = false;
-	ted->build_shown = false;
-	build_clear(ted);
 }
 
 static void build_go_to_error(Ted *ted) {
@@ -116,6 +120,28 @@ static void build_prev_error(Ted *ted) {
 	}
 }
 
+// returns -1 if *str..end is not an integer or a negative integer.
+// Otherwise, advances *str past the number and returns it.
+static int parse_nonnegative_integer(char32_t **str, char32_t *end) {
+	char32_t *s = *str;
+	int number_len;
+	int n = 0;
+	for (number_len = 0; s != end && s[number_len] >= '0' && s[number_len] <= '9'; ++number_len) {
+		n *= 10;
+		n += s[number_len] - '0';
+	}
+	if (number_len == 0)
+		return -1;
+	*str += number_len;
+	return n;
+}
+
+// could this character (reasonably) appear in a source file path?
+static bool is_source_path(char32_t c) {
+	char const *allowed_ascii_symbols_in_path = "./\\-_";
+	return c > CHAR_MAX || isalnum((char)c)
+		|| strchr(allowed_ascii_symbols_in_path, (char)c);
+}
 
 static void build_frame(Ted *ted, float x1, float y1, float x2, float y2) {
 	TextBuffer *buffer = &ted->build_buffer;
@@ -185,6 +211,8 @@ static void build_frame(Ted *ted, float x1, float y1, float x2, float y2) {
 			buffer_insert_utf8_at_cursor(buffer, message);
 			ted->building = false;
 
+			buffer_print(buffer);
+
 			// check for errors
 			for (u32 line_idx = 0; line_idx < buffer->nlines; ++line_idx) {
 				Line *line = &buffer->lines[line_idx];
@@ -192,99 +220,64 @@ static void build_frame(Ted *ted, float x1, float y1, float x2, float y2) {
 					continue;
 				}
 				bool is_error = true;
-				char32_t *str = line->str; u32 len = line->len;
+				char32_t *p = line->str, *end = p + line->len;
+				
 				{
 					// rust errors look like:
 					// "     --> file:line:column"
-					while (len > 0 && *str == ' ') {
-						--len;
-						++str;
+					while (p != end && *p == ' ') {
+						++p;
 					}
-					if (len >= 4 && str[0] == '-' && str[1] == '-' && str[2] == '>' && str[3] == ' ') {
-						str += 4;
-						len -= 4;
+					if (end - p >= 4 && p[0] == '-' && p[1] == '-' && p[2] == '>' && p[3] == ' ') {
+						p += 4;
 					}
 				}
+
+				// @TODO: check this code
 				
-				// we have something like main.c:5
+				// check if we have something like main.c:5 or main.c(5)
 				
-				u32 i = 0;
 				// get file name
-				while (i < len) {
-					if (str[i] == ':') break;
-					// make sure that the start of the line is a file name
-					char const *allowed_ascii_symbols_in_path = "./\\-_";
-					bool is_path = str[i] > CHAR_MAX || isalnum((char)str[i])
-						|| strchr(allowed_ascii_symbols_in_path, (char)str[i]);
-					if (!is_path) {
+				char32_t *filename_start = p;
+				while (p != end) {
+					if ((*p == ':' || *p == '(')
+						&& p != line->str + 1) // don't catch "C:\thing\whatever.c" as "filename: C, line number: \thing\whatever.c"
+						break;
+					if (!is_source_path(*p)) {
 						is_error = false;
 						break;
 					}
-					++i;
+					++p;
 				}
-				if (i >= len) is_error = false;
+				if (p == end) is_error = false;
+				u32 filename_len = (u32)(p - filename_start);
+				if (filename_len == 0) is_error = false;
 
 				if (is_error) {
-					u32 filename_len = i;
-					u32 line_number_len = 0;
-					++i;
-					while (i < len) {
-						if (str[i] == ':') break;
-						if (str[i] < '0' || str[i] > '9') {
-							is_error = false;
-							break;
-						}
-						++i;
-						++line_number_len;
-					}
-					if (i >= len) is_error = false;
-					if (line_number_len == 0) is_error = false;
-					
-
-					if (is_error) {
-						char *line_number_str = str32_to_utf8_cstr(str32(str + filename_len + 1, line_number_len));
-						if (line_number_str) {
-							int line_number = atoi(line_number_str);
-							free(line_number_str);
-
-							if (line_number > 0) {
-								// it's an error
-
-								// check if there's a column number
-								u32 column_len = 0;
-								++i;
-								while (i < len) {
-									if (str[i] >= '0' && str[i] <= '9')
-										++column_len;
-									else
-										break;
-									++i;
-								}
-								int column = 0;
-								if (column_len) {
-									// file:line:column syntax
-									char *column_str = str32_to_utf8_cstr(str32(str + filename_len + 1 + line_number_len + 1, column_len));
-									if (column_str) {
-										column = atoi(column_str);
-										column -= 1;
-										if (column < 0) column = 0;
-										free(column_str);
-									}
-								}
-
-								line_number -= 1; // line numbers in output start from 1.
-								char *filename = str32_to_utf8_cstr(str32(str, filename_len));
-								if (filename) {
-									char full_path[TED_PATH_MAX];
-									path_full(ted->build_dir, filename, full_path, sizeof full_path);
-									BuildError error = {
-										.filename = str_dup(full_path),
-										.pos = {.line = (u32)line_number, .index = (u32)column},
-										.build_output_line = line_idx
-									};
-									arr_add(ted->build_errors, error);
-								}
+					++p; // move past : or (
+					int line_number = parse_nonnegative_integer(&p, end);
+					if (p != end && line_number > 0) {
+						// it's an error
+						line_number -= 1; // line numbers in output start from 1.
+						int column_number = 0;
+						// check if there's a column number
+						if (*p == ':') {
+							++p; // move past :
+							int num = parse_nonnegative_integer(&p, end);
+							if (num > 0) {
+								column_number = num - 1; // column numbers in output start from 1
 							}
+						}
+						char *filename = str32_to_utf8_cstr(str32(filename_start, filename_len));
+						if (filename) {
+							char full_path[TED_PATH_MAX];
+							path_full(ted->build_dir, filename, full_path, sizeof full_path);
+							BuildError error = {
+								.filename = str_dup(full_path),
+								.pos = {.line = (u32)line_number, .index = (u32)column_number},
+								.build_output_line = line_idx
+							};
+							arr_add(ted->build_errors, error);
 						}
 					}
 				}

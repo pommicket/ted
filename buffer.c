@@ -646,8 +646,9 @@ static void buffer_print(TextBuffer const *buffer) {
 		for (u32 j = 0; j < line->len; ++j) {
 			// on windows, this will print characters outside the Basic Multilingual Plane incorrectly
 			// but this function is just for debugging anyways
-			putwchar((wchar_t)line->str[j]);
+			print("%lc", (wchar_t)line->str[j]);
 		}
+		print("\n");
 	}
 	fflush(stdout);
 }

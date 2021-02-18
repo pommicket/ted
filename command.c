@@ -305,9 +305,6 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		break;
 	
 	case CMD_BUILD:
-		if (ted->building) {
-			build_stop(ted);
-		}
 		build_start(ted);
 		break;
 	case CMD_BUILD_NEXT_ERROR:
