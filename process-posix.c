@@ -9,7 +9,7 @@ struct Process {
 	char error[64];
 };
 
-bool process_exec(Process *proc, char const *program, char **argv) {
+bool process_run(Process *proc, char const *command) {
 	memset(proc, 0, sizeof *proc);
 
 	bool success = false;
@@ -24,6 +24,8 @@ bool process_exec(Process *proc, char const *program, char **argv) {
 			dup2(pipefd[1], STDERR_FILENO);
 			close(pipefd[0]);
 			close(pipefd[1]);
+			char *program = "/bin/sh";
+			char *argv[] = {program, "-c", (char *)command, NULL};
 			if (execv(program, argv) == -1) {
 				dprintf(STDERR_FILENO, "%s: %s\n", program, strerror(errno));
 				exit(127);

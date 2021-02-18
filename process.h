@@ -4,8 +4,9 @@
 
 typedef struct Process Process;
 
+// execute the given command (like if it was passed to system()).
 // returns false on failure
-bool process_exec(Process *process, char const *program, char **argv);
+bool process_run(Process *process, char const *command);
 // returns the error last error produced, or NULL if there was no error.
 char const *process_geterr(Process *process);
 // returns:

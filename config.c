@@ -169,6 +169,11 @@ void config_read(Ted *ted, char const *filename) {
 		char const *name;
 		u16 *control, min, max;
 	} OptionU16;
+	typedef struct {
+		char const *name;
+		char *control;
+		size_t buf_size;
+	} OptionString;
 	// core options
 	// (these go at the start so they don't need to be re-computed each time)
 	OptionBool const options_bool[] = {
@@ -194,6 +199,9 @@ void config_read(Ted *ted, char const *filename) {
 		{"text-size", &settings->text_size, TEXT_SIZE_MIN, TEXT_SIZE_MAX},
 		{"max-menu-width", &settings->max_menu_width, 10, U16_MAX},
 		{"error-display-time", &settings->error_display_time, 0, U16_MAX},
+	};
+	OptionString const options_string[] = {
+		{"build-default-command", settings->build_default_command, sizeof settings->build_default_command},
 	};
 
 	FILE *fp = fopen(filename, "rb");
@@ -375,6 +383,17 @@ void config_read(Ted *ted, char const *filename) {
 												*option->control = (float)floating;
 											else
 												config_err(cfg, "Invalid %s: %s. This should be a number from %g to %g.", option->name, value, option->min, option->max);
+										}
+									}
+									
+									for (size_t i = 0; i < arr_count(options_string); ++i) {
+										OptionString const *option = &options_string[i];
+										if (streq(key, option->name)) {
+											if (strlen(value) >= option->buf_size) {
+												config_err(cfg, "%s is too long (length: %zu, maximum length: %zu).", key, strlen(value), option->buf_size - 1);
+											} else {
+												str_cpy(option->control, option->buf_size, value);
+											}
 										}
 									}
 

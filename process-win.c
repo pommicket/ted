@@ -3,13 +3,26 @@
 struct Process {
 	HANDLE pipe_read, pipe_write;
 	PROCESS_INFORMATION process_info;
-	char error[64];
+	char error[200];
 };
 
-bool process_exec(Process *process, char const *program, char **argv) {
+static void get_last_error_str(char *out, size_t out_sz) {
+	size_t size = FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+         NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), out, (DWORD)out_sz - 1, NULL);
+	out[size] = 0;
+	char *cr = strchr(out, '\r');
+	if (cr) *cr = '\0'; // get rid of carriage return+newline at end of error
+}
+
+bool process_run(Process *process, char const *command) {
 	// thanks to https://stackoverflow.com/a/35658917
 	bool success = false;
 	memset(process, 0, sizeof *process);
+	char *command_line = str_dup(command);
+	if (!command_line) {
+		strbuf_printf(process->error, "Out of memory.");
+		return false;
+	}
 	HANDLE pipe_read, pipe_write;
 	SECURITY_ATTRIBUTES security_attrs = {sizeof(SECURITY_ATTRIBUTES)};
 	security_attrs.bInheritHandle = TRUE;
@@ -20,28 +33,25 @@ bool process_exec(Process *process, char const *program, char **argv) {
 		startup.hStdError = pipe_write;
 		startup.wShowWindow = SW_HIDE;
 		
-		// fuckin windows
-		char command_line[4096];
-		strbuf_cpy(command_line, program);
-		strbuf_catf(command_line, " ");
-		for (int i = 0; argv[i]; ++i) {
-			strbuf_catf(command_line, "%s ", argv[i]);
-		}
-		
 		if (CreateProcessA(NULL, command_line, NULL, NULL, TRUE, CREATE_NEW_CONSOLE,
 			NULL, NULL, &startup, &process->process_info)) {
 			process->pipe_read = pipe_read;
 			process->pipe_write = pipe_write;
 			success = true;
 		} else {
-			strbuf_printf(process->error, "Couldn't create process (error code %u)", (unsigned)GetLastError());
+			char buf[150];
+			get_last_error_str(buf, sizeof buf);
+			strbuf_printf(process->error, "Couldn't run `%s`: %s", command, buf);
 		}
+		free(command_line);
 		if (!success) {
 			CloseHandle(pipe_read);
 			CloseHandle(pipe_write);
 		}
 	} else {
-		strbuf_printf(process->error, "Couldn't create pipe (error code %u)", (unsigned)GetLastError());
+		char buf[150];
+		get_last_error_str(buf, sizeof buf);
+		strbuf_printf(process->error, "Couldn't create pipe: %s", buf);
 	}
 	return success;
 }
@@ -60,7 +70,9 @@ long long process_read(Process *process, char *data, size_t size) {
 			return bytes_read;
 		}
 	} else {
-		strbuf_printf(process->error, "Couldn't read from pipe (error code %u)", (unsigned)GetLastError());
+		char buf[150];
+		get_last_error_str(buf, sizeof buf);
+		strbuf_printf(process->error, "Couldn't read from pipe: %s", buf);
 		return -2;
 	}
 }

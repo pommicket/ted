@@ -7,16 +7,26 @@ static void build_clear(Ted *ted) {
 }
 
 static void build_start(Ted *ted) {
+	Settings *settings = &ted->settings;
+	
 	ted_save_all(ted);
 
 	// get rid of any old build errors
 	build_clear(ted);
 	
-	bool cargo = false;
+	bool cargo = false, make = false;
 	
 	change_directory(ted->cwd);
 	strcpy(ted->build_dir, ted->cwd);
 	
+	char *command = settings->build_default_command;
+	
+#if _WIN32
+	if (fs_file_exists("make.bat")) {
+		command = "make.bat";
+	} else
+#endif
+	// check if Cargo.toml exists in this or the parent/parent's parent directory
 	if (fs_file_exists("Cargo.toml")) {
 		cargo = true;
 	} else if (fs_file_exists(".." PATH_SEPARATOR_STR "Cargo.toml")) {
@@ -27,34 +37,28 @@ static void build_start(Ted *ted) {
 		change_directory(".." PATH_SEPARATOR_STR "..");
 		ted_full_path(ted, "../..", ted->build_dir, sizeof ted->build_dir);
 		cargo = true;
+	} else 
+	// Check if Makefile exists in this or the parent directory
+	if (fs_file_exists("Makefile")) {
+		make = true;
+	} else if (fs_file_exists(".." PATH_SEPARATOR_STR "Makefile")) {
+		change_directory("..");
+		ted_full_path(ted, "..", ted->build_dir, sizeof ted->build_dir);
+		make = true;
 	}
-		
-#if __unix__
-	char *program = "/bin/sh";
-	char *argv[5] = {
-		program, "-c", NULL, NULL, NULL
-	};
+	
+	// @TODO(eventually): go build
+	
 	if (cargo) {
-		argv[2] = "cargo build";
-	} else {
-		argv[2] = "make";
+		command = "cargo build";
+	} else if (make) {
+		command = "make";
 	}
-#else
-	char *program = NULL;
-	char *argv[2] = {NULL, NULL};
-	if (cargo) {
-		program = "cargo";
-		argv[0] = "build";
-	} else if (fs_file_exists("make.bat")) {
-		program = "make.bat";
-	} else {
-		program = "make";
-	}
-#endif
 
-	if (process_exec(&ted->build_process, program, argv)) {
+	if (process_run(&ted->build_process, command)) {
 		ted->building = true;
 		ted->build_shown = true;
+		// new empty build output buffer
 		buffer_new_file(&ted->build_buffer, NULL);
 		ted->build_buffer.store_undo_events = false; // don't need undo events for build output buffer
 		ted->build_buffer.view_only = true;

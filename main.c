@@ -1,6 +1,4 @@
 // @TODO:
-// - :build (F4) -- cargo build if editing .rs file or file called Cargo.toml, otherwise make.
-
 // - go to definition (with ctags) -- ctrl+click would be nice
 
 // - :run -- if .html file, open in browser, otherwise figure out a way of sending a command to bash??

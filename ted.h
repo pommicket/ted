@@ -78,6 +78,7 @@ typedef struct {
 	u8 border_thickness;
 	u8 padding;
 	u8 scrolloff;
+	char build_default_command[256];
 	// [i] = comma-separated string of file extensions for language i, or NULL for none
 	char *language_extensions[LANG_COUNT];
 } Settings;
