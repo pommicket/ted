@@ -79,6 +79,7 @@ typedef struct {
 	u8 padding;
 	u8 scrolloff;
 	char build_default_command[256];
+	char tags_filename[128];
 	// [i] = comma-separated string of file extensions for language i, or NULL for none
 	char *language_extensions[LANG_COUNT];
 } Settings;
@@ -158,6 +159,18 @@ typedef struct {
 	BufferEdit *undo_history; // dynamic array of undo history
 	BufferEdit *redo_history; // dynamic array of redo history
 } TextBuffer;
+
+typedef struct {
+	char const *name;
+	char const *file;
+	char const *address;
+} Tag;
+
+typedef struct {
+	Tag *tags; // dynamic array of tags
+	char *file_data;
+	struct timespec last_modified; // time when tags file was last modified
+} TagsFile;
 
 ENUM_U16 {
 	MENU_NONE,
@@ -253,6 +266,8 @@ typedef struct Ted {
 	Command warn_unsaved; // if non-zero, the user is trying to execute this command, but there are unsaved changes
 	bool build_shown; // are we showing the build output?
 	bool building; // is the build process running?
+	
+	TagsFile tags;
 	
 	BuildError *build_errors; // dynamic array of build errors
 	u32 build_error; // build error we are currently "on"

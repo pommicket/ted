@@ -61,6 +61,7 @@ no_warn_end
 #include "syntax.c"
 #include "buffer.c"
 #include "ted.c"
+#include "tags.c"
 #include "ui.c"
 #include "find.c"
 #include "node.c"
@@ -389,6 +390,8 @@ int main(int argc, char **argv) {
 		ted->scroll_total_x = ted->scroll_total_y = 0;
 
 		//printf("%p\n",(void *)ted->drag_buffer);
+		
+		tags_read_if_changed(ted, &ted->tags);
 
 		ted_update_window_dimensions(ted);
 
