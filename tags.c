@@ -13,7 +13,7 @@ static int tag_try(FILE *fp, char const *tag) {
 		long pos = ftell(fp);
 		if (fgets(line, sizeof line, fp)) {
 			fseek(fp, pos, SEEK_SET);
-			size_t len = strspn(line, "\t");
+			size_t len = strcspn(line, "\t");
 			if (tag_len > len)
 				len = tag_len;
 			return strncmp(tag, line, len);
@@ -22,14 +22,19 @@ static int tag_try(FILE *fp, char const *tag) {
 	return -1;
 }
 
+// returns true if the tag exists.
 bool tag_goto(Ted *ted, char const *tag) {
 	change_directory(ted->cwd);
 	Settings const *settings = &ted->settings;
 	char const *tags_filename = settings->tags_filename;
 	FILE *file = fopen(tags_filename, "rb");
+	if (!file) {
+		ted_seterr(ted, "No tags file. Try running ctags.");
+		return false;
+	}
 	fseek(file, 0, SEEK_END);
 	size_t file_size = (size_t)ftell(file);
-	
+	// binary search for tag in file
 	size_t lo = 0;
 	size_t hi = file_size;
 	bool success = false;

@@ -1133,6 +1133,33 @@ i64 buffer_cursor_move_right_words(TextBuffer *buffer, i64 nwords) {
 	return ret;
 }
 
+// Returns a string of word characters (see is_word) around the position,
+// or an empty string if neither of the characters to the left and right of the cursor are word characters.
+// NOTE: The string is invalidated when the buffer is changed!!!
+String32 buffer_word_at_pos(TextBuffer *buffer, BufferPos pos) {
+	buffer_pos_validate(buffer, &pos);
+	Line *line = &buffer->lines[pos.line];
+	char32_t *str = line->str;
+	i64 word_start, word_end;
+	for (word_start = pos.index; word_start > 0; --word_start) {
+		if (!is_word(str[word_start - 1]))
+			break;
+	}
+	for (word_end = pos.index; word_end < line->len; ++word_end) {
+		if (!is_word(str[word_end]))
+			break;
+	}
+	u32 len = (u32)(word_end - word_start);
+	if (len == 0)
+		return str32(NULL, 0);
+	else
+		return str32(str + word_start, len);
+}
+
+String32 buffer_word_at_cursor(TextBuffer *buffer) {
+	return buffer_word_at_pos(buffer, buffer->cursor_pos);
+}
+
 // Returns the position corresponding to the start of the given line.
 BufferPos buffer_pos_start_of_line(TextBuffer *buffer, u32 line) {
 	(void)buffer;
@@ -2087,35 +2114,10 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 
 	buffer->x1 = x1; buffer->y1 = y1; buffer->x2 = x2; buffer->y2 = y2;
 
+	
 	if (buffer->center_cursor_next_frame) {
 		buffer_center_cursor(buffer);
 		buffer->center_cursor_next_frame = false;
-	}
-
-	// handle mouse clicks
-	for (u32 i = 0; i < ted->nmouse_clicks[SDL_BUTTON_LEFT]; ++i) {
-		v2 point = ted->mouse_clicks[SDL_BUTTON_LEFT][i];
-		u8 times = ted->mouse_click_times[SDL_BUTTON_LEFT][i];
-		BufferPos pos;
-		if (buffer_pixels_to_pos(buffer, point, &pos)) {
-			// user clicked on buffer
-			if (!ted->menu)
-				ted->active_buffer = buffer;
-			if (buffer == ted->active_buffer) {
-				buffer_cursor_move_to_pos(buffer, pos);
-
-				switch ((times - 1) % 3) {
-				case 0: break; // single-click
-				case 1: // double-click: select word
-					buffer_select_word(buffer);
-					break;
-				case 2: // triple-click: select line
-					buffer_select_line(buffer);
-					break;
-				}
-				ted->drag_buffer = buffer;
-			}
-		}
 	}
 
 	if (rect_contains_point(rect4(x1, y1, x2, y2), ted->mouse_pos)) {

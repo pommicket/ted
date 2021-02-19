@@ -1,5 +1,7 @@
 // @TODO:
-// - go to definition (with ctags) -- ctrl+click would be nice
+// - Ctrl+D = :find-definition  --- tag menu (see all tags, select one)
+
+// - goto line
 
 // - :run -- if .html file, open in browser, otherwise figure out a way of sending a command to shell
 // running in terminal emulator?? (don't want to implement stdin/ANSI codes/etc.)
@@ -59,6 +61,7 @@ no_warn_end
 
 #include "string32.c"
 #include "syntax.c"
+bool tag_goto(Ted *ted, char const *tag);
 #include "buffer.c"
 #include "ted.c"
 #include "tags.c"
@@ -366,8 +369,6 @@ int main(int argc, char **argv) {
 
 	Uint32 time_at_last_frame = SDL_GetTicks();
 	
-	tag_goto(ted, "buffer_create");
-
 	while (!ted->quit) {
 	#if DEBUG
 		//printf("\033[H\033[2J");
@@ -392,12 +393,14 @@ int main(int argc, char **argv) {
 		ted->scroll_total_x = ted->scroll_total_y = 0;
 
 		ted_update_window_dimensions(ted);
-
-		while (SDL_PollEvent(&event)) {
-			TextBuffer *buffer = ted->active_buffer;
-			u32 key_modifier = (u32)ctrl_down << KEY_MODIFIER_CTRL_BIT
+		u32 key_modifier = (u32)ctrl_down << KEY_MODIFIER_CTRL_BIT
 				| (u32)shift_down << KEY_MODIFIER_SHIFT_BIT
 				| (u32)alt_down << KEY_MODIFIER_ALT_BIT;
+		ted->key_modifier = key_modifier;
+			
+		while (SDL_PollEvent(&event)) {
+			TextBuffer *buffer = ted->active_buffer;
+			
 			switch (event.type) {
 			case SDL_QUIT:
 				command_execute(ted, CMD_QUIT, 1);
@@ -410,7 +413,7 @@ int main(int argc, char **argv) {
 			} break;
 			case SDL_MOUSEBUTTONDOWN: {
 				Uint32 button = event.button.button;
-
+				u8 times = event.button.clicks; // number of clicks
 				float x = (float)event.button.x, y = (float)event.button.y;
 				if (button < arr_count(ted->nmouse_clicks) 
 					&& ted->nmouse_clicks[button] < arr_count(ted->mouse_clicks[button])) {
@@ -427,10 +430,64 @@ int main(int argc, char **argv) {
 							add = false;
 						}
 					}
-					if (add) {
-						ted->mouse_clicks[button][ted->nmouse_clicks[button]] = pos;
-						ted->mouse_click_times[button][ted->nmouse_clicks[button]] = event.button.clicks;
-						++ted->nmouse_clicks[button];
+					
+					if (add) {						
+						// handle mouse click
+						// we need to do this here, and not in buffer_render, because ctrl+click (go to definition)
+						// could switch to a different buffer.
+						for (u32 i = 0; i < TED_MAX_NODES; ++i) {
+							if (ted->nodes_used[i]) {
+								Node *node = &ted->nodes[i];
+								if (node->tabs) {
+									buffer = &ted->buffers[node->tabs[node->active_tab]];
+									
+									BufferPos buffer_pos;
+									if (buffer_pixels_to_pos(buffer, pos, &buffer_pos)) {
+										// user clicked on buffer
+										if (!ted->menu)
+											ted->active_buffer = buffer;
+										if (buffer == ted->active_buffer) {
+											add = false;
+											switch (ted->key_modifier) {
+											case KEY_MODIFIER_SHIFT:
+												// select to position
+												buffer_select_to_pos(buffer, buffer_pos);
+												break;
+											case KEY_MODIFIER_CTRL: {
+												buffer_cursor_move_to_pos(buffer, buffer_pos);
+												String32 word = buffer_word_at_cursor(buffer);
+												if (word.len) {
+													char *tag = str32_to_utf8_cstr(word);
+													if (tag) {
+														tag_goto(buffer->ted, tag);
+														free(tag);
+													}
+												}
+											} break;
+											case 0:
+												buffer_cursor_move_to_pos(buffer, buffer_pos);
+												switch ((times - 1) % 3) {
+												case 0: break; // single-click
+												case 1: // double-click: select word
+													buffer_select_word(buffer);
+													break;
+												case 2: // triple-click: select line
+													buffer_select_line(buffer);
+													break;
+												}
+												ted->drag_buffer = buffer;
+												break;
+											}
+										}
+									}
+								}
+							}
+						}
+						if (add) {
+							ted->mouse_clicks[button][ted->nmouse_clicks[button]] = pos;
+							ted->mouse_click_times[button][ted->nmouse_clicks[button]] = times;
+							++ted->nmouse_clicks[button];
+						}
 					}
 				}
 			} break;
@@ -506,11 +563,6 @@ int main(int argc, char **argv) {
 				}
 			}
 		}
-
-
-		u32 key_modifier = (u32)ctrl_down << KEY_MODIFIER_CTRL_BIT
-			| (u32)shift_down << KEY_MODIFIER_SHIFT_BIT
-			| (u32)alt_down << KEY_MODIFIER_ALT_BIT;
 
 		double frame_dt;
 		{
