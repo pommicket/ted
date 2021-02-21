@@ -19,7 +19,6 @@ char const *command_to_str(Command c) {
 
 void command_execute(Ted *ted, Command c, i64 argument) {
 	TextBuffer *buffer = ted->active_buffer;
-	FileSelector *file_selector = &ted->file_selector;
 	Settings *settings = &ted->settings;
 
 
@@ -38,11 +37,11 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		if (buffer) buffer_cursor_move_right(buffer, argument);
 		break;
 	case CMD_UP:
-		if (file_selector->open) file_selector_up(ted, file_selector, argument);
+		if (ted->selector_open) selector_up(ted, ted->selector_open, argument);
 		else if (buffer) buffer_cursor_move_up(buffer, argument);
 		break;
 	case CMD_DOWN:
-		if (file_selector->open) file_selector_down(ted, file_selector, argument);
+		if (ted->selector_open) selector_down(ted, ted->selector_open, argument);
 		else if (buffer) buffer_cursor_move_down(buffer, argument);
 		break;
 	case CMD_SELECT_LEFT:
@@ -121,24 +120,14 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 	case CMD_NEWLINE_BACK:
 		if (!buffer) {
 		} else if (buffer->is_line_buffer) {
-			switch (ted->menu) {
-			case MENU_NONE:
-				if (ted->find) {
-					if (buffer == &ted->find_buffer || buffer == &ted->replace_buffer) {
-						if (c == CMD_NEWLINE)
-							find_next(ted);
-						else
-							find_prev(ted);
-					}
+			ted->line_buffer_submitted = true;
+			if (ted->find) {
+				if (buffer == &ted->find_buffer || buffer == &ted->replace_buffer) {
+					if (c == CMD_NEWLINE)
+						find_next(ted);
+					else
+						find_prev(ted);
 				}
-				break;
-			case MENU_ASK_RELOAD:
-			case MENU_WARN_UNSAVED:
-				break;
-			case MENU_OPEN:
-			case MENU_SAVE_AS: {
-				ted->file_selector.submitted = true;
-			} break;
 			}
 		} else {
 			buffer_newline(buffer);
@@ -226,7 +215,8 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		break;
 	case CMD_CUT:
 		if (buffer) buffer_cut(buffer);
-		break; case CMD_PASTE:
+		break;
+	case CMD_PASTE:
 		if (buffer) buffer_paste(buffer);
 		break;
 	

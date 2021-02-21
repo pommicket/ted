@@ -1,5 +1,6 @@
 // @TODO:
 // - Ctrl+D = :find-definition  --- tag menu (see all tags, select one)
+// - fix automatic horizontal scrolling
 
 // - goto line
 
@@ -8,11 +9,11 @@
 
 // - split
 
-// - completion
-
 // - Windows installation
+// - on crash, output backtrace to log
 // - restore previously opened files (setting: restore-session)
-// - on crash, output backtrace to log, save buffers to temp directory
+
+// - completion
 
 #include "base.h"
 no_warn_start
@@ -391,6 +392,8 @@ int main(int argc, char **argv) {
 
 		memset(ted->nmouse_clicks, 0, sizeof ted->nmouse_clicks);
 		ted->scroll_total_x = ted->scroll_total_y = 0;
+
+		ted->line_buffer_submitted = false;
 
 		ted_update_window_dimensions(ted);
 		u32 key_modifier = (u32)ctrl_down << KEY_MODIFIER_CTRL_BIT

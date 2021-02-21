@@ -168,6 +168,20 @@ ENUM_U16 {
 	MENU_ASK_RELOAD, // prompt about whether to reload file which has ben changed by another program
 } ENUM_U16_END(Menu);
 
+typedef struct {
+	char const *name;
+	u32 color;
+} SelectorEntry;
+
+typedef struct {
+	SelectorEntry *entries;
+	u32 n_entries;
+	Rect bounds;
+	u32 cursor; // index where the selector thing is
+	float scroll;
+	bool enable_cursor;
+} Selector;
+
 // file entries for file selectors
 typedef struct {
 	char *name; // just the file name
@@ -176,14 +190,11 @@ typedef struct {
 } FileEntry;
 
 typedef struct {
+	Selector sel;
 	Rect bounds;
 	u32 n_entries;
-	u32 selected;
-	float scroll;
 	FileEntry *entries;
 	char cwd[TED_PATH_MAX];
-	bool open; // is the file selector on screen?
-	bool submitted; // set to true if the line buffer was just submitted this frame.
 	bool create_menu; // this is for creating files, not opening files
 } FileSelector;
 
@@ -237,6 +248,7 @@ typedef struct Ted {
 	Menu menu;
 	FileSelector file_selector;
 	TextBuffer line_buffer; // general-purpose line buffer for inputs -- used for menus
+	bool line_buffer_submitted; // set to true if the line buffer was just submitted this frame.
 	TextBuffer find_buffer; // use for "find" term in find/find+replace
 	TextBuffer replace_buffer; // "replace" for find+replace
 	TextBuffer build_buffer; // buffer for build output (view only)
@@ -258,6 +270,9 @@ typedef struct Ted {
 	
 	BuildError *build_errors; // dynamic array of build errors
 	u32 build_error; // build error we are currently "on"
+
+	// points to a selector if any is open, otherwise NULL.
+	Selector *selector_open;
 
 	Process build_process;
 	// When we read the stdout from the build process, the tail end of the read could be an
