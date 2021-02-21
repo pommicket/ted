@@ -393,8 +393,6 @@ int main(int argc, char **argv) {
 		memset(ted->nmouse_clicks, 0, sizeof ted->nmouse_clicks);
 		ted->scroll_total_x = ted->scroll_total_y = 0;
 
-		ted->line_buffer_submitted = false;
-
 		ted_update_window_dimensions(ted);
 		u32 key_modifier = (u32)ctrl_down << KEY_MODIFIER_CTRL_BIT
 				| (u32)shift_down << KEY_MODIFIER_SHIFT_BIT

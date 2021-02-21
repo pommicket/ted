@@ -139,6 +139,7 @@ typedef struct {
 	bool will_chain_edits;
 	bool chaining_edits; // are we chaining undo events together?
 	bool view_only;
+	bool line_buffer_submitted; // (line buffers only) set to true when submitted. you have to reset it to false.
 	// If set to true, buffer will be scrolled to the cursor position next frame.
 	// This is to fix the problem that x1,y1,x2,y2 are not updated until the buffer is rendered.
 	bool center_cursor_next_frame; 
@@ -248,7 +249,6 @@ typedef struct Ted {
 	Menu menu;
 	FileSelector file_selector;
 	TextBuffer line_buffer; // general-purpose line buffer for inputs -- used for menus
-	bool line_buffer_submitted; // set to true if the line buffer was just submitted this frame.
 	TextBuffer find_buffer; // use for "find" term in find/find+replace
 	TextBuffer replace_buffer; // "replace" for find+replace
 	TextBuffer build_buffer; // buffer for build output (view only)

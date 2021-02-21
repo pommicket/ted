@@ -3,8 +3,12 @@
 #endif
 
 static float selector_entries_start_y(Ted const *ted, Selector const *s) {
-	(void)ted;
-	return s->bounds.pos.y;
+	Font *font = ted->font;
+	float char_height = text_font_char_height(font);
+	float padding = ted->settings.padding;
+
+	return s->bounds.pos.y
+		+ char_height * 1.25f + padding; // make room for line buffer
 }
 
 // number of entries that can be displayed on the screen
@@ -54,9 +58,13 @@ static void selector_down(Ted const *ted, Selector *s, i64 n) {
 	selector_up(ted, s, -n);
 }
 
-// returns index of entry selected, or -1 for none
-static int selector_update(Ted *ted, Selector *s) {
-	int ret = -1;
+// returns a null-terminated UTF-8 string of the option selected, or NULL if none was.
+// you should call free() on the return value.
+static char *selector_update(Ted *ted, Selector *s) {
+	char *ret = NULL;
+	TextBuffer *line_buffer = &ted->line_buffer;
+
+	ted->selector_open = s;
 	for (u32 i = 0; i < s->n_entries; ++i) {
 		// check if this entry was clicked on
 		Rect entry_rect;
@@ -64,11 +72,28 @@ static int selector_update(Ted *ted, Selector *s) {
 			for (uint c = 0; c < ted->nmouse_clicks[SDL_BUTTON_LEFT]; ++c) {
 				if (rect_contains_point(entry_rect, ted->mouse_clicks[SDL_BUTTON_LEFT][c])) {
 					// this option was selected
-					ret = (int)i;
+					ret = str_dup(s->entries[i].name);
+					break;
 				}
 			}
 		}
 	}
+
+	if (line_buffer->line_buffer_submitted) {
+		line_buffer->line_buffer_submitted = false;
+		if (!ret) {
+			if (s->enable_cursor) {
+				// select this option
+				if (s->cursor < s->n_entries)
+					ret = str_dup(s->entries[s->cursor].name);
+
+			} else {
+				// user typed in submission
+				ret = str32_to_utf8_cstr(buffer_get_line(line_buffer, 0));
+			}
+		}
+	}
+
 	// apply scroll
 	float scroll_speed = 2.5f;
 	s->scroll += scroll_speed * (float)ted->scroll_total_y;
@@ -80,6 +105,7 @@ static void selector_render(Ted *ted, Selector *s) {
 	Settings const *settings = &ted->settings;
 	u32 const *colors = settings->colors;
 	Font *font = ted->font;
+	float char_height = text_font_char_height(font);
 
 	Rect bounds = s->bounds;
 
@@ -95,9 +121,19 @@ static void selector_render(Ted *ted, Selector *s) {
 		}
 	}
 	gl_geometry_draw();
+
+	float x1, y1, x2, y2;
+	rect_coords(bounds, &x1, &y1, &x2, &y2);
+	// search buffer
+	float line_buffer_height = char_height;
+	buffer_render(&ted->line_buffer, rect4(x1, y1, x2, y1 + line_buffer_height));
+	y1 += line_buffer_height;
 		
 	TextRenderState text_state = text_render_state_default;
-	rect_coords(bounds, &text_state.min_x, &text_state.min_y, &text_state.max_x, &text_state.max_y);
+	text_state.min_x = x1;
+	text_state.max_x = x2;
+	text_state.min_y = y1;
+	text_state.max_y = y2;
 	text_state.render = true;
 
 	// render entries themselves
@@ -283,8 +319,10 @@ static bool file_selector_cd(Ted const *ted, FileSelector *fs, char const *path)
 // returns the name of the selected file, or NULL
 // if none was selected. the returned pointer should be freed.
 static char *file_selector_update(Ted *ted, FileSelector *fs) {
+
 	TextBuffer *line_buffer = &ted->line_buffer;
 	String32 search_term32 = buffer_get_line(line_buffer, 0);
+	fs->sel.enable_cursor = !fs->create_menu || search_term32.len == 0;
 	char *const cwd = fs->cwd;
 
 	if (cwd[0] == '\0') {
@@ -326,34 +364,34 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 		}
 	}
 
-	char *search_term = search_term32.len ? str32_to_utf8_cstr(search_term32) : NULL;
+	char *option_chosen = selector_update(ted, &fs->sel);
 
+	if (option_chosen) {
+		char path[TED_PATH_MAX];
+		strbuf_printf(path, "%s%s%s", cwd, cwd[strlen(cwd)-1] == PATH_SEPARATOR ? "" : PATH_SEPARATOR_STR, option_chosen);
+		char *ret = NULL;
 
-	bool submitted = ted->line_buffer_submitted;
-	
-	// user pressed enter in search bar
-	if (submitted) {
-		if (fs->create_menu && search_term) {
-			// user typed in file name to save as
-			char path[TED_PATH_MAX];
-			strbuf_printf(path, "%s%s%s", cwd, cwd[strlen(cwd)-1] == PATH_SEPARATOR ? "" : PATH_SEPARATOR_STR, search_term);
-			free(search_term);
-			return str_dup(path);
+		if (fs->create_menu) {
+			// don't need to check anything
+			ret = str_dup(path);
 		} else {
-			if (fs->sel.cursor < fs->n_entries) {
-				FileEntry *entry = &fs->entries[fs->sel.cursor];
-				switch (entry->type) {
-				case FS_FILE:
-					free(search_term);
-					if (entry->path) return str_dup(entry->path);
-					break;
-				case FS_DIRECTORY:
-					file_selector_cd(ted, fs, entry->name);
-					buffer_clear(line_buffer); // clear search term
-					break;
-				default: break;
-				}
+			switch (fs_path_type(path)) {
+			case FS_NON_EXISTENT: break;
+			case FS_OTHER: break;
+
+			case FS_FILE:
+				// selected a file!
+				ret = str_dup(path);
+				break;
+			case FS_DIRECTORY:
+				// cd there
+				file_selector_cd(ted, fs, option_chosen);
+				break;
 			}
+		}
+		free(option_chosen);
+		if (ret) {
+			return ret;
 		}
 	}
 	
@@ -374,6 +412,7 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 		file_selector_cd(ted, fs, "..");
 	}
 
+	char *search_term = str32_to_utf8_cstr(buffer_get_line(line_buffer, 0));
 	if (files) {
 		u32 nfiles;
 		for (nfiles = 0; files[nfiles]; ++nfiles);
@@ -445,11 +484,6 @@ static void file_selector_render(Ted *ted, FileSelector *fs) {
 	// current working directory
 	text_utf8(font, fs->cwd, x1, y1, colors[COLOR_TEXT]);
 	y1 += char_height + padding;
-
-	// search buffer
-	float line_buffer_height = char_height;
-	buffer_render(&ted->line_buffer, rect4(x1, y1, x2, y1 + line_buffer_height));
-	y1 += line_buffer_height;
 
 	// render selector
 	Selector *sel = &fs->sel;

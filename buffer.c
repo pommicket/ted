@@ -558,7 +558,7 @@ static Status buffer_line_set_len(TextBuffer *buffer, Line *line, u32 new_len) {
 				line->str = new_str;
 			}
 		}
-	} else if (line->len == 0) {
+	} else if (line->len == 0 && new_len > 0) {
 		// start by allocating 8 code points
 		line->str = buffer_malloc(buffer, 8 * sizeof *line->str);
 		if (!line->str) {
@@ -1616,6 +1616,10 @@ void buffer_insert_utf8_at_cursor(TextBuffer *buffer, char const *utf8) {
 
 // insert newline at cursor and auto-indent
 void buffer_newline(TextBuffer *buffer) {
+	if (buffer->is_line_buffer) {
+		buffer->line_buffer_submitted = true;
+		return;
+	}
 	Settings const *settings = buffer_settings(buffer);
 	BufferPos cursor_pos = buffer->cursor_pos;
 	String32 line = buffer_get_line(buffer, cursor_pos.line);

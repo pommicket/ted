@@ -324,6 +324,8 @@ void config_read(Ted *ted, char const *filename) {
 												if (!isspace(*src))
 													*dst++ = *src;
 											*dst = 0;
+											if (settings->language_extensions[lang])
+												free(settings->language_extensions[lang]);
 											settings->language_extensions[lang] = new_str;
 										}
 									}

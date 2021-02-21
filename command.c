@@ -118,16 +118,12 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		break;
 	case CMD_NEWLINE:
 	case CMD_NEWLINE_BACK:
-		if (!buffer) {
-		} else if (buffer->is_line_buffer) {
-			ted->line_buffer_submitted = true;
-			if (ted->find) {
-				if (buffer == &ted->find_buffer || buffer == &ted->replace_buffer) {
-					if (c == CMD_NEWLINE)
-						find_next(ted);
-					else
-						find_prev(ted);
-				}
+		if (ted->find) {
+			if (buffer == &ted->find_buffer || buffer == &ted->replace_buffer) {
+				if (c == CMD_NEWLINE)
+					find_next(ted);
+				else
+					find_prev(ted);
 			}
 		} else {
 			buffer_newline(buffer);
