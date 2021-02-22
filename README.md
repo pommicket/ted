@@ -23,7 +23,8 @@ a simple editor that starts up practically instantaneously, and performs well on
 - Customization of (pretty much) all colours and keyboard commands.
 - Syntax highlighting for C, C++, Rust, and Python.
 - Find and replace (with regular expressions!)
-- Run build command (default keybinding F4)
+- Run build command (default keybinding F4), go to errors
+- Go to definition (ctrl+click)
 
 ## Building from source
 
@@ -64,6 +65,7 @@ Then run `make.bat`.
 <tr><td>0.3</td> <td>Find+replace, highlight matching parentheses, indent/dedent selection</td> <td>2021 Feb 11</td></tr>
 <tr><td>0.3a</td> <td>Find+replace bug fixes, view-only mode</td> <td>2021 Feb 14</td></tr>
 <tr><td>0.4</td> <td>:build</td> <td>2021 Feb 18</td></tr>
+<tr><td>0.5</td> <td>Go to definition</td> <td>2021 Feb 22</td></tr>
 </table>
 
 ## License
