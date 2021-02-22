@@ -1,6 +1,5 @@
 // @TODO:
-// - fix automatic horizontal scrolling
-
+// - improve word movement
 // - goto line
 
 // - :run -- if .html file, open in browser, otherwise figure out a way of sending a command to shell

@@ -711,7 +711,7 @@ void buffer_text_dimensions(TextBuffer *buffer, u32 *lines, u32 *columns) {
 		// which line on screen is the longest?
 		for (u32 l = buffer->first_line_on_screen; l <= buffer->last_line_on_screen && l < buffer->nlines; ++l) {
 			Line *line = &buffer->lines[l];
-			longest_line = max_u32(longest_line, line->len);
+			longest_line = max_u32(longest_line, buffer_index_to_column(buffer, l, line->len));
 		}
 		*columns = longest_line;
 	}

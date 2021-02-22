@@ -48,6 +48,7 @@ static void menu_close(Ted *ted) {
 		break;
 	}
 	ted->menu = MENU_NONE;
+	ted->selector_open = NULL;
 }
 
 static void menu_escape(Ted *ted) {
