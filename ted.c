@@ -1,8 +1,8 @@
 static void menu_open(Ted *ted, Menu menu);
 
 // this is a macro so we get -Wformat warnings
-#define ted_seterr(buffer, ...) \
-	snprintf(ted->error, sizeof ted->error - 1, __VA_ARGS__)
+#define ted_seterr(ted, ...) \
+	snprintf((ted)->error, sizeof (ted)->error - 1, __VA_ARGS__)
 
 void ted_seterr_to_buferr(Ted *ted, TextBuffer *buffer) {
 	size_t size = sizeof ted->error;
