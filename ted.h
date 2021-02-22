@@ -167,6 +167,7 @@ ENUM_U16 {
 	MENU_SAVE_AS,
 	MENU_WARN_UNSAVED, // warn about unsaved changes
 	MENU_ASK_RELOAD, // prompt about whether to reload file which has ben changed by another program
+	MENU_GOTO_DEFINITION,
 } ENUM_U16_END(Menu);
 
 typedef struct {
@@ -248,6 +249,7 @@ typedef struct Ted {
 	int scroll_total_x, scroll_total_y; // total amount scrolled in the x and y direction this frame
 	Menu menu;
 	FileSelector file_selector;
+	Selector tag_selector; // for "go to definition of..." menu
 	TextBuffer line_buffer; // general-purpose line buffer for inputs -- used for menus
 	TextBuffer find_buffer; // use for "find" term in find/find+replace
 	TextBuffer replace_buffer; // "replace" for find+replace
@@ -270,6 +272,8 @@ typedef struct Ted {
 	
 	BuildError *build_errors; // dynamic array of build errors
 	u32 build_error; // build error we are currently "on"
+
+	char **tag_selector_entries; // an array of all tags (see tag_selector_open)
 
 	// points to a selector if any is open, otherwise NULL.
 	Selector *selector_open;

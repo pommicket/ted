@@ -2124,7 +2124,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 		buffer->center_cursor_next_frame = false;
 	}
 
-	if (rect_contains_point(rect4(x1, y1, x2, y2), ted->mouse_pos)) {
+	if (rect_contains_point(rect4(x1, y1, x2, y2), ted->mouse_pos) && !ted->menu) {
 		// scroll with mouse wheel
 		double scroll_speed = 2.5;
 		buffer_scroll(buffer, ted->scroll_total_x * scroll_speed, ted->scroll_total_y * scroll_speed);

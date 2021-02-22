@@ -97,6 +97,7 @@ static char *selector_update(Ted *ted, Selector *s) {
 	// apply scroll
 	float scroll_speed = 2.5f;
 	s->scroll += scroll_speed * (float)ted->scroll_total_y;
+	selector_clamp_scroll(ted, s);
 
 	return ret;
 }

@@ -1,3 +1,5 @@
+static char const TED_ERR_NO_TAGS[] = "No tags file. Try running ctags.";
+
 static int tag_try(FILE *fp, char const *tag) {
 	if (ftell(fp) != 0) {
 		while (1) {
@@ -29,7 +31,7 @@ bool tag_goto(Ted *ted, char const *tag) {
 	char const *tags_filename = settings->tags_filename;
 	FILE *file = fopen(tags_filename, "rb");
 	if (!file) {
-		ted_seterr(ted, "No tags file. Try running ctags.");
+		ted_seterr(ted, TED_ERR_NO_TAGS);
 		return false;
 	}
 	fseek(file, 0, SEEK_END);
@@ -97,9 +99,10 @@ bool tag_goto(Ted *ted, char const *tag) {
 							TextBuffer *buffer = ted->active_buffer;
 							int line_number = atoi(address);
 							if (line_number > 0) {
-								// the tags file gives us a line number
-								BufferPos pos = {.line = (u32)line_number, .index = 0};
+								// the tags file gives us a (1-indexed) line number
+								BufferPos pos = {.line = (u32)line_number - 1, .index = 0};
 								buffer_cursor_move_to_pos(buffer, pos);
+								buffer->center_cursor_next_frame = true;
 								success = true;
 							} else if (address[0] == '/') {
 								// the tags file gives us a pattern to look for
@@ -149,8 +152,8 @@ bool tag_goto(Ted *ted, char const *tag) {
 							} else {
 								ted_seterr(ted, "Unrecognized tag address: %s", address);
 							}
-							break;
 						}
+						break;
 					}
 				}
 			}
@@ -158,4 +161,68 @@ bool tag_goto(Ted *ted, char const *tag) {
 	}
 	fclose(file);
 	return success;
+}
+
+static void tag_selector_open(Ted *ted) {
+	// read tags file and extract tag names
+	FILE *fp = fopen("tags", "r");
+	arr_clear(ted->tag_selector_entries);
+	if (fp) {
+		char line[1024];
+		while (fgets(line, sizeof line, fp)) {
+			size_t len = strcspn(line, "\t");
+			arr_add(ted->tag_selector_entries, strn_dup(line, len));
+		}
+		ted->active_buffer = &ted->line_buffer;
+		buffer_select_all(ted->active_buffer);
+
+		ted->tag_selector.cursor = 0;
+
+		fclose(fp);
+	} else {
+		ted_seterr(ted, TED_ERR_NO_TAGS);
+	}
+}
+
+static void tag_selector_close(Ted *ted) {
+	Selector *sel = &ted->tag_selector;
+	arr_clear(sel->entries);
+	sel->n_entries = 0;
+	arr_foreach_ptr(ted->tag_selector_entries, char *, entry) {
+		free(*entry);
+	}
+	arr_clear(ted->tag_selector_entries);
+}
+
+// returns tag selected (should be free'd), or NULL if none was.
+static char *tag_selector_update(Ted *ted) {
+	Selector *sel = &ted->tag_selector;
+	u32 color = ted->settings.colors[COLOR_TEXT];
+	sel->enable_cursor = true;
+	
+	// create selector entries based on search term
+	char *search_term = str32_to_utf8_cstr(buffer_get_line(&ted->line_buffer, 0));
+
+	arr_clear(sel->entries);
+
+	arr_foreach_ptr(ted->tag_selector_entries, char *, tagp) {
+		char const *tag = *tagp;
+		if (!search_term || stristr(tag, search_term)) {
+			SelectorEntry entry = {
+				.name = tag,
+				.color = color
+			};
+			arr_add(sel->entries, entry);
+		}
+	}
+
+	sel->n_entries = arr_len(sel->entries);
+
+	return selector_update(ted, sel);
+}
+
+static void tag_selector_render(Ted *ted, Rect bounds) {
+	Selector *sel = &ted->tag_selector;
+	sel->bounds = bounds;
+	selector_render(ted, sel);
 }

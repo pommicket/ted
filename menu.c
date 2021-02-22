@@ -20,6 +20,9 @@ static void menu_open(Ted *ted, Menu menu) {
 	case MENU_ASK_RELOAD:
 		assert(*ted->ask_reload);
 		break;
+	case MENU_GOTO_DEFINITION:
+		tag_selector_open(ted);
+		break;
 	}
 }
 
@@ -39,6 +42,9 @@ static void menu_close(Ted *ted) {
 		break;
 	case MENU_ASK_RELOAD:
 		*ted->ask_reload = 0;
+		break;
+	case MENU_GOTO_DEFINITION:
+		tag_selector_close(ted);
 		break;
 	}
 	ted->menu = MENU_NONE;
@@ -71,7 +77,9 @@ static Rect menu_rect(Ted *ted) {
 	);
 }
 
-static void menu_update(Ted *ted, Menu menu) {
+static void menu_update(Ted *ted) {
+	Menu menu = ted->menu;
+	assert(menu);
 	switch (menu) {
 	case MENU_NONE: break;
 	case MENU_SAVE_AS: {
@@ -179,10 +187,20 @@ static void menu_update(Ted *ted, Menu menu) {
 			break;
 		}
 		break;
+	case MENU_GOTO_DEFINITION: {
+		char *chosen_tag = tag_selector_update(ted);
+		if (chosen_tag) {
+			menu_close(ted);
+			tag_goto(ted, chosen_tag);
+			free(chosen_tag);
+		}
+	} break;
 	}
 }
 
-static void menu_render(Ted *ted, Menu menu) {
+static void menu_render(Ted *ted) {
+	Menu menu = ted->menu;
+	assert(menu);
 	Settings const *settings = &ted->settings;
 	u32 const *colors = settings->colors;
 	float window_width = ted->window_width, window_height = ted->window_height;
@@ -202,6 +220,26 @@ static void menu_render(Ted *ted, Menu menu) {
 		popup_render(ted, POPUP_YES_NO_CANCEL, title, body);
 		return;
 	}
+
+	
+	float padding = settings->padding;
+	Rect rect = menu_rect(ted);
+	float menu_x1, menu_y1, menu_x2, menu_y2;
+	rect_coords(rect, &menu_x1, &menu_y1, &menu_x2, &menu_y2);
+
+	if (menu == MENU_OPEN || menu == MENU_SAVE_AS || menu == MENU_GOTO_DEFINITION) {
+		// menu rectangle & border
+		gl_geometry_rect(rect, colors[COLOR_MENU_BG]);
+		gl_geometry_rect_border(rect, settings->border_thickness, colors[COLOR_BORDER]);
+		gl_geometry_draw();
+		
+		menu_x1 += padding;
+		menu_y1 += padding;
+		menu_x2 -= padding;
+		menu_y2 -= padding;
+	}
+		
+
 	switch (menu) {
 	case MENU_NONE: assert(0); break;
 	case MENU_WARN_UNSAVED: {
@@ -218,21 +256,6 @@ static void menu_render(Ted *ted, Menu menu) {
 	} break;
 	case MENU_OPEN:
 	case MENU_SAVE_AS: {
-		float padding = settings->padding;
-		Rect rect = menu_rect(ted);
-		float menu_x1, menu_y1, menu_x2, menu_y2;
-		rect_coords(rect, &menu_x1, &menu_y1, &menu_x2, &menu_y2);
-
-		// menu rectangle & border
-		gl_geometry_rect(rect, colors[COLOR_MENU_BG]);
-		gl_geometry_rect_border(rect, settings->border_thickness, colors[COLOR_BORDER]);
-		gl_geometry_draw();
-		
-		menu_x1 += padding;
-		menu_y1 += padding;
-		menu_x2 -= padding;
-		menu_y2 -= padding;
-		
 
 		if (menu == MENU_OPEN) {
 			text_utf8(font_bold, "Open...", menu_x1, menu_y1, colors[COLOR_TEXT]);
@@ -247,11 +270,8 @@ static void menu_render(Ted *ted, Menu menu) {
 		fs->bounds = rect4(menu_x1, menu_y1, menu_x2, menu_y2);
 		file_selector_render(ted, fs);
 	} break;
+	case MENU_GOTO_DEFINITION: {
+		tag_selector_render(ted, rect4(menu_x1, menu_y1, menu_x2, menu_y2));
+	} break;
 	}
-}
-
-static void menu_frame(Ted *ted, Menu menu) {
-	menu_update(ted, menu);
-	if (ted->menu)
-		menu_render(ted, ted->menu);
 }

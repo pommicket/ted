@@ -125,7 +125,7 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 				else
 					find_prev(ted);
 			}
-		} else {
+		} else if (buffer) {
 			buffer_newline(buffer);
 		}
 		break;
@@ -269,10 +269,12 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		break;
 	
 	case CMD_FIND:
-		find_open(ted, false);
+		if (buffer)
+			find_open(ted, false);
 		break;
 	case CMD_FIND_REPLACE:
-		find_open(ted, true);
+		if (buffer)
+			find_open(ted, true);
 		break;
 	
 	case CMD_ESCAPE:
@@ -298,6 +300,9 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		break;
 	case CMD_BUILD_PREV_ERROR:
 		build_prev_error(ted);
+		break;
+	case CMD_OPEN_DEFINITION_MENU:
+		menu_open(ted, MENU_GOTO_DEFINITION);
 		break;
 	}
 }

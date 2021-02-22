@@ -1,5 +1,4 @@
 // @TODO:
-// - Ctrl+D = :find-definition  --- tag menu (see all tags, select one)
 // - fix automatic horizontal scrolling
 
 // - goto line
@@ -65,10 +64,10 @@ no_warn_end
 bool tag_goto(Ted *ted, char const *tag);
 #include "buffer.c"
 #include "ted.c"
-#include "tags.c"
 #include "ui.c"
 #include "find.c"
 #include "node.c"
+#include "tags.c"
 #include "menu.c"
 #include "build.c"
 #include "command.c"
@@ -588,6 +587,10 @@ int main(int argc, char **argv) {
 				buffer_scroll(active_buffer, +scroll_amount_x, 0);
 		}
 		
+		if (ted->menu) {
+			menu_update(ted);
+		}
+		
 		ted_update_window_dimensions(ted);
 		float window_width = ted->window_width, window_height = ted->window_height;
 
@@ -606,6 +609,7 @@ int main(int argc, char **argv) {
 
 		// default window title
 		strcpy(ted->window_title, "ted");
+
 
 		if (ted->active_node) {
 			float const padding = settings->padding;
@@ -632,11 +636,9 @@ int main(int argc, char **argv) {
 			text_render(font);
 		}
 
-		Menu menu = ted->menu;
-		if (menu) {
-			menu_frame(ted, menu);
+		if (ted->menu) {
+			menu_render(ted);
 		}
-
 
 		if (text_has_err()) {
 			ted_seterr(ted, "Couldn't render text: %s", text_get_err());
@@ -742,6 +744,7 @@ int main(int argc, char **argv) {
 	SDL_DestroyWindow(window);
 	SDL_Quit();
 	find_close(ted);
+	tag_selector_close(ted);
 	for (u16 i = 0; i < TED_MAX_BUFFERS; ++i)
 		if (ted->buffers_used[i])
 			buffer_free(&ted->buffers[i]);

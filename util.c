@@ -65,13 +65,22 @@ static bool streq(char const *a, char const *b) {
 	return strcmp(a, b) == 0;
 }
 
+// duplicates at most n characters from src
+static char *strn_dup(char const *src, size_t n) {
+	size_t len = strlen(src);
+	if (n > len)
+		n = len;
+	char *ret = malloc(n + 1);
+	if (ret) {
+		memcpy(ret, src, n);
+		ret[n] = 0;
+	}
+	return ret;
+}
+
 // duplicates a null-terminated string. the returned string should be passed to free()
 static char *str_dup(char const *src) {
-	size_t len = strlen(src);
-	char *ret = malloc(len + 1);
-	if (ret)
-		memcpy(ret, src, len + 1);
-	return ret;
+	return strn_dup(src, SIZE_MAX);
 }
 
 // like snprintf, but not screwed up on windows
