@@ -272,6 +272,9 @@ typedef struct Ted {
 	
 	BuildError *build_errors; // dynamic array of build errors
 	u32 build_error; // build error we are currently "on"
+	
+	// used by menus to keep track of the scroll position so we can return to it.
+	v2d prev_active_buffer_scroll;
 
 	char **tag_selector_entries; // an array of all tags (see tag_selector_open)
 

@@ -456,6 +456,16 @@ static void v4_print(v4 v) {
 	printf("(%f, %f, %f, %f)\n", v.x, v.y, v.z, v.w);
 }
 
+typedef struct {
+	double x, y;
+} v2d;
+
+static v2d V2D(double x, double y) {
+	v2d v;
+	v.x = x;
+	v.y = y;
+	return v;
+}
 
 // matrices are column-major, because that's what they are in OpenGL 
 typedef struct {

@@ -864,7 +864,15 @@ void buffer_scroll_to_pos(TextBuffer *buffer, BufferPos pos) {
 }
 
 // scroll in such a way that this position is in the center of the screen
-void buffer_scroll_center_pos(TextBuffer *buffer) {
+void buffer_scroll_center_pos(TextBuffer *buffer, BufferPos pos) {
+	double line = pos.line;
+	double col = buffer_index_to_column(buffer, pos.line, pos.index);
+	
+	double display_lines = buffer_display_lines(buffer);
+	double display_cols = buffer_display_cols(buffer);
+	buffer->scroll_x = col - display_cols * 0.5;
+	buffer->scroll_y = line - display_lines * 0.5;
+	buffer_correct_scroll(buffer);
 }
 
 // if the cursor is offscreen, this will scroll to make it onscreen.

@@ -1,7 +1,9 @@
 static void menu_open(Ted *ted, Menu menu) {
 	if (ted->find) find_close(ted);
 	ted->menu = menu;
-	ted->prev_active_buffer = ted->active_buffer;
+	TextBuffer *prev_buf = ted->prev_active_buffer = ted->active_buffer;
+	ted->prev_active_buffer_scroll = V2D(prev_buf->scroll_x, prev_buf->scroll_y);
+	
 	ted->active_buffer = NULL;
 	*ted->warn_overwrite = 0; // clear warn_overwrite
 	buffer_clear(&ted->line_buffer);
@@ -31,8 +33,10 @@ static void menu_open(Ted *ted, Menu menu) {
 }
 
 static void menu_close(Ted *ted) {
-	ted->active_buffer = ted->prev_active_buffer;
+	TextBuffer *buffer = ted->active_buffer = ted->prev_active_buffer;
 	ted->prev_active_buffer = NULL;
+	buffer->scroll_x = ted->prev_active_buffer_scroll.x;
+	buffer->scroll_y = ted->prev_active_buffer_scroll.y;
 	switch (ted->menu) {
 	case MENU_NONE: assert(0); break;
 	case MENU_OPEN:
@@ -207,16 +211,16 @@ static void menu_update(Ted *ted) {
 		long line_number = strtol(contents, &end, 0);
 		TextBuffer *buffer = ted->prev_active_buffer;
 		if (line_number > 0 && *end == '\0' && line_number <= (long)buffer->nlines) {
+			BufferPos pos = {line_number - 1, 0};
+			
 			if (line_buffer->line_buffer_submitted) {
 				// let's go there!
-				BufferPos pos = {line_number - 1, 0};
-					
 				menu_close(ted);
 				buffer_cursor_move_to_pos(buffer, pos);
 				buffer_center_cursor(buffer);
 			} else {
 				// scroll to the line
-				
+				buffer_scroll_center_pos(buffer, pos);
 			}
 		}
 		line_buffer->line_buffer_submitted = false;
