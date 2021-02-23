@@ -54,6 +54,9 @@ static void menu_close(Ted *ted) {
 	case MENU_GOTO_DEFINITION:
 		tag_selector_close(ted);
 		break;
+	case MENU_GOTO_LINE:
+		buffer_clear(&ted->line_buffer);
+		break;
 	}
 	ted->menu = MENU_NONE;
 	ted->selector_open = NULL;
@@ -211,7 +214,7 @@ static void menu_update(Ted *ted) {
 		long line_number = strtol(contents, &end, 0);
 		TextBuffer *buffer = ted->prev_active_buffer;
 		if (line_number > 0 && *end == '\0' && line_number <= (long)buffer->nlines) {
-			BufferPos pos = {line_number - 1, 0};
+			BufferPos pos = {(u32)line_number - 1, 0};
 			
 			if (line_buffer->line_buffer_submitted) {
 				// let's go there!
