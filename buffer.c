@@ -1051,12 +1051,8 @@ i64 buffer_pos_move_words(TextBuffer *buffer, BufferPos *pos, i64 nwords) {
 					pos->index = 0;
 				}
 			} else {
-				// move past any whitespace before the word
-				while (index < line->len && is_space(str[index]))
-					++index;
-				
 				bool starting_isword = is_word(str[index]) != 0;
-				for (; index < line->len && !is_space(str[index]); ++index) {
+				for (; index < line->len; ++index) {
 					bool this_isword = is_word(str[index]) != 0;
 					if (this_isword != starting_isword) {
 						// either the position *was* on an alphanumeric character and now it's not
@@ -1065,9 +1061,6 @@ i64 buffer_pos_move_words(TextBuffer *buffer, BufferPos *pos, i64 nwords) {
 					}
 				}
 				
-				// move past any whitespace after the word
-				while (index < line->len && is_space(str[index]))
-					++index;
 				pos->index = index;
 			}
 		}
@@ -1089,14 +1082,11 @@ i64 buffer_pos_move_words(TextBuffer *buffer, BufferPos *pos, i64 nwords) {
 				}
 			} else {
 				--index;
-
-				while (index > 0 && is_space(str[index])) // skip whitespace after word
-					--index;
 				if (index > 0) {
 					bool starting_isword = is_word(str[index]) != 0;
 					while (true) {
 						bool this_isword = is_word(str[index]) != 0;
-						if (is_space(str[index]) || this_isword != starting_isword) {
+						if (this_isword != starting_isword) {
 							++index;
 							break;
 						}
@@ -1388,8 +1378,11 @@ void buffer_select_to_end_of_file(TextBuffer *buffer) {
 // select the word the cursor is inside of
 void buffer_select_word(TextBuffer *buffer) {
 	BufferPos start_pos = buffer->cursor_pos, end_pos = buffer->cursor_pos;
-	buffer_pos_move_left_words(buffer, &start_pos, 1);
-	buffer_pos_move_right_words(buffer, &end_pos, 1);
+	if (start_pos.index > 0)
+		buffer_pos_move_left_words(buffer, &start_pos, 1);
+	if (end_pos.index < buffer->lines[end_pos.line].len)
+		buffer_pos_move_right_words(buffer, &end_pos, 1);
+	
 	buffer_cursor_move_to_pos(buffer, end_pos);
 	buffer_select_to_pos(buffer, start_pos);
 }
