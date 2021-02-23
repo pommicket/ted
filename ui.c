@@ -311,9 +311,10 @@ static Status file_selector_cd_(Ted const *ted, FileSelector *fs, char const *pa
 // go to the directory `path`. make sure `path` only contains path separators like PATH_SEPARATOR, not any
 // other members of ALL_PATH_SEPARATORS
 // returns false if this path doesn't exist or isn't a directory
-static bool file_selector_cd(Ted const *ted, FileSelector *fs, char const *path) {
+static bool file_selector_cd(Ted *ted, FileSelector *fs, char const *path) {
 	fs->sel.cursor = 0;
 	fs->sel.scroll = 0;
+	buffer_clear(&ted->line_buffer);
 	return file_selector_cd_(ted, fs, path, 0);
 }
 

@@ -202,7 +202,6 @@ void config_read(Ted *ted, char const *filename) {
 	};
 	OptionString const options_string[] = {
 		{"build-default-command", settings->build_default_command, sizeof settings->build_default_command},
-		{"tags-filename", settings->tags_filename, sizeof settings->tags_filename},
 	};
 
 	FILE *fp = fopen(filename, "rb");

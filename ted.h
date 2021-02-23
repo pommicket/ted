@@ -79,7 +79,6 @@ typedef struct {
 	u8 padding;
 	u8 scrolloff;
 	char build_default_command[256];
-	char tags_filename[128];
 	// [i] = comma-separated string of file extensions for language i, or NULL for none
 	char *language_extensions[LANG_COUNT];
 } Settings;
@@ -291,6 +290,7 @@ typedef struct Ted {
 	char home[TED_PATH_MAX];
 	char cwd[TED_PATH_MAX]; // current working directory
 	char build_dir[TED_PATH_MAX]; // directory where we run the build command
+	char tags_dir[TED_PATH_MAX]; // where we are reading tags from
 	bool nodes_used[TED_MAX_NODES];
 	Node nodes[TED_MAX_NODES];
 	bool buffers_used[TED_MAX_BUFFERS];

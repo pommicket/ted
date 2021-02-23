@@ -1,4 +1,21 @@
-static char const TED_ERR_NO_TAGS[] = "No tags file. Try running ctags.";
+static char const *tags_filename(Ted *ted) {
+	change_directory(ted->cwd);
+	char const *filename = "tags";
+	strbuf_printf(ted->tags_dir, ".");
+	if (!fs_file_exists(filename)) {
+		filename = "../tags";
+		strbuf_printf(ted->tags_dir, "..");
+		if (!fs_file_exists(filename)) {
+			filename = "../../tags";
+			strbuf_printf(ted->tags_dir, "../..");
+			if (!fs_file_exists(filename)) {
+				ted_seterr(ted, "No tags file. Try running ctags.");
+				filename = NULL;
+			}
+		}
+	}
+	return filename;
+}
 
 static int tag_try(FILE *fp, char const *tag) {
 	if (ftell(fp) != 0) {
@@ -26,14 +43,11 @@ static int tag_try(FILE *fp, char const *tag) {
 
 // returns true if the tag exists.
 bool tag_goto(Ted *ted, char const *tag) {
-	change_directory(ted->cwd);
-	Settings const *settings = &ted->settings;
-	char const *tags_filename = settings->tags_filename;
-	FILE *file = fopen(tags_filename, "rb");
-	if (!file) {
-		ted_seterr(ted, TED_ERR_NO_TAGS);
-		return false;
-	}
+	char const *tags_name = tags_filename(ted);
+	if (!tags_name) return false;
+	FILE *file = fopen(tags_name, "rb");
+	if (!file) return false;
+	
 	fseek(file, 0, SEEK_END);
 	size_t file_size = (size_t)ftell(file);
 	// binary search for tag in file
@@ -93,9 +107,10 @@ bool tag_goto(Ted *ted, char const *tag) {
 							address_end[-2] = '\0';
 						}
 						assert(streq(name, tag));
-						char path[TED_PATH_MAX];
-						ted_full_path(ted, filename, path, sizeof path);
-						if (ted_open_file(ted, path)) {
+						char path[TED_PATH_MAX], full_path[TED_PATH_MAX];
+						strbuf_printf(path, "%s/%s", ted->tags_dir, filename);
+						ted_full_path(ted, path, full_path, sizeof full_path);
+						if (ted_open_file(ted, full_path)) {
 							TextBuffer *buffer = ted->active_buffer;
 							int line_number = atoi(address);
 							if (line_number > 0) {
@@ -165,22 +180,26 @@ bool tag_goto(Ted *ted, char const *tag) {
 
 static void tag_selector_open(Ted *ted) {
 	// read tags file and extract tag names
-	FILE *fp = fopen("tags", "r");
+	char const *filename = tags_filename(ted);
+	if (!filename) return;
+	FILE *file = fopen(filename, "rb");
+	if (!file) return;
+	
 	arr_clear(ted->tag_selector_entries);
-	if (fp) {
+	if (file) {
 		char line[1024];
-		while (fgets(line, sizeof line, fp)) {
-			size_t len = strcspn(line, "\t");
-			arr_add(ted->tag_selector_entries, strn_dup(line, len));
+		while (fgets(line, sizeof line, file)) {
+			if (line[0] != '!') { // tag metadata is formatted as tag names beginning with !	
+				size_t len = strcspn(line, "\t");
+				arr_add(ted->tag_selector_entries, strn_dup(line, len));
+			}
 		}
 		ted->active_buffer = &ted->line_buffer;
 		buffer_select_all(ted->active_buffer);
 
 		ted->tag_selector.cursor = 0;
 
-		fclose(fp);
-	} else {
-		ted_seterr(ted, TED_ERR_NO_TAGS);
+		fclose(file);
 	}
 }
 
