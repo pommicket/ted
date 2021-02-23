@@ -167,6 +167,7 @@ ENUM_U16 {
 	MENU_WARN_UNSAVED, // warn about unsaved changes
 	MENU_ASK_RELOAD, // prompt about whether to reload file which has ben changed by another program
 	MENU_GOTO_DEFINITION,
+	MENU_GOTO_LINE,
 } ENUM_U16_END(Menu);
 
 typedef struct {

@@ -69,7 +69,8 @@ ENUM_U16 {
 	CMD_BUILD_PREV_ERROR,
 	CMD_BUILD_NEXT_ERROR,
 
-	CMD_OPEN_DEFINITION_MENU, // "go to definition of..."
+	CMD_GOTO_DEFINITION, // "go to definition of..."
+	CMD_GOTO_LINE, // open "goto line..." menu
 	
 	CMD_ESCAPE, // by default this is the escape key. closes menus, etc.
 
@@ -137,7 +138,8 @@ static CommandName const command_names[CMD_COUNT] = {
 	{"build", CMD_BUILD},
 	{"build-prev-error", CMD_BUILD_PREV_ERROR},
 	{"build-next-error", CMD_BUILD_NEXT_ERROR},
-	{"open-definition-menu", CMD_OPEN_DEFINITION_MENU},
+	{"goto-definition", CMD_GOTO_DEFINITION},
+	{"goto-line", CMD_GOTO_LINE},
 	{"escape", CMD_ESCAPE},
 };
 

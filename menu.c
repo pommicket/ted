@@ -4,6 +4,7 @@ static void menu_open(Ted *ted, Menu menu) {
 	ted->prev_active_buffer = ted->active_buffer;
 	ted->active_buffer = NULL;
 	*ted->warn_overwrite = 0; // clear warn_overwrite
+	buffer_clear(&ted->line_buffer);
 	switch (menu) {
 	case MENU_NONE: assert(0); break;
 	case MENU_OPEN:
@@ -22,6 +23,9 @@ static void menu_open(Ted *ted, Menu menu) {
 		break;
 	case MENU_GOTO_DEFINITION:
 		tag_selector_open(ted);
+		break;
+	case MENU_GOTO_LINE:
+		ted->active_buffer = &ted->line_buffer;
 		break;
 	}
 }
@@ -196,6 +200,28 @@ static void menu_update(Ted *ted) {
 			free(chosen_tag);
 		}
 	} break;
+	case MENU_GOTO_LINE: {
+		TextBuffer *line_buffer = &ted->line_buffer;
+		char *contents = str32_to_utf8_cstr(buffer_get_line(line_buffer, 0));
+		char *end;
+		long line_number = strtol(contents, &end, 0);
+		TextBuffer *buffer = ted->prev_active_buffer;
+		if (line_number > 0 && *end == '\0' && line_number <= (long)buffer->nlines) {
+			if (line_buffer->line_buffer_submitted) {
+				// let's go there!
+				BufferPos pos = {line_number - 1, 0};
+					
+				menu_close(ted);
+				buffer_cursor_move_to_pos(buffer, pos);
+				buffer_center_cursor(buffer);
+			} else {
+				// scroll to the line
+				
+			}
+		}
+		line_buffer->line_buffer_submitted = false;
+		free(contents);
+	} break;
 	}
 }
 
@@ -205,7 +231,8 @@ static void menu_render(Ted *ted) {
 	Settings const *settings = &ted->settings;
 	u32 const *colors = settings->colors;
 	float window_width = ted->window_width, window_height = ted->window_height;
-	Font *font_bold = ted->font_bold;
+	Font *font_bold = ted->font_bold, *font = ted->font;
+	float char_height = text_font_char_height(font);
 	float char_height_bold = text_font_char_height(font_bold);
 
 	// render backdrop
@@ -224,14 +251,14 @@ static void menu_render(Ted *ted) {
 
 	
 	float padding = settings->padding;
-	Rect rect = menu_rect(ted);
+	Rect bounds = menu_rect(ted);
 	float menu_x1, menu_y1, menu_x2, menu_y2;
-	rect_coords(rect, &menu_x1, &menu_y1, &menu_x2, &menu_y2);
+	rect_coords(bounds, &menu_x1, &menu_y1, &menu_x2, &menu_y2);
 
 	if (menu == MENU_OPEN || menu == MENU_SAVE_AS || menu == MENU_GOTO_DEFINITION) {
 		// menu rectangle & border
-		gl_geometry_rect(rect, colors[COLOR_MENU_BG]);
-		gl_geometry_rect_border(rect, settings->border_thickness, colors[COLOR_BORDER]);
+		gl_geometry_rect(bounds, colors[COLOR_MENU_BG]);
+		gl_geometry_rect_border(bounds, settings->border_thickness, colors[COLOR_BORDER]);
 		gl_geometry_draw();
 		
 		menu_x1 += padding;
@@ -273,6 +300,28 @@ static void menu_render(Ted *ted) {
 	} break;
 	case MENU_GOTO_DEFINITION: {
 		tag_selector_render(ted, rect4(menu_x1, menu_y1, menu_x2, menu_y2));
+	} break;
+	case MENU_GOTO_LINE: {
+		float menu_height = char_height + 2 * padding;
+		Rect r = rect(V2(padding, window_height - menu_height - padding), V2(window_width - 2 * padding, menu_height));
+		gl_geometry_rect(r, colors[COLOR_MENU_BG]);
+		gl_geometry_rect_border(r, settings->border_thickness, colors[COLOR_BORDER]);
+		char const *text = "Go to line...";
+		v2 text_size = text_get_size_v2(font_bold, text);
+		float x1, y1, x2, y2;
+		rect_coords(r, &x1, &y1, &x2, &y2);
+		x1 += padding;
+		y1 += padding;
+		x2 -= padding;
+		y2 -= padding;
+		// render "Go to line" text
+		text_utf8(font_bold, text, x1, 0.5f * (y1 + y2 - text_size.y), colors[COLOR_TEXT]);
+		x1 += text_size.x + padding;
+		gl_geometry_draw();
+		text_render(font_bold);
+		
+		// line buffer
+		buffer_render(&ted->line_buffer, rect4(x1, y1, x2, y2));
 	} break;
 	}
 }

@@ -301,8 +301,11 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 	case CMD_BUILD_PREV_ERROR:
 		build_prev_error(ted);
 		break;
-	case CMD_OPEN_DEFINITION_MENU:
+	case CMD_GOTO_DEFINITION:
 		menu_open(ted, MENU_GOTO_DEFINITION);
+		break;
+	case CMD_GOTO_LINE:
+		menu_open(ted, MENU_GOTO_LINE);
 		break;
 	}
 }

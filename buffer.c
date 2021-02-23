@@ -863,6 +863,10 @@ void buffer_scroll_to_pos(TextBuffer *buffer, BufferPos pos) {
 	buffer_correct_scroll(buffer); // it's possible that min/max_scroll_x/y go too far
 }
 
+// scroll in such a way that this position is in the center of the screen
+void buffer_scroll_center_pos(TextBuffer *buffer) {
+}
+
 // if the cursor is offscreen, this will scroll to make it onscreen.
 void buffer_scroll_to_cursor(TextBuffer *buffer) {
 	buffer_scroll_to_pos(buffer, buffer->cursor_pos);
