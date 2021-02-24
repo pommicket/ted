@@ -337,5 +337,8 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 			}
 		}
 		break;
+	case CMD_SPLIT_JOIN:
+		node_join(ted, node);
+		break;
 	}
 }

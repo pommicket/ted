@@ -34,6 +34,7 @@ static void node_free(Node *node) {
 
 // returns index of parent in ted->nodes, or -1 if this is the root node.
 static i32 node_parent(Ted *ted, u16 node_idx) {
+	assert(node_idx < TED_MAX_NODES && ted->nodes_used[node_idx]);
 	for (u16 i = 0; i < TED_MAX_NODES; ++i) {
 		if (ted->nodes_used[i]) {
 			Node *node = &ted->nodes[i];
@@ -46,9 +47,44 @@ static i32 node_parent(Ted *ted, u16 node_idx) {
 	return -1;
 }
 
+// join this node with its sibling
+static void node_join(Ted *ted, Node *node) {
+	i32 parent_idx = node_parent(ted, (u16)(node - ted->nodes));
+	if (parent_idx >= 0) {
+		Node *parent = &ted->nodes[parent_idx];
+		Node *a = &ted->nodes[parent->split_a];
+		Node *b = &ted->nodes[parent->split_b];
+		if (a->tabs && b->tabs) {
+			if (ted->active_node == a || ted->active_node == b) {
+				ted->active_node = parent;
+			}
+			arr_foreach_ptr(a->tabs, u16, tab) {
+				arr_add(parent->tabs, *tab);
+			}
+			arr_foreach_ptr(b->tabs, u16, tab) {
+				arr_add(parent->tabs, *tab);
+			}
+			if (parent->tabs) {
+				if (node == a) {
+					parent->active_tab = a->active_tab;
+				} else {
+					parent->active_tab = (u16)arr_len(a->tabs) + b->active_tab;
+				}
+				node_free(a);
+				node_free(b);
+				ted->nodes_used[parent->split_a] = false;
+				ted->nodes_used[parent->split_b] = false;
+			}
+		}
+	}
+}
+
 static void node_close(Ted *ted, u16 node_idx) {
 	assert(node_idx < TED_MAX_NODES);
 	assert(ted->nodes_used[node_idx]);
+	i32 parent_idx = node_parent(ted, node_idx);
+	ted->nodes_used[node_idx] = false;
+
 	Node *node = &ted->nodes[node_idx];
 
 	// delete all associated buffers
@@ -58,9 +94,7 @@ static void node_close(Ted *ted, u16 node_idx) {
 	}
 
 	node_free(node);
-	ted->nodes_used[node_idx] = false;
 
-	i32 parent_idx = node_parent(ted, node_idx);
 	if (parent_idx < 0) {
 		// no parent; this must be the root node
 		ted->active_node = NULL;
@@ -89,6 +123,7 @@ static void node_close(Ted *ted, u16 node_idx) {
 		}
 	}
 }
+
 
 // close tab, WITHOUT checking for unsaved changes!
 // returns true if the node is still open

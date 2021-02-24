@@ -1,7 +1,7 @@
 // @TODO:
-// - Ctrl+j = :join
 // - split depth limit
 // - resize split (i.e. change split_pos)
+// - move tabs between nodes
 
 // - Windows installation
 // - on crash, output backtrace to log
