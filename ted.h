@@ -204,8 +204,8 @@ typedef struct {
 typedef struct Node {
 	u16 *tabs; // dynamic array of indices into ted->buffers, or NULL if this is a split
 	float split_pos; // number from 0 to 1 indicating where the split is.
-	u16 active_tab;
-	bool vertical_split; // is the split vertical? if false, this split looks like a|b
+	u16 active_tab; // index of active tab in tabs.
+	bool split_vertical; // is the split vertical? if false, this split looks like a|b
 	u16 split_a; // split left/upper half; index into ted->nodes
 	u16 split_b; // split right/lower half
 } Node;

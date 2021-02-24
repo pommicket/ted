@@ -2,7 +2,8 @@ static void menu_open(Ted *ted, Menu menu) {
 	if (ted->find) find_close(ted);
 	ted->menu = menu;
 	TextBuffer *prev_buf = ted->prev_active_buffer = ted->active_buffer;
-	ted->prev_active_buffer_scroll = V2D(prev_buf->scroll_x, prev_buf->scroll_y);
+	if (prev_buf)
+		ted->prev_active_buffer_scroll = V2D(prev_buf->scroll_x, prev_buf->scroll_y);
 	
 	ted->active_buffer = NULL;
 	*ted->warn_overwrite = 0; // clear warn_overwrite
@@ -35,8 +36,10 @@ static void menu_open(Ted *ted, Menu menu) {
 static void menu_close(Ted *ted) {
 	TextBuffer *buffer = ted->active_buffer = ted->prev_active_buffer;
 	ted->prev_active_buffer = NULL;
-	buffer->scroll_x = ted->prev_active_buffer_scroll.x;
-	buffer->scroll_y = ted->prev_active_buffer_scroll.y;
+	if (buffer) {
+		buffer->scroll_x = ted->prev_active_buffer_scroll.x;
+		buffer->scroll_y = ted->prev_active_buffer_scroll.y;
+	}
 	switch (ted->menu) {
 	case MENU_NONE: assert(0); break;
 	case MENU_OPEN:

@@ -69,7 +69,9 @@ static bool node_tab_close(Ted *ted, Node *node, u16 index) {
 
 		ntabs = (u16)arr_len(node->tabs); // update ntabs
 		assert(ntabs);
-		// make sure active tab is valid
+		// fix active_tab
+		if (index < node->active_tab)
+			--node->active_tab;
 		node->active_tab = clamp_u16(node->active_tab, 0, ntabs - 1);
 		if (ted->active_node == node) {
 			// fix active buffer if necessary
@@ -104,6 +106,7 @@ static void node_frame(Ted *ted, Node *node, Rect r) {
 					}
 				}
 				for (u16 c = 0; c < ted->nmouse_clicks[SDL_BUTTON_MIDDLE]; ++c) {
+					// middle-click to close tab
 					v2 click = ted->mouse_clicks[SDL_BUTTON_MIDDLE][c];
 					if (rect_contains_point(tab_bar_rect, click)) {
 						u16 tab_index = (u16)((click.x - r.pos.x) / tab_width);

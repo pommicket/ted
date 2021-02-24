@@ -19,6 +19,7 @@ char const *command_to_str(Command c) {
 
 void command_execute(Ted *ted, Command c, i64 argument) {
 	TextBuffer *buffer = ted->active_buffer;
+	Node *node = ted->active_node;
 	Settings *settings = &ted->settings;
 
 
@@ -239,7 +240,6 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		if (ted->menu) {
 			menu_close(ted);
 		} else {
-			Node *node = ted->active_node;
 			if (node) {
 				u16 tab_idx = node->active_tab;
 				buffer = &ted->buffers[node->tabs[tab_idx]];
@@ -306,6 +306,24 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		break;
 	case CMD_GOTO_LINE:
 		menu_open(ted, MENU_GOTO_LINE);
+		break;
+
+	case CMD_SPLIT_HORIZONTAL:
+	case CMD_SPLIT_VERTICAL:
+
+#if 0
+		if (node) {
+			if (arr_len(node->tabs) > 1) { // need at least 2 tabs to split
+				i32 left_idx = ted_new_node(ted);
+				i32 right_idx = ted_new_node(ted);
+				if (left >= 0 && right >= 0) {
+					Node *left = &ted->nodes[left_idx];
+					Node *right = &ted->nodes[right_idx];
+					arr_add(right->tabs, )
+				}
+			}
+		}
+		#endif
 		break;
 	}
 }
