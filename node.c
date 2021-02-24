@@ -101,7 +101,9 @@ static void node_frame(Ted *ted, Node *node, Rect r) {
 				for (u16 c = 0; c < ted->nmouse_clicks[SDL_BUTTON_LEFT]; ++c) {
 					v2 click = ted->mouse_clicks[SDL_BUTTON_LEFT][c];
 					if (rect_contains_point(tab_bar_rect, click)) {
+						// click on tab to switch to it
 						u16 tab_index = (u16)((click.x - r.pos.x) / tab_width);
+						ted->active_node = node;
 						node_switch_to_tab(ted, node, tab_index);
 					}
 				}
@@ -156,7 +158,7 @@ static void node_frame(Ted *ted, Node *node, Rect r) {
 
 				if (i == node->active_tab) {
 					// highlight active tab
-					gl_geometry_rect(tab_rect, colors[is_active ? COLOR_ACTIVE_TAB_HL : COLOR_HL]);
+					gl_geometry_rect(tab_rect, colors[is_active ? COLOR_ACTIVE_TAB_HL : COLOR_SELECTED_TAB_HL]);
 					// set window title to active tab's title
 					strbuf_printf(ted->window_title, "ted %s", tab_title);
 				}
@@ -173,14 +175,11 @@ static void node_frame(Ted *ted, Node *node, Rect r) {
 		buffer_rect.size.y -= tab_bar_height;
 		buffer_render(buffer, buffer_rect);
 	} else {
-
-#if 0
-	// @TODO: test this
 		// this node is a split
 		Node *a = &ted->nodes[node->split_a];
 		Node *b = &ted->nodes[node->split_b];
 		Rect r1 = r, r2 = r;
-		if (node->vertical_split) {
+		if (node->split_vertical) {
 			float split_pos = r.size.y * node->split_pos;
 			r1.size.y = split_pos;
 			r2.pos.y += split_pos;
@@ -191,9 +190,8 @@ static void node_frame(Ted *ted, Node *node, Rect r) {
 			r2.pos.x += split_pos;
 			r2.size.x = r.size.x - split_pos;
 		}
-		node_render(ted, a, r1);
-		node_render(ted, b, r2);
-#endif
+		node_frame(ted, a, r1);
+		node_frame(ted, b, r2);
 	}
 }
 

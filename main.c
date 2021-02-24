@@ -1,5 +1,7 @@
 // @TODO:
-// - split
+// - get ctrl+w to work properly
+// - split depth limit
+// - resize split (i.e. change split_pos)
 
 // - Windows installation
 // - on crash, output backtrace to log
@@ -437,8 +439,10 @@ int main(int argc, char **argv) {
 									BufferPos buffer_pos;
 									if (buffer_pixels_to_pos(buffer, pos, &buffer_pos)) {
 										// user clicked on buffer
-										if (!ted->menu)
+										if (!ted->menu) {
 											ted->active_buffer = buffer;
+											ted->active_node = node;
+										}
 										if (buffer == ted->active_buffer) {
 											add = false;
 											switch (ted->key_modifier) {
