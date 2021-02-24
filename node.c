@@ -34,9 +34,10 @@ static void node_free(Node *node) {
 
 // returns index of parent in ted->nodes, or -1 if this is the root node.
 static i32 node_parent(Ted *ted, u16 node_idx) {
-	assert(node_idx < TED_MAX_NODES && ted->nodes_used[node_idx]);
+	bool *nodes_used = ted->nodes_used;
+	assert(node_idx < TED_MAX_NODES && nodes_used[node_idx]);
 	for (u16 i = 0; i < TED_MAX_NODES; ++i) {
-		if (ted->nodes_used[i]) {
+		if (nodes_used[i]) {
 			Node *node = &ted->nodes[i];
 			if (!node->tabs) {
 				if (node->split_a == node_idx || node->split_b == node_idx)
@@ -45,6 +46,21 @@ static i32 node_parent(Ted *ted, u16 node_idx) {
 		}
 	}
 	return -1;
+}
+
+// the root has depth 0, and a child node has 1 more than its parent's depth.
+static u8 node_depth(Ted *ted, u16 node_idx) {
+	u8 depth = 0;
+	while (1) {
+		i32 parent = node_parent(ted, node_idx);
+		if (parent < 0) {
+			break;
+		} else {
+			node_idx = (u16)parent;
+			depth += 1;
+		}
+	}
+	return depth;
 }
 
 // join this node with its sibling
@@ -269,3 +285,32 @@ static void node_frame(Ted *ted, Node *node, Rect r) {
 	}
 }
 
+static void node_split(Ted *ted, Node *node, bool vertical) {
+	if (node_depth(ted, (u16)(node - ted->nodes)) >= 6) return; // prevent splitting too deep
+
+	if (arr_len(node->tabs) > 1) { // need at least 2 tabs to split
+		i32 left_idx = ted_new_node(ted);
+		i32 right_idx = ted_new_node(ted);
+		if (left_idx >= 0 && right_idx >= 0) {
+			Node *left = &ted->nodes[left_idx];
+			Node *right = &ted->nodes[right_idx];
+			u16 active_tab = node->active_tab;
+			// put active tab on the right
+			arr_add(right->tabs, node->tabs[active_tab]);
+			for (u32 i = 0; i < arr_len(node->tabs); ++i) {
+				if (i != active_tab) {
+					// put all other tabs on the left
+					arr_add(left->tabs, node->tabs[i]);
+				}
+			}
+
+			arr_clear(node->tabs);
+			node->split_a = (u16)left_idx;
+			node->split_b = (u16)right_idx;
+			node->split_vertical = vertical;
+			node->split_pos = 0.5f;
+			if (node == ted->active_node)
+				ted->active_node = &ted->nodes[right_idx];
+		}
+	}
+}

@@ -231,8 +231,6 @@ static void build_frame(Ted *ted, float x1, float y1, float x2, float y2) {
 					}
 				}
 
-				// @TODO: check this code
-				
 				// check if we have something like main.c:5 or main.c(5)
 				
 				// get file name

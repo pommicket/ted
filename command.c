@@ -311,30 +311,7 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 	case CMD_SPLIT_HORIZONTAL:
 	case CMD_SPLIT_VERTICAL:
 		if (node) {
-			if (arr_len(node->tabs) > 1) { // need at least 2 tabs to split
-				i32 left_idx = ted_new_node(ted);
-				i32 right_idx = ted_new_node(ted);
-				if (left_idx >= 0 && right_idx >= 0) {
-					Node *left = &ted->nodes[left_idx];
-					Node *right = &ted->nodes[right_idx];
-					u16 active_tab = node->active_tab;
-					// put active tab on the right
-					arr_add(right->tabs, node->tabs[active_tab]);
-					for (u32 i = 0; i < arr_len(node->tabs); ++i) {
-						if (i != active_tab) {
-							// put all other tabs on the left
-							arr_add(left->tabs, node->tabs[i]);
-						}
-					}
-
-					arr_clear(node->tabs);
-					node->split_a = (u16)left_idx;
-					node->split_b = (u16)right_idx;
-					node->split_vertical = c == CMD_SPLIT_VERTICAL;
-					node->split_pos = 0.5f;
-					ted->active_node = &ted->nodes[right_idx];
-				}
-			}
+			node_split(ted, node, c == CMD_SPLIT_VERTICAL);
 		}
 		break;
 	case CMD_SPLIT_JOIN:

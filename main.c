@@ -1,5 +1,4 @@
 // @TODO:
-// - split depth limit
 // - resize split (i.e. change split_pos)
 // - move tabs between nodes
 
