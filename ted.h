@@ -236,7 +236,6 @@ typedef struct Ted {
 	// while a menu or something is open, there is no active buffer. when the menu is closed,
 	// the old active buffer needs to be restored. that's what this stores.
 	TextBuffer *prev_active_buffer; 
-	Node *root;
 	Node *active_node;
 	Settings settings;
 	float window_width, window_height;

@@ -1,5 +1,5 @@
 // @TODO:
-// - get ctrl+w to work properly
+// - Ctrl+j = :join
 // - split depth limit
 // - resize split (i.e. change split_pos)
 
@@ -332,7 +332,6 @@ int main(int argc, char **argv) {
 		u16 node_index = (u16)ted_new_node(ted);
 		assert(node_index == 0);
 		Node *node = ted->active_node = &ted->nodes[node_index];
-		ted->root = node;
 		node->tabs = NULL;
 		arr_add(node->tabs, 0);
 
@@ -611,7 +610,7 @@ int main(int argc, char **argv) {
 		if (ted->active_node) {
 			float const padding = settings->padding;
 			float x1 = padding, y = window_height-padding, x2 = window_width-padding;
-			Node *node = ted->root;
+			Node *node = &ted->nodes[0];
 			if (ted->find) {
 				float y2 = y;
 				y -= find_menu_height(ted);

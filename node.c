@@ -32,8 +32,24 @@ static void node_free(Node *node) {
 	memset(node, 0, sizeof *node);
 }
 
-static void node_close(Ted *ted, Node *node) {
-	// @TODO(split)
+// returns index of parent in ted->nodes, or -1 if this is the root node.
+static i32 node_parent(Ted *ted, u16 node_idx) {
+	for (u16 i = 0; i < TED_MAX_NODES; ++i) {
+		if (ted->nodes_used[i]) {
+			Node *node = &ted->nodes[i];
+			if (!node->tabs) {
+				if (node->split_a == node_idx || node->split_b == node_idx)
+					return i;
+			}
+		}
+	}
+	return -1;
+}
+
+static void node_close(Ted *ted, u16 node_idx) {
+	assert(node_idx < TED_MAX_NODES);
+	assert(ted->nodes_used[node_idx]);
+	Node *node = &ted->nodes[node_idx];
 
 	// delete all associated buffers
 	arr_foreach_ptr(node->tabs, u16, tab) {
@@ -42,12 +58,35 @@ static void node_close(Ted *ted, Node *node) {
 	}
 
 	node_free(node);
+	ted->nodes_used[node_idx] = false;
 
-	u16 node_index = (u16)(node - ted->nodes);
-	assert(node_index < TED_MAX_NODES);
-	ted->nodes_used[node_index] = false;
-	if (ted->active_node == node) {
+	i32 parent_idx = node_parent(ted, node_idx);
+	if (parent_idx < 0) {
+		// no parent; this must be the root node
 		ted->active_node = NULL;
+	} else {
+		// turn parent from split node into tab node
+		Node *parent = &ted->nodes[parent_idx];
+		assert(!parent->tabs);
+		u16 other_side;
+		if (node_idx == parent->split_a) {
+			other_side = parent->split_b;
+		} else {
+			assert(node_idx == parent->split_b);
+			other_side = parent->split_a;
+		}
+		// replace parent with other side of split
+		*parent = ted->nodes[other_side];
+
+		ted->nodes_used[other_side] = false;
+		if (ted->active_node == node) {
+			Node *new_active_node = parent;
+			// make sure we don't set the active node to a split
+			while (!new_active_node->tabs)
+				new_active_node = &ted->nodes[new_active_node->split_a];
+			ted->active_node = new_active_node;
+			ted->active_buffer = &ted->buffers[ted->active_node->tabs[ted->active_node->active_tab]];
+		}
 	}
 }
 
@@ -58,7 +97,7 @@ static bool node_tab_close(Ted *ted, Node *node, u16 index) {
 	assert(index < ntabs);
 	if (ntabs == 1) {
 		// only 1 tab left, just close the node
-		node_close(ted, node);
+		node_close(ted, (u16)(node - ted->nodes));
 		return false;
 	} else {
 		u16 buffer_index = node->tabs[index];

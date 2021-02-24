@@ -119,6 +119,7 @@ static i32 ted_new_node(Ted *ted) {
 	bool *nodes_used = ted->nodes_used;
 	for (i32 i = 0; i < TED_MAX_NODES; ++i) {
 		if (!nodes_used[i]) {
+			memset(&ted->nodes[i], 0, sizeof ted->nodes[i]); // zero new node
 			nodes_used[i] = true;
 			return i;
 		}
