@@ -241,6 +241,7 @@ typedef struct Ted {
 	float window_width, window_height;
 	u32 key_modifier; // which of shift, alt, ctrl are down right now.
 	v2 mouse_pos;
+	u32 mouse_state;
 	u8 nmouse_clicks[4]; // nmouse_clicks[i] = length of mouse_clicks[i]
 	v2 mouse_clicks[4][32]; // mouse_clicks[SDL_BUTTON_RIGHT], for example, is all the right mouse-clicks that have happened this frame
 	// number of times mouse was clicked at each position
@@ -277,6 +278,9 @@ typedef struct Ted {
 	
 	SDL_Cursor *cursor_arrow, *cursor_ibeam, *cursor_resize_h, *cursor_resize_v;
 	SDL_Cursor *cursor; // which cursor to use this frame
+	
+	// if not NULL, points to the node whose split the user is currently resizing.
+	Node *resizing_split;
 	
 	char **tag_selector_entries; // an array of all tags (see tag_selector_open)
 

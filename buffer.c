@@ -2068,6 +2068,13 @@ u32 buffer_last_rendered_line(TextBuffer *buffer) {
 
 // Render the text buffer in the given rectangle
 void buffer_render(TextBuffer *buffer, Rect r) {
+	if (r.size.x < 1 || r.size.y < 1) {
+		// rectangle less than 1 pixel
+		// set x1,y1,x2,y2 to an size 0 rectangle
+		buffer->x1 = buffer->x2 = r.pos.x;
+		buffer->y1 = buffer->y2 = r.pos.y;
+	}
+	
 	float x1, y1, x2, y2;
 	rect_coords(r, &x1, &y1, &x2, &y2);
 	// Correct the scroll, because the window size might have changed
@@ -2096,6 +2103,8 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 		float line_number_width = ndigits_u64(buffer->nlines) * char_width + padding;
 
 		TextRenderState text_state = text_render_state_default;
+		text_state.min_x = x1;
+		text_state.max_x = x2;
 		text_state.min_y = y1;
 		text_state.max_y = y2;
 
@@ -2121,7 +2130,10 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 		x1 += border_thickness;
 	}
 
+	if (x2 < x1) x2 = x1;
+	if (y2 < y1) y2 = y1;
 	buffer->x1 = x1; buffer->y1 = y1; buffer->x2 = x2; buffer->y2 = y2;
+	if (x1 == x2 || y1 == y2) return;
 
 	// change cursor to ibeam when it's hovering over the buffer
 	if ((!ted->menu || buffer == &ted->line_buffer) && rect_contains_point(rect4(x1, y1, x2, y2), ted->mouse_pos)) {

@@ -380,7 +380,7 @@ int main(int argc, char **argv) {
 		
 		{ // get mouse position
 			int mouse_x = 0, mouse_y = 0;
-			SDL_GetMouseState(&mouse_x, &mouse_y);
+			ted->mouse_state = SDL_GetMouseState(&mouse_x, &mouse_y);
 			ted->mouse_pos = V2((float)mouse_x, (float)mouse_y);
 		}
 		bool ctrl_down = keyboard_state[SDL_SCANCODE_LCTRL] || keyboard_state[SDL_SCANCODE_RCTRL];
@@ -528,8 +528,7 @@ int main(int argc, char **argv) {
 		
 		// default to arrow cursor
 		ted->cursor = ted->cursor_arrow;
-		
-		if (!(SDL_GetMouseState(NULL, NULL) & SDL_BUTTON_LMASK)) {
+		if (!(ted->mouse_state & SDL_BUTTON_LMASK)) {
 			// originally this was done on SDL_MOUSEBUTTONUP events but for some reason
 			// I was getting a bunch of those even when I was holding down the mouse.
 			// This makes it much smoother.

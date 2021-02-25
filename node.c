@@ -96,6 +96,8 @@ static void node_join(Ted *ted, Node *node) {
 }
 
 static void node_close(Ted *ted, u16 node_idx) {
+	ted->resizing_split = NULL;
+	
 	assert(node_idx < TED_MAX_NODES);
 	assert(ted->nodes_used[node_idx]);
 	i32 parent_idx = node_parent(ted, node_idx);
@@ -172,9 +174,9 @@ static bool node_tab_close(Ted *ted, Node *node, u16 index) {
 }
 
 static void node_frame(Ted *ted, Node *node, Rect r) {
+	Settings const *settings = &ted->settings;
 	if (node->tabs) {
 		bool is_active = node == ted->active_node;
-		Settings const *settings = &ted->settings;
 		u32 const *colors = settings->colors;
 		Font *font = ted->font;
 		float const border_thickness = settings->border_thickness;
@@ -265,28 +267,56 @@ static void node_frame(Ted *ted, Node *node, Rect r) {
 		buffer_rect.size.y -= tab_bar_height;
 		buffer_render(buffer, buffer_rect);
 	} else {
+		float padding = settings->padding;
 		// this node is a split
 		Node *a = &ted->nodes[node->split_a];
 		Node *b = &ted->nodes[node->split_b];
 		Rect r1 = r, r2 = r;
+		SDL_Cursor *resize_cursor = node->split_vertical ? ted->cursor_resize_v : ted->cursor_resize_h;
+		if (node == ted->resizing_split) {
+			if (!(ted->mouse_state & SDL_BUTTON_LMASK)) {
+				// let go of mouse
+				ted->resizing_split = NULL;
+			} else {
+				// resize the split
+				float mouse_coord = node->split_vertical ? ted->mouse_pos.y : ted->mouse_pos.x;
+				float rect_coord1 = (node->split_vertical ? rect_y1 : rect_x1)(r);
+				float rect_coord2 = (node->split_vertical ? rect_y2 : rect_x2)(r);
+				// make sure the split doesn't make one of the sides too small
+				float min_split = 10.0f / (node->split_vertical ? r.size.y : r.size.x);
+				node->split_pos = clampf(normf(mouse_coord, rect_coord1, rect_coord2), min_split, 1-min_split);
+			}
+		}
+		Rect r_between; // rectangle of space between r1 and r2
 		if (node->split_vertical) {
 			float split_pos = r.size.y * node->split_pos;
-			r1.size.y = split_pos;
-			r2.pos.y += split_pos;
-			r2.size.y = r.size.y - split_pos;
+			r1.size.y = split_pos - padding;
+			r2.pos.y += split_pos + padding;
+			r2.size.y = r.size.y - split_pos - padding;
+			r_between = rect(V2(r.pos.x, r.pos.y + split_pos - padding), V2(r.size.x, 2 * padding));
 		} else {
 			float split_pos = r.size.x * node->split_pos;
-			r1.size.x = split_pos;
-			r2.pos.x += split_pos;
-			r2.size.x = r.size.x - split_pos;
+			r1.size.x = split_pos - padding;
+			r2.pos.x += split_pos + padding;
+			r2.size.x = r.size.x - split_pos - padding;
+			r_between = rect(V2(r.pos.x + split_pos - padding, r.pos.y), V2(2 * padding, r.size.y));
 		}
+		if (rect_contains_point(r_between, ted->mouse_pos)) {
+			ted->cursor = resize_cursor;
+		}
+		for (u32 i = 0; i < ted->nmouse_clicks[SDL_BUTTON_LEFT]; ++i) {
+			if (rect_contains_point(r_between, ted->mouse_clicks[SDL_BUTTON_LEFT][i])) {
+				ted->resizing_split = node;
+			}
+		}
+		
 		node_frame(ted, a, r1);
 		node_frame(ted, b, r2);
 	}
 }
 
 static void node_split(Ted *ted, Node *node, bool vertical) {
-	if (node_depth(ted, (u16)(node - ted->nodes)) >= 6) return; // prevent splitting too deep
+	if (node_depth(ted, (u16)(node - ted->nodes)) >= 5) return; // prevent splitting too deep
 
 	if (arr_len(node->tabs) > 1) { // need at least 2 tabs to split
 		i32 left_idx = ted_new_node(ted);
