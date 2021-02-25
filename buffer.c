@@ -2072,7 +2072,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	rect_coords(r, &x1, &y1, &x2, &y2);
 	// Correct the scroll, because the window size might have changed
 	buffer_correct_scroll(buffer);
-
+	
 	Font *font = buffer_font(buffer);
 	u32 nlines = buffer->nlines;
 	Line *lines = buffer->lines;
@@ -2122,6 +2122,11 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	}
 
 	buffer->x1 = x1; buffer->y1 = y1; buffer->x2 = x2; buffer->y2 = y2;
+
+	// change cursor to ibeam when it's hovering over the buffer
+	if ((!ted->menu || buffer == &ted->line_buffer) && rect_contains_point(rect4(x1, y1, x2, y2), ted->mouse_pos)) {
+		ted->cursor = ted->cursor_ibeam;
+	}
 
 	
 	if (buffer->center_cursor_next_frame) {

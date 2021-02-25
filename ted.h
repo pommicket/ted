@@ -274,7 +274,10 @@ typedef struct Ted {
 	
 	// used by menus to keep track of the scroll position so we can return to it.
 	v2d prev_active_buffer_scroll;
-
+	
+	SDL_Cursor *cursor_arrow, *cursor_ibeam, *cursor_resize_h, *cursor_resize_v;
+	SDL_Cursor *cursor; // which cursor to use this frame
+	
 	char **tag_selector_entries; // an array of all tags (see tag_selector_open)
 
 	// points to a selector if any is open, otherwise NULL.

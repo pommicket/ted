@@ -360,6 +360,11 @@ int main(int argc, char **argv) {
 
 	u32 *colors = settings->colors; (void)colors;
 
+	ted->cursor_ibeam = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_IBEAM);
+	ted->cursor_arrow = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
+	ted->cursor_resize_h = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEWE);
+	ted->cursor_resize_v = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENS);
+
 	Uint32 time_at_last_frame = SDL_GetTicks();
 	
 	while (!ted->quit) {
@@ -520,6 +525,9 @@ int main(int argc, char **argv) {
 			} break;
 			}
 		}
+		
+		// default to arrow cursor
+		ted->cursor = ted->cursor_arrow;
 		
 		if (!(SDL_GetMouseState(NULL, NULL) & SDL_BUTTON_LMASK)) {
 			// originally this was done on SDL_MOUSEBUTTONUP events but for some reason
@@ -713,6 +721,7 @@ int main(int argc, char **argv) {
 	#endif
 		
 		SDL_SetWindowTitle(window, ted->window_title);
+		SDL_SetCursor(ted->cursor);
 	
 		SDL_GL_SwapWindow(window);
 		PROFILE_TIME(frame_end);
@@ -735,6 +744,10 @@ int main(int argc, char **argv) {
 
 	if (log) fclose(log);
 
+	SDL_FreeCursor(ted->cursor_arrow);
+	SDL_FreeCursor(ted->cursor_ibeam);
+	SDL_FreeCursor(ted->cursor_resize_h);
+	SDL_FreeCursor(ted->cursor_resize_v);
 	SDL_GL_DeleteContext(glctx);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
