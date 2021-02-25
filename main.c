@@ -1,5 +1,4 @@
 // @TODO:
-// - resize split (i.e. change split_pos)
 // - move tabs between nodes
 
 // - Windows installation
@@ -525,7 +524,11 @@ int main(int argc, char **argv) {
 			} break;
 			}
 		}
-		
+		{
+			int mx = 0, my = 0;
+			ted->mouse_state = SDL_GetMouseState(&mx, &my);
+			ted->mouse_pos = V2((float)mx, (float)my);
+		}
 		// default to arrow cursor
 		ted->cursor = ted->cursor_arrow;
 		if (!(ted->mouse_state & SDL_BUTTON_LMASK)) {

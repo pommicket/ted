@@ -844,6 +844,9 @@ void buffer_scroll_to_pos(TextBuffer *buffer, BufferPos pos) {
 	double display_cols = buffer_display_cols(buffer);
 	double scroll_x = buffer->scroll_x, scroll_y = buffer->scroll_y;
 	double scrolloff = settings->scrolloff;
+	
+	// for very small buffers, the scrolloff might need to be reduced.
+	scrolloff = mind(scrolloff, display_lines * 0.5);
 
 	// scroll left if pos is off screen in that direction
 	double max_scroll_x = col - scrolloff;
@@ -2073,6 +2076,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 		// set x1,y1,x2,y2 to an size 0 rectangle
 		buffer->x1 = buffer->x2 = r.pos.x;
 		buffer->y1 = buffer->y2 = r.pos.y;
+		return;
 	}
 	
 	float x1, y1, x2, y2;

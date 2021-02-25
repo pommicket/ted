@@ -203,6 +203,7 @@ typedef struct {
 // a node is a collection of tabs OR a split of two nodes
 typedef struct Node {
 	u16 *tabs; // dynamic array of indices into ted->buffers, or NULL if this is a split
+	v2 size; // size of node, as a percentage of the window dimensions
 	float split_pos; // number from 0 to 1 indicating where the split is.
 	u16 active_tab; // index of active tab in tabs.
 	bool split_vertical; // is the split vertical? if false, this split looks like a|b

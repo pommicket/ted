@@ -283,7 +283,7 @@ static void node_frame(Ted *ted, Node *node, Rect r) {
 				float rect_coord1 = (node->split_vertical ? rect_y1 : rect_x1)(r);
 				float rect_coord2 = (node->split_vertical ? rect_y2 : rect_x2)(r);
 				// make sure the split doesn't make one of the sides too small
-				float min_split = 10.0f / (node->split_vertical ? r.size.y : r.size.x);
+				float min_split = 50.0f / (node->split_vertical ? r.size.y : r.size.x);
 				node->split_pos = clampf(normf(mouse_coord, rect_coord1, rect_coord2), min_split, 1-min_split);
 			}
 		}
@@ -316,7 +316,7 @@ static void node_frame(Ted *ted, Node *node, Rect r) {
 }
 
 static void node_split(Ted *ted, Node *node, bool vertical) {
-	if (node_depth(ted, (u16)(node - ted->nodes)) >= 5) return; // prevent splitting too deep
+	if (node_depth(ted, (u16)(node - ted->nodes)) >= 4) return; // prevent splitting too deep
 
 	if (arr_len(node->tabs) > 1) { // need at least 2 tabs to split
 		i32 left_idx = ted_new_node(ted);
