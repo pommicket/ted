@@ -131,8 +131,11 @@ static void buffer_pos_validate(TextBuffer *buffer, BufferPos *p) {
 		p->index = line_len;
 }
 
+// validate the cursor and selection positions
 static void buffer_validate_cursor(TextBuffer *buffer) {
 	buffer_pos_validate(buffer, &buffer->cursor_pos);
+	if (buffer->selection)
+		buffer_pos_validate(buffer, &buffer->selection_pos);
 }
 
 static bool buffer_pos_valid(TextBuffer *buffer, BufferPos p) {
