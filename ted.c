@@ -94,7 +94,8 @@ static void ted_load_fonts(Ted *ted) {
 // returns the index of an available buffer, or -1 if none are available 
 static i32 ted_new_buffer(Ted *ted) {
 	bool *buffers_used = ted->buffers_used;
-	for (i32 i = 0; i < TED_MAX_BUFFERS; ++i) {
+	for (i32 i = 1; // start from 1, so as not to use the null buffer
+		i < TED_MAX_BUFFERS; ++i) {
 		if (!buffers_used[i]) {
 			buffers_used[i] = true;
 			buffer_create(&ted->buffers[i], ted);

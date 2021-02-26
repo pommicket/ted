@@ -280,6 +280,9 @@ typedef struct Ted {
 	SDL_Cursor *cursor_arrow, *cursor_ibeam, *cursor_resize_h, *cursor_resize_v;
 	SDL_Cursor *cursor; // which cursor to use this frame
 	
+	// index of buffer whose tab user is dragging around, 0 for none.
+	u16 dragging_tab;
+	
 	// if not NULL, points to the node whose split the user is currently resizing.
 	Node *resizing_split;
 	
@@ -304,6 +307,7 @@ typedef struct Ted {
 	char tags_dir[TED_PATH_MAX]; // where we are reading tags from
 	bool nodes_used[TED_MAX_NODES];
 	Node nodes[TED_MAX_NODES];
+	// NOTE: the buffer at index 0 is reserved as a "null buffer" and should not be used.
 	bool buffers_used[TED_MAX_BUFFERS];
 	TextBuffer buffers[TED_MAX_BUFFERS];
 	char window_title[256];

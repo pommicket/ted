@@ -323,7 +323,7 @@ int main(int argc, char **argv) {
 
 	{
 		u16 buffer_index = (u16)ted_new_buffer(ted);
-		assert(buffer_index == 0);
+		assert(buffer_index == 1);
 		TextBuffer *buffer = &ted->buffers[buffer_index];
 		buffer_create(buffer, ted);
 		ted->active_buffer = buffer;
@@ -331,7 +331,7 @@ int main(int argc, char **argv) {
 		assert(node_index == 0);
 		Node *node = ted->active_node = &ted->nodes[node_index];
 		node->tabs = NULL;
-		arr_add(node->tabs, 0);
+		arr_add(node->tabs, buffer_index);
 
 
 		char path[TED_PATH_MAX];
