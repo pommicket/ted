@@ -1,38 +1,3 @@
-static void menu_open(Ted *ted, Menu menu) {
-	if (ted->find) find_close(ted);
-	ted->menu = menu;
-	TextBuffer *prev_buf = ted->prev_active_buffer = ted->active_buffer;
-	if (prev_buf)
-		ted->prev_active_buffer_scroll = V2D(prev_buf->scroll_x, prev_buf->scroll_y);
-	
-	ted->active_buffer = NULL;
-	*ted->warn_overwrite = 0; // clear warn_overwrite
-	buffer_clear(&ted->line_buffer);
-	switch (menu) {
-	case MENU_NONE: assert(0); break;
-	case MENU_OPEN:
-		ted->active_buffer = &ted->line_buffer;
-		break;
-	case MENU_SAVE_AS:
-		ted->active_buffer = &ted->line_buffer;
-		ted->file_selector.create_menu = true;
-		break;
-	case MENU_WARN_UNSAVED:
-		assert(ted->warn_unsaved);
-		assert(*ted->warn_unsaved_names);
-		break;
-	case MENU_ASK_RELOAD:
-		assert(*ted->ask_reload);
-		break;
-	case MENU_GOTO_DEFINITION:
-		tag_selector_open(ted);
-		break;
-	case MENU_GOTO_LINE:
-		ted->active_buffer = &ted->line_buffer;
-		break;
-	}
-}
-
 static void menu_close(Ted *ted) {
 	TextBuffer *buffer = ted->active_buffer = ted->prev_active_buffer;
 	ted->prev_active_buffer = NULL;
@@ -63,6 +28,44 @@ static void menu_close(Ted *ted) {
 	}
 	ted->menu = MENU_NONE;
 	ted->selector_open = NULL;
+}
+
+static void menu_open(Ted *ted, Menu menu) {
+	if (ted->menu)
+		menu_close(ted);
+	if (ted->find) find_close(ted);
+	ted->menu = menu;
+	TextBuffer *prev_buf = ted->prev_active_buffer = ted->active_buffer;
+	if (prev_buf)
+		ted->prev_active_buffer_scroll = V2D(prev_buf->scroll_x, prev_buf->scroll_y);
+	
+	ted->active_buffer = NULL;
+	*ted->warn_overwrite = 0; // clear warn_overwrite
+	buffer_clear(&ted->line_buffer);
+	switch (menu) {
+	case MENU_NONE: assert(0); break;
+	case MENU_OPEN:
+		ted->active_buffer = &ted->line_buffer;
+		ted->file_selector.create_menu = false;
+		break;
+	case MENU_SAVE_AS:
+		ted->active_buffer = &ted->line_buffer;
+		ted->file_selector.create_menu = true;
+		break;
+	case MENU_WARN_UNSAVED:
+		assert(ted->warn_unsaved);
+		assert(*ted->warn_unsaved_names);
+		break;
+	case MENU_ASK_RELOAD:
+		assert(*ted->ask_reload);
+		break;
+	case MENU_GOTO_DEFINITION:
+		tag_selector_open(ted);
+		break;
+	case MENU_GOTO_LINE:
+		ted->active_buffer = &ted->line_buffer;
+		break;
+	}
 }
 
 static void menu_escape(Ted *ted) {

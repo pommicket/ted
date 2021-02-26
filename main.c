@@ -1,5 +1,7 @@
 // @TODO:
 // - move tabs between nodes
+// - :split-swap
+// - fix: ctrl+f something, then switch to another tab (hl rects still showing up)
 
 // - Windows installation
 // - on crash, output backtrace to log

@@ -61,7 +61,10 @@ char const *buffer_get_filename(TextBuffer *buffer) {
 }
 
 bool buffer_is_untitled(TextBuffer *buffer) {
-	return streq(buffer->filename, TED_UNTITLED);
+	if (buffer->filename)
+		return streq(buffer->filename, TED_UNTITLED);
+	else
+		return false;
 }
 
 // add this edit to the undo history
