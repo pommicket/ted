@@ -389,7 +389,7 @@ static void find_menu_frame(Ted *ted, float x1, float y1, float x2, float y2) {
 		u32 match_idx = find_match_idx(ted);
 		if (match_idx == U32_MAX) {
 			strbuf_printf(str, U32_FMT " matches", arr_len(ted->find_results));
-		} else if (buffer->selection) {
+		} else {
 			strbuf_printf(str, U32_FMT " of " U32_FMT, match_idx + 1, arr_len(ted->find_results));
 		}
 		text_get_size(font, str, &w, &h);
