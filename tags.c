@@ -194,7 +194,7 @@ static void tag_selector_open(Ted *ted) {
 				arr_add(ted->tag_selector_entries, strn_dup(line, len));
 			}
 		}
-		ted->active_buffer = &ted->line_buffer;
+		ted_switch_to_buffer(ted, &ted->line_buffer);
 		buffer_select_all(ted->active_buffer);
 
 		ted->tag_selector.cursor = 0;

@@ -99,7 +99,7 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 
 	case CMD_TAB:
 		if (ted->replace && buffer == &ted->find_buffer) {
-			buffer = ted->active_buffer = &ted->replace_buffer;
+			ted_switch_to_buffer(ted, &ted->replace_buffer);
 			buffer_select_all(buffer);
 		} else if (buffer) {
 			if (buffer->selection)
@@ -110,7 +110,7 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		break;
 	case CMD_BACKTAB:
 		if (ted->replace && buffer == &ted->replace_buffer) {
-			buffer = ted->active_buffer = &ted->find_buffer;
+			ted_switch_to_buffer(ted, &ted->find_buffer);
 			buffer_select_all(buffer);
 		} else if (buffer) {
 			if (buffer->selection)
@@ -315,10 +315,10 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		}
 		break;
 	case CMD_SPLIT_JOIN:
-		node_join(ted, node);
+		if (node) node_join(ted, node);
 		break;
 	case CMD_SPLIT_SWAP:
-		node_split_swap(ted);
+		if (node) node_split_swap(ted);
 		break;
 	}
 }

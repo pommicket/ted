@@ -429,7 +429,7 @@ static void find_menu_frame(Ted *ted, float x1, float y1, float x2, float y2) {
 static void find_open(Ted *ted, bool replace) {
 	if (!ted->find && ted->active_buffer) {
 		ted->prev_active_buffer = ted->active_buffer;
-		ted->active_buffer = &ted->find_buffer;
+		ted_switch_to_buffer(ted, &ted->find_buffer);
 		ted->find = true;
 		buffer_select_all(ted->active_buffer);
 	}
@@ -441,6 +441,6 @@ static void find_open(Ted *ted, bool replace) {
 
 static void find_close(Ted *ted) {
 	ted->find = false;
-	ted->active_buffer = ted->prev_active_buffer;
+	ted_switch_to_buffer(ted, ted->prev_active_buffer);
 	find_free_pattern(ted);
 }

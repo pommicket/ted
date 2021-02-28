@@ -22,6 +22,7 @@ void ted_clearerr(Ted *ted) {
 	ted->error[0] = '\0';
 }
 
+
 static void ted_out_of_mem(Ted *ted) {
 	ted_seterr(ted, "Out of memory.");
 }
@@ -91,6 +92,33 @@ static void ted_load_fonts(Ted *ted) {
 	ted_load_font(ted, "assets/font-bold.ttf", &ted->font_bold);
 }
 
+// sets the active buffer to this buffer, and updates active_node, etc. accordingly
+// you can pass NULL to buffer to make it so no buffer is active.
+static void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer) {
+	ted->active_buffer = buffer;
+	if (buffer >= ted->buffers && buffer < ted->buffers + TED_MAX_BUFFERS) {
+		u16 idx = (u16)(buffer - ted->buffers);
+		// now we need to figure out where this buffer is
+		bool *nodes_used = ted->nodes_used;
+		for (u16 i = 0; i < TED_MAX_NODES; ++i) {
+			if (nodes_used[i]) {
+				Node *node = &ted->nodes[i];
+				arr_foreach_ptr(node->tabs, u16, tab) {
+					if (idx == *tab) {
+						node->active_tab = (u16)(tab - node->tabs);
+						ted->active_node = node;
+						return;
+					}
+				}
+			}
+		}
+		assert(0);
+	} else {
+		ted->active_node = NULL;
+	}
+}
+
+
 // returns the index of an available buffer, or -1 if none are available 
 static i32 ted_new_buffer(Ted *ted) {
 	bool *buffers_used = ted->buffers_used;
@@ -110,7 +138,7 @@ static i32 ted_new_buffer(Ted *ted) {
 static void ted_delete_buffer(Ted *ted, u16 index) {
 	TextBuffer *buffer = &ted->buffers[index];
 	if (buffer == ted->active_buffer)
-		ted->active_buffer = NULL; // make sure we don't set the active buffer to something invalid
+		ted_switch_to_buffer(ted, NULL); // make sure we don't set the active buffer to something invalid
 	buffer_free(buffer);
 	ted->buffers_used[index] = false;
 }
@@ -132,9 +160,8 @@ static i32 ted_new_node(Ted *ted) {
 
 // switch to this node
 static void ted_node_switch(Ted *ted, Node *node) {
-	ted->active_node = node;
 	assert(node->tabs);
-	ted->active_buffer = &ted->buffers[node->tabs[node->active_tab]];
+	ted_switch_to_buffer(ted, &ted->buffers[node->tabs[node->active_tab]]);
 }
 
 static bool node_tab_close(Ted *ted, Node *node, u16 index);
@@ -159,10 +186,10 @@ static Status ted_open_buffer(Ted *ted, u16 *buffer_idx, u16 *tab) {
 		if (arr_len(node->tabs) < TED_MAX_TABS) {
 			arr_add(node->tabs, (u16)new_buffer_index);
 			TextBuffer *new_buffer = &ted->buffers[new_buffer_index];
-			ted->active_buffer = new_buffer;
 			node->active_tab = (u16)(arr_len(node->tabs) - 1);
 			*buffer_idx = (u16)new_buffer_index;
 			*tab = node->active_tab;
+			ted_switch_to_buffer(ted, new_buffer);
 			return true;
 		} else {
 			ted_seterr(ted, "Too many tabs.");
@@ -172,26 +199,6 @@ static Status ted_open_buffer(Ted *ted, u16 *buffer_idx, u16 *tab) {
 	} else {
 		return false;
 	}
-}
-
-// sets the active buffer to this buffer, and updates active_node, etc. accordingly
-static void ted_switch_to_buffer(Ted *ted, u16 buffer_idx) {
-	ted->active_buffer = &ted->buffers[buffer_idx];
-	// now we need to figure out where this buffer is
-	bool *nodes_used = ted->nodes_used;
-	for (u16 i = 0; i < TED_MAX_NODES; ++i) {
-		if (nodes_used[i]) {
-			Node *node = &ted->nodes[i];
-			arr_foreach_ptr(node->tabs, u16, tab) {
-				if (buffer_idx == *tab) {
-					node->active_tab = (u16)(tab - node->tabs);
-					ted->active_node = node;
-					return;
-				}
-			}
-		}
-	}
-	assert(0);
 }
 
 
@@ -204,7 +211,7 @@ static bool ted_open_file(Ted *ted, char const *filename) {
 		if (buffers_used[i]) {
 			if (streq(filename, buffer_get_filename(&buffers[i]))) {
 				buffer_reload(&buffers[i]); // make sure buffer is up to date with the file
-				ted_switch_to_buffer(ted, i);
+				ted_switch_to_buffer(ted, &buffers[i]);
 				return true;
 			}
 		}
@@ -259,7 +266,7 @@ static bool ted_save_all(Ted *ted) {
 			TextBuffer *buffer = &ted->buffers[i];
 			if (buffer_unsaved_changes(buffer)) {
 				if (buffer->filename && buffer_is_untitled(buffer)) {
-					ted_switch_to_buffer(ted, i);
+					ted_switch_to_buffer(ted, buffer);
 					menu_open(ted, MENU_SAVE_AS);
 					success = false; // we haven't saved this buffer yet; we've just opened the "save as" menu.
 					break;
@@ -275,4 +282,12 @@ static bool ted_save_all(Ted *ted) {
 
 static void ted_full_path(Ted *ted, char const *relpath, char *abspath, size_t abspath_size) {
 	path_full(ted->cwd, relpath, abspath, abspath_size);
+}
+
+// are any nodes open?
+static bool ted_anything_open(Ted *ted) {
+	for (uint i = 0; i < TED_MAX_NODES; ++i)
+		if (ted->nodes_used[i])
+			return true;
+	return false;
 }

@@ -4,7 +4,7 @@ static void node_switch_to_tab(Ted *ted, Node *node, u16 new_tab_index) {
 		// switch active buffer
 		assert(node->tabs);
 		u16 buffer_idx = node->tabs[new_tab_index];
-		ted->active_buffer = &ted->buffers[buffer_idx];
+		ted_switch_to_buffer(ted, &ted->buffers[buffer_idx]);
 	}
 }
 
@@ -236,7 +236,7 @@ static void node_frame(Ted *ted, Node *node, Rect r) {
 
 								ted->dragging_tab_node = NULL; // stop dragging
 								// switch to this buffer
-								ted_switch_to_buffer(ted, tab);
+								ted_switch_to_buffer(ted, &ted->buffers[tab]);
 							}
 						}
 					}
@@ -252,7 +252,7 @@ static void node_frame(Ted *ted, Node *node, Rect r) {
 							// close that tab
 							if (buffer_unsaved_changes(buffer)) {
 								// make sure unsaved changes dialog is opened
-								ted_switch_to_buffer(ted, buffer_idx);
+								ted_switch_to_buffer(ted, buffer);
 								command_execute(ted, CMD_TAB_CLOSE, 1);
 							} else {
 								if (!node_tab_close(ted, node, tab_index)) {

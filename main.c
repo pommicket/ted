@@ -1,5 +1,8 @@
 // @TODO:
-// - fix: ctrl+f something, then switch to another tab (hl rects still showing up)
+// - fix:
+// ctrl+f something, then switch to another tab (hl rects still showing up)
+// ctrl+f something, then change buffer (e.g. make sure replace doesn't do something bad)
+// - refresh find results by pressing Enter in find/replace buffer
 
 // - Windows installation
 // - on crash, output backtrace to log
@@ -112,6 +115,51 @@ static void ted_update_window_dimensions(Ted *ted) {
 	SDL_GetWindowSize(ted->window, &w, &h);
 	gl_window_width = ted->window_width = (float)w;
 	gl_window_height = ted->window_height = (float)h;
+}
+
+// returns true if the buffer "used" this event
+static bool handle_buffer_click(Ted *ted, TextBuffer *buffer, v2 click, u8 times) {
+	BufferPos buffer_pos;
+	if (buffer_pixels_to_pos(buffer, click, &buffer_pos)) {
+		// user clicked on buffer
+		if (!ted->menu) {
+			ted_switch_to_buffer(ted, buffer);
+		}
+		if (buffer == ted->active_buffer) {
+			switch (ted->key_modifier) {
+			case KEY_MODIFIER_SHIFT:
+				// select to position
+				buffer_select_to_pos(buffer, buffer_pos);
+				break;
+			case KEY_MODIFIER_CTRL: {
+				buffer_cursor_move_to_pos(buffer, buffer_pos);
+				String32 word = buffer_word_at_cursor(buffer);
+				if (word.len) {
+					char *tag = str32_to_utf8_cstr(word);
+					if (tag) {
+						tag_goto(buffer->ted, tag);
+						free(tag);
+					}
+				}
+			} break;
+			case 0:
+				buffer_cursor_move_to_pos(buffer, buffer_pos);
+				switch ((times - 1) % 3) {
+				case 0: break; // single-click
+				case 1: // double-click: select word
+					buffer_select_word(buffer);
+					break;
+				case 2: // triple-click: select line
+					buffer_select_line(buffer);
+					break;
+				}
+				ted->drag_buffer = buffer;
+				break;
+			}
+			return true;
+		}
+	}
+	return false;
 }
 
 #if _WIN32
@@ -326,12 +374,13 @@ int main(int argc, char **argv) {
 		assert(buffer_index == 1);
 		TextBuffer *buffer = &ted->buffers[buffer_index];
 		buffer_create(buffer, ted);
-		ted->active_buffer = buffer;
 		u16 node_index = (u16)ted_new_node(ted);
 		assert(node_index == 0);
-		Node *node = ted->active_node = &ted->nodes[node_index];
+		Node *node = &ted->nodes[node_index];
 		node->tabs = NULL;
 		arr_add(node->tabs, buffer_index);
+
+		ted_switch_to_buffer(ted, buffer);
 
 
 		char path[TED_PATH_MAX];
@@ -440,50 +489,17 @@ int main(int argc, char **argv) {
 								Node *node = &ted->nodes[i];
 								if (node->tabs) {
 									buffer = &ted->buffers[node->tabs[node->active_tab]];
-									
-									BufferPos buffer_pos;
-									if (buffer_pixels_to_pos(buffer, pos, &buffer_pos)) {
-										// user clicked on buffer
-										if (!ted->menu) {
-											ted->active_buffer = buffer;
-											ted->active_node = node;
-										}
-										if (buffer == ted->active_buffer) {
-											add = false;
-											switch (ted->key_modifier) {
-											case KEY_MODIFIER_SHIFT:
-												// select to position
-												buffer_select_to_pos(buffer, buffer_pos);
-												break;
-											case KEY_MODIFIER_CTRL: {
-												buffer_cursor_move_to_pos(buffer, buffer_pos);
-												String32 word = buffer_word_at_cursor(buffer);
-												if (word.len) {
-													char *tag = str32_to_utf8_cstr(word);
-													if (tag) {
-														tag_goto(buffer->ted, tag);
-														free(tag);
-													}
-												}
-											} break;
-											case 0:
-												buffer_cursor_move_to_pos(buffer, buffer_pos);
-												switch ((times - 1) % 3) {
-												case 0: break; // single-click
-												case 1: // double-click: select word
-													buffer_select_word(buffer);
-													break;
-												case 2: // triple-click: select line
-													buffer_select_line(buffer);
-													break;
-												}
-												ted->drag_buffer = buffer;
-												break;
-											}
-										}
+									if (handle_buffer_click(ted, buffer, pos, times)) {
+										add = false;
+										break;
 									}
 								}
 							}
+						}
+						if (ted->find) {
+							add = add && !handle_buffer_click(ted, &ted->find_buffer, pos, times);
+							if (ted->replace)
+								add = add && !handle_buffer_click(ted, &ted->replace_buffer, pos, times);
 						}
 						if (add) {
 							ted->mouse_clicks[button][ted->nmouse_clicks[button]] = pos;
@@ -626,7 +642,7 @@ int main(int argc, char **argv) {
 		strcpy(ted->window_title, "ted");
 
 
-		if (ted->active_node) {
+		if (ted_anything_open(ted)) {
 			float const padding = settings->padding;
 			float x1 = padding, y = window_height-padding, x2 = window_width-padding;
 			Node *node = &ted->nodes[0];

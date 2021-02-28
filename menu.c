@@ -1,5 +1,6 @@
 static void menu_close(Ted *ted) {
-	TextBuffer *buffer = ted->active_buffer = ted->prev_active_buffer;
+	ted_switch_to_buffer(ted, ted->prev_active_buffer);
+	TextBuffer *buffer = ted->active_buffer;
 	ted->prev_active_buffer = NULL;
 	if (buffer) {
 		buffer->scroll_x = ted->prev_active_buffer_scroll.x;
@@ -39,17 +40,17 @@ static void menu_open(Ted *ted, Menu menu) {
 	if (prev_buf)
 		ted->prev_active_buffer_scroll = V2D(prev_buf->scroll_x, prev_buf->scroll_y);
 	
-	ted->active_buffer = NULL;
+	ted_switch_to_buffer(ted, NULL);
 	*ted->warn_overwrite = 0; // clear warn_overwrite
 	buffer_clear(&ted->line_buffer);
 	switch (menu) {
 	case MENU_NONE: assert(0); break;
 	case MENU_OPEN:
-		ted->active_buffer = &ted->line_buffer;
+		ted_switch_to_buffer(ted, &ted->line_buffer);
 		ted->file_selector.create_menu = false;
 		break;
 	case MENU_SAVE_AS:
-		ted->active_buffer = &ted->line_buffer;
+		ted_switch_to_buffer(ted, &ted->line_buffer);
 		ted->file_selector.create_menu = true;
 		break;
 	case MENU_WARN_UNSAVED:
@@ -63,7 +64,7 @@ static void menu_open(Ted *ted, Menu menu) {
 		tag_selector_open(ted);
 		break;
 	case MENU_GOTO_LINE:
-		ted->active_buffer = &ted->line_buffer;
+		ted_switch_to_buffer(ted, &ted->line_buffer);
 		break;
 	}
 }
@@ -72,7 +73,7 @@ static void menu_escape(Ted *ted) {
 	if (*ted->warn_overwrite) {
 		// just close "are you sure you want to overwrite?"
 		*ted->warn_overwrite = 0;
-		ted->active_buffer = &ted->line_buffer;
+		ted_switch_to_buffer(ted, &ted->line_buffer);
 	} else {
 		menu_close(ted);
 	}
@@ -117,7 +118,7 @@ static void menu_update(Ted *ted) {
 			case POPUP_NO:
 				// back to the file selector
 				*ted->warn_overwrite = '\0';
-				ted->active_buffer = &ted->line_buffer;
+				ted_switch_to_buffer(ted, &ted->line_buffer);
 				break;
 			case POPUP_CANCEL:
 				// close "save as" menu
@@ -132,7 +133,7 @@ static void menu_update(Ted *ted) {
 					if (fs_path_type(selected_file) != FS_NON_EXISTENT) {
 						// file already exists! warn about overwriting it.
 						strbuf_cpy(ted->warn_overwrite, selected_file);
-						ted->active_buffer = NULL;
+						ted_switch_to_buffer(ted, NULL);
 					} else {
 						// create the new file.
 						buffer_save_as(buffer, selected_file);
