@@ -96,6 +96,7 @@ static void node_join(Ted *ted, Node *node) {
 }
 
 static void node_close(Ted *ted, u16 node_idx) {
+	ted->dragging_tab_node = NULL;
 	ted->resizing_split = NULL;
 	
 	assert(node_idx < TED_MAX_NODES);
@@ -146,6 +147,8 @@ static void node_close(Ted *ted, u16 node_idx) {
 // close tab, WITHOUT checking for unsaved changes!
 // returns true if the node is still open
 static bool node_tab_close(Ted *ted, Node *node, u16 index) {
+	ted->dragging_tab_node = NULL;
+
 	u16 ntabs = (u16)arr_len(node->tabs);
 	assert(index < ntabs);
 	if (ntabs == 1) {
@@ -195,8 +198,13 @@ static void node_frame(Ted *ted, Node *node, Rect r) {
 					if (rect_contains_point(tab_bar_rect, click)) {
 						// click on tab to switch to it
 						u16 tab_index = (u16)((click.x - r.pos.x) / tab_width);
-						ted->active_node = node;
-						node_switch_to_tab(ted, node, tab_index);
+						if (tab_index >= 0 && tab_index < arr_len(node->tabs)) {
+							ted->active_node = node;
+							node_switch_to_tab(ted, node, tab_index);
+							ted->dragging_tab_node = node;
+							ted->dragging_tab_idx = tab_index;
+							ted->dragging_tab_origin = click;
+						}
 					}
 				}
 				for (u16 c = 0; c < ted->nmouse_clicks[SDL_BUTTON_MIDDLE]; ++c) {
@@ -229,6 +237,11 @@ static void node_frame(Ted *ted, Node *node, Rect r) {
 				char const *path = buffer_get_filename(buffer);
 				char const *filename = path_filename(path);
 				Rect tab_rect = rect(V2(r.pos.x + tab_width * i, r.pos.y), V2(tab_width, tab_bar_height));
+
+				if (node == ted->dragging_tab_node && i == ted->dragging_tab_idx) {
+					// make tab follow mouse
+					tab_rect.pos = v2_add(tab_rect.pos, v2_sub(ted->mouse_pos, ted->dragging_tab_origin));
+				}
 				
 				// tab border
 				gl_geometry_rect_border(tab_rect, border_thickness, colors[COLOR_BORDER]);

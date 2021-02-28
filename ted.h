@@ -277,11 +277,14 @@ typedef struct Ted {
 	// used by menus to keep track of the scroll position so we can return to it.
 	v2d prev_active_buffer_scroll;
 	
-	SDL_Cursor *cursor_arrow, *cursor_ibeam, *cursor_resize_h, *cursor_resize_v;
+	SDL_Cursor *cursor_arrow, *cursor_ibeam, *cursor_resize_h, *cursor_resize_v, *cursor_hand, *cursor_move;
 	SDL_Cursor *cursor; // which cursor to use this frame
 	
-	// index of buffer whose tab user is dragging around, 0 for none.
-	u16 dragging_tab;
+	// node containing tab user is dragging around, NULL if user is not dragging a tab
+	Node *dragging_tab_node;
+	// index in dragging_tab_node->tabs
+	u16 dragging_tab_idx;
+	v2 dragging_tab_origin; // where the tab is being dragged from (i.e. mouse pos at start of drag action)
 	
 	// if not NULL, points to the node whose split the user is currently resizing.
 	Node *resizing_split;

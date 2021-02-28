@@ -365,6 +365,8 @@ int main(int argc, char **argv) {
 	ted->cursor_arrow = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
 	ted->cursor_resize_h = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEWE);
 	ted->cursor_resize_v = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENS);
+	ted->cursor_hand = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
+	ted->cursor_move = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEALL);
 
 	Uint32 time_at_last_frame = SDL_GetTicks();
 	
@@ -724,6 +726,9 @@ int main(int argc, char **argv) {
 		}
 	#endif
 		
+		if (ted->dragging_tab_node)
+			ted->cursor = ted->cursor_move;
+
 		SDL_SetWindowTitle(window, ted->window_title);
 		SDL_SetCursor(ted->cursor);
 	
@@ -740,21 +745,20 @@ int main(int argc, char **argv) {
 
 	}
 
-	build_stop(ted);
-
-
-	if (ted->menu)
-		menu_close(ted); // free any memory used by the current menu
-
-	if (log) fclose(log);
 
 	SDL_FreeCursor(ted->cursor_arrow);
 	SDL_FreeCursor(ted->cursor_ibeam);
 	SDL_FreeCursor(ted->cursor_resize_h);
 	SDL_FreeCursor(ted->cursor_resize_v);
+	SDL_FreeCursor(ted->cursor_hand);
+	SDL_FreeCursor(ted->cursor_move);
 	SDL_GL_DeleteContext(glctx);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
+	build_stop(ted);
+	if (ted->menu)
+		menu_close(ted); // free any memory used by the current menu
+	if (log) fclose(log);
 	find_close(ted);
 	tag_selector_close(ted);
 	for (u16 i = 0; i < TED_MAX_BUFFERS; ++i)
