@@ -195,6 +195,10 @@ static void *arr_remove_(void *arr, size_t member_size, size_t index) {
 #define arr_qsort(a, cmp) qsort((a), arr_len(a), sizeof *(a), (cmp))
 #define arr_remove_last(a) do { assert(a); if (--arr_hdr_(a)->len == 0) arr_free(a); } while (0)
 #define arr_remove(a, i) (void)((a) = arr_remove_((a), sizeof *(a), (i)))
+#define arr_insert(a, i, x) do { u32 _index = (i); (a) = arr_cast_typeof(a) arr_grow1_((a), sizeof *(a)); \
+	if (a) { memmove((a) + _index + 1, (a) + _index, (arr_len(a) - _index) * sizeof *(a));\
+	(a)[_index] = x; \
+	++arr_hdr_(a)->len; } } while (0)
 #define arr_pop_last(a) ((a)[--arr_hdr_(a)->len])
 #define arr_size_in_bytes(a) (arr_len(a) * sizeof *(a))
 #define arr_lastp(a) ((a) ? &(a)[arr_len(a)-1] : NULL)

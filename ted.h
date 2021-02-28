@@ -247,6 +247,8 @@ typedef struct Ted {
 	v2 mouse_clicks[4][32]; // mouse_clicks[SDL_BUTTON_RIGHT], for example, is all the right mouse-clicks that have happened this frame
 	// number of times mouse was clicked at each position
 	u8 mouse_click_times[4][32];
+	u8 nmouse_releases[4];
+	v2 mouse_releases[4][32];
 	int scroll_total_x, scroll_total_y; // total amount scrolled in the x and y direction this frame
 	Menu menu;
 	FileSelector file_selector;

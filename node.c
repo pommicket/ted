@@ -198,7 +198,7 @@ static void node_frame(Ted *ted, Node *node, Rect r) {
 					if (rect_contains_point(tab_bar_rect, click)) {
 						// click on tab to switch to it
 						u16 tab_index = (u16)((click.x - r.pos.x) / tab_width);
-						if (tab_index >= 0 && tab_index < arr_len(node->tabs)) {
+						if (tab_index < arr_len(node->tabs)) {
 							ted->active_node = node;
 							node_switch_to_tab(ted, node, tab_index);
 							ted->dragging_tab_node = node;
@@ -207,25 +207,62 @@ static void node_frame(Ted *ted, Node *node, Rect r) {
 						}
 					}
 				}
+				if (ted->dragging_tab_node) {
+					// check if user dropped tab here
+					for (u16 c = 0; c < ted->nmouse_releases[SDL_BUTTON_LEFT]; ++c) {
+						v2 release = ted->mouse_releases[SDL_BUTTON_LEFT][c];
+						if (rect_contains_point(tab_bar_rect, release)) {
+							u16 tab_index = (u16)roundf((release.x - r.pos.x) / tab_width);
+							if (tab_index <= arr_len(node->tabs)) {
+								Node *drag_node = ted->dragging_tab_node;
+								u16 drag_index = ted->dragging_tab_idx;
+								u16 tab = drag_node->tabs[drag_index];
+
+								// remove the old tab
+								arr_remove(drag_node->tabs, drag_index);
+								if (node == drag_node) {
+									// fix index if we move tab from one place to another in the same node
+									if (tab_index > drag_index)
+										--tab_index;
+								}
+								// insert the tab here
+								arr_insert(node->tabs, tab_index, tab);
+								if (arr_len(drag_node->tabs) == 0) {
+									// removed the last tab from a node; close it
+									node_close(ted, (u16)(drag_node - ted->nodes));
+								} else {
+									// make sure active tab is valid
+									drag_node->active_tab = clamp_u16(drag_node->active_tab, 0, (u16)arr_len(drag_node->tabs) - 1);
+								}
+
+								ted->dragging_tab_node = NULL; // stop dragging
+								// switch to this buffer
+								ted_switch_to_buffer(ted, tab);
+							}
+						}
+					}
+				}
 				for (u16 c = 0; c < ted->nmouse_clicks[SDL_BUTTON_MIDDLE]; ++c) {
 					// middle-click to close tab
 					v2 click = ted->mouse_clicks[SDL_BUTTON_MIDDLE][c];
 					if (rect_contains_point(tab_bar_rect, click)) {
 						u16 tab_index = (u16)((click.x - r.pos.x) / tab_width);
-						u16 buffer_idx = node->tabs[tab_index];
-						TextBuffer *buffer = &ted->buffers[buffer_idx];
-						// close that tab
-						if (buffer_unsaved_changes(buffer)) {
-							// make sure unsaved changes dialog is opened
-							ted_switch_to_buffer(ted, buffer_idx);
-							command_execute(ted, CMD_TAB_CLOSE, 1);
-						} else {
-							if (!node_tab_close(ted, node, tab_index)) {
-								return; // node closed
+						if (tab_index < arr_len(node->tabs)) {
+							u16 buffer_idx = node->tabs[tab_index];
+							TextBuffer *buffer = &ted->buffers[buffer_idx];
+							// close that tab
+							if (buffer_unsaved_changes(buffer)) {
+								// make sure unsaved changes dialog is opened
+								ted_switch_to_buffer(ted, buffer_idx);
+								command_execute(ted, CMD_TAB_CLOSE, 1);
+							} else {
+								if (!node_tab_close(ted, node, tab_index)) {
+									return; // node closed
+								}
 							}
+							ntabs = (u16)arr_len(node->tabs);
+							tab_width = r.size.x / ntabs;
 						}
-						ntabs = (u16)arr_len(node->tabs);
-						tab_width = r.size.x / ntabs;
 					}
 				}
 			}

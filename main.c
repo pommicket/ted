@@ -1,5 +1,4 @@
 // @TODO:
-// - move tabs between nodes
 // - :split-swap
 // - fix: ctrl+f something, then switch to another tab (hl rects still showing up)
 
@@ -391,6 +390,7 @@ int main(int argc, char **argv) {
 		bool alt_down = keyboard_state[SDL_SCANCODE_LALT] || keyboard_state[SDL_SCANCODE_RALT];
 
 		memset(ted->nmouse_clicks, 0, sizeof ted->nmouse_clicks);
+		memset(ted->nmouse_releases, 0, sizeof ted->nmouse_releases);
 		ted->scroll_total_x = ted->scroll_total_y = 0;
 
 		ted_update_window_dimensions(ted);
@@ -492,6 +492,13 @@ int main(int argc, char **argv) {
 							++ted->nmouse_clicks[button];
 						}
 					}
+				}
+			} break;
+			case SDL_MOUSEBUTTONUP: {
+				Uint8 button = event.button.button;
+				v2 pos = V2((float)event.button.x, (float)event.button.y);
+				if (ted->nmouse_releases[button] < arr_count(ted->mouse_releases[button])) {
+					ted->mouse_releases[button][ted->nmouse_releases[button]++] = pos;
 				}
 			} break;
 			case SDL_MOUSEMOTION: {
