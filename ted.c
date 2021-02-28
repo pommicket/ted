@@ -130,6 +130,13 @@ static i32 ted_new_node(Ted *ted) {
 	
 }
 
+// switch to this node
+static void ted_node_switch(Ted *ted, Node *node) {
+	ted->active_node = node;
+	assert(node->tabs);
+	ted->active_buffer = &ted->buffers[node->tabs[node->active_tab]];
+}
+
 static bool node_tab_close(Ted *ted, Node *node, u16 index);
 
 // Open a new buffer. Fills out *tab to the index of the tab used, and *buffer_idx to the index of the buffer.
@@ -186,6 +193,7 @@ static void ted_switch_to_buffer(Ted *ted, u16 buffer_idx) {
 	}
 	assert(0);
 }
+
 
 // Returns true on success
 static bool ted_open_file(Ted *ted, char const *filename) {

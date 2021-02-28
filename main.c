@@ -1,5 +1,4 @@
 // @TODO:
-// - :split-swap
 // - fix: ctrl+f something, then switch to another tab (hl rects still showing up)
 
 // - Windows installation

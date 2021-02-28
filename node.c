@@ -137,8 +137,7 @@ static void node_close(Ted *ted, u16 node_idx) {
 			// make sure we don't set the active node to a split
 			while (!new_active_node->tabs)
 				new_active_node = &ted->nodes[new_active_node->split_a];
-			ted->active_node = new_active_node;
-			ted->active_buffer = &ted->buffers[ted->active_node->tabs[ted->active_node->active_tab]];
+			ted_node_switch(ted, new_active_node);
 		}
 	}
 }
@@ -390,7 +389,21 @@ static void node_split(Ted *ted, Node *node, bool vertical) {
 			node->split_vertical = vertical;
 			node->split_pos = 0.5f;
 			if (node == ted->active_node)
-				ted->active_node = &ted->nodes[right_idx];
+				ted_node_switch(ted, &ted->nodes[right_idx]);
+		}
+	}
+}
+
+// swap to the other side of a split
+static void node_split_swap(Ted *ted) {
+	assert(ted->active_node);
+	u16 active_node_idx = (u16)(ted->active_node - ted->nodes);
+	Node *parent = &ted->nodes[node_parent(ted, active_node_idx)];
+	if (parent) {
+		if (parent->split_a == active_node_idx) {
+			ted_node_switch(ted, &ted->nodes[parent->split_b]);
+		} else {
+			ted_node_switch(ted, &ted->nodes[parent->split_a]);
 		}
 	}
 }

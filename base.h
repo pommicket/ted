@@ -32,6 +32,12 @@
 #include <assert.h>
 #include <uchar.h>
 
+#if !__TINYC__ && __STDC_VERSION__ >= 201112
+#define static_assert_if_possible(cond) _Static_assert(cond, "Static assertion failed");
+#else
+#define static_assert_if_possible(cond)
+#endif
+
 typedef uint8_t  u8;
 typedef uint16_t u16;
 typedef uint32_t u32;

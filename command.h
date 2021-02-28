@@ -75,7 +75,8 @@ ENUM_U16 {
 	CMD_SPLIT_HORIZONTAL,
 	CMD_SPLIT_VERTICAL,
 	CMD_SPLIT_JOIN,
-	
+	CMD_SPLIT_SWAP, // go to the other side of a split
+
 	CMD_ESCAPE, // by default this is the escape key. closes menus, etc.
 
 	CMD_COUNT
@@ -85,7 +86,7 @@ typedef struct {
 	char const *name;
 	Command cmd;
 } CommandName;
-static CommandName const command_names[CMD_COUNT] = {
+static CommandName const command_names[] = {
 	{"unknown", CMD_UNKNOWN},
 	{"noop", CMD_NOOP},
 	{"left", CMD_LEFT},
@@ -147,6 +148,9 @@ static CommandName const command_names[CMD_COUNT] = {
 	{"split-horizontal", CMD_SPLIT_HORIZONTAL},
 	{"split-vertical", CMD_SPLIT_VERTICAL},
 	{"split-join", CMD_SPLIT_JOIN},
+	{"split-swap", CMD_SPLIT_SWAP},
 	{"escape", CMD_ESCAPE},
 };
+
+static_assert_if_possible(arr_count(command_names) == CMD_COUNT)
 
