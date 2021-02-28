@@ -7,8 +7,10 @@ PROFILE_CFLAGS=$(ALL_CFLAGS) -O3 -g -DPROFILE=1
 GLOBAL_DATA_DIR=/usr/share/ted
 LOCAL_DATA_DIR=/home/`logname`/.local/share/ted
 INSTALL_BIN_DIR=/usr/bin
-ted: *.[ch] libpcre2-32.a
-	$(CC) main.c -o ted $(DEBUG_CFLAGS) $(LIBS)
+ted: *.[ch] libpcre2-32.a stb_truetype.o
+	$(CC) main.c stb_truetype.o -o ted $(DEBUG_CFLAGS) $(LIBS)
+stb_truetype.o: stb_truetype.c
+	$(CC) $< -c -o $@
 release: *.[ch] libpcre2-32.a
 	$(CC) main.c -o ted $(RELEASE_CFLAGS) $(LIBS)
 profile: *.[ch] libpcre2-32.a

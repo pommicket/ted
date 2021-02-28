@@ -1,11 +1,29 @@
 #include "base.h"
 #include "text.h"
 #include "unicode.h"
+#if DEBUG
+typedef struct
+{
+   unsigned short x0,y0,x1,y1; // coordinates of bbox in bitmap
+   float xoff,yoff,xadvance;
+} stbtt_bakedchar;
+typedef struct
+{
+   float x0,y0,s0,t0; // top-left
+   float x1,y1,s1,t1; // bottom-right
+} stbtt_aligned_quad;
+
+extern void stbtt_GetBakedQuad(const stbtt_bakedchar *chardata, int pw, int ph, int char_index, float *xpos, float *ypos, stbtt_aligned_quad *q, int opengl_fillrule); 
+extern int stbtt_BakeFontBitmap(const unsigned char *data, int offset, float pixel_height, unsigned char *pixels, int pw, int ph, int first_char, int num_chars, stbtt_bakedchar *chardata); 
+#else
 #define STB_TRUETYPE_IMPLEMENTATION
 #define STBTT_STATIC
 no_warn_start
 #include "lib/stb_truetype.h"
 no_warn_end
+#endif
+
+
 #include <stdlib.h>
 
 // We split up code points into a bunch of pages, so we don't have to load all of the font at

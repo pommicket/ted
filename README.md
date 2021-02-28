@@ -48,7 +48,8 @@ wget https://ftp.pcre.org/pub/pcre/pcre2-10.36.zip
 sudo make install -j4
 ```
 
-On Windows (64-bit), you will need the SDL2 VC development libraries: https://www.libsdl.org/download-2.0.php  
+On Windows (64-bit), first you will need to install Microsoft Visual Studio, then find and add vcvarsall.bat to your PATH.
+Next you will need the SDL2 VC development libraries: https://www.libsdl.org/download-2.0.php  
 Extract the zip, copy SDL2-2.x.y into the ted directory, and rename it to SDL2. Also copy SDL2\lib\x64\SDL2.dll
 to the ted directory.  
 You will also need PCRE2. Download it here: https://ftp.pcre.org/pub/pcre/pcre2-10.36.zip,
