@@ -1,5 +1,5 @@
 // @TODO:
-// - Windows installation
+// - test update ted with windows installer
 // - test on BSD
 // - .deb file
 
@@ -376,7 +376,16 @@ int main(int argc, char **argv) {
 			strbuf_printf(ted->home, "%ls", home);
 			CoTaskMemFree(home);
 		}
-		strbuf_printf(ted->global_data_dir, "C:\\Program Files\\ted");
+		
+		// on Windows, the global data directory is just the directory where the executable is.
+		char executable_path[TED_PATH_MAX] = {0};
+		if (GetModuleFileNameA(NULL, executable_path, sizeof executable_path) > 0) {
+			char *last_backslash = strrchr(executable_path, '\\');
+			if (last_backslash) {
+				*last_backslash = '\0';
+				strbuf_cpy(ted->global_data_dir, executable_path);
+			}
+		}
 #else
 		char *home = getenv("HOME");
 		strbuf_printf(ted->home, "%s", home);
@@ -403,17 +412,11 @@ int main(int argc, char **argv) {
 	}
 
 	{ // check if this is the installed version of ted (as opposed to just running it from the directory with the source)
+	#if _WIN32
+		// never search cwd; we'll search the executable directory anyways
+	#else
 		char executable_path[TED_PATH_MAX] = {0};
 		char const *cwd = ted->cwd;
-	#if _WIN32
-		if (GetModuleFileNameA(NULL, executable_path, sizeof executable_path) > 0) {
-			char *last_backslash = strrchr(executable_path, '\\');
-			if (last_backslash) {
-				*last_backslash = '\0';
-				ted->search_cwd = streq(cwd, executable_path);
-			}
-		}
-	#else
 		ssize_t len = readlink("/proc/self/exe", executable_path, sizeof executable_path - 1);
 		if (len == -1) {
 			// some posix systems don't have /proc/self/exe. oh well.

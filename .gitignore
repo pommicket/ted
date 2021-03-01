@@ -1,4 +1,8 @@
 ted
+!windows_installer/ted
+!windows_installer/ted/ted
+Debug
+Release
 *~
 *.swp
 tags
