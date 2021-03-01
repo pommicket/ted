@@ -19,12 +19,13 @@ a simple editor that starts up practically instantaneously, and performs well on
 ## Supported features (more coming soon)
 
 - Multiple tabs, each with a different file
+- Split screen (Ctrl+/, Ctrl+Shift+/)
 - Auto-indent
 - Customization of (pretty much) all colours and keyboard commands.
 - Syntax highlighting for C, C++, Rust, and Python.
 - Find and replace (with regular expressions!)
 - Run build command (default keybinding F4), go to errors
-- Go to definition (ctrl+click)
+- Go to definition (Ctrl+click)
 - Go to line (Ctrl+G)
 
 ## Building from source
@@ -69,6 +70,7 @@ Then run `make.bat`.
 <tr><td>0.4</td> <td>:build</td> <td>2021 Feb 18</td></tr>
 <tr><td>0.5</td> <td>Go to definition</td> <td>2021 Feb 22</td></tr>
 <tr><td>0.5a</td> <td>Several bugfixes, go to line</td> <td>2021 Feb 23</td></tr>
+<tr><td>0.6</td> <td>Split-screen</td> <td>2021 Feb 28</td></tr>
 </table>
 
 ## License
