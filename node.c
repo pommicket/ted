@@ -105,6 +105,7 @@ static void node_close(Ted *ted, u16 node_idx) {
 	ted->nodes_used[node_idx] = false;
 
 	Node *node = &ted->nodes[node_idx];
+	bool was_active = ted->active_node == node;
 
 	// delete all associated buffers
 	arr_foreach_ptr(node->tabs, u16, tab) {
@@ -132,7 +133,7 @@ static void node_close(Ted *ted, u16 node_idx) {
 		*parent = ted->nodes[other_side];
 
 		ted->nodes_used[other_side] = false;
-		if (ted->active_node == node) {
+		if (was_active) {
 			Node *new_active_node = parent;
 			// make sure we don't set the active node to a split
 			while (!new_active_node->tabs)

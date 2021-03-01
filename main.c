@@ -1,7 +1,7 @@
 // @TODO:
-// - fix: after closing last tab in active node, there should be a new active node
 // - Windows installation
 // - test on BSD
+// - .deb file
 
 // - completion
 
