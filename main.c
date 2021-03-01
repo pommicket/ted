@@ -1,7 +1,6 @@
 // @TODO:
 // - "on crash, output backtrace to log" for Windows
 // - Windows installation
-// - restore previously opened files (setting: restore-session)
 // - test on BSD
 
 // - completion
@@ -49,6 +48,8 @@ no_warn_end
 #error "Unrecognized operating system."
 #endif
 
+#include "io.c"
+
 #include "text.h"
 #include "command.h"
 #include "colors.h"
@@ -70,6 +71,7 @@ bool tag_goto(Ted *ted, char const *tag);
 #include "build.c"
 #include "command.c"
 #include "config.c"
+#include "session.c"
 
 #if PROFILE
 #define PROFILE_TIME(var) double var = time_get_seconds();
@@ -114,8 +116,11 @@ static void APIENTRY gl_message_callback(GLenum source, GLenum type, unsigned in
 
 #if __unix__
 static Ted *error_signal_handler_ted;
+static bool signal_being_handled; // prevent infinite signal recursion
 static void error_signal_handler(int signum, siginfo_t *info, void *context) {
 	(void)context;
+	if (signal_being_handled)
+		die("ted crashed while trying to handle a crash! yikes! ):");
 	Ted *ted = error_signal_handler_ted;
 	if (ted) {
 		FILE *log = ted->log;
@@ -142,6 +147,7 @@ static void error_signal_handler(int signum, siginfo_t *info, void *context) {
 		#endif
 			fclose(log);
 		}
+		session_write(ted);
 
 		die("ted has crashed ):  Please send %s/log.txt to pommicket""@gmail.com if you want this fixed.", ted->local_data_dir);
 	} else {
@@ -427,38 +433,16 @@ int main(int argc, char **argv) {
 	buffer_create(&ted->build_buffer, ted);
 
 	{
-		u16 buffer_index = (u16)ted_new_buffer(ted);
-		assert(buffer_index == 1);
-		TextBuffer *buffer = &ted->buffers[buffer_index];
-		buffer_create(buffer, ted);
-		u16 node_index = (u16)ted_new_node(ted);
-		assert(node_index == 0);
-		Node *node = &ted->nodes[node_index];
-		node->tabs = NULL;
-		arr_add(node->tabs, buffer_index);
-
-		ted_switch_to_buffer(ted, buffer);
-
-
-		char path[TED_PATH_MAX];
 		if (starting_filename) {
-			// get full path to file
-			if (!path_is_absolute(starting_filename))
-				strbuf_printf(path, "%s%s%s", ted->cwd, ted->cwd[strlen(ted->cwd) - 1] == PATH_SEPARATOR ? "" : PATH_SEPARATOR_STR,
-					starting_filename);
-			else
-				strbuf_printf(path, "%s", starting_filename);
+			if (fs_file_exists(starting_filename)) {
+				if (!ted_open_file(ted, starting_filename))
+					ted_seterr(ted, "Couldn't load file: %s", ted_geterr(ted));
+			} else {
+				if (!ted_new_file(ted, starting_filename))
+					ted_seterr(ted, "Couldn't create file: %s", ted_geterr(ted));
+			}
 		} else {
-			strbuf_printf(path, "Untitled");
-		}
-
-		if (starting_filename && fs_file_exists(path)) {
-			if (!buffer_load_file(buffer, path))
-				ted_seterr(ted, "Couldn't load file: %s", buffer_geterr(buffer));
-		} else {
-			buffer_new_file(buffer, path);
-			if (buffer_haserr(buffer))
-				ted_seterr(ted, "Couldn't create file: %s", buffer_geterr(buffer));
+			session_read(ted);
 		}
 	}
 
@@ -471,6 +455,8 @@ int main(int argc, char **argv) {
 	ted->cursor_resize_v = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENS);
 	ted->cursor_hand = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
 	ted->cursor_move = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEALL);
+
+
 
 	Uint32 time_at_last_frame = SDL_GetTicks();
 	
@@ -827,6 +813,7 @@ int main(int argc, char **argv) {
 
 	}
 
+	session_write(ted);
 
 	SDL_FreeCursor(ted->cursor_arrow);
 	SDL_FreeCursor(ted->cursor_ibeam);

@@ -260,6 +260,10 @@ static bool path_is_absolute(char const *path) {
 
 // assuming `dir` is an absolute path, returns the absolute path of `relpath`, relative to `dir`.
 static void path_full(char const *dir, char const *relpath, char *abspath, size_t abspath_size) {
+	if (path_is_absolute(relpath)) {
+		str_cpy(abspath, abspath_size, relpath);
+		return;
+	}
 	str_cpy(abspath, abspath_size, dir);
 
 	while (1) {

@@ -155,12 +155,11 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		menu_open(ted, MENU_OPEN);
 		break;
 	case CMD_NEW:
-		ted_new_file(ted);
+		ted_new_file(ted, NULL);
 		break;
 	case CMD_SAVE:
 		if (buffer) {
-			if (buffer->filename && streq(buffer->filename, TED_UNTITLED)) {
-				// don't worry, this won't catch files called "Untitled"; buffer->filename is the full path.
+			if (buffer_is_untitled(buffer)) {
 				command_execute(ted, CMD_SAVE_AS, 1);
 				return;
 			}

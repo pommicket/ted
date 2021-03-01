@@ -112,7 +112,6 @@ void buffer_create(TextBuffer *buffer, Ted *ted) {
 	buffer->ted = ted;
 }
 
-
 void line_buffer_create(TextBuffer *buffer, Ted *ted) {
 	buffer_create(buffer, ted);
 	buffer->is_line_buffer = true;
@@ -140,6 +139,21 @@ static void buffer_validate_cursor(TextBuffer *buffer) {
 
 static bool buffer_pos_valid(TextBuffer *buffer, BufferPos p) {
 	return p.line < buffer->nlines && p.index <= buffer->lines[p.line].len;
+}
+
+// write a buffer position to a file
+void buffer_pos_write(BufferPos pos, FILE *fp) {
+	write_u32(fp, pos.line);
+	write_u32(fp, pos.index);
+}
+
+// read a buffer position from a file, and validate it
+BufferPos buffer_pos_read(TextBuffer *buffer, FILE *fp) {
+	BufferPos pos = {0};
+	pos.line = read_u32(fp);
+	pos.index = read_u32(fp);
+	buffer_pos_validate(buffer, &pos);
+	return pos;
 }
 
 // are there any unsaved changes?

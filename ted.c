@@ -46,6 +46,10 @@ static void *ted_realloc(Ted *ted, void *p, size_t new_size) {
 	return ret;
 }
 
+static void ted_full_path(Ted *ted, char const *relpath, char *abspath, size_t abspath_size) {
+	path_full(ted->cwd, relpath, abspath, abspath_size);
+}
+
 // Check the various places a file could be, and return the full path.
 static Status ted_get_file(Ted const *ted, char const *name, char *out, size_t outsz) {
 	if (ted->search_cwd && fs_file_exists(name)) {
@@ -212,12 +216,15 @@ static Status ted_open_buffer(Ted *ted, u16 *buffer_idx, u16 *tab) {
 
 // Returns true on success
 static bool ted_open_file(Ted *ted, char const *filename) {
+	char path[TED_PATH_MAX];
+	ted_full_path(ted, filename, path, sizeof path);
+
 	// first, check if file is already open
 	bool *buffers_used = ted->buffers_used;
 	TextBuffer *buffers = ted->buffers;
 	for (u16 i = 0; i < TED_MAX_BUFFERS; ++i) {
 		if (buffers_used[i]) {
-			if (streq(filename, buffer_get_filename(&buffers[i]))) {
+			if (buffers[i].filename && streq(path, buffers[i].filename)) {
 				buffer_reload(&buffers[i]); // make sure buffer is up to date with the file
 				ted_switch_to_buffer(ted, &buffers[i]);
 				return true;
@@ -229,10 +236,10 @@ static bool ted_open_file(Ted *ted, char const *filename) {
 	u16 buffer_idx, tab_idx;
 	if (ted->active_buffer && buffer_is_untitled(ted->active_buffer) && buffer_empty(ted->active_buffer)) {
 		// the active buffer is just an empty untitled buffer. open it here.
-		return buffer_load_file(ted->active_buffer, filename);
+		return buffer_load_file(ted->active_buffer, path);
 	} else if (ted_open_buffer(ted, &buffer_idx, &tab_idx)) {
 		TextBuffer *buffer = &ted->buffers[buffer_idx];
-		if (buffer_load_file(buffer, filename)) {
+		if (buffer_load_file(buffer, path)) {
 			return true;
 		} else {
 			ted_seterr_to_buferr(ted, buffer);
@@ -245,8 +252,13 @@ static bool ted_open_file(Ted *ted, char const *filename) {
 	}
 }
 
-static bool ted_new_file(Ted *ted) {
+static bool ted_new_file(Ted *ted, char const *filename) {
 	u16 buffer_idx, tab_idx;
+	char path[TED_PATH_MAX];
+	if (filename)
+		ted_full_path(ted, filename, path, sizeof path);
+	else
+		strbuf_cpy(path, TED_UNTITLED);
 	if (ted_open_buffer(ted, &buffer_idx, &tab_idx)) {
 		TextBuffer *buffer = &ted->buffers[buffer_idx];
 		buffer_new_file(buffer, TED_UNTITLED);
@@ -286,8 +298,4 @@ static bool ted_save_all(Ted *ted) {
 		}
 	}
 	return success;
-}
-
-static void ted_full_path(Ted *ted, char const *relpath, char *abspath, size_t abspath_size) {
-	path_full(ted->cwd, relpath, abspath, abspath_size);
 }

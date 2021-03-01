@@ -271,7 +271,7 @@ static void node_frame(Ted *ted, Node *node, Rect r) {
 				TextBuffer *buffer = &ted->buffers[node->tabs[i]];
 				char tab_title[256];
 				char const *path = buffer_get_filename(buffer);
-				char const *filename = path_filename(path);
+				char const *filename = path ? path_filename(path) : TED_UNTITLED;
 				Rect tab_rect = rect(V2(r.pos.x + tab_width * i, r.pos.y), V2(tab_width, tab_bar_height));
 
 				if (node == ted->dragging_tab_node && i == ted->dragging_tab_idx) {

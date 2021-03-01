@@ -182,6 +182,7 @@ void config_read(Ted *ted, char const *filename) {
 		{"auto-reload", &settings->auto_reload},
 		{"syntax-highlighting", &settings->syntax_highlighting},
 		{"line-numbers", &settings->line_numbers},
+		{"restore-session", &settings->restore_session},
 	};
 	OptionU8 const options_u8[] = {
 		{"tab-width", &settings->tab_width, 1, 100},
