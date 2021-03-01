@@ -1,7 +1,8 @@
 // @TODO:
-// - on crash, output backtrace to log
+// - "on crash, output backtrace to log" for Windows
 // - Windows installation
 // - restore previously opened files (setting: restore-session)
+// - test on BSD
 
 // - completion
 
@@ -18,6 +19,9 @@ no_warn_start
 no_warn_end
 #include <locale.h>
 #include <wctype.h>
+#if __linux__
+#include <execinfo.h>
+#endif
 #if _WIN32
 #include <shellapi.h>
 #endif
@@ -108,6 +112,44 @@ static void APIENTRY gl_message_callback(GLenum source, GLenum type, unsigned in
 }
 #endif
 
+#if __unix__
+static Ted *error_signal_handler_ted;
+static void error_signal_handler(int signum, siginfo_t *info, void *context) {
+	(void)context;
+	Ted *ted = error_signal_handler_ted;
+	if (ted) {
+		FILE *log = ted->log;
+		if (log) {
+			fprintf(log, "Signal %d: %s\n", signum, strsignal(signum));
+			fprintf(log, "errno = %d\n",  info->si_errno);
+			fprintf(log, "code = %d\n", info->si_code);
+			fprintf(log, "address = 0x%llx\n", (unsigned long long)info->si_addr);
+		#if __linux__
+			fprintf(log, "utime = %lu\n", (unsigned long)info->si_utime);
+			fprintf(log, "stime = %lu\n", (unsigned long)info->si_stime);
+			fprintf(log, "address lsb = %d\n", info->si_addr_lsb);
+			fprintf(log, "lower bound = 0x%llx\n", (unsigned long long)info->si_lower);
+			fprintf(log, "lower bound = 0x%llx\n", (unsigned long long)info->si_upper);
+			fprintf(log, "syscall address = 0x%llx\n", (unsigned long long)info->si_call_addr);
+			fprintf(log, "syscall = 0x%d\n", info->si_syscall);
+
+			fprintf(log, "Backtrace:\n");
+			void *addresses[300] = {0};
+			int n_addresses = backtrace(addresses, (int)arr_count(addresses));
+			for (int i = 0; i < n_addresses; ++i) {
+				fprintf(log, " 0x%llx\n", (unsigned long long)addresses[i]);
+			}
+		#endif
+			fclose(log);
+		}
+
+		die("ted has crashed ):  Please send %s/log.txt to pommicket""@gmail.com if you want this fixed.", ted->local_data_dir);
+	} else {
+		die("ted crashed when starting up ):");
+	}
+}
+#endif
+
 static void ted_update_window_dimensions(Ted *ted) {
 	int w = 0, h = 0;
 	SDL_GetWindowSize(ted->window, &w, &h);
@@ -182,6 +224,20 @@ INT WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 #else
 int main(int argc, char **argv) {
 #endif
+	
+#if __unix__
+	{
+		struct sigaction act = {0};
+		act.sa_sigaction = error_signal_handler;
+		act.sa_flags = SA_SIGINFO;
+		sigaction(SIGSEGV, &act, NULL);
+		sigaction(SIGFPE, &act, NULL);
+		sigaction(SIGABRT, &act, NULL);
+		sigaction(SIGILL, &act, NULL);
+		sigaction(SIGPIPE, &act, NULL);
+	}
+#endif
+	
 	setlocale(LC_ALL, ""); // allow unicode
 
 	// read command-line arguments
@@ -210,6 +266,8 @@ int main(int argc, char **argv) {
 	if (!ted) {
 		die("Not enough memory available to run ted.");
 	}
+
+	error_signal_handler_ted = ted;
 
 	{ // get local data directory
 #if _WIN32
@@ -242,6 +300,7 @@ int main(int argc, char **argv) {
 		strbuf_printf(log_filename, "%s/log.txt", ted->local_data_dir);
 		log = fopen(log_filename, "w");
 	}
+	ted->log = log;
 
 	{ // get current working directory
 		fs_get_cwd(ted->cwd, sizeof ted->cwd);
@@ -636,7 +695,7 @@ int main(int argc, char **argv) {
 		
 		Font *font = ted->font;
 
-		// default window title
+		// default window titlel
 		strcpy(ted->window_title, "ted");
 
 
@@ -664,6 +723,10 @@ int main(int argc, char **argv) {
 				window_width * 0.5f, window_height * 0.5f, colors[COLOR_TEXT_SECONDARY], ANCHOR_MIDDLE);
 			text_render(font);
 		}
+
+		// stop dragging tab if mouse was released
+		if (ted->nmouse_releases[SDL_BUTTON_LEFT])
+			ted->dragging_tab_node = NULL;
 
 		if (ted->menu) {
 			menu_render(ted);
@@ -728,7 +791,6 @@ int main(int argc, char **argv) {
 				text_render(font);
 			}
 		}
-
 
 	#if DEBUG
 		for (u16 i = 0; i < TED_MAX_BUFFERS; ++i)

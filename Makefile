@@ -2,7 +2,7 @@ ALL_CFLAGS=$(CFLAGS) -Wall -Wextra -Wshadow -Wconversion -Wpedantic -pedantic -s
 	-Wno-unused-function -Wno-fixed-enum-extension -Wimplicit-fallthrough -Wno-format-truncation -Wno-unknown-warning-option
 LIBS=-lSDL2 -lGL -ldl -lm libpcre2-32.a -Ipcre2-10.36/build
 DEBUG_CFLAGS=$(ALL_CFLAGS) -DDEBUG -O0 -g
-RELEASE_CFLAGS=$(ALL_CFLAGS) -O3 -g
+RELEASE_CFLAGS=$(ALL_CFLAGS) -O3
 PROFILE_CFLAGS=$(ALL_CFLAGS) -O3 -g -DPROFILE=1
 GLOBAL_DATA_DIR=/usr/share/ted
 LOCAL_DATA_DIR=/home/`logname`/.local/share/ted

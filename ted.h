@@ -272,6 +272,8 @@ typedef struct Ted {
 	Command warn_unsaved; // if non-zero, the user is trying to execute this command, but there are unsaved changes
 	bool build_shown; // are we showing the build output?
 	bool building; // is the build process running?
+
+	FILE *log;
 	
 	BuildError *build_errors; // dynamic array of build errors
 	u32 build_error; // build error we are currently "on"

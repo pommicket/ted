@@ -97,9 +97,6 @@ static void ted_load_fonts(Ted *ted) {
 // sets the active buffer to this buffer, and updates active_node, etc. accordingly
 // you can pass NULL to buffer to make it so no buffer is active.
 static void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer) {
-	if (ted->active_buffer == buffer) return;
-
-
 	ted->active_buffer = buffer;
 	if (ted->find) find_update(ted, true);
 
