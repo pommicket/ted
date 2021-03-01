@@ -1,7 +1,4 @@
 // @TODO:
-// - fix:
-// ctrl+f something, then switch to another tab (hl rects still showing up)
-// ctrl+f something, then change buffer (e.g. make sure replace doesn't do something bad)
 // - refresh find results by pressing Enter in find/replace buffer
 
 // - Windows installation
@@ -645,7 +642,7 @@ int main(int argc, char **argv) {
 		strcpy(ted->window_title, "ted");
 
 
-		if (ted_anything_open(ted)) {
+		if (ted->nodes_used[0]) {
 			float const padding = settings->padding;
 			float x1 = padding, y = window_height-padding, x2 = window_width-padding;
 			Node *node = &ted->nodes[0];

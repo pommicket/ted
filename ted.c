@@ -1,4 +1,5 @@
 static void menu_open(Ted *ted, Menu menu);
+static void find_update(Ted *ted, bool force);
 
 // this is a macro so we get -Wformat warnings
 #define ted_seterr(ted, ...) \
@@ -92,11 +93,19 @@ static void ted_load_fonts(Ted *ted) {
 	ted_load_font(ted, "assets/font-bold.ttf", &ted->font_bold);
 }
 
+
 // sets the active buffer to this buffer, and updates active_node, etc. accordingly
 // you can pass NULL to buffer to make it so no buffer is active.
 static void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer) {
+	if (ted->active_buffer == buffer) return;
+
+
 	ted->active_buffer = buffer;
+	if (ted->find) find_update(ted, true);
+
 	if (buffer >= ted->buffers && buffer < ted->buffers + TED_MAX_BUFFERS) {
+		ted->prev_active_buffer = buffer;
+
 		u16 idx = (u16)(buffer - ted->buffers);
 		// now we need to figure out where this buffer is
 		bool *nodes_used = ted->nodes_used;
@@ -139,6 +148,8 @@ static void ted_delete_buffer(Ted *ted, u16 index) {
 	TextBuffer *buffer = &ted->buffers[index];
 	if (buffer == ted->active_buffer)
 		ted_switch_to_buffer(ted, NULL); // make sure we don't set the active buffer to something invalid
+	if (buffer == ted->prev_active_buffer)
+		ted->prev_active_buffer = NULL;
 	buffer_free(buffer);
 	ted->buffers_used[index] = false;
 }
@@ -282,12 +293,4 @@ static bool ted_save_all(Ted *ted) {
 
 static void ted_full_path(Ted *ted, char const *relpath, char *abspath, size_t abspath_size) {
 	path_full(ted->cwd, relpath, abspath, abspath_size);
-}
-
-// are any nodes open?
-static bool ted_anything_open(Ted *ted) {
-	for (uint i = 0; i < TED_MAX_NODES; ++i)
-		if (ted->nodes_used[i])
-			return true;
-	return false;
 }

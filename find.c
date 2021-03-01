@@ -9,6 +9,15 @@ static u32 find_replace_flags(Ted *ted) {
 	return (ted->find_regex ? 0 : PCRE2_SUBSTITUTE_LITERAL);
 }
 
+// which buffer will be searched?
+static TextBuffer *find_search_buffer(Ted *ted) {
+	if (ted->active_buffer && ted->active_buffer != &ted->find_buffer && ted->active_buffer != &ted->replace_buffer) {
+		return ted->active_buffer;
+	}
+	return ted->prev_active_buffer;
+}
+
+
 static void ted_seterr_to_pcre2_err(Ted *ted, int err) {
 	char32_t buf[256] = {0};
 	size_t len = (size_t)pcre2_get_error_message(err, buf, arr_count(buf) - 1);
@@ -72,8 +81,8 @@ static float find_menu_height(Ted *ted) {
 // advances *pos to the end of the match or the start of the next line if there is no match.
 // direction should be either +1 (forwards) or -1 (backwards)
 static WarnUnusedResult bool find_match(Ted *ted, BufferPos *pos, u32 *match_start, u32 *match_end, int direction) {
-	TextBuffer *buffer = ted->prev_active_buffer;
-	assert(buffer);
+	TextBuffer *buffer = find_search_buffer(ted);
+	if (!buffer) return false;
 	String32 str = buffer_get_line(buffer, pos->line);
 	PCRE2_SIZE *groups = pcre2_get_ovector_pointer(ted->find_match_data);
 
@@ -119,7 +128,8 @@ static void find_update(Ted *ted, bool force) {
 		&& ted->find_flags == flags) // or checkboxes have been (un)checked
 		return;
 	ted->find_flags = flags;
-	TextBuffer *buffer = ted->prev_active_buffer;
+	TextBuffer *buffer = find_search_buffer(ted);
+	if (!buffer) return;
 
 	find_free_pattern(ted);
 
@@ -151,7 +161,8 @@ static void find_update(Ted *ted, bool force) {
 // returns the index of the match we are "on", or U32_MAX for none.
 static u32 find_match_idx(Ted *ted) {
 	find_update(ted, false);
-	TextBuffer *buffer = ted->prev_active_buffer;
+	TextBuffer *buffer = find_search_buffer(ted);
+	if (!buffer) return U32_MAX;
 	arr_foreach_ptr(ted->find_results, FindResult, result) {
 		if ((buffer_pos_eq(result->start, buffer->selection_pos)
 			&& buffer_pos_eq(result->end, buffer->cursor_pos))
@@ -163,7 +174,8 @@ static u32 find_match_idx(Ted *ted) {
 
 
 static void find_next_in_direction(Ted *ted, int direction) {
-	TextBuffer *buffer = ted->prev_active_buffer;
+	TextBuffer *buffer = find_search_buffer(ted);
+	if (!buffer) return;
 	
 	BufferPos pos = direction == +1 || !buffer->selection ? buffer->cursor_pos : buffer->selection_pos;
 	u32 nlines = buffer->nlines;
@@ -196,7 +208,10 @@ static bool find_replace_match(Ted *ted, u32 match_idx) {
 	
 	bool success = false;
 	FindResult match = ted->find_results[match_idx];
-	TextBuffer *buffer = ted->prev_active_buffer;
+	TextBuffer *buffer = find_search_buffer(ted);
+	if (!buffer) return false;
+	if (!buffer_pos_valid(buffer, match.start) || !buffer_pos_valid(buffer, match.end))
+		return false;
 	assert(match.start.line == match.end.line);
 	String32 line = buffer_get_line(buffer, match.start.line);
 	String32 replacement = buffer_get_line(&ted->replace_buffer, 0);
@@ -246,7 +261,8 @@ static bool find_replace_match(Ted *ted, u32 match_idx) {
 
 // replace the match we are currently highlighting, or do nothing if there is no highlighted match
 static void find_replace(Ted *ted) {
-	TextBuffer *buffer = ted->prev_active_buffer;
+	TextBuffer *buffer = find_search_buffer(ted);
+	if (!buffer) return;
 	u32 match_idx = find_match_idx(ted);
 	if (match_idx != U32_MAX) {
 		buffer_cursor_move_to_pos(buffer, ted->find_results[match_idx].start); // move to start of match
@@ -268,7 +284,8 @@ static void find_prev(Ted *ted) {
 }
 
 static void find_replace_all(Ted *ted) {
-	TextBuffer *buffer = ted->prev_active_buffer;
+	TextBuffer *buffer = find_search_buffer(ted);
+	if (!buffer) return;
 	if (ted->replace) {
 		u32 match_idx = find_match_idx(ted);
 		if (match_idx == U32_MAX) {
@@ -302,8 +319,8 @@ static void find_menu_frame(Ted *ted, float x1, float y1, float x2, float y2) {
 	u32 const *colors = settings->colors;
 	bool const replace = ted->replace;
 	
-	TextBuffer *buffer = ted->prev_active_buffer, *find_buffer = &ted->find_buffer, *replace_buffer = &ted->replace_buffer;
-	assert(buffer);
+	TextBuffer *buffer = find_search_buffer(ted), *find_buffer = &ted->find_buffer, *replace_buffer = &ted->replace_buffer;
+	if (!buffer) return;
 	
 	u32 first_rendered_line = buffer_first_rendered_line(buffer);
 	u32 last_rendered_line = buffer_last_rendered_line(buffer);
@@ -441,6 +458,6 @@ static void find_open(Ted *ted, bool replace) {
 
 static void find_close(Ted *ted) {
 	ted->find = false;
-	ted_switch_to_buffer(ted, ted->prev_active_buffer);
+	ted_switch_to_buffer(ted, find_search_buffer(ted));
 	find_free_pattern(ted);
 }
