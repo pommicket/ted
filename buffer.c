@@ -2167,7 +2167,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	// the rectangle that the cursor is rendered as
 	Rect cursor_rect = rect(cursor_display_pos, V2(settings->cursor_width, char_height));
 
-	{ // highlight line cursor is on
+	if (!buffer->is_line_buffer) { // highlight line cursor is on
 		Rect hl_rect = rect(V2(x1, cursor_display_pos.y), V2(x2-x1-1, char_height));
 		buffer_clip_rect(buffer, &hl_rect);
 		gl_geometry_rect(hl_rect, colors[COLOR_CURSOR_LINE_BG]);

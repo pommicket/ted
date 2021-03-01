@@ -309,7 +309,7 @@ static void find_replace_all(Ted *ted) {
 	}
 }
 
-static void find_menu_frame(Ted *ted, float x1, float y1, float x2, float y2) {
+static void find_menu_frame(Ted *ted, Rect menu_bounds) {
 	Font *font = ted->font, *font_bold = ted->font_bold;
 	float const char_height = text_font_char_height(font),
 		char_height_bold = text_font_char_height(font_bold);
@@ -326,7 +326,8 @@ static void find_menu_frame(Ted *ted, float x1, float y1, float x2, float y2) {
 	u32 last_rendered_line = buffer_last_rendered_line(buffer);
 	
 
-	Rect menu_bounds = rect4(x1, y1, x2, y2);
+	float x1, y1, x2, y2;
+	rect_coords(menu_bounds, &x1, &y1, &x2, &y2);
 
 	x1 += padding;
 	y1 += padding;

@@ -1,8 +1,6 @@
 // @TODO:
-// - refresh find results by pressing Enter in find/replace buffer
-
-// - Windows installation
 // - on crash, output backtrace to log
+// - Windows installation
 // - restore previously opened files (setting: restore-session)
 
 // - completion
@@ -649,7 +647,7 @@ int main(int argc, char **argv) {
 			if (ted->find) {
 				float y2 = y;
 				y -= find_menu_height(ted);
-				find_menu_frame(ted, x1, y, x2, y2);
+				find_menu_frame(ted, rect4(x1, y, x2, y2));
 				y -= padding;
 			}
 			if (ted->build_shown) {
