@@ -300,3 +300,23 @@ static void change_directory(char const *path) {
 #endif
 }
 
+// returns true on success
+static bool copy_file(char const *src, char const *dst) {
+	bool success = false;
+	FILE *src_file = fopen(src, "rb");
+	if (src_file) {
+		FILE *dst_file = fopen(dst, "wb");
+		if (dst_file) {
+			char buf[1024];
+			while (1) {
+				size_t count = fread(buf, 1, sizeof buf, src_file);
+				fwrite(buf, 1, count, dst_file);
+				if (count < sizeof buf) break;
+			}
+			success = !ferror(src_file) && !ferror(dst_file);
+			fclose(dst_file);
+		}
+		fclose(src_file);
+	}
+	return success;
+}

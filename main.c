@@ -395,7 +395,7 @@ int main(int argc, char **argv) {
 
 		if (fs_path_type(ted->local_data_dir) == FS_NON_EXISTENT)
 			fs_mkdir(ted->local_data_dir);
-
+		
 	}
 
 	FILE *log = NULL;
@@ -437,25 +437,32 @@ int main(int argc, char **argv) {
 	#endif
 
 	Settings *settings = &ted->settings;
-
+	char config_err[sizeof ted->error] = {0};
+	
 	{
-		// read global configuration file first to establish defaults
+		// copy global config to local config
+		char local_config_filename[TED_PATH_MAX];
+		strbuf_printf(local_config_filename, "%s" PATH_SEPARATOR_STR "ted.cfg", ted->local_data_dir);
 		char global_config_filename[TED_PATH_MAX];
 		strbuf_printf(global_config_filename, "%s" PATH_SEPARATOR_STR "ted.cfg", ted->global_data_dir);
-		if (fs_file_exists(global_config_filename))
+		if (!fs_file_exists(local_config_filename)) {
+			if (fs_file_exists(global_config_filename)) {
+				if (!copy_file(global_config_filename, local_config_filename)) {
+					die("Couldn't copy config %s to %s.", global_config_filename, local_config_filename);
+				}
+			} else {
+				die("ted's backup config file, %s, does not exist. Try reinstalling ted?", global_config_filename);
+			}
+		}
+		config_read(ted, local_config_filename);
+		if (ted_haserr(ted)) {
+			// if there's an error in the local config, read the global config to make sure everything's ok
 			config_read(ted, global_config_filename);
+			strcpy(config_err, ted->error);
+			ted_clearerr(ted); // clear the error so later things (e.g. loading font) don't detect an error
+		}
 	}
-	{
-		// read local configuration file
-		char config_filename[TED_PATH_MAX];
-		if (ted_get_file(ted, "ted.cfg", config_filename, sizeof config_filename))
-			config_read(ted, config_filename);
-		else
-			ted_seterr(ted, "Couldn't find config file (ted.cfg), not even the backup one that should have come with ted.");
-	}
-	if (ted_haserr(ted)) {
-		die("Error reading config: %s", ted_geterr(ted));
-	}
+	
 
 	SDL_Window *window = SDL_CreateWindow("ted", SDL_WINDOWPOS_UNDEFINED, 
 		SDL_WINDOWPOS_UNDEFINED, 1280, 720, SDL_WINDOW_SHOWN|SDL_WINDOW_OPENGL|SDL_WINDOW_RESIZABLE);
@@ -552,6 +559,8 @@ int main(int argc, char **argv) {
 
 
 	Uint32 time_at_last_frame = SDL_GetTicks();
+	
+	strbuf_cpy(ted->error, config_err);
 	
 	while (!ted->quit) {
 	#if DEBUG
