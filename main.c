@@ -1,5 +1,4 @@
 // @TODO:
-// - command selector
 // - :open-config
 // - test on BSD
 
@@ -243,51 +242,6 @@ static void ted_update_window_dimensions(Ted *ted) {
 	SDL_GetWindowSize(ted->window, &w, &h);
 	gl_window_width = ted->window_width = (float)w;
 	gl_window_height = ted->window_height = (float)h;
-}
-
-// returns true if the buffer "used" this event
-static bool handle_buffer_click(Ted *ted, TextBuffer *buffer, v2 click, u8 times) {
-	BufferPos buffer_pos;
-	if (buffer_pixels_to_pos(buffer, click, &buffer_pos)) {
-		// user clicked on buffer
-		if (!ted->menu) {
-			ted_switch_to_buffer(ted, buffer);
-		}
-		if (buffer == ted->active_buffer) {
-			switch (ted->key_modifier) {
-			case KEY_MODIFIER_SHIFT:
-				// select to position
-				buffer_select_to_pos(buffer, buffer_pos);
-				break;
-			case KEY_MODIFIER_CTRL: {
-				buffer_cursor_move_to_pos(buffer, buffer_pos);
-				String32 word = buffer_word_at_cursor(buffer);
-				if (word.len) {
-					char *tag = str32_to_utf8_cstr(word);
-					if (tag) {
-						tag_goto(buffer->ted, tag);
-						free(tag);
-					}
-				}
-			} break;
-			case 0:
-				buffer_cursor_move_to_pos(buffer, buffer_pos);
-				switch ((times - 1) % 3) {
-				case 0: break; // single-click
-				case 1: // double-click: select word
-					buffer_select_word(buffer);
-					break;
-				case 2: // triple-click: select line
-					buffer_select_line(buffer);
-					break;
-				}
-				ted->drag_buffer = buffer;
-				break;
-			}
-			return true;
-		}
-	}
-	return false;
 }
 
 #if _WIN32
@@ -566,6 +520,9 @@ int main(int argc, char **argv) {
 	Uint32 time_at_last_frame = SDL_GetTicks();
 	
 	strbuf_cpy(ted->error, config_err);
+
+	SDL_DisplayMode display_mode = {0};
+	SDL_GetDisplayMode(0, 0, &display_mode);
 	
 	while (!ted->quit) {
 	#if DEBUG
@@ -628,26 +585,24 @@ int main(int argc, char **argv) {
 						}
 					}
 					
-					if (add) {						
+					if (add) {
 						// handle mouse click
 						// we need to do this here, and not in buffer_render, because ctrl+click (go to definition)
 						// could switch to a different buffer.
-						for (u32 i = 0; i < TED_MAX_NODES; ++i) {
-							if (ted->nodes_used[i]) {
-								Node *node = &ted->nodes[i];
-								if (node->tabs) {
-									buffer = &ted->buffers[node->tabs[node->active_tab]];
-									if (handle_buffer_click(ted, buffer, pos, times)) {
-										add = false;
-										break;
+						// line buffer click handling, IS done in buffer_render (yes this is less than ideal)
+						if (!ted->menu) {
+							for (u32 i = 0; i < TED_MAX_NODES; ++i) {
+								if (ted->nodes_used[i]) {
+									Node *node = &ted->nodes[i];
+									if (node->tabs) {
+										buffer = &ted->buffers[node->tabs[node->active_tab]];
+										if (buffer_handle_click(ted, buffer, pos, times)) {
+											add = false;
+											break;
+										}
 									}
 								}
 							}
-						}
-						if (ted->find) {
-							add = add && !handle_buffer_click(ted, &ted->find_buffer, pos, times);
-							if (ted->replace)
-								add = add && !handle_buffer_click(ted, &ted->replace_buffer, pos, times);
 						}
 						if (add) {
 							ted->mouse_clicks[button][ted->nmouse_clicks[button]] = pos;
@@ -905,10 +860,14 @@ int main(int argc, char **argv) {
 		SDL_SetWindowTitle(window, ted->window_title);
 		SDL_SetCursor(ted->cursor);
 		
-		i32 ms_wait = (i32)((frame_end_noswap - frame_start) * 1000);
-		if (ms_wait > 0) {
-			ms_wait -= 1; // give swap an extra ms to make sure it's actually vsynced
-			SDL_Delay((u32)ms_wait);
+		// annoyingly, SDL_GL_SwapWindow seems to be a busy loop on my laptop for some reason...
+		int refresh_rate = display_mode.refresh_rate;
+		if (refresh_rate) {
+			i32 ms_wait = 1000 / refresh_rate - (i32)((frame_end_noswap - frame_start) * 1000);
+			if (ms_wait > 0) {
+				ms_wait -= 1; // give swap an extra ms to make sure it's actually vsynced
+				SDL_Delay((u32)ms_wait);
+			}
 		}
 		SDL_GL_SwapWindow(window);
 		PROFILE_TIME(frame_end);

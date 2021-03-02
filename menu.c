@@ -26,11 +26,12 @@ static void menu_close(Ted *ted) {
 	case MENU_GOTO_LINE:
 		buffer_clear(&ted->line_buffer);
 		break;
-	case MENU_COMMAND_SELECTOR:
+	case MENU_COMMAND_SELECTOR: {
+		Selector *selector = &ted->command_selector;
 		buffer_clear(&ted->line_buffer);
 		buffer_clear(&ted->argument_buffer);
-		free(ted->command_selector.entries);
-		break;
+		free(selector->entries); selector->entries = NULL; selector->n_entries = 0;
+	} break;
 	}
 	ted->menu = MENU_NONE;
 	ted->selector_open = NULL;
@@ -74,6 +75,9 @@ static void menu_open(Ted *ted, Menu menu) {
 	case MENU_COMMAND_SELECTOR: {
 		ted_switch_to_buffer(ted, &ted->line_buffer);
 		buffer_insert_char_at_cursor(&ted->argument_buffer, '1');
+		Selector *selector = &ted->command_selector;
+		selector->enable_cursor = true;
+		selector->cursor = 0;
 	} break;
 	}
 }
@@ -107,6 +111,10 @@ static Rect menu_rect(Ted *ted) {
 
 static void menu_update(Ted *ted) {
 	Menu menu = ted->menu;
+	Settings const *settings = &ted->settings;
+	u32 const *colors = settings->colors;
+	TextBuffer *line_buffer = &ted->line_buffer;
+
 	assert(menu);
 	switch (menu) {
 	case MENU_NONE: break;
@@ -224,7 +232,6 @@ static void menu_update(Ted *ted) {
 		}
 	} break;
 	case MENU_GOTO_LINE: {
-		TextBuffer *line_buffer = &ted->line_buffer;
 		char *contents = str32_to_utf8_cstr(buffer_get_line(line_buffer, 0));
 		char *end;
 		long line_number = strtol(contents, &end, 0);
@@ -248,32 +255,38 @@ static void menu_update(Ted *ted) {
 	case MENU_COMMAND_SELECTOR: {
 		Selector *selector = &ted->command_selector;
 		SelectorEntry *entries = selector->entries = calloc(arr_count(command_names), sizeof *selector->entries);
+		char *search_term = str32_to_utf8_cstr(buffer_get_line(line_buffer, 0));
 		if (entries) {
+			SelectorEntry *entry = entries;
 			for (size_t i = 0; i < arr_count(command_names); ++i) {
-				if (command_names[i].cmd != CMD_UNKNOWN) {
-					char const *name = command_names[i].name;
-					entries[i].name = name;
-					entries[i].color = COLOR_TEXT;
+				char const *name = command_names[i].name;
+				if (command_names[i].cmd != CMD_UNKNOWN && stristr(name, search_term)) {
+					entry->name = name;
+					entry->color = colors[COLOR_TEXT];
+					++entry;
 				}
 			}
-			selector->n_entries = arr_count(command_names);
+			selector->n_entries = (u32)(entry - entries);
 		}
 
 		char *chosen_command = selector_update(ted, &ted->command_selector);
 		if (chosen_command) {
 			Command c = command_from_str(chosen_command);
-			char *argument = str32_to_utf8_cstr(buffer_get_line(&ted->argument_buffer, 0)), *endp = NULL;
-			long long arg = strtoll(argument, &endp, 0);
+			if (c != CMD_UNKNOWN) {
+				char *argument = str32_to_utf8_cstr(buffer_get_line(&ted->argument_buffer, 0)), *endp = NULL;
+				long long arg = strtoll(argument, &endp, 0);
 
-			if (*endp == '\0') {
-				menu_close(ted);
-				command_execute(ted, c, arg);
+				if (*endp == '\0') {
+					menu_close(ted);
+					command_execute(ted, c, arg);
+				}
+
+				free(argument);
 			}
 
-			free(argument);
 			free(chosen_command);
 		}
-		free(selector->entries); selector->entries = NULL; selector->n_entries = 0;
+		free(search_term);
 	} break;
 	}
 }
@@ -305,8 +318,8 @@ static void menu_render(Ted *ted) {
 	
 	float padding = settings->padding;
 	Rect bounds = menu_rect(ted);
-	float menu_x1, menu_y1, menu_x2, menu_y2;
-	rect_coords(bounds, &menu_x1, &menu_y1, &menu_x2, &menu_y2);
+	float x1, y1, x2, y2;
+	rect_coords(bounds, &x1, &y1, &x2, &y2);
 
 	if (menu == MENU_OPEN || menu == MENU_SAVE_AS || menu == MENU_GOTO_DEFINITION || menu == MENU_COMMAND_SELECTOR) {
 		// menu rectangle & border
@@ -314,10 +327,10 @@ static void menu_render(Ted *ted) {
 		gl_geometry_rect_border(bounds, settings->border_thickness, colors[COLOR_BORDER]);
 		gl_geometry_draw();
 		
-		menu_x1 += padding;
-		menu_y1 += padding;
-		menu_x2 -= padding;
-		menu_y2 -= padding;
+		x1 += padding;
+		y1 += padding;
+		x2 -= padding;
+		y2 -= padding;
 	}
 		
 
@@ -339,20 +352,20 @@ static void menu_render(Ted *ted) {
 	case MENU_SAVE_AS: {
 
 		if (menu == MENU_OPEN) {
-			text_utf8(font_bold, "Open...", menu_x1, menu_y1, colors[COLOR_TEXT]);
+			text_utf8(font_bold, "Open...", x1, y1, colors[COLOR_TEXT]);
 		} else if (menu == MENU_SAVE_AS) {
-			text_utf8(font_bold, "Save as...", menu_x1, menu_y1, colors[COLOR_TEXT]);
+			text_utf8(font_bold, "Save as...", x1, y1, colors[COLOR_TEXT]);
 		}
 		text_render(font_bold);
 			
-		menu_y1 += char_height_bold * 0.75f + padding;
+		y1 += char_height_bold * 0.75f + padding;
 
 		FileSelector *fs = &ted->file_selector;
-		fs->bounds = rect4(menu_x1, menu_y1, menu_x2, menu_y2);
+		fs->bounds = rect4(x1, y1, x2, y2);
 		file_selector_render(ted, fs);
 	} break;
 	case MENU_GOTO_DEFINITION: {
-		tag_selector_render(ted, rect4(menu_x1, menu_y1, menu_x2, menu_y2));
+		tag_selector_render(ted, rect4(x1, y1, x2, y2));
 	} break;
 	case MENU_GOTO_LINE: {
 		float menu_height = char_height + 2 * padding;
@@ -361,7 +374,6 @@ static void menu_render(Ted *ted) {
 		gl_geometry_rect_border(r, settings->border_thickness, colors[COLOR_BORDER]);
 		char const *text = "Go to line...";
 		v2 text_size = text_get_size_v2(font_bold, text);
-		float x1, y1, x2, y2;
 		rect_coords(r, &x1, &y1, &x2, &y2);
 		x1 += padding;
 		y1 += padding;
@@ -376,8 +388,22 @@ static void menu_render(Ted *ted) {
 		// line buffer
 		buffer_render(&ted->line_buffer, rect4(x1, y1, x2, y2));
 	} break;
-	case MENU_COMMAND_SELECTOR:
-		selector_render(ted, &ted->command_selector);
-		break;
+	case MENU_COMMAND_SELECTOR: {
+		float line_buffer_height = char_height;
+
+		// argument field
+		char const *text = "Argument";
+		text_utf8(font_bold, text, x1, y1, colors[COLOR_TEXT]);
+		float x = x1 + text_get_size_v2(font_bold, text).x + padding;
+		buffer_render(&ted->argument_buffer, rect4(x, y1, x2, y1 + line_buffer_height));
+
+		y1 += line_buffer_height + padding;
+
+		Selector *selector = &ted->command_selector;
+		selector->bounds = rect4(x1, y1, x2, y2);
+		selector_render(ted, selector);
+
+		text_render(font_bold);
+	} break;
 	}
 }

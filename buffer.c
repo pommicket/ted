@@ -677,7 +677,7 @@ static u32 buffer_index_to_column(TextBuffer *buffer, u32 line, u32 index) {
 	char32_t *str = buffer->lines[line].str;
 	u32 col = 0;
 	uint tab_width = buffer_settings(buffer)->tab_width;
-	for (u32 i = 0; i < index; ++i) {
+	for (u32 i = 0; i < index && i < buffer->lines[line].len; ++i) {
 		switch (str[i]) {
 		case '\t': {
 			do
@@ -2093,6 +2093,53 @@ u32 buffer_last_rendered_line(TextBuffer *buffer) {
 	return clamp_u32(line, 0, buffer->nlines);
 }
 
+// returns true if the buffer "used" this event
+bool buffer_handle_click(Ted *ted, TextBuffer *buffer, v2 click, u8 times) {
+	BufferPos buffer_pos;
+	if (buffer_pixels_to_pos(buffer, click, &buffer_pos)) {
+		// user clicked on buffer
+		if (!ted->menu || buffer->is_line_buffer) {
+			ted_switch_to_buffer(ted, buffer);
+		}
+		if (buffer == ted->active_buffer) {
+			switch (ted->key_modifier) {
+			case KEY_MODIFIER_SHIFT:
+				// select to position
+				buffer_select_to_pos(buffer, buffer_pos);
+				break;
+			case KEY_MODIFIER_CTRL: 
+				if (!buffer->is_line_buffer) {
+					buffer_cursor_move_to_pos(buffer, buffer_pos);
+					String32 word = buffer_word_at_cursor(buffer);
+					if (word.len) {
+						char *tag = str32_to_utf8_cstr(word);
+						if (tag) {
+							tag_goto(buffer->ted, tag);
+							free(tag);
+						}
+					}
+				}
+				break;
+			case 0:
+				buffer_cursor_move_to_pos(buffer, buffer_pos);
+				switch ((times - 1) % 3) {
+				case 0: break; // single-click
+				case 1: // double-click: select word
+					buffer_select_word(buffer);
+					break;
+				case 2: // triple-click: select line
+					buffer_select_line(buffer);
+					break;
+				}
+				ted->drag_buffer = buffer;
+				break;
+			}
+			return true;
+		}
+	}
+	return false;
+}
+
 // Render the text buffer in the given rectangle
 void buffer_render(TextBuffer *buffer, Rect r) {
 	if (r.size.x < 1 || r.size.y < 1) {
@@ -2162,6 +2209,14 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	if (y2 < y1) y2 = y1;
 	buffer->x1 = x1; buffer->y1 = y1; buffer->x2 = x2; buffer->y2 = y2;
 	if (x1 == x2 || y1 == y2) return;
+
+	if (buffer->is_line_buffer) {
+		// handle clicks
+		// this is only done for line buffers, so that ctrl+click works properly (and happens in one frame).
+		for (u32 i = 0; i < ted->nmouse_clicks[SDL_BUTTON_LEFT]; ++i) {
+			buffer_handle_click(ted, buffer, ted->mouse_clicks[SDL_BUTTON_LEFT][i], ted->mouse_click_times[SDL_BUTTON_LEFT][i]);
+		}
+	}
 
 	// change cursor to ibeam when it's hovering over the buffer
 	if ((!ted->menu || buffer == &ted->line_buffer) && rect_contains_point(rect4(x1, y1, x2, y2), ted->mouse_pos)) {

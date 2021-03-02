@@ -102,6 +102,7 @@ static char *selector_update(Ted *ted, Selector *s) {
 	return ret;
 }
 
+// NOTE: also renders the line buffer
 static void selector_render(Ted *ted, Selector *s) {
 	Settings const *settings = &ted->settings;
 	u32 const *colors = settings->colors;
