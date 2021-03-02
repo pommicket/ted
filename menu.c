@@ -26,6 +26,10 @@ static void menu_close(Ted *ted) {
 	case MENU_GOTO_LINE:
 		buffer_clear(&ted->line_buffer);
 		break;
+	case MENU_COMMAND_SELECTOR:
+		buffer_clear(&ted->line_buffer);
+		buffer_clear(&ted->argument_buffer);
+		break;
 	}
 	ted->menu = MENU_NONE;
 	ted->selector_open = NULL;
@@ -65,6 +69,10 @@ static void menu_open(Ted *ted, Menu menu) {
 		break;
 	case MENU_GOTO_LINE:
 		ted_switch_to_buffer(ted, &ted->line_buffer);
+		break;
+	case MENU_COMMAND_SELECTOR:
+		ted_switch_to_buffer(ted, &ted->line_buffer);
+		buffer_insert_char_at_cursor(&ted->argument_buffer, '1');
 		break;
 	}
 }

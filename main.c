@@ -461,6 +461,10 @@ int main(int argc, char **argv) {
 			strcpy(config_err, ted->error);
 			ted_clearerr(ted); // clear the error so later things (e.g. loading font) don't detect an error
 		}
+
+		if (ted->search_cwd) {
+			config_read(ted, "ted.cfg");
+		}
 	}
 	
 
@@ -530,6 +534,7 @@ int main(int argc, char **argv) {
 	}
 	line_buffer_create(&ted->find_buffer, ted);
 	line_buffer_create(&ted->replace_buffer, ted);
+	line_buffer_create(&ted->argument_buffer, ted);
 	buffer_create(&ted->build_buffer, ted);
 
 	{
@@ -903,7 +908,7 @@ int main(int argc, char **argv) {
 		i32 ms_wait = (i32)((frame_end_noswap - frame_start) * 1000);
 		if (ms_wait > 0) {
 			ms_wait -= 1; // give swap an extra ms to make sure it's actually vsynced
-			SDL_Delay(ms_wait);
+			SDL_Delay((u32)ms_wait);
 		}
 		SDL_GL_SwapWindow(window);
 		PROFILE_TIME(frame_end);
@@ -945,6 +950,7 @@ int main(int argc, char **argv) {
 	buffer_free(&ted->find_buffer);
 	buffer_free(&ted->replace_buffer);
 	buffer_free(&ted->build_buffer);
+	buffer_free(&ted->argument_buffer);
 	text_font_free(ted->font);
 	text_font_free(ted->font_bold);
 	settings_free(&ted->settings);

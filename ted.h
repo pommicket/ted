@@ -169,6 +169,7 @@ ENUM_U16 {
 	MENU_ASK_RELOAD, // prompt about whether to reload file which has ben changed by another program
 	MENU_GOTO_DEFINITION,
 	MENU_GOTO_LINE,
+	MENU_COMMAND_SELECTOR
 } ENUM_U16_END(Menu);
 
 typedef struct {
@@ -257,6 +258,7 @@ typedef struct Ted {
 	TextBuffer find_buffer; // use for "find" term in find/find+replace
 	TextBuffer replace_buffer; // "replace" for find+replace
 	TextBuffer build_buffer; // buffer for build output (view only)
+	TextBuffer argument_buffer; // used for command selector
 	double error_time; // time error box was opened (in seconds -- see time_get_seconds)
 	KeyAction key_actions[KEY_COMBO_COUNT];
 	bool search_cwd; // should the working directory be searched for files? set to true if the executable isn't "installed"

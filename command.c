@@ -215,7 +215,10 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 	case CMD_PASTE:
 		if (buffer) buffer_paste(buffer);
 		break;
-	
+	case CMD_COMMAND_SELECTOR:
+		menu_open(ted, MENU_COMMAND_SELECTOR);
+		break;
+
 	case CMD_TEXT_SIZE_INCREASE: {
 		i64 new_text_size = settings->text_size + argument;
 		if (new_text_size >= TEXT_SIZE_MIN && new_text_size <= TEXT_SIZE_MAX) {
