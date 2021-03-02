@@ -1,5 +1,6 @@
 // @TODO:
-// - test update ted with windows installer
+// - command selector
+// - :open-config
 // - test on BSD
 
 // - completion
