@@ -1,5 +1,5 @@
 // @TODO:
-// - "on crash, output backtrace to log" for Windows
+// - fix: after closing last tab in active node, there should be a new active node
 // - Windows installation
 // - test on BSD
 
@@ -23,6 +23,10 @@ no_warn_end
 #endif
 #if _WIN32
 #include <shellapi.h>
+#pragma comment(lib, "dbghelp.lib")
+#pragma comment(lib, "ole32.lib")
+#pragma comment(lib, "opengl32.lib")
+#pragma comment(lib, "shell32.lib")
 #endif
 #define PCRE2_STATIC
 #define PCRE2_CODE_UNIT_WIDTH 32
@@ -114,13 +118,18 @@ static void APIENTRY gl_message_callback(GLenum source, GLenum type, unsigned in
 }
 #endif
 
-#if __unix__
+#define CRASH_CRASH_MESSAGE "ted crashed while trying to handle a crash! yikes! ):"
+#define CRASH_MESSAGE "ted has crashed ):  Please send %s/log.txt to pommicket""@gmail.com if you want this fixed.", ted->local_data_dir
+#define CRASH_STARTUP_MESSAGE "ted crashed when starting up ):"
+
 static Ted *error_signal_handler_ted;
 static bool signal_being_handled; // prevent infinite signal recursion
+#if __unix__
 static void error_signal_handler(int signum, siginfo_t *info, void *context) {
 	(void)context;
 	if (signal_being_handled)
-		die("ted crashed while trying to handle a crash! yikes! ):");
+		die(CRASH_CRASH_MESSAGE);
+	signal_being_handled = true;
 	Ted *ted = error_signal_handler_ted;
 	if (ted) {
 		FILE *log = ted->log;
@@ -147,12 +156,85 @@ static void error_signal_handler(int signum, siginfo_t *info, void *context) {
 		#endif
 			fclose(log);
 		}
-		session_write(ted);
 
-		die("ted has crashed ):  Please send %s/log.txt to pommicket""@gmail.com if you want this fixed.", ted->local_data_dir);
+		die(CRASH_MESSAGE);
 	} else {
-		die("ted crashed when starting up ):");
+		die(CRASH_STARTUP_MESSAGE);
 	}
+}
+#elif _WIN32
+static char const *windows_exception_to_str(DWORD exception_code) {
+	switch (exception_code) {
+	case EXCEPTION_ACCESS_VIOLATION: return "Access violation";
+	case EXCEPTION_ARRAY_BOUNDS_EXCEEDED: return "Array out of bounds";
+	case EXCEPTION_BREAKPOINT: return "Breakpoint";
+	case EXCEPTION_DATATYPE_MISALIGNMENT: return "Misaligned read or write";
+	case EXCEPTION_FLT_DENORMAL_OPERAND: return "Floating-point denormal operand";
+	case EXCEPTION_FLT_DIVIDE_BY_ZERO: return "Floating-point division by zero";
+	case EXCEPTION_FLT_INEXACT_RESULT: return "Floating-point inexact result";
+	case EXCEPTION_FLT_INVALID_OPERATION: return "Floating-point invalid operation";
+	case EXCEPTION_FLT_OVERFLOW: return "Floating-point overflow";
+	case EXCEPTION_FLT_STACK_CHECK: return "Floating-point stack over/underflow";
+	case EXCEPTION_FLT_UNDERFLOW: return "Floating-point underflow";
+	case EXCEPTION_ILLEGAL_INSTRUCTION: return "Illegal instruction";
+	case EXCEPTION_IN_PAGE_ERROR: return "Page not present";
+	case EXCEPTION_INT_DIVIDE_BY_ZERO: return "Integer divide by zero";
+	case EXCEPTION_INT_OVERFLOW: return "Integer overflow";
+	case EXCEPTION_INVALID_DISPOSITION: return "Invalid disposition";
+	case EXCEPTION_NONCONTINUABLE_EXCEPTION: return "Continue after non-continuable exception";
+	case EXCEPTION_PRIV_INSTRUCTION: return "Private instruction executed";
+	case EXCEPTION_SINGLE_STEP: return "Single step";
+	case EXCEPTION_STACK_OVERFLOW: return "Stack overflow";
+	}
+	return "Unknown exception";
+}
+
+
+static LONG WINAPI error_signal_handler(EXCEPTION_POINTERS *info) {
+	if (signal_being_handled)
+		die(CRASH_CRASH_MESSAGE);
+	signal_being_handled = true;
+	Ted *ted = error_signal_handler_ted;
+	if (ted) {
+		FILE *log = ted->log;
+		if (log) {
+			DWORD exception_code = info->ExceptionRecord->ExceptionCode;
+			fprintf(log, "Exception 0x%lx: %s.\n", (unsigned long)exception_code, windows_exception_to_str(exception_code));
+			fprintf(log, "Address: 0x%llx.\n", (unsigned long long)info->ExceptionRecord->ExceptionAddress);
+			fprintf(log, "Info0: 0x%llx.\n", (unsigned long long)info->ExceptionRecord->ExceptionInformation[0]);
+			fprintf(log, "Info1: 0x%llx.\n", (unsigned long long)info->ExceptionRecord->ExceptionInformation[1]);
+			fprintf(log, "Info2: 0x%llx.\n", (unsigned long long)info->ExceptionRecord->ExceptionInformation[2]);
+	#if _M_AMD64
+			CONTEXT *context = info->ContextRecord;
+			if (exception_code == EXCEPTION_STACK_OVERFLOW) {
+				// don't backtrace; just output current address
+				fprintf(log, "Instruction: 0x%llx\n", (unsigned long long)context->Rip);
+			} else {
+				fprintf(log, "Backtrace:\n");
+				HANDLE process = GetCurrentProcess(), thread = GetCurrentThread(); 
+				// backtrace
+				// this here was very helpful: https://gist.github.com/jvranish/4441299
+				if (SymInitialize(process, NULL, true)) {
+					STACKFRAME frame = {0};
+					frame.AddrPC.Offset = context->Rip;
+					frame.AddrStack.Offset = context->Rsp;
+					frame.AddrFrame.Offset = context->Rbp;
+					frame.AddrPC.Mode = frame.AddrStack.Mode = frame.AddrFrame.Mode = AddrModeFlat;
+					while (StackWalk(IMAGE_FILE_MACHINE_AMD64, process, thread,
+						&frame, context, NULL, SymFunctionTableAccess, SymGetModuleBase, NULL)) {
+						fprintf(log, "0x%llx\n", (unsigned long long)frame.AddrPC.Offset);
+					}
+					SymCleanup(process);
+				}
+			}
+	#endif
+			fclose(log);
+		}
+		die(CRASH_MESSAGE);
+	} else {
+		die(CRASH_STARTUP_MESSAGE);
+	}
+	return EXCEPTION_EXECUTE_HANDLER;
 }
 #endif
 
@@ -242,6 +324,10 @@ int main(int argc, char **argv) {
 		sigaction(SIGILL, &act, NULL);
 		sigaction(SIGPIPE, &act, NULL);
 	}
+#elif _WIN32
+	SetUnhandledExceptionFilter(error_signal_handler);
+#else
+	#error "Unrecognized operating system."
 #endif
 	
 	setlocale(LC_ALL, ""); // allow unicode
@@ -272,7 +358,8 @@ int main(int argc, char **argv) {
 	if (!ted) {
 		die("Not enough memory available to run ted.");
 	}
-
+	
+	// make sure signal handler has access to ted.
 	error_signal_handler_ted = ted;
 
 	{ // get local data directory
@@ -296,6 +383,9 @@ int main(int argc, char **argv) {
 		strbuf_printf(ted->local_data_dir, "%s/.local/share/ted", home);
 		strbuf_printf(ted->global_data_dir, "/usr/share/ted");
 #endif
+
+		if (fs_path_type(ted->local_data_dir) == FS_NON_EXISTENT)
+			fs_mkdir(ted->local_data_dir);
 
 	}
 

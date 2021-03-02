@@ -12,6 +12,7 @@
 #if _WIN32
 #include <windows.h>
 #include <shlobj.h>
+#include <dbghelp.h>
 #define PATH_SEPARATOR '\\'
 #define PATH_SEPARATOR_STR "\\"
 // on windows, let the user use forwards slashes as well as backslashes
