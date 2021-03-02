@@ -15,6 +15,6 @@ rc /nologo ted.rc
 if _%1 == _ (
 	cl main.c stb_truetype.c ted.res /DDEBUG /DEBUG /Zi %C_FLAGS% /Fe:ted
 )
-if _%1 == _release cl main.c ted.res /O2 %C_FLAGS% /Fe:ted
-if _%1 == _release_with_debug_info cl main.c ted.res /DEBUG /Zi /O2 %C_FLAGS% /Fe:ted
-if _%1 == _profile cl main.c ted.res /O2 /DPROFILE %C_FLAGS% /Fe:ted
+if _%1 == _release cl main.c ted.res /O2 /wd4702 %C_FLAGS% /Fe:ted
+if _%1 == _release_with_debug_info cl main.c ted.res /DEBUG /Zi /O2 /wd4702 %C_FLAGS% /Fe:ted
+if _%1 == _profile cl main.c ted.res /O2 /wd4702 /DPROFILE %C_FLAGS% /Fe:ted

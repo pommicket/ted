@@ -505,9 +505,9 @@
         {
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:ted"
-        "ProductCode" = "8:{14672049-6DEE-475E-B3F7-1FC69453259E}"
-        "PackageCode" = "8:{41413E78-89D4-42B6-9986-1B300C5AA011}"
-        "UpgradeCode" = "8:{3446121B-CB83-4436-A4A9-54B34F438099}"
+        "ProductCode" = "8:{DC9B53A1-5413-4C17-8594-40D570A7DB86}"
+        "PackageCode" = "8:{805B171D-F95A-4D67-8FBE-DADB06138F73}"
+        "UpgradeCode" = "8:{844F6C2B-DF3B-4A81-9BD5-603401BBA651}"
         "AspNetVersion" = "8:2.0.50727.0"
         "RestartWWWService" = "11:FALSE"
         "RemovePreviousVersions" = "11:TRUE"
