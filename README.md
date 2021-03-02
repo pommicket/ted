@@ -35,11 +35,12 @@ To install `ted` on Linux, you will need:
 - A C compiler
 - The SDL2 development libraries
 - wget, unzip (for downloading, extracting PCRE2)
+- cmake (for PCRE2)
 
 These can be installed on Ubuntu/Debian with:
 
 ```
-sudo apt install gcc libsdl2-dev wget unzip
+sudo apt install gcc libsdl2-dev wget unzip cmake
 ```
 
 Then run

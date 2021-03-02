@@ -31,7 +31,12 @@
 #include <float.h>
 #include <limits.h>
 #include <assert.h>
+#if __linux__ || _WIN32
 #include <uchar.h>
+#else
+// OpenBSD has uchar.h but it doesn't seem to define char32_t ?
+typedef uint32_t char32_t;
+#endif
 
 #if !__TINYC__ && __STDC_VERSION__ >= 201112
 #define static_assert_if_possible(cond) _Static_assert(cond, "Static assertion failed");

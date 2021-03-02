@@ -2,6 +2,7 @@
 
 #include <fcntl.h>
 #include <sys/wait.h>
+#include <signal.h>
 
 struct Process {
 	pid_t pid;

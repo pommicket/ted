@@ -10,7 +10,7 @@ if not exist pcre2-32.lib (
 	popd
 	copy pcre2-10.36\Release\pcre2-32.lib
 )
-SET C_FLAGS=/nologo /W4 /MD /wd4200 /wd4204 /wd4221 /wd4706 /wd4214 /D_CRT_SECURE_NO_WARNINGS /I pcre2-10.36 /I SDL2/include SDL2/lib/x64/SDL2main.lib SDL2/lib/x64/SDL2.lib pcre2-32.lib
+SET C_FLAGS=/nologo /W4 /MD /wd4200 /wd4204 /wd4221 /wd4706 /wd4214 /D_CRT_SECURE_NO_WARNINGS /I SDL2/include SDL2/lib/x64/SDL2main.lib SDL2/lib/x64/SDL2.lib pcre2-32.lib
 rc /nologo ted.rc 
 if _%1 == _ (
 	cl main.c stb_truetype.c ted.res /DDEBUG /DEBUG /Zi %C_FLAGS% /Fe:ted

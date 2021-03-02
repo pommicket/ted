@@ -1,8 +1,6 @@
 #ifndef TEXT_H_
 #define TEXT_H_
 
-#include <uchar.h>
-
 // A text-rendering interface.
 // Example usage:
 // Font *font = text_font_load("font.ttf", 18);

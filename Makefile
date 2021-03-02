@@ -1,6 +1,6 @@
 ALL_CFLAGS=$(CFLAGS) -Wall -Wextra -Wshadow -Wconversion -Wpedantic -pedantic -std=gnu11 \
 	-Wno-unused-function -Wno-fixed-enum-extension -Wimplicit-fallthrough -Wno-format-truncation -Wno-unknown-warning-option
-LIBS=-lSDL2 -lGL -ldl -lm libpcre2-32.a -Ipcre2-10.36/build
+LIBS=-lSDL2 -lGL -lm libpcre2-32.a
 DEBUG_CFLAGS=$(ALL_CFLAGS) -DDEBUG -O0 -g
 RELEASE_CFLAGS=$(ALL_CFLAGS) -O3 -g
 PROFILE_CFLAGS=$(ALL_CFLAGS) -O3 -g -DPROFILE=1
@@ -10,7 +10,7 @@ INSTALL_BIN_DIR=/usr/bin
 ted: *.[ch] libpcre2-32.a stb_truetype.o
 	$(CC) main.c stb_truetype.o -o ted $(DEBUG_CFLAGS) $(LIBS)
 stb_truetype.o: stb_truetype.c
-	$(CC) $< -c -o $@
+	$(CC) stb_truetype.c -c -o stb_truetype.o
 release: *.[ch] libpcre2-32.a
 	$(CC) main.c -o ted $(RELEASE_CFLAGS) $(LIBS)
 profile: *.[ch] libpcre2-32.a
@@ -28,10 +28,9 @@ install: release
 	install ted $(INSTALL_BIN_DIR)
 libpcre2-32.a: pcre2-10.36.zip
 	rm -rf pcre2-10.36
-	unzip $<
-	mkdir pcre2-10.36/build
-	cd pcre2-10.36/build && cmake -DPCRE2_BUILD_PCRE2_32=ON .. && $(MAKE) -j8
-	cp pcre2-10.36/build/$@ ./
+	unzip pcre2-10.36.zip
+	cd pcre2-10.36 && cmake -DPCRE2_BUILD_PCRE2_32=ON . && $(MAKE) -j8
+	cp pcre2-10.36/libpcre2-32.a ./
 
 ted.deb: release
 	rm -rf /tmp/ted
