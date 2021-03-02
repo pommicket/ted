@@ -1,5 +1,4 @@
 // @TODO:
-// - :open-config
 // - test on BSD
 
 // - completion
@@ -396,9 +395,9 @@ int main(int argc, char **argv) {
 	{
 		// copy global config to local config
 		char local_config_filename[TED_PATH_MAX];
-		strbuf_printf(local_config_filename, "%s" PATH_SEPARATOR_STR "ted.cfg", ted->local_data_dir);
+		strbuf_printf(local_config_filename, "%s" PATH_SEPARATOR_STR TED_CFG, ted->local_data_dir);
 		char global_config_filename[TED_PATH_MAX];
-		strbuf_printf(global_config_filename, "%s" PATH_SEPARATOR_STR "ted.cfg", ted->global_data_dir);
+		strbuf_printf(global_config_filename, "%s" PATH_SEPARATOR_STR TED_CFG, ted->global_data_dir);
 		if (!fs_file_exists(local_config_filename)) {
 			if (fs_file_exists(global_config_filename)) {
 				if (!copy_file(global_config_filename, local_config_filename)) {
@@ -417,7 +416,8 @@ int main(int argc, char **argv) {
 		}
 
 		if (ted->search_cwd) {
-			config_read(ted, "ted.cfg");
+			// read config in cwd
+			config_read(ted, TED_CFG);
 		}
 	}
 	

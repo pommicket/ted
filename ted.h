@@ -1,5 +1,6 @@
 #define TED_PATH_MAX 256
 #define TED_UNTITLED "Untitled" // what to call untitled buffers
+#define TED_CFG "ted.cfg" // config filename
 
 #define TEXT_SIZE_MIN 6
 #define TEXT_SIZE_MAX 70

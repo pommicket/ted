@@ -215,6 +215,11 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 	case CMD_PASTE:
 		if (buffer) buffer_paste(buffer);
 		break;
+	case CMD_OPEN_CONFIG: {
+		char local_config_filename[TED_PATH_MAX];
+		strbuf_printf(local_config_filename, "%s" PATH_SEPARATOR_STR TED_CFG, ted->local_data_dir);
+		ted_open_file(ted, local_config_filename);
+	} break;
 	case CMD_COMMAND_SELECTOR:
 		menu_open(ted, MENU_COMMAND_SELECTOR);
 		break;
