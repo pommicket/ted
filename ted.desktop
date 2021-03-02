@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Encoding=UTF-8
+Name=ted
+Comment=A text editor
+Exec=ted
+Icon=ted.png
+Terminal=false
+Categories=Utility;TextEditor;

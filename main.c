@@ -1,7 +1,6 @@
 // @TODO:
 // - test update ted with windows installer
 // - test on BSD
-// - .deb file
 
 // - completion
 

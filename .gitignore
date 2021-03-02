@@ -19,3 +19,4 @@ TAGS
 *.a
 pcre2-10.36
 SDL2
+*.deb

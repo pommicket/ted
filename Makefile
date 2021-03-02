@@ -25,7 +25,6 @@ install: release
 	chown `logname`:`logname` $(LOCAL_DATA_DIR)
 	cp -r assets $(GLOBAL_DATA_DIR)
 	install -m 644 ted.cfg $(GLOBAL_DATA_DIR)
-	[ ! -e $(LOCAL_DATA_DIR)/ted.cfg ] && install -o `logname` -g `logname` -m 644 ted.cfg $(LOCAL_DATA_DIR) || :
 	install ted $(INSTALL_BIN_DIR)
 libpcre2-32.a: pcre2-10.36.zip
 	rm -rf pcre2-10.36
@@ -34,3 +33,17 @@ libpcre2-32.a: pcre2-10.36.zip
 	cd pcre2-10.36/build && cmake -DPCRE2_BUILD_PCRE2_32=ON .. && $(MAKE) -j8
 	cp pcre2-10.36/build/$@ ./
 
+ted.deb: release
+	rm -rf /tmp/ted
+	mkdir -p /tmp/ted/DEBIAN
+	mkdir -p /tmp/ted$(INSTALL_BIN_DIR)
+	mkdir -p /tmp/ted$(GLOBAL_DATA_DIR)
+	mkdir -p /tmp/ted/usr/share/icons/hicolor/48x48/apps/
+	convert assets/icon.bmp -resize 48x48 /tmp/ted/usr/share/icons/hicolor/48x48/apps/ted.png
+	mkdir -p /tmp/ted/usr/share/applications
+	cp ted.desktop /tmp/ted/usr/share/applications
+	cp ted /tmp/ted$(INSTALL_BIN_DIR)/
+	cp -r assets ted.cfg /tmp/ted$(GLOBAL_DATA_DIR)/
+	cp control /tmp/ted/DEBIAN
+	dpkg-deb --build /tmp/ted
+	mv /tmp/ted.deb ./
