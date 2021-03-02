@@ -156,10 +156,10 @@ static bool node_tab_close(Ted *ted, Node *node, u16 index) {
 		node_close(ted, (u16)(node - ted->nodes));
 		return false;
 	} else {
+		bool was_active = ted->active_node == node; // ted->active_node will be set to NULL when the active buffer is deleted.
 		u16 buffer_index = node->tabs[index];
 		// remove tab from array
-		memmove(&node->tabs[index], &node->tabs[index + 1], (size_t)(ntabs - (index + 1)) * sizeof *node->tabs);
-		arr_remove_last(node->tabs);
+		arr_remove(node->tabs, index);
 		ted_delete_buffer(ted, buffer_index);
 
 		ntabs = (u16)arr_len(node->tabs); // update ntabs
@@ -168,9 +168,9 @@ static bool node_tab_close(Ted *ted, Node *node, u16 index) {
 		if (index < node->active_tab)
 			--node->active_tab;
 		node->active_tab = clamp_u16(node->active_tab, 0, ntabs - 1);
-		if (ted->active_node == node) {
+		if (was_active) {
 			// fix active buffer if necessary
-			ted->active_buffer = &ted->buffers[node->tabs[node->active_tab]];
+			ted_switch_to_buffer(ted, &ted->buffers[node->tabs[node->active_tab]]);
 		}
 		return true;
 	}
