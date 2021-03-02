@@ -254,6 +254,7 @@ typedef struct Ted {
 	Menu menu;
 	FileSelector file_selector;
 	Selector tag_selector; // for "go to definition of..." menu
+	Selector command_selector;
 	TextBuffer line_buffer; // general-purpose line buffer for inputs -- used for menus
 	TextBuffer find_buffer; // use for "find" term in find/find+replace
 	TextBuffer replace_buffer; // "replace" for find+replace

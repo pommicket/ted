@@ -93,8 +93,8 @@ static void session_read_buffer(Ted *ted, FILE *fp) {
 static void session_write_file(Ted *ted, FILE *fp) {
 	fwrite(SESSION_VERSION, 1, sizeof SESSION_VERSION, fp);
 
-	write_u16(fp, (u16)(ted->active_node - ted->nodes)); // active node idx
-	write_u16(fp, (u16)(ted->active_buffer - ted->buffers)); // active buffer idx
+	write_u16(fp, ted->active_node ? (u16)(ted->active_node - ted->nodes) : U16_MAX); // active node idx
+	write_u16(fp, ted->active_buffer ? (u16)(ted->active_buffer - ted->buffers) : U16_MAX); // active buffer idx
 
 	u16 nnodes = 0;
 	for (u16 i = 0; i < TED_MAX_NODES; ++i)
@@ -121,8 +121,8 @@ static void session_read_file(Ted *ted, FILE *fp) {
 		return; // wrong version
 	}
 
-	u16 active_node_idx = clamp_u16(read_u16(fp), 0, TED_MAX_NODES);
-	u16 active_buffer_idx = clamp_u16(read_u16(fp), 0, TED_MAX_BUFFERS);
+	u16 active_node_idx = read_u16(fp);
+	u16 active_buffer_idx = read_u16(fp);
 
 	u16 nnodes = clamp_u16(read_u16(fp), 0, TED_MAX_NODES);
 	for (u16 i = 0; i < nnodes; ++i) {
@@ -134,10 +134,31 @@ static void session_read_file(Ted *ted, FILE *fp) {
 		session_read_buffer(ted, fp);
 	}
 
-	if (ted->nodes_used[active_node_idx])
-		ted->active_node = &ted->nodes[active_node_idx];
-	if (ted->buffers_used[active_buffer_idx])
-		ted->active_buffer = &ted->buffers[active_buffer_idx];
+	if (active_node_idx == U16_MAX) {
+		ted->active_node = NULL;
+	} else {
+		active_node_idx = clamp_u16(active_node_idx, 0, TED_MAX_NODES);
+		if (ted->nodes_used[active_node_idx])
+			ted->active_node = &ted->nodes[active_node_idx];
+	}
+
+	if (active_buffer_idx == U16_MAX) {
+		ted->active_buffer = NULL;
+	} else {
+		active_buffer_idx = clamp_u16(active_buffer_idx, 0, TED_MAX_BUFFERS);
+		if (ted->buffers_used[active_buffer_idx])
+			ted->active_buffer = &ted->buffers[active_buffer_idx];
+	}
+
+	if (nbuffers && !ted->active_buffer) {
+		// set active buffer to something
+		for (u16 i = 0; i < TED_MAX_BUFFERS; ++i) {
+			if (ted->buffers_used[i]) {
+				ted_switch_to_buffer(ted, &ted->buffers[i]);
+				break;
+			}
+		}
+	}
 }
 
 static void session_write(Ted *ted) {

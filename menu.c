@@ -29,6 +29,7 @@ static void menu_close(Ted *ted) {
 	case MENU_COMMAND_SELECTOR:
 		buffer_clear(&ted->line_buffer);
 		buffer_clear(&ted->argument_buffer);
+		free(ted->command_selector.entries);
 		break;
 	}
 	ted->menu = MENU_NONE;
@@ -70,10 +71,10 @@ static void menu_open(Ted *ted, Menu menu) {
 	case MENU_GOTO_LINE:
 		ted_switch_to_buffer(ted, &ted->line_buffer);
 		break;
-	case MENU_COMMAND_SELECTOR:
+	case MENU_COMMAND_SELECTOR: {
 		ted_switch_to_buffer(ted, &ted->line_buffer);
 		buffer_insert_char_at_cursor(&ted->argument_buffer, '1');
-		break;
+	} break;
 	}
 }
 
@@ -244,6 +245,36 @@ static void menu_update(Ted *ted) {
 		line_buffer->line_buffer_submitted = false;
 		free(contents);
 	} break;
+	case MENU_COMMAND_SELECTOR: {
+		Selector *selector = &ted->command_selector;
+		SelectorEntry *entries = selector->entries = calloc(arr_count(command_names), sizeof *selector->entries);
+		if (entries) {
+			for (size_t i = 0; i < arr_count(command_names); ++i) {
+				if (command_names[i].cmd != CMD_UNKNOWN) {
+					char const *name = command_names[i].name;
+					entries[i].name = name;
+					entries[i].color = COLOR_TEXT;
+				}
+			}
+			selector->n_entries = arr_count(command_names);
+		}
+
+		char *chosen_command = selector_update(ted, &ted->command_selector);
+		if (chosen_command) {
+			Command c = command_from_str(chosen_command);
+			char *argument = str32_to_utf8_cstr(buffer_get_line(&ted->argument_buffer, 0)), *endp = NULL;
+			long long arg = strtoll(argument, &endp, 0);
+
+			if (*endp == '\0') {
+				menu_close(ted);
+				command_execute(ted, c, arg);
+			}
+
+			free(argument);
+			free(chosen_command);
+		}
+		free(selector->entries); selector->entries = NULL; selector->n_entries = 0;
+	} break;
 	}
 }
 
@@ -277,7 +308,7 @@ static void menu_render(Ted *ted) {
 	float menu_x1, menu_y1, menu_x2, menu_y2;
 	rect_coords(bounds, &menu_x1, &menu_y1, &menu_x2, &menu_y2);
 
-	if (menu == MENU_OPEN || menu == MENU_SAVE_AS || menu == MENU_GOTO_DEFINITION) {
+	if (menu == MENU_OPEN || menu == MENU_SAVE_AS || menu == MENU_GOTO_DEFINITION || menu == MENU_COMMAND_SELECTOR) {
 		// menu rectangle & border
 		gl_geometry_rect(bounds, colors[COLOR_MENU_BG]);
 		gl_geometry_rect_border(bounds, settings->border_thickness, colors[COLOR_BORDER]);
@@ -345,5 +376,8 @@ static void menu_render(Ted *ted) {
 		// line buffer
 		buffer_render(&ted->line_buffer, rect4(x1, y1, x2, y2));
 	} break;
+	case MENU_COMMAND_SELECTOR:
+		selector_render(ted, &ted->command_selector);
+		break;
 	}
 }

@@ -1249,6 +1249,8 @@ static Status buffer_insert_lines(TextBuffer *buffer, u32 where, u32 number) {
 
 // inserts the given text, returning the position of the end of the text
 BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 str) {
+	buffer_pos_validate(buffer, &pos);
+
 	if (buffer->view_only)
 		return pos;
 	if (str.len > U32_MAX) {
@@ -1479,6 +1481,8 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 
 	if (nchars_ > U32_MAX) nchars_ = U32_MAX;
 	u32 nchars = (u32)nchars_;
+
+	buffer_pos_validate(buffer, &pos);
 
 	// Correct nchars in case it goes past the end of the file.
 	// Why do we need to correct it?
