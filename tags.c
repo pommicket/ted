@@ -41,6 +41,49 @@ static int tag_try(FILE *fp, char const *tag) {
 	return -1;
 }
 
+// finds all tags beginning with the given prefix, returning them into *out, writing at most out_size entries.
+// each element in out should be freed when you're done with them
+size_t tags_beginning_with(Ted *ted, char const *prefix, char **out, size_t out_size) {
+	assert(out_size);
+	
+	FILE *file = fopen(tags_filename(ted), "rb");
+	if (!file) return false;
+	
+	fseek(file, 0, SEEK_END);
+	size_t file_size = (size_t)ftell(file);
+	// binary search for prefix in file
+	size_t lo = 0;
+	size_t hi = file_size;
+	size_t mid = 0;
+	bool exact = false;
+	while (lo < hi) {
+		mid = (lo + hi) / 2;
+		fseek(file, (long)mid, SEEK_SET);
+		int cmp = tag_try(file, prefix);
+		if (cmp > 0) {
+			lo = mid + 1;
+		} else if (cmp < 0) {
+			hi = mid;
+		} else {
+			exact = true;
+			break;
+		}
+	}
+	char line[1024];
+	if (!exact)
+		fgets(line, sizeof line, file); // go to next line
+	
+	size_t nmatches = 0;
+	while (fgets(line, sizeof line, file)) {
+		if (str_is_prefix(line, prefix)) {
+			out[nmatches++] = strn_dup(line, strcspn(line, "\t"));
+			if (nmatches >= out_size) break;
+		} else break;
+	}
+	fclose(file);
+	return nmatches;
+}
+
 // returns true if the tag exists.
 bool tag_goto(Ted *ted, char const *tag) {
 	char const *tags_name = tags_filename(ted);
@@ -64,15 +107,15 @@ bool tag_goto(Ted *ted, char const *tag) {
 			hi = mid;
 		} else {
 			// we found it!
-			char tag_enty[1024];
-			if (fgets(tag_enty, sizeof tag_enty, file)) {
+			char tag_entry[1024];
+			if (fgets(tag_entry, sizeof tag_entry, file)) {
 			
 				// the tag is of the format:
 				// tag name\tfile name\taddress
 				// or
 				// tag name\tfile name\taddress;" additional information
 				
-				char *name = tag_enty;
+				char *name = tag_entry;
 				char *name_end = strchr(name, '\t');
 				if (name_end) {
 					*name_end = '\0';

@@ -22,6 +22,7 @@ static void build_start_with_command(Ted *ted, char const *command) {
 	if (ted->building) {
 		build_stop(ted);
 	}
+	build_clear(ted); // clear errors from previous build
 	ted_save_all(ted);
 
 	if (process_run(&ted->build_process, command)) {
