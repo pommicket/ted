@@ -578,7 +578,7 @@ static Status buffer_line_set_len(TextBuffer *buffer, Line *line, u32 new_len) {
 				line->str = new_str;
 			}
 		}
-	} else if (line->len == 0 && new_len > 0) {
+	} else if (!line->str) {
 		// start by allocating 8 code points
 		line->str = buffer_malloc(buffer, 8 * sizeof *line->str);
 		if (!line->str) {
@@ -1811,7 +1811,7 @@ void buffer_copy_or_cut(TextBuffer *buffer, bool cut) {
 			int err = SDL_SetClipboardText(text);
 			free(text);
 			if (err < 0) {
-				buffer_seterr(buffer, "Couldn't get clipboard contents: %s", SDL_GetError());
+				buffer_seterr(buffer, "Couldn't set clipboard contents: %s", SDL_GetError());
 			} else {
 				// text copied successfully
 				if (cut) {

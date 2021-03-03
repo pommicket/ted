@@ -1,5 +1,7 @@
 // @TODO:
-// - test on BSD
+// - more instructions (basic stuff + how to open config)
+// - update screenshot in README
+// - test windows 7
 
 // - completion
 
@@ -265,6 +267,7 @@ INT WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 #else
 int main(int argc, char **argv) {
 #endif
+	PROFILE_TIME(init_start)
 	
 #if __unix__
 	{
@@ -284,6 +287,8 @@ int main(int argc, char **argv) {
 #endif
 	
 	setlocale(LC_ALL, ""); // allow unicode
+
+	printf("%p\n",ted); // @TODO: delete me
 
 	// read command-line arguments
 	char const *starting_filename = NULL;
@@ -407,10 +412,9 @@ int main(int argc, char **argv) {
 				die("ted's backup config file, %s, does not exist. Try reinstalling ted?", global_config_filename);
 			}
 		}
+		config_read(ted, global_config_filename);
 		config_read(ted, local_config_filename);
 		if (ted_haserr(ted)) {
-			// if there's an error in the local config, read the global config to make sure everything's ok
-			config_read(ted, global_config_filename);
 			strcpy(config_err, ted->error);
 			ted_clearerr(ted); // clear the error so later things (e.g. loading font) don't detect an error
 		}
@@ -477,7 +481,14 @@ int main(int argc, char **argv) {
 	text_init();
 	
 	SDL_GL_SetSwapInterval(1); // vsync
+	PROFILE_TIME(fonts_start)
 	ted_load_fonts(ted);
+	PROFILE_TIME(fonts_end)
+	
+#if PROFILE
+	
+#endif
+	
 	if (ted_haserr(ted))
 		die("Error loading font: %s", ted_geterr(ted));
 	{
