@@ -290,8 +290,6 @@ int main(int argc, char **argv) {
 	
 	setlocale(LC_ALL, ""); // allow unicode
 	
-
-
 	// read command-line arguments
 	char const *starting_filename = NULL;
 	switch (argc) {

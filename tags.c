@@ -70,15 +70,27 @@ size_t tags_beginning_with(Ted *ted, char const *prefix, char **out, size_t out_
 		}
 	}
 	char line[1024];
-	if (!exact)
+	fseek(file, (long)mid, SEEK_SET);
+	if (!exact && mid > 0)
 		fgets(line, sizeof line, file); // go to next line
 	
 	size_t nmatches = 0;
-	while (fgets(line, sizeof line, file)) {
-		if (str_is_prefix(line, prefix)) {
-			out[nmatches++] = strn_dup(line, strcspn(line, "\t"));
-			if (nmatches >= out_size) break;
-		} else break;
+	size_t prefix_len = strlen(prefix);
+	bool done = false;
+	while (!done && fgets(line, sizeof line, file)) {
+		switch (strncmp(line, prefix, prefix_len)) {
+		case 0: {
+			char *tag = strn_dup(line, strcspn(line, "\t"));
+			if (nmatches == 0 || !streq(tag, out[nmatches - 1])) // don't include duplicate tags
+				out[nmatches++] = tag;
+			else
+				free(tag);
+			if (nmatches >= out_size) done = true;
+		} break;
+		case +1:
+			done = true;
+			break;
+		}
 	}
 	fclose(file);
 	return nmatches;
