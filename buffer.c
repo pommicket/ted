@@ -1840,6 +1840,22 @@ void buffer_redo(TextBuffer *buffer, i64 ntimes) {
 	}
 }
 
+// if you do:
+//  buffer_start_edit_chain(buffer)
+//  buffer_insert_text_at_pos(buffer, some position, "text1")
+//  buffer_insert_text_at_pos(buffer, another position, "text2")
+//  buffer_end_edit_chain(buffer)
+// pressing ctrl+z will undo both the insertion of text1 and text2.
+void buffer_start_edit_chain(TextBuffer *buffer) {
+	assert(!buffer->chaining_edits);
+	assert(!buffer->will_chain_edits);
+	buffer->will_chain_edits = true;
+}
+
+void buffer_end_edit_chain(TextBuffer *buffer) {
+	buffer->chaining_edits = buffer->will_chain_edits = false;
+}
+
 void buffer_copy_or_cut(TextBuffer *buffer, bool cut) {
 	if (buffer->selection) {
 		BufferPos pos1 = buffer_pos_min(buffer->selection_pos, buffer->cursor_pos);
@@ -1875,7 +1891,9 @@ void buffer_paste(TextBuffer *buffer) {
 		if (text) {
 			String32 str = str32_from_utf8(text);
 			if (str.len) {
+				buffer_start_edit_chain(buffer);
 				buffer_insert_text_at_cursor(buffer, str);
+				buffer_end_edit_chain(buffer);
 				str32_free(&str);
 			}
 			SDL_free(text);
@@ -2449,22 +2467,6 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 		gl_geometry_draw();
 	}
 
-}
-
-// if you do:
-//  buffer_start_edit_chain(buffer)
-//  buffer_insert_text_at_pos(buffer, some position, "text1")
-//  buffer_insert_text_at_pos(buffer, another position, "text2")
-//  buffer_end_edit_chain(buffer)
-// pressing ctrl+z will undo both the insertion of text1 and text2.
-void buffer_start_edit_chain(TextBuffer *buffer) {
-	assert(!buffer->chaining_edits);
-	assert(!buffer->will_chain_edits);
-	buffer->will_chain_edits = true;
-}
-
-void buffer_end_edit_chain(TextBuffer *buffer) {
-	buffer->chaining_edits = buffer->will_chain_edits = false;
 }
 
 void buffer_indent_lines(TextBuffer *buffer, u32 first_line, u32 last_line) {

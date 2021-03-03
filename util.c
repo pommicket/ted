@@ -26,7 +26,7 @@ static u8 util_count_leading_zeroes32(u32 x) {
 #if UINT_MAX == 4294967295
 	return (u8)__builtin_clz(x);
 #else
-	#error "unsigned int isn't 32 bits. this function needs fixing to work on sytems like yours."
+	#error "unsigned int isn't 32 bits. this function needs fixing to work on systems like yours."
 #endif
 #elif _WIN32
 	return (u8)__lzcnt(x);
