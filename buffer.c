@@ -2387,6 +2387,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 		rgba_u32_to_floats(colors[COLOR_TEXT], text_state.color);
 
 	buffer->first_line_on_screen = start_line;
+	buffer->last_line_on_screen = 0;
 	for (u32 line_idx = start_line; line_idx < nlines; ++line_idx) {
 		Line *line = &lines[line_idx];
 		if (arr_len(char_types) < line->len) {
@@ -2429,6 +2430,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 		text_state.y += text_font_char_height(font);
 		column = 0;
 	}
+	if (buffer->last_line_on_screen == 0) buffer->last_line_on_screen = nlines - 1;
 	
 	arr_free(char_types);
 
@@ -2542,5 +2544,14 @@ void buffer_dedent_selection(TextBuffer *buffer) {
 	u32 l2 = buffer->selection_pos.line;
 	sort2_u32(&l1, &l2); // ensure l1 <= l2
 	buffer_dedent_lines(buffer, l1, l2);
+}
+
+void buffer_indent_cursor_line(TextBuffer *buffer) {
+	u32 line = buffer->cursor_pos.line;
+	buffer_indent_lines(buffer, line, line);
+}
+void buffer_dedent_cursor_line(TextBuffer *buffer) {
+	u32 line = buffer->cursor_pos.line;
+	buffer_dedent_lines(buffer, line, line);
 }
 

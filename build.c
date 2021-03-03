@@ -11,61 +11,18 @@ static void build_stop(Ted *ted) {
 		process_kill(&ted->build_process);
 	ted->building = false;
 	ted->build_shown = false;
+	*ted->build_dir = '\0';
 	build_clear(ted);
 }
 
-
-static void build_start(Ted *ted) {
+// make sure you set ted->build_dir before running this!
+static void build_start_with_command(Ted *ted, char const *command) {
+	assert(*ted->build_dir);
+	change_directory(ted->build_dir);
 	if (ted->building) {
 		build_stop(ted);
 	}
-	Settings *settings = &ted->settings;
-	
 	ted_save_all(ted);
-
-	// get rid of any old build errors
-	build_clear(ted);
-	
-	bool cargo = false, make = false;
-	
-	change_directory(ted->cwd);
-	strcpy(ted->build_dir, ted->cwd);
-	
-	char *command = settings->build_default_command;
-	
-#if _WIN32
-	if (fs_file_exists("make.bat")) {
-		command = "make.bat";
-	} else
-#endif
-	// check if Cargo.toml exists in this or the parent/parent's parent directory
-	if (fs_file_exists("Cargo.toml")) {
-		cargo = true;
-	} else if (fs_file_exists(".." PATH_SEPARATOR_STR "Cargo.toml")) {
-		change_directory("..");
-		ted_full_path(ted, "..", ted->build_dir, sizeof ted->build_dir);
-		cargo = true;
-	} else if (fs_file_exists(".." PATH_SEPARATOR_STR ".." PATH_SEPARATOR_STR "Cargo.toml")) {
-		change_directory(".." PATH_SEPARATOR_STR "..");
-		ted_full_path(ted, "../..", ted->build_dir, sizeof ted->build_dir);
-		cargo = true;
-	} else 
-	// Check if Makefile exists in this or the parent directory
-	if (fs_file_exists("Makefile")) {
-		make = true;
-	} else if (fs_file_exists(".." PATH_SEPARATOR_STR "Makefile")) {
-		change_directory("..");
-		ted_full_path(ted, "..", ted->build_dir, sizeof ted->build_dir);
-		make = true;
-	}
-	
-	// @TODO(eventually): `go build`
-	
-	if (cargo) {
-		command = "cargo build";
-	} else if (make) {
-		command = "make";
-	}
 
 	if (process_run(&ted->build_process, command)) {
 		ted->building = true;
@@ -82,6 +39,48 @@ static void build_start(Ted *ted) {
 	} else {
 		ted_seterr(ted, "Couldn't start build: %s", process_geterr(&ted->build_process));
 	}
+}
+
+static void build_start(Ted *ted) {
+	bool cargo = false, make = false;
+	
+	strbuf_cpy(ted->build_dir, ted->cwd);
+	Settings *settings = &ted->settings;
+	
+	char *command = settings->build_default_command;
+	
+#if _WIN32
+	if (fs_file_exists("make.bat")) {
+		command = "make.bat";
+	} else
+#endif
+	// check if Cargo.toml exists in this or the parent/parent's parent directory
+	if (fs_file_exists("Cargo.toml")) {
+		cargo = true;
+	} else if (fs_file_exists(".." PATH_SEPARATOR_STR "Cargo.toml")) {
+		ted_full_path(ted, "..", ted->build_dir, sizeof ted->build_dir);
+		cargo = true;
+	} else if (fs_file_exists(".." PATH_SEPARATOR_STR ".." PATH_SEPARATOR_STR "Cargo.toml")) {
+		ted_full_path(ted, "../..", ted->build_dir, sizeof ted->build_dir);
+		cargo = true;
+	} else 
+	// Check if Makefile exists in this or the parent directory
+	if (fs_file_exists("Makefile")) {
+		make = true;
+	} else if (fs_file_exists(".." PATH_SEPARATOR_STR "Makefile")) {
+		ted_full_path(ted, "..", ted->build_dir, sizeof ted->build_dir);
+		make = true;
+	}
+	
+	// @TODO(eventually): `go build`
+	
+	if (cargo) {
+		command = "cargo build";
+	} else if (make) {
+		command = "make";
+	}
+	
+	build_start_with_command(ted, command);
 }
 
 static void build_go_to_error(Ted *ted) {

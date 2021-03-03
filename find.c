@@ -451,9 +451,7 @@ static void find_open(Ted *ted, bool replace) {
 		ted->find = true;
 		buffer_select_all(ted->active_buffer);
 	}
-	if (!ted->replace && replace) {
-		ted->replace = true;
-	}
+	ted->replace = replace;
 	find_update(ted, true);
 }
 

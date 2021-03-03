@@ -115,6 +115,8 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		} else if (buffer) {
 			if (buffer->selection)
 				buffer_dedent_selection(buffer);
+			else
+				buffer_dedent_cursor_line(buffer);
 		}
 		break;
 	case CMD_NEWLINE:
@@ -319,6 +321,10 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 	case CMD_BUILD_PREV_ERROR:
 		build_prev_error(ted);
 		break;
+	case CMD_SHELL:
+		menu_open(ted, MENU_SHELL);
+		break;
+	
 	case CMD_GOTO_DEFINITION:
 		menu_open(ted, MENU_GOTO_DEFINITION);
 		break;

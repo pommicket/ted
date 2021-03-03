@@ -32,6 +32,9 @@ static void menu_close(Ted *ted) {
 		buffer_clear(&ted->argument_buffer);
 		free(selector->entries); selector->entries = NULL; selector->n_entries = 0;
 	} break;
+	case MENU_SHELL:
+		buffer_clear(&ted->line_buffer);
+		break;
 	}
 	ted->menu = MENU_NONE;
 	ted->selector_open = NULL;
@@ -79,6 +82,9 @@ static void menu_open(Ted *ted, Menu menu) {
 		selector->enable_cursor = true;
 		selector->cursor = 0;
 	} break;
+	case MENU_SHELL:
+		ted_switch_to_buffer(ted, &ted->line_buffer);
+		break;
 	}
 }
 
@@ -288,6 +294,15 @@ static void menu_update(Ted *ted) {
 		}
 		free(search_term);
 	} break;
+	case MENU_SHELL:
+		if (line_buffer->line_buffer_submitted) {
+			char *command = str32_to_utf8_cstr(buffer_get_line(line_buffer, 0));
+			menu_close(ted);
+			strbuf_cpy(ted->build_dir, ted->cwd);
+			build_start_with_command(ted, command);
+			free(command);
+		}
+		break;
 	}
 }
 
@@ -404,6 +419,28 @@ static void menu_render(Ted *ted) {
 		selector_render(ted, selector);
 
 		text_render(font_bold);
+	} break;
+	case MENU_SHELL: {
+		float line_buffer_height = char_height;
+		
+		bounds.size.y = line_buffer_height + 2 * padding;
+		rect_coords(bounds, &x1, &y1, &x2, &y2);
+		
+		gl_geometry_rect(bounds, colors[COLOR_MENU_BG]);
+		gl_geometry_rect_border(bounds, settings->border_thickness, colors[COLOR_BORDER]);
+		gl_geometry_draw();
+		
+		x1 += padding;
+		y1 += padding;
+		x2 -= padding;
+		y2 -= padding;
+		
+		char const *text = "Run";
+		text_utf8(font_bold, text, x1, y1, colors[COLOR_TEXT]);
+		x1 += text_get_size_v2(font_bold, text).x + padding;
+		text_render(font_bold);
+		
+		buffer_render(&ted->line_buffer, rect4(x1, y1, x2, y2));
 	} break;
 	}
 }

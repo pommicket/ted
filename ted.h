@@ -170,7 +170,8 @@ ENUM_U16 {
 	MENU_ASK_RELOAD, // prompt about whether to reload file which has ben changed by another program
 	MENU_GOTO_DEFINITION,
 	MENU_GOTO_LINE,
-	MENU_COMMAND_SELECTOR
+	MENU_COMMAND_SELECTOR,
+	MENU_SHELL, // run a shell command
 } ENUM_U16_END(Menu);
 
 typedef struct {

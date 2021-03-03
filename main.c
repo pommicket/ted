@@ -1,5 +1,4 @@
 // @TODO:
-// - run shell command (i.e. not just `make`)
 // - completion
 
 // - more instructions (basic stuff + how to open config)
@@ -73,8 +72,8 @@ bool tag_goto(Ted *ted, char const *tag);
 #include "find.c"
 #include "node.c"
 #include "tags.c"
-#include "menu.c"
 #include "build.c"
+#include "menu.c"
 #include "command.c"
 #include "config.c"
 #include "session.c"
@@ -644,6 +643,9 @@ int main(int argc, char **argv) {
 									}
 								}
 							}
+							if (ted->build_shown)
+								if (buffer_handle_click(ted, &ted->build_buffer, pos, times)) // handle build buffer clicks
+									add = false;
 						}
 						if (add) {
 							ted->mouse_clicks[button][ted->nmouse_clicks[button]] = pos;

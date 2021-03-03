@@ -18,13 +18,16 @@ a simple editor that starts up practically instantaneously, and performs well on
 
 ## Supported features (more coming soon)
 
+All the keybindings listed below are customizable!
+
 - Multiple tabs, each with a different file
 - Split screen (Ctrl+/, Ctrl+Shift+/)
 - Auto-indent
 - Customization of (pretty much) all colours and keyboard commands.
 - Syntax highlighting for C, C++, Rust, and Python.
 - Find and replace (with regular expressions!)
-- Run build command (default keybinding F4), go to errors
+- Run build command (F4), go to errors
+- Run any shell command (Ctrl+!)
 - Go to definition (Ctrl+click)
 - Go to line (Ctrl+G)
 
@@ -72,7 +75,7 @@ Then run `make.bat`.
 <tr><td>0.5</td> <td>Go to definition</td> <td>2021 Feb 22</td></tr>
 <tr><td>0.5a</td> <td>Several bugfixes, go to line</td> <td>2021 Feb 23</td></tr>
 <tr><td>0.6</td> <td>Split-screen</td> <td>2021 Feb 28</td></tr>
-<tr><td>0.7</td> <td>Restore session, command selector, big bug fixes</td> <td>2021 Mar 3</td></tr>
+<tr><td>0.7</td> <td>Restore session, command selector, :shell, big bug fixes</td> <td>2021 Mar 3</td></tr>
 </table>
 
 ## License

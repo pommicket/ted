@@ -37,6 +37,8 @@ static void session_read_node(Ted *ted, FILE *fp) {
 	} else {
 		node->active_tab = read_u16(fp);
 		u16 ntabs = clamp_u16(read_u16(fp), 0, TED_MAX_TABS);
+		if (node->active_tab >= ntabs)
+			node->active_tab = 0;
 		for (u16 i = 0; i < ntabs; ++i) {
 			u16 buf_idx = read_u16(fp);
 			if (buf_idx >= TED_MAX_BUFFERS) continue;

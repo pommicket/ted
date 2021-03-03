@@ -72,6 +72,7 @@ ENUM_U16 {
 	CMD_BUILD,
 	CMD_BUILD_PREV_ERROR,
 	CMD_BUILD_NEXT_ERROR,
+	CMD_SHELL,
 
 	CMD_GOTO_DEFINITION, // "go to definition of..."
 	CMD_GOTO_LINE, // open "goto line..." menu
@@ -151,6 +152,7 @@ static CommandName const command_names[] = {
 	{"build", CMD_BUILD},
 	{"build-prev-error", CMD_BUILD_PREV_ERROR},
 	{"build-next-error", CMD_BUILD_NEXT_ERROR},
+	{"shell", CMD_SHELL},
 	{"goto-definition", CMD_GOTO_DEFINITION},
 	{"goto-line", CMD_GOTO_LINE},
 	{"split-horizontal", CMD_SPLIT_HORIZONTAL},

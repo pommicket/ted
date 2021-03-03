@@ -22,13 +22,9 @@ static u8 util_popcount(u64 x) {
 
 static u8 util_count_leading_zeroes32(u32 x) {
 	if (x == 0) return 32; // GCC's __builtin_clz is undefined for x = 0
-#if __GNUC__
-#if UINT_MAX == 4294967295
+#if __GNUC__ && UINT_MAX == 4294967295
 	return (u8)__builtin_clz(x);
-#else
-	#error "unsigned int isn't 32 bits. this function needs fixing to work on systems like yours."
-#endif
-#elif _WIN32
+#elif _WIN32 && UINT_MAX == 4294967295
 	return (u8)__lzcnt(x);
 #else
 	u8 count = 0;
