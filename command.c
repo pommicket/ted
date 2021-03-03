@@ -125,6 +125,8 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 					find_next(ted);
 				else
 					find_prev(ted);
+			} else if (buffer) {
+				buffer_newline(buffer);
 			}
 		} else if (buffer) {
 			buffer_newline(buffer);

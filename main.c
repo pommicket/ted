@@ -268,7 +268,8 @@ INT WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 int main(int argc, char **argv) {
 #endif
 	PROFILE_TIME(init_start)
-	
+	PROFILE_TIME(basic_init_start)
+		
 #if __unix__
 	{
 		struct sigaction act = {0};
@@ -287,6 +288,7 @@ int main(int argc, char **argv) {
 #endif
 	
 	setlocale(LC_ALL, ""); // allow unicode
+	
 
 
 	// read command-line arguments
@@ -305,11 +307,15 @@ int main(int argc, char **argv) {
 		return EXIT_FAILURE;
 	}
 	
+	PROFILE_TIME(basic_init_end)
 	
-
+	PROFILE_TIME(sdl_start)
 	SDL_SetHint(SDL_HINT_NO_SIGNAL_HANDLERS, "1"); // if this program is sent a SIGTERM/SIGINT, don't turn it into a quit event
 	if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER) < 0)
 		die("%s", SDL_GetError());
+	PROFILE_TIME(sdl_end)
+	
+	PROFILE_TIME(misc_start)
 
 	Ted *ted = calloc(1, sizeof *ted);
 	if (!ted) {
@@ -393,9 +399,12 @@ int main(int argc, char **argv) {
 	ted->search_cwd = true;
 	#endif
 
+
 	Settings *settings = &ted->settings;
 	char config_err[sizeof ted->error] = {0};
 	
+	PROFILE_TIME(misc_end)
+	PROFILE_TIME(configs_start)
 	{
 		// copy global config to local config
 		char local_config_filename[TED_PATH_MAX];
@@ -423,8 +432,9 @@ int main(int argc, char **argv) {
 			config_read(ted, TED_CFG);
 		}
 	}
+	PROFILE_TIME(configs_end)
 	
-
+	PROFILE_TIME(window_start)
 	SDL_Window *window = SDL_CreateWindow("ted", SDL_WINDOWPOS_UNDEFINED, 
 		SDL_WINDOWPOS_UNDEFINED, 1280, 720, SDL_WINDOW_SHOWN|SDL_WINDOW_OPENGL|SDL_WINDOW_RESIZABLE);
 	if (!window)
@@ -440,7 +450,10 @@ int main(int argc, char **argv) {
 			SDL_FreeSurface(icon);
 		} // if we can't find the icon file, it's no big deal
 	}
-
+	
+	PROFILE_TIME(window_end)
+	PROFILE_TIME(gl_start)
+	
 	gl_version_major = 4;
 	gl_version_minor = 3;
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, gl_version_major);
@@ -475,19 +488,17 @@ int main(int argc, char **argv) {
 		}
 	}
 #endif
-	
+
 	gl_geometry_init();
 	text_init();
+	PROFILE_TIME(gl_end)
 	
-	SDL_GL_SetSwapInterval(1); // vsync
+	
 	PROFILE_TIME(fonts_start)
 	ted_load_fonts(ted);
 	PROFILE_TIME(fonts_end)
 	
-#if PROFILE
-	
-#endif
-	
+	PROFILE_TIME(create_start)
 	if (ted_haserr(ted))
 		die("Error loading font: %s", ted_geterr(ted));
 	{
@@ -524,15 +535,33 @@ int main(int argc, char **argv) {
 	ted->cursor_resize_v = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENS);
 	ted->cursor_hand = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
 	ted->cursor_move = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEALL);
+	
+	PROFILE_TIME(create_end)
 
-
+	PROFILE_TIME(get_ready_start)
 
 	Uint32 time_at_last_frame = SDL_GetTicks();
 	
 	strbuf_cpy(ted->error, config_err);
 
-	SDL_DisplayMode display_mode = {0};
-	SDL_GetDisplayMode(0, 0, &display_mode);
+	SDL_GL_SetSwapInterval(1); // vsync
+	
+	PROFILE_TIME(get_ready_end)
+	
+	PROFILE_TIME(init_end)
+	
+#if PROFILE
+	print("Initialization: %.1fms\n", 1000 * (init_end - init_start));
+	print(" - Basic init: %.1fms\n", 1000 * (basic_init_end - basic_init_start));
+	print(" - SDL: %.1fms\n", 1000 * (sdl_end - sdl_start));
+	print(" - SDL window: %.1fms\n", 1000 * (window_end - window_start));
+	print(" - Create: %.1fms\n", 1000 * (create_end - create_start));
+	print(" - OpenGL: %.1fms\n", 1000 * (gl_end - gl_start));
+	print(" - misc: %.1fms\n", 1000 * (misc_end - misc_start));
+	print(" - Loading fonts: %.1fms\n", 1000 * (fonts_end - fonts_start));
+	print(" - Read configs: %.1fms\n", 1000 * (configs_end - configs_start));
+	print(" - Get ready: %.1fms\n", 1000 * (get_ready_end - get_ready_start));
+#endif
 	
 	while (!ted->quit) {
 	#if DEBUG
@@ -871,7 +900,8 @@ int main(int argc, char **argv) {
 		SDL_SetCursor(ted->cursor);
 		
 		// annoyingly, SDL_GL_SwapWindow seems to be a busy loop on my laptop for some reason...
-		int refresh_rate = display_mode.refresh_rate;
+		// enforce a framerate of 60. this isn't ideal but SDL_GetDisplayMode is *extremely slow* (250ms), so we don't really have a choice.
+		int refresh_rate = 60;
 		if (refresh_rate) {
 			i32 ms_wait = 1000 / refresh_rate - (i32)((frame_end_noswap - frame_start) * 1000);
 			if (ms_wait > 0) {
@@ -880,7 +910,7 @@ int main(int argc, char **argv) {
 			}
 		}
 		SDL_GL_SwapWindow(window);
-		PROFILE_TIME(frame_end);
+		PROFILE_TIME(frame_end)
 
 		assert(glGetError() == 0);
 

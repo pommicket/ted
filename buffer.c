@@ -1066,15 +1066,34 @@ void buffer_cursor_move_to_pos(TextBuffer *buffer, BufferPos pos) {
 
 i64 buffer_cursor_move_left(TextBuffer *buffer, i64 by) {
 	BufferPos cur_pos = buffer->cursor_pos;
-	i64 ret = buffer_pos_move_left(buffer, &cur_pos, by);
-	buffer_cursor_move_to_pos(buffer, cur_pos);
+	i64 ret = 0;
+	// if use is selecting something, then moves left, the cursor should move to the left of the selection
+	if (buffer->selection) {
+		if (buffer_pos_cmp(buffer->selection_pos, buffer->cursor_pos) < 0) {
+			ret = buffer_pos_diff(buffer, buffer->selection_pos, buffer->cursor_pos);
+			buffer_cursor_move_to_pos(buffer, buffer->selection_pos);
+		}
+		buffer->selection = false;
+	} else {
+		ret = buffer_pos_move_left(buffer, &cur_pos, by);
+		buffer_cursor_move_to_pos(buffer, cur_pos);
+	}
 	return ret;
 }
 
 i64 buffer_cursor_move_right(TextBuffer *buffer, i64 by) {
 	BufferPos cur_pos = buffer->cursor_pos;
-	i64 ret = buffer_pos_move_right(buffer, &cur_pos, by);
-	buffer_cursor_move_to_pos(buffer, cur_pos);
+	i64 ret = 0;
+	if (buffer->selection) {
+		if (buffer_pos_cmp(buffer->selection_pos, buffer->cursor_pos) > 0) {
+			ret = buffer_pos_diff(buffer, buffer->cursor_pos, buffer->selection_pos);
+			buffer_cursor_move_to_pos(buffer, buffer->selection_pos);
+		}
+		buffer->selection = false;
+	} else {
+		ret = buffer_pos_move_right(buffer, &cur_pos, by);
+		buffer_cursor_move_to_pos(buffer, cur_pos);
+	}
 	return ret;
 }
 
@@ -1785,7 +1804,6 @@ static void buffer_cursor_to_edit(TextBuffer *buffer, BufferEdit *edit) {
 	buffer->selection = false;
 	buffer_cursor_move_to_pos(buffer,
 		buffer_pos_advance(buffer, edit->pos, edit->prev_len));
-	buffer_center_cursor(buffer); // whenever we undo an edit, put the cursor in the center, to make it clear where the undo happened
 }
 
 // a <-b <-c
