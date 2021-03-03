@@ -288,7 +288,6 @@ int main(int argc, char **argv) {
 	
 	setlocale(LC_ALL, ""); // allow unicode
 
-	printf("%p\n",ted); // @TODO: delete me
 
 	// read command-line arguments
 	char const *starting_filename = NULL;
@@ -849,7 +848,7 @@ int main(int argc, char **argv) {
 			}
 		}
 
-	#if DEBUG
+	#if !NDEBUG
 		for (u16 i = 0; i < TED_MAX_BUFFERS; ++i)
 			if (ted->buffers_used[i])
 				buffer_check_valid(&ted->buffers[i]);

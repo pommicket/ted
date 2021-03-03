@@ -446,6 +446,39 @@ static void buffer_pos_print(BufferPos p) {
 	printf("[" U32_FMT ":" U32_FMT "]", p.line, p.index);
 }
 
+// for debugging
+#if !NDEBUG
+static void buffer_pos_check_valid(TextBuffer *buffer, BufferPos p) {
+	assert(p.line < buffer->nlines);
+	assert(p.index <= buffer->lines[p.line].len);
+}
+
+static bool buffer_line_valid(Line *line) {
+	if (line->len && !line->str)
+		return false;
+	return true;
+}
+
+// perform a series of checks to make sure the buffer doesn't have any invalid values
+void buffer_check_valid(TextBuffer *buffer) {
+	assert(buffer->nlines);
+	buffer_pos_check_valid(buffer, buffer->cursor_pos);
+	if (buffer->selection) {
+		buffer_pos_check_valid(buffer, buffer->selection_pos);
+		// you shouldn't be able to select nothing
+		assert(!buffer_pos_eq(buffer->cursor_pos, buffer->selection_pos));
+	}
+	for (u32 i = 0; i < buffer->nlines; ++i) {
+		Line *line = &buffer->lines[i];
+		assert(buffer_line_valid(line));
+	}
+}
+#else
+void buffer_check_valid(TextBuffer *buffer) {
+	(void)buffer;
+}
+#endif
+
 static Status buffer_edit_create(TextBuffer *buffer, BufferEdit *edit, BufferPos start, u32 prev_len, u32 new_len) {
 	edit->time = time_get_seconds();
 	if (prev_len == 0)
@@ -559,10 +592,11 @@ static void buffer_remove_last_edit_if_empty(TextBuffer *buffer) {
 // returns true if allocation was succesful
 static Status buffer_line_set_len(TextBuffer *buffer, Line *line, u32 new_len) {
 	if (new_len >= 8) {
-		u32 curr_capacity = (u32)1 << (32 - util_count_leading_zeroes(line->len));
+		u32 curr_capacity = (u32)1 << (32 - util_count_leading_zeroes32(line->len));
+		assert(curr_capacity > line->len);
 
 		if (new_len >= curr_capacity) {
-			u8 leading_zeroes = util_count_leading_zeroes(new_len);
+			u8 leading_zeroes = util_count_leading_zeroes32(new_len);
 			if (leading_zeroes == 0) {
 				// this line is too big
 				return false;
@@ -587,6 +621,7 @@ static Status buffer_line_set_len(TextBuffer *buffer, Line *line, u32 new_len) {
 		}
 	}
 	line->len = new_len;
+	assert(line->str);
 	return true;
 }
 
@@ -1291,9 +1326,10 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 	Line *line = &buffer->lines[line_idx];
 
 	// `text` could consist of multiple lines, e.g. U"line 1\nline 2",
-	// so we need to go through them one by one
+
 	u32 n_added_lines = (u32)str32_count_char(str, '\n');
 	if (n_added_lines) {
+		// allocate space for the new lines
 		if (buffer_insert_lines(buffer, line_idx + 1, n_added_lines)) {
 			line = &buffer->lines[line_idx]; // fix pointer
 			// move any text past the cursor on this line to the last added line.
@@ -1302,14 +1338,15 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 			if (chars_moved) {
 				if (buffer_line_set_len(buffer, last_line, chars_moved)) {
 					memcpy(last_line->str, line->str + index, chars_moved * sizeof(char32_t));
-					line->len  -= chars_moved;
+					line->len -= chars_moved;
 				}
 			}
 		}
 	}
 
 
-	while (str.len) {
+	// insert the actual text from each line in str
+	while (1) {
 		u32 text_line_len = (u32)str32chr(str, '\n');
 		u32 old_len = line->len;
 		u32 new_len = old_len + text_line_len;
@@ -1334,6 +1371,8 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 			++line;
 			++str.str;
 			--str.len;
+		} else {
+			break;
 		}
 	}
 
@@ -2060,29 +2099,6 @@ bool buffer_save_as(TextBuffer *buffer, char const *new_filename) {
 		return false;
 	}
 }
-
-// for debugging
-#if DEBUG
-static void buffer_pos_check_valid(TextBuffer *buffer, BufferPos p) {
-	assert(p.line < buffer->nlines);
-	assert(p.index <= buffer->lines[p.line].len);
-}
-
-// perform a series of checks to make sure the buffer doesn't have any invalid values
-void buffer_check_valid(TextBuffer *buffer) {
-	assert(buffer->nlines);
-	buffer_pos_check_valid(buffer, buffer->cursor_pos);
-	if (buffer->selection) {
-		buffer_pos_check_valid(buffer, buffer->selection_pos);
-		// you shouldn't be able to select nothing
-		assert(!buffer_pos_eq(buffer->cursor_pos, buffer->selection_pos));
-	}
-}
-#else
-void buffer_check_valid(TextBuffer *buffer) {
-	(void)buffer;
-}
-#endif
 
 u32 buffer_first_rendered_line(TextBuffer *buffer) {
 	return (u32)buffer->scroll_y;
