@@ -27,6 +27,16 @@ static void node_tab_switch(Ted *ted, Node *node, i64 tab) {
 	}
 }
 
+// swap the position of two tabs
+static void node_tabs_swap(Node *node, u16 tab1, u16 tab2) {
+	assert(tab1 < arr_len(node->tabs) && tab2 < arr_len(node->tabs));
+	if (node->active_tab == tab1) node->active_tab = tab2;
+	else if (node->active_tab == tab2) node->active_tab = tab1;
+	u16 tmp = node->tabs[tab1];
+	node->tabs[tab1] = node->tabs[tab2];
+	node->tabs[tab2] = tmp;
+}
+
 static void node_free(Node *node) {
 	arr_free(node->tabs);
 	memset(node, 0, sizeof *node);

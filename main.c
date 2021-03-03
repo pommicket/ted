@@ -1,9 +1,11 @@
 // @TODO:
+// - run shell command (i.e. not just `make`)
+// - completion
+
 // - more instructions (basic stuff + how to open config)
 // - update screenshot in README
 // - test windows 7
 
-// - completion
 
 #include "base.h"
 no_warn_start

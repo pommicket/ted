@@ -61,6 +61,8 @@ ENUM_U16 {
 	CMD_TAB_SWITCH, // argument = index of tab (starting at 0)
 	CMD_TAB_NEXT,
 	CMD_TAB_PREV,
+	CMD_TAB_MOVE_LEFT,
+	CMD_TAB_MOVE_RIGHT,
 
 	CMD_TEXT_SIZE_INCREASE,
 	CMD_TEXT_SIZE_DECREASE,
@@ -141,6 +143,8 @@ static CommandName const command_names[] = {
 	{"tab-switch", CMD_TAB_SWITCH},
 	{"tab-next", CMD_TAB_NEXT},
 	{"tab-prev", CMD_TAB_PREV},
+	{"tab-move-left", CMD_TAB_MOVE_LEFT},
+	{"tab-move-right", CMD_TAB_MOVE_RIGHT},
 	{"increase-text-size", CMD_TEXT_SIZE_INCREASE},
 	{"decrease-text-size", CMD_TEXT_SIZE_DECREASE},
 	{"view-only", CMD_VIEW_ONLY},

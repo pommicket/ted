@@ -268,15 +268,24 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		}
 	} break;
 	case CMD_TAB_NEXT:
-		if (ted->active_node) node_tab_next(ted, ted->active_node, argument);
+		if (node) node_tab_next(ted, node, argument);
 		break;
 	case CMD_TAB_PREV:
-		if (ted->active_node) node_tab_prev(ted, ted->active_node, argument);
+		if (node) node_tab_prev(ted, node, argument);
 		break;
 	case CMD_TAB_SWITCH:
-		if (ted->active_node) node_tab_switch(ted, ted->active_node, argument);
+		if (node) node_tab_switch(ted, node, argument);
 		break;
-	
+	case CMD_TAB_MOVE_LEFT: {
+		u16 active_tab = node->active_tab;
+		if (active_tab > 0)
+			node_tabs_swap(node, active_tab, active_tab - 1);
+	} break;
+	case CMD_TAB_MOVE_RIGHT: {
+		u16 active_tab = node->active_tab;
+		if (active_tab + 1 < arr_len(node->tabs))
+			node_tabs_swap(node, active_tab, active_tab + 1);
+	} break;
 	case CMD_FIND:
 		if (buffer)
 			find_open(ted, false);
