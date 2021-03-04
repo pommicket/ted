@@ -218,6 +218,8 @@ typedef struct Node {
 #define TED_MAX_NODES 256
 // max tabs per node
 #define TED_MAX_TABS 100
+// max strings in config file
+#define TED_MAX_STRINGS 1000
 
 typedef struct {
 	BufferPos start;
@@ -327,6 +329,9 @@ typedef struct Ted {
 	// NOTE: the buffer at index 0 is reserved as a "null buffer" and should not be used.
 	bool buffers_used[TED_MAX_BUFFERS];
 	TextBuffer buffers[TED_MAX_BUFFERS];
+	// config file strings
+	u32 nstrings;
+	char *strings[TED_MAX_STRINGS];
 	char window_title[256];
 	char error[512];
 	char error_shown[512]; // error display in box on screen

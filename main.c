@@ -956,7 +956,7 @@ int main(int argc, char **argv) {
 	buffer_free(&ted->argument_buffer);
 	text_font_free(ted->font);
 	text_font_free(ted->font_bold);
-	settings_free(&ted->settings);
+	config_free(ted);
 	free(ted);
 #if _WIN32
 	for (int i = 0; i < argc; ++i)

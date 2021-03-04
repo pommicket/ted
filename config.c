@@ -293,8 +293,35 @@ void config_read(Ted *ted, char const *filename) {
 										char *endp;
 										argument = strtoll(value, &endp, 10);
 										value = endp;
-										while (isspace(*value)) ++value; // skip past space following number
+									} else if (*value == '"') {
+										// string argument
+										int backslashes = 0;
+										char const *p;
+										for (p = value + 1; *p; ++p) {
+											bool done = false;
+											switch (*p) {
+											case '\\':
+												++backslashes;
+												break;
+											case '"':
+												if (backslashes % 2 == 0)
+													done = true;
+												break;
+											}
+											if (done) break;
+										}
+										if (!*p) {
+											config_err(cfg, "String doesn't end.");
+											break;
+										}
+										if (ted->nstrings < TED_MAX_STRINGS) {
+											char *str = strn_dup(value + 1, (size_t)(p - (value + 1)));
+											argument = ted->nstrings | ARG_STRING;
+											ted->strings[ted->nstrings++] = str;
+										}
+										value = p + 1;
 									}
+									while (isspace(*value)) ++value; // skip past space following argument
 									if (*value == ':') {
 										// read the command
 										Command command = command_from_str(value + 1);
@@ -428,9 +455,13 @@ void config_read(Ted *ted, char const *filename) {
 	}
 }
 
-static void settings_free(Settings *settings) {
+static void config_free(Ted *ted) {
+	Settings *settings = &ted->settings;
 	for (u16 i = 0; i < LANG_COUNT; ++i) {
 		free(settings->language_extensions[i]);
 		settings->language_extensions[i] = NULL;
+	}
+	for (u32 i = 0; i < ted->nstrings; ++i) {
+		free(ted->strings[i]);
 	}
 }

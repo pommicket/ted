@@ -137,7 +137,7 @@ static int parse_nonnegative_integer(char32_t **str, char32_t *end) {
 
 // could this character (reasonably) appear in a source file path?
 static bool is_source_path(char32_t c) {
-	char const *allowed_ascii_symbols_in_path = "./\\-_";
+	char const *allowed_ascii_symbols_in_path = "./\\-_:";
 	return c > CHAR_MAX || isalnum((char)c)
 		|| strchr(allowed_ascii_symbols_in_path, (char)c);
 }

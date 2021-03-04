@@ -17,6 +17,17 @@ char const *command_to_str(Command c) {
 	return "???";
 }
 
+// get the string corresponding to this argument; returns NULL if it's not a string argument
+char const *arg_get_string(Ted *ted, i64 argument) {
+	if (argument < 0) return NULL;
+	if (argument & ARG_STRING) {
+		argument -= ARG_STRING;
+		if (argument < ted->nstrings)
+			return ted->strings[argument];
+	}
+	return NULL;
+}
+
 void command_execute(Ted *ted, Command c, i64 argument) {
 	TextBuffer *buffer = ted->active_buffer;
 	Node *node = ted->active_node;
@@ -336,9 +347,15 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 	case CMD_BUILD_PREV_ERROR:
 		build_prev_error(ted);
 		break;
-	case CMD_SHELL:
-		menu_open(ted, MENU_SHELL);
-		break;
+	case CMD_SHELL: {
+		char const *str = arg_get_string(ted, argument);
+		if (str) {
+			strbuf_cpy(ted->build_dir, ted->cwd);
+			build_start_with_command(ted, str);
+		} else {
+			menu_open(ted, MENU_SHELL);
+		}
+	} break;
 	
 	case CMD_GOTO_DEFINITION:
 		menu_open(ted, MENU_GOTO_DEFINITION);

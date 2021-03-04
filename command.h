@@ -1,3 +1,6 @@
+// i | ARG_STRING = ted->strings[i]
+#define ARG_STRING 0x4000000000000000
+
 ENUM_U16 {
 	CMD_UNKNOWN,
 	CMD_NOOP, // do nothing
