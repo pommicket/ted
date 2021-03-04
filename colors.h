@@ -6,6 +6,7 @@ ENUM_U16 {
 	COLOR_BG,
 	COLOR_HL,
 	COLOR_CURSOR,
+	COLOR_CURSOR_ERROR,
 	COLOR_CURSOR_LINE_BG,
 	COLOR_SELECTION_BG,
 	COLOR_VIEW_ONLY_CURSOR,
@@ -49,13 +50,14 @@ typedef struct {
 	char const *name;
 } ColorName;
 
-static ColorName const color_names[COLOR_COUNT] = {
+static ColorName const color_names[] = {
 	{COLOR_UNKNOWN, "unknown"},
 	{COLOR_TEXT, "text"},
 	{COLOR_TEXT_SECONDARY, "text-secondary"},
 	{COLOR_BG, "bg"},
 	{COLOR_HL, "hl"},
 	{COLOR_CURSOR, "cursor"},
+	{COLOR_CURSOR_ERROR, "cursor-error"},
 	{COLOR_CURSOR_LINE_BG, "cursor-line-bg"},
 	{COLOR_VIEW_ONLY_CURSOR, "view-only-cursor"},
 	{COLOR_VIEW_ONLY_SELECTION_BG, "view-only-selection-bg"},
@@ -87,6 +89,8 @@ static ColorName const color_names[COLOR_COUNT] = {
 	{COLOR_CURSOR_LINE_NUMBER, "cursor-line-number"},
 	{COLOR_LINE_NUMBERS_SEPARATOR, "line-numbers-separator"},
 };
+
+static_assert_if_possible(arr_count(color_names) == COLOR_COUNT)
 
 static ColorSetting color_setting_from_str(char const *str) {
 	// @OPTIMIZE: sort color_names, binary search

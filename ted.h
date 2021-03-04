@@ -263,6 +263,7 @@ typedef struct Ted {
 	TextBuffer build_buffer; // buffer for build output (view only)
 	TextBuffer argument_buffer; // used for command selector
 	double error_time; // time error box was opened (in seconds -- see time_get_seconds)
+	double cursor_error_time; // time which the cursor error animation started (cursor turns red, e.g. when there's no autocomplete suggestion)
 	KeyAction key_actions[KEY_COMBO_COUNT];
 	bool search_cwd; // should the working directory be searched for files? set to true if the executable isn't "installed"
 	bool quit; // if set to true, the window will close next frame. NOTE: this doesn't check for unsaved changes!!
@@ -277,7 +278,8 @@ typedef struct Ted {
 	Command warn_unsaved; // if non-zero, the user is trying to execute this command, but there are unsaved changes
 	bool build_shown; // are we showing the build output?
 	bool building; // is the build process running?
-
+	bool autocomplete; // is the autocomplete window open?
+	
 	FILE *log;
 	
 	BuildError *build_errors; // dynamic array of build errors

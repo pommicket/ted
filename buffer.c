@@ -2437,17 +2437,6 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	text_render(font);
 
 	if (ted->active_buffer == buffer) {
-		// render cursor
-		float time_on = settings->cursor_blink_time_on;
-		float time_off = settings->cursor_blink_time_off;
-		bool is_on = true;
-		if (time_off > 0) {
-			double absolute_time = time_get_seconds();
-			float period = time_on + time_off;
-			// time in period
-			double t = fmod(absolute_time, period);
-			is_on = t < time_on; // are we in the "on" part of the period?
-		}
 		
 		// highlight matching brackets
 		char32_t cursor_bracket = buffer_char_before_cursor(buffer);
@@ -2477,11 +2466,33 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 			}
 		}
 		
+		// render cursor
+		float time_on = settings->cursor_blink_time_on;
+		float time_off = settings->cursor_blink_time_off;
+		double error_animation_duration = 1.0;
+		double error_animation_dt = time_get_seconds() - ted->cursor_error_time;
+		bool error_animation = ted->cursor_error_time > 0 && error_animation_dt < error_animation_duration;
+		
+		bool is_on = true;
+		if (!error_animation && time_off > 0) {
+			double absolute_time = time_get_seconds();
+			float period = time_on + time_off;
+			// time in period
+			double t = fmod(absolute_time, period);
+			is_on = t < time_on; // are we in the "on" part of the period?
+		}
 		
 		if (is_on) {
 			if (buffer_clip_rect(buffer, &cursor_rect)) {
 				// draw cursor
-				gl_geometry_rect(cursor_rect, colors[buffer->view_only ? COLOR_VIEW_ONLY_CURSOR : COLOR_CURSOR]);
+				u32 color = colors[COLOR_CURSOR];
+				if (buffer->view_only)
+					color = colors[COLOR_VIEW_ONLY_CURSOR];
+				if (error_animation) {
+					color = color_interpolate(maxf(0, 2 * ((float)(error_animation_dt / error_animation_duration) - 0.5f)), colors[COLOR_CURSOR_ERROR], colors[COLOR_CURSOR]);
+				}
+				
+				gl_geometry_rect(cursor_rect, color);
 			}
 		}
 		gl_geometry_draw();

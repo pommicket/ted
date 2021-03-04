@@ -42,6 +42,7 @@ static int tag_try(FILE *fp, char const *tag) {
 }
 
 // finds all tags beginning with the given prefix, returning them into *out, writing at most out_size entries.
+// you may pass NULL for out, in which case just the number of matching tags is returned (still maxing out at out_size)
 // each element in out should be freed when you're done with them
 size_t tags_beginning_with(Ted *ted, char const *prefix, char **out, size_t out_size) {
 	assert(out_size);
@@ -77,14 +78,20 @@ size_t tags_beginning_with(Ted *ted, char const *prefix, char **out, size_t out_
 	size_t nmatches = 0;
 	size_t prefix_len = strlen(prefix);
 	bool done = false;
+	char prev_match[1024];
+	
 	while (!done && fgets(line, sizeof line, file)) {
 		switch (strncmp(line, prefix, prefix_len)) {
 		case 0: {
 			char *tag = strn_dup(line, strcspn(line, "\t"));
-			if (nmatches == 0 || !streq(tag, out[nmatches - 1])) // don't include duplicate tags
-				out[nmatches++] = tag;
-			else
+			if (nmatches == 0 || !streq(tag, prev_match)) { // don't include duplicate tags
+				strbuf_cpy(prev_match, tag);
+				if (out) out[nmatches] = tag;
+				else free(tag);
+				++nmatches;
+			} else {
 				free(tag);
+			}
 			if (nmatches >= out_size) done = true;
 		} break;
 		case +1:

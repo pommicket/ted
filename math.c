@@ -639,6 +639,13 @@ static v4 rgba_u32_to_v4(u32 rgba) {
 	return V4(c[0], c[1], c[2], c[3]);
 }
 
+static u32 rgba_v4_to_u32(v4 color) {
+	return (u32)(color.x * 255) << 24
+		| (u32)(color.y * 255) << 16
+		| (u32)(color.z * 255) << 8
+		| (u32)(color.w * 255);
+}
+
 // returns average of red green and blue components of color
 static float rgba_brightness(u32 color) {
 	u8 r = (u8)(color >> 24), g = (u8)(color >> 16), b = (u8)(color >> 8);
@@ -739,4 +746,80 @@ static Rect rect_shrink(Rect r, float amount) {
 	r.size.x = maxf(r.size.x, 0);
 	r.size.y = maxf(r.size.y, 0);
 	return r;
+}
+
+static v4 color_rgba_to_hsva(v4 rgba) {
+	float R = rgba.x, G = rgba.y, B = rgba.z, A = rgba.w;
+	float M = maxf(R, maxf(G, B));
+	float m = minf(R, minf(G, B));
+	float C = M - m;
+	float H = 0;
+	if (C == 0)
+		H = 0;
+	if (M == R)
+		H = fmodf((G - B) / C, 6);
+	else if (M == G)
+		H = (B - R) / C + 2;
+	else if (M == B)
+		H = (R - G) / C + 4;
+	H *= 60;
+	float V = M;
+	float S = V == 0 ? 0 : C / V;
+	return V4(H, S, V, A);
+}
+
+static v4 color_hsva_to_rgba(v4 hsva) {
+	float H = hsva.x, S = hsva.y, V = hsva.z, A = hsva.w;
+	H /= 60;
+	float C = S * V;
+	float X = C * (1 - fabsf(fmodf(H, 2) - 1));
+	float R, G, B;
+	if (H <= 1)
+		R=C, G=X, B=0;
+	else if (H <= 2)
+		R=X, G=C, B=0;
+	else if (H <= 3)
+		R=0, G=C, B=X;
+	else if (H <= 4)
+		R=0, G=X, B=C;
+	else if (H <= 5)
+		R=X, G=0, B=C;
+	else
+		R=C, G=0, B=X;
+	
+	float m = V-C;
+	R += m;
+	G += m;
+	B += m;
+	return V4(R, G, B, A);
+}
+
+static u32 color_interpolate(float x, u32 color1, u32 color2) {
+	x = x * x * (3 - 2*x); // hermite interpolation
+
+	v4 c1 = rgba_u32_to_v4(color1), c2 = rgba_u32_to_v4(color2);
+	// to make it interpolate more nicely, convert to hsv, interpolate in that space, then convert back
+	c1 = color_rgba_to_hsva(c1);
+	c2 = color_rgba_to_hsva(c2);
+	float h1 = c1.x, s1 = c1.y, v1 = c1.z, a1 = c1.w;
+	float h2 = c2.x, s2 = c2.y, v2 = c2.z, a2 = c2.w;
+	
+	float s_out = lerpf(x, s1, s2);
+	float v_out = lerpf(x, v1, v2);
+	float a_out = lerpf(x, a1, a2);
+	
+	float h_out;
+	// because hue is on a circle, we need to make sure we take the shorter route around the circle
+	if (fabsf(h1 - h2) < 180) {
+		h_out = lerpf(x, h1, h2);
+	} else if (h1 > h2) {
+		h_out = lerpf(x, h1, h2 + 360);
+	} else {
+		h_out = lerpf(x, h1 + 360, h2);
+	}
+	h_out = fmodf(h_out, 360);
+	
+	v4 c_out = V4(h_out, s_out, v_out, a_out);
+	c_out = color_hsva_to_rgba(c_out);
+	return rgba_v4_to_u32(c_out);
 }
