@@ -49,6 +49,7 @@ static void build_start(Ted *ted) {
 	
 	char *command = settings->build_default_command;
 	
+	change_directory(ted->cwd);
 #if _WIN32
 	if (fs_file_exists("make.bat")) {
 		command = "make.bat";
