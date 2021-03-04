@@ -1,6 +1,4 @@
 // @TODO:
-// - completion
-
 // - more instructions (basic stuff + how to open config)
 // - update screenshot in README
 // - test windows 7

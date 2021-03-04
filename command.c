@@ -101,6 +101,8 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		if (ted->replace && buffer == &ted->find_buffer) {
 			ted_switch_to_buffer(ted, &ted->replace_buffer);
 			buffer_select_all(buffer);
+		} else if (ted->autocomplete) {
+			autocomplete_select_cursor_completion(ted);
 		} else if (buffer) {
 			if (buffer->selection)
 				buffer_indent_selection(buffer);
@@ -206,7 +208,14 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		break;
 		
 	case CMD_AUTOCOMPLETE:
-		autocomplete_open(ted);
+		if (ted->autocomplete)
+			++ted->autocomplete_cursor;
+		else
+			autocomplete_open(ted);
+		break;
+	case CMD_AUTOCOMPLETE_BACK:
+		if (ted->autocomplete)
+			--ted->autocomplete_cursor;
 		break;
 	case CMD_UNDO:
 		if (buffer) buffer_undo(buffer, argument);
@@ -289,7 +298,7 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 	} break;
 	case CMD_TAB_MOVE_RIGHT: {
 		u16 active_tab = node->active_tab;
-		if (active_tab + 1 < arr_len(node->tabs))
+		if ((uint)active_tab + 1 < arr_len(node->tabs))
 			node_tabs_swap(node, active_tab, active_tab + 1);
 	} break;
 	case CMD_FIND:

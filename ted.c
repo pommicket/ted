@@ -103,6 +103,7 @@ static void ted_load_fonts(Ted *ted) {
 // you can pass NULL to buffer to make it so no buffer is active.
 void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer) {
 	ted->active_buffer = buffer;
+	ted->autocomplete = false;
 	if (ted->find) find_update(ted, true);
 
 	if (buffer >= ted->buffers && buffer < ted->buffers + TED_MAX_BUFFERS) {

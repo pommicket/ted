@@ -1,3 +1,6 @@
+
+#define AUTOCOMPLETE_NCOMPLETIONS 10 // max # of completions to show
+
 // get the thing to be completed (and what buffer it's in)
 // returns false if this is a read only buffer or something
 // call free() on *startp when you're done with it
@@ -33,11 +36,27 @@ static void autocomplete_complete(Ted *ted, char *start, TextBuffer *buffer, cha
 	ted->autocomplete = false;
 }
 
+static void autocomplete_select_cursor_completion(Ted *ted) {
+	char *start; TextBuffer *buffer;
+	if (autocomplete_get(ted, &start, &buffer)) {
+		char *completions[AUTOCOMPLETE_NCOMPLETIONS];
+		size_t ncompletions = tags_beginning_with(ted, start, completions, arr_count(completions));
+		if (ncompletions) {
+			i64 cursor = mod_i64(ted->autocomplete_cursor, (i64)ncompletions);
+			autocomplete_complete(ted, start, buffer, completions[cursor]);
+			for (size_t i = 0; i < ncompletions; ++i)
+				free(completions[i]);
+		}
+		free(start);
+	}
+}
+
 // open autocomplete, or just do the completion if there's only one suggestion
 static void autocomplete_open(Ted *ted) {
 	char *start;
 	TextBuffer *buffer;
 	ted->cursor_error_time = 0;
+	ted->autocomplete_cursor = 0;
 	if (autocomplete_get(ted, &start, &buffer)) {
 		char *completions[2] = {0};
 		size_t ncompletions = tags_beginning_with(ted, start, completions, 2);
@@ -60,7 +79,6 @@ static void autocomplete_open(Ted *ted) {
 	}
 }
 
-#define AUTOCOMPLETE_NCOMPLETIONS 10 // max # of completions to show
 static void autocomplete_frame(Ted *ted) {
 	Settings const *settings = &ted->settings;
 	u32 const *colors = settings->colors;
@@ -82,6 +100,7 @@ static void autocomplete_frame(Ted *ted) {
 			return;
 		}
 		
+		ted->autocomplete_cursor = (i32)mod_i64(ted->autocomplete_cursor, ncompletions);
 		
 		v2 cursor_pos = buffer_pos_to_pixels(buffer, buffer->cursor_pos);
 		bool open_up = cursor_pos.y > 0.5f * (buffer->y1 + buffer->y2); // should the completion menu open upwards?
@@ -96,6 +115,7 @@ static void autocomplete_frame(Ted *ted) {
 			Rect menu_rect = rect(V2(x, start_y), V2(menu_width, menu_height));
 			gl_geometry_rect(menu_rect, colors[COLOR_MENU_BG]);
 			//gl_geometry_rect_border(menu_rect, 1, colors[COLOR_BORDER]);
+			ted->autocomplete_rect = menu_rect;
 		}
 		
 		// vertical padding
@@ -104,11 +124,14 @@ static void autocomplete_frame(Ted *ted) {
 		
 		u16 cursor_entry = (u16)((ted->mouse_pos.y - start_y) / char_height);
 		if (cursor_entry < ncompletions) {
-			// highlight cursor entry
+			// highlight moused over entry
 			Rect r = rect(V2(x, start_y + cursor_entry * char_height), V2(menu_width, char_height));
 			gl_geometry_rect(r, colors[COLOR_MENU_HL]);
-			ted->cursor = ted->cursor_hand;
-			ted->autocomplete_rect = r;
+			ted->cursor = ted->cursor_hand;	
+		}
+		{ // highlight cursor entry
+			Rect r = rect(V2(x, start_y + ted->autocomplete_cursor * char_height), V2(menu_width, char_height));
+			gl_geometry_rect(r, colors[COLOR_MENU_HL]);
 		}
 		
 		for (uint i = 0; i < ted->nmouse_clicks[SDL_BUTTON_LEFT]; ++i) {
