@@ -177,8 +177,10 @@ static void session_write(Ted *ted) {
 
 		bool success = !ferror(fp);
 		success &= fclose(fp) == 0;
-		if (success)
+		if (success) {
+			remove(filename2);
 			rename(filename1, filename2); // overwrite old session
+		}
 	}
 }
 
