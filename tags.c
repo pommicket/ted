@@ -46,9 +46,10 @@ static int tag_try(FILE *fp, char const *tag) {
 // each element in out should be freed when you're done with them
 size_t tags_beginning_with(Ted *ted, char const *prefix, char **out, size_t out_size) {
 	assert(out_size);
-	
-	FILE *file = fopen(tags_filename(ted), "rb");
-	if (!file) return false;
+	char const *tags_name = tags_filename(ted);
+	if (!tags_name) return 0;
+	FILE *file = fopen(tags_name, "rb");
+	if (!file) return 0;
 	
 	fseek(file, 0, SEEK_END);
 	size_t file_size = (size_t)ftell(file);
