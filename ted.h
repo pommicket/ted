@@ -280,6 +280,8 @@ typedef struct Ted {
 	bool building; // is the build process running?
 	bool autocomplete; // is the autocomplete window open?
 	
+	Rect autocomplete_rect; // rectangle where the autocomplete menu is (needed to avoid interpreting autocomplete clicks as other clicks)
+	
 	FILE *log;
 	
 	BuildError *build_errors; // dynamic array of build errors

@@ -11,7 +11,6 @@ static void build_stop(Ted *ted) {
 		process_kill(&ted->build_process);
 	ted->building = false;
 	ted->build_shown = false;
-	*ted->build_dir = '\0';
 	build_clear(ted);
 }
 

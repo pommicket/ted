@@ -205,38 +205,9 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		}
 		break;
 		
-	case CMD_AUTOCOMPLETE: {
-		if (buffer && !buffer->view_only && !buffer->is_line_buffer) {
-			buffer->selection = false;
-			if (is_word(buffer_char_after_cursor(buffer)))
-				buffer_cursor_move_right_words(buffer, 1);
-			else
-				buffer_scroll_to_cursor(buffer);
-			char *start = str32_to_utf8_cstr(buffer_word_at_cursor(buffer));
-			char *completions[2] = {0};
-			size_t ncompletions = tags_beginning_with(ted, start, completions, 2);
-			switch (ncompletions) {
-			case 0:
-				ted->cursor_error_time = time_get_seconds();
-				break;
-			case 1: {
-				char *str = completions[0] + strlen(start);
-				buffer_start_edit_chain(buffer); // don't merge with other edits
-				buffer_insert_utf8_at_cursor(buffer, str);
-				buffer_end_edit_chain(buffer);
-			} break;
-			case 2:
-				// open autocomplete selection menu
-				ted->autocomplete = true;
-				break;
-			default: assert(0); break;
-			}
-			free(completions[0]);
-			free(completions[1]);
-			free(start);
-		}
-	} break;
-		
+	case CMD_AUTOCOMPLETE:
+		autocomplete_open(ted);
+		break;
 	case CMD_UNDO:
 		if (buffer) buffer_undo(buffer, argument);
 		break;

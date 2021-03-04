@@ -74,6 +74,7 @@ bool tag_goto(Ted *ted, char const *tag);
 #include "tags.c"
 #include "build.c"
 #include "menu.c"
+#include "autocomplete.c"
 #include "command.c"
 #include "config.c"
 #include "session.c"
@@ -805,6 +806,9 @@ int main(int argc, char **argv) {
 
 			float y1 = padding;
 			node_frame(ted, node, rect4(x1, y1, x2, y));
+			if (ted->autocomplete) {
+				autocomplete_frame(ted);
+			}
 		} else {
 			text_utf8_anchored(font, "Press Ctrl+O to open a file or Ctrl+N to create a new one.",
 				window_width * 0.5f, window_height * 0.5f, colors[COLOR_TEXT_SECONDARY], ANCHOR_MIDDLE);

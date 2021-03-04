@@ -44,6 +44,7 @@ static void menu_open(Ted *ted, Menu menu) {
 	if (ted->menu)
 		menu_close(ted);
 	if (ted->find) find_close(ted);
+	ted->autocomplete = false;
 	ted->menu = menu;
 	TextBuffer *prev_buf = ted->prev_active_buffer = ted->active_buffer;
 	if (prev_buf)

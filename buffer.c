@@ -2148,6 +2148,12 @@ u32 buffer_last_rendered_line(TextBuffer *buffer) {
 // returns true if the buffer "used" this event
 bool buffer_handle_click(Ted *ted, TextBuffer *buffer, v2 click, u8 times) {
 	BufferPos buffer_pos;
+	if (ted->autocomplete) {
+		if (rect_contains_point(ted->autocomplete_rect, click))
+			return false; // don't look at clicks in the autocomplete menu
+		else
+			ted->autocomplete = false; // close autocomplete menu if user clicks outside of it
+	}
 	if (buffer_pixels_to_pos(buffer, click, &buffer_pos)) {
 		// user clicked on buffer
 		if (!ted->menu || buffer->is_line_buffer) {
