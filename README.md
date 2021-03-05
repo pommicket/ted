@@ -2,7 +2,7 @@
 
 A text editor.
 
-**ted is still very new, and there are almost certainly bugs. There are also definitely important features missing. I don't recommend using this as your main text editor yet.**
+**ted is still very new, and there are almost certainly bugs. I don't recommend using this as your main text editor yet.**
 
 <img src="ted.png">
 
@@ -71,7 +71,8 @@ at any time to generate tags for all files in the current directory. Once you ha
 to go to its definition. You can also press Ctrl+D to get a searchable list of all functions/types where you can select one to go to
 its definition. Press Ctrl+space to autocomplete. If there is only one possible completion from the tags file, it will be selected automatically.
 Otherwise, you'll get a popup showing all possible completions. You can press tab to select a completion (or click on it), and press
-Ctrl+space/Ctrl+shift+space to cycle between suggestions.
+Ctrl+space/Ctrl+shift+space to cycle between suggestions. Note that autocomplete just completes to stuff in the tags file, so it won't complete local
+variable names. Sorry.
 
 ## Building from source
 

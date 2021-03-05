@@ -1,5 +1,4 @@
 // @TODO:
-// - update screenshot in README
 // - test windows 7
 
 #include "base.h"

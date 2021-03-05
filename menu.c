@@ -312,11 +312,12 @@ static void menu_render(Ted *ted) {
 	assert(menu);
 	Settings const *settings = &ted->settings;
 	u32 const *colors = settings->colors;
-	float window_width = ted->window_width, window_height = ted->window_height;
+	float const window_width = ted->window_width, window_height = ted->window_height;
 	Font *font_bold = ted->font_bold, *font = ted->font;
-	float char_height = text_font_char_height(font);
-	float char_height_bold = text_font_char_height(font_bold);
-
+	float const char_height = text_font_char_height(font);
+	float const char_height_bold = text_font_char_height(font_bold);
+	float const line_buffer_height = ted_line_buffer_height(ted);
+	
 	// render backdrop
 	gl_geometry_rect(rect(V2(0, 0), V2(window_width, window_height)), colors[COLOR_MENU_BACKDROP]);
 	gl_geometry_draw();
@@ -405,8 +406,6 @@ static void menu_render(Ted *ted) {
 		buffer_render(&ted->line_buffer, rect4(x1, y1, x2, y2));
 	} break;
 	case MENU_COMMAND_SELECTOR: {
-		float line_buffer_height = char_height;
-
 		// argument field
 		char const *text = "Argument";
 		text_utf8(font_bold, text, x1, y1, colors[COLOR_TEXT]);
@@ -421,9 +420,7 @@ static void menu_render(Ted *ted) {
 
 		text_render(font_bold);
 	} break;
-	case MENU_SHELL: {
-		float line_buffer_height = char_height;
-		
+	case MENU_SHELL: {		
 		bounds.size.y = line_buffer_height + 2 * padding;
 		rect_coords(bounds, &x1, &y1, &x2, &y2);
 		

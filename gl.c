@@ -210,17 +210,16 @@ static void gl_geometry_rect(Rect r, u32 color_rgba) {
 }
 
 static void gl_geometry_rect_border(Rect r, float border_thickness, u32 color) {
-	float border_radius = border_thickness * 0.5f;
 	float x1 = r.pos.x, y1 = r.pos.y, x2 = x1 + r.size.x, y2 = y1 + r.size.y;
 	
 	// make sure rectangle isn't too small
-	x2 = maxf(x2, x1 + 2 * border_radius);
-	y2 = maxf(y2, y1 + 2 * border_radius);
+	x2 = maxf(x2, x1 + border_thickness);
+	y2 = maxf(y2, y1 + border_thickness);
 
-	gl_geometry_rect(rect4(x1+border_radius, y1-border_radius, x2+border_radius, y1+border_radius), color);
-	gl_geometry_rect(rect4(x1-border_radius, y2-border_radius, x2-border_radius, y2+border_radius), color);
-	gl_geometry_rect(rect4(x1-border_radius, y1-border_radius, x1+border_radius, y2-border_radius), color);
-	gl_geometry_rect(rect4(x2-border_radius, y1+border_radius, x2+border_radius, y2+border_radius), color);
+	gl_geometry_rect(rect4(x1+border_thickness, y1, x2, y1+border_thickness), color);
+	gl_geometry_rect(rect4(x1, y2-border_thickness, x2-border_thickness, y2), color);
+	gl_geometry_rect(rect4(x1, y1, x1+border_thickness, y2), color);
+	gl_geometry_rect(rect4(x2-border_thickness, y1+border_thickness, x2, y2), color);
 }
 
 static void gl_geometry_draw(void) {

@@ -1099,6 +1099,8 @@ i64 buffer_cursor_move_right(TextBuffer *buffer, i64 by) {
 
 i64 buffer_cursor_move_up(TextBuffer *buffer, i64 by) {
 	BufferPos cur_pos = buffer->cursor_pos;
+	if (buffer->selection && buffer_pos_cmp(buffer->selection_pos, buffer->cursor_pos) < 0)
+		cur_pos = buffer->selection_pos; // go to one line above the selection pos (instead of the cursor pos) if it's before the cursor
 	i64 ret = buffer_pos_move_up(buffer, &cur_pos, by);
 	buffer_cursor_move_to_pos(buffer, cur_pos);
 	return ret;
@@ -1106,6 +1108,8 @@ i64 buffer_cursor_move_up(TextBuffer *buffer, i64 by) {
 
 i64 buffer_cursor_move_down(TextBuffer *buffer, i64 by) {
 	BufferPos cur_pos = buffer->cursor_pos;
+	if (buffer->selection && buffer_pos_cmp(buffer->selection_pos, buffer->cursor_pos) > 0)
+		cur_pos = buffer->selection_pos;
 	i64 ret = buffer_pos_move_down(buffer, &cur_pos, by);
 	buffer_cursor_move_to_pos(buffer, cur_pos);
 	return ret;
@@ -2226,7 +2230,17 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	float const border_thickness = settings->border_thickness;
 
 	u32 start_line = buffer_first_rendered_line(buffer); // line to start rendering from
-	Rect bounding_box = rect4(x1, y1, x2, y2);
+	
+	
+	u32 border_color = colors[COLOR_BORDER]; // color of border around buffer
+	// bounding box around buffer
+	gl_geometry_rect_border(rect4(x1, y1, x2, y2), border_thickness, border_color);
+	
+	x1 += border_thickness;
+	y1 += border_thickness;
+	x2 -= border_thickness;
+	y2 -= border_thickness;
+	
 	
 	float render_start_y = y1 - (float)(buffer->scroll_y - start_line) * char_height; // where the 1st line is rendered
 
@@ -2304,10 +2318,6 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 		gl_geometry_rect(hl_rect, colors[COLOR_CURSOR_LINE_BG]);
 	}
 
-	u32 border_color = colors[COLOR_BORDER]; // color of border around buffer
-
-	// bounding box around buffer
-	gl_geometry_rect_border(bounding_box, border_thickness, border_color);
 	
 	// what x coordinate to start rendering the text from
 	float render_start_x = x1 - (float)buffer->scroll_x * char_width;

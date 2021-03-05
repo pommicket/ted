@@ -172,6 +172,13 @@ static i32 ted_new_node(Ted *ted) {
 	
 }
 
+// how tall is a line buffer?
+static float ted_line_buffer_height(Ted const *ted) {
+	Settings const *settings = &ted->settings;
+	float const char_height = text_font_char_height(ted->font);
+	return char_height + 2 * settings->border_thickness;
+}
+
 // switch to this node
 static void ted_node_switch(Ted *ted, Node *node) {
 	assert(node->tabs);

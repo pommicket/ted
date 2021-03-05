@@ -3,12 +3,10 @@
 #endif
 
 static float selector_entries_start_y(Ted const *ted, Selector const *s) {
-	Font *font = ted->font;
-	float char_height = text_font_char_height(font);
 	float padding = ted->settings.padding;
 
 	return s->bounds.pos.y
-		+ char_height * 1.25f + padding; // make room for line buffer
+		+ ted_line_buffer_height(ted) + padding; // make room for line buffer
 }
 
 // number of entries that can be displayed on the screen
@@ -107,7 +105,6 @@ static void selector_render(Ted *ted, Selector *s) {
 	Settings const *settings = &ted->settings;
 	u32 const *colors = settings->colors;
 	Font *font = ted->font;
-	float char_height = text_font_char_height(font);
 
 	Rect bounds = s->bounds;
 
@@ -127,7 +124,7 @@ static void selector_render(Ted *ted, Selector *s) {
 	float x1, y1, x2, y2;
 	rect_coords(bounds, &x1, &y1, &x2, &y2);
 	// search buffer
-	float line_buffer_height = char_height;
+	float line_buffer_height = ted_line_buffer_height(ted);
 	buffer_render(&ted->line_buffer, rect4(x1, y1, x2, y1 + line_buffer_height));
 	y1 += line_buffer_height;
 		
@@ -514,6 +511,11 @@ static void file_selector_render(Ted *ted, FileSelector *fs) {
 	selector_render(ted, sel);
 }
 
+static v2 button_get_size(Ted *ted, char const *text) {
+	float border_thickness = ted->settings.border_thickness;
+	return v2_add_const(text_get_size_v2(ted->font, text), 2 * border_thickness);
+}
+
 static void button_render(Ted *ted, Rect button, char const *text, u32 color) {
 	u32 const *colors = ted->settings.colors;
 	
@@ -643,6 +645,7 @@ static v2 checkbox_frame(Ted *ted, bool *value, char const *label, v2 pos) {
 	Settings const *settings = &ted->settings;
 	u32 const *colors = settings->colors;
 	float padding = settings->padding;
+	float border_thickness = settings->border_thickness;
 	
 	Rect checkbox_rect = rect(pos, V2(checkbox_size, checkbox_size));
 	
@@ -653,9 +656,9 @@ static v2 checkbox_frame(Ted *ted, bool *value, char const *label, v2 pos) {
 	}
 	
 	checkbox_rect.pos = v2_add(checkbox_rect.pos, V2(0.5f, 0.5f));
-	gl_geometry_rect_border(checkbox_rect, 1, colors[COLOR_TEXT]);
+	gl_geometry_rect_border(checkbox_rect, border_thickness, colors[COLOR_TEXT]);
 	if (*value) {
-		gl_geometry_rect(rect_shrink(checkbox_rect, checkbox_size * 0.2f), colors[COLOR_TEXT]);
+		gl_geometry_rect(rect_shrink(checkbox_rect, border_thickness + 2), colors[COLOR_TEXT]);
 	}
 	
 	v2 text_pos = v2_add(pos, V2(checkbox_size + padding * 0.5f, 0));

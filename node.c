@@ -193,8 +193,8 @@ static void node_frame(Ted *ted, Node *node, Rect r) {
 		u32 const *colors = settings->colors;
 		Font *font = ted->font;
 		float const border_thickness = settings->border_thickness;
-		
-		float tab_bar_height = 20;
+		float const char_height = text_font_char_height(font);
+		float tab_bar_height = char_height + 2 * border_thickness;
 		
 		Rect tab_bar_rect = r;
 		tab_bar_rect.size.y = tab_bar_height;
@@ -284,6 +284,12 @@ static void node_frame(Ted *ted, Node *node, Rect r) {
 				char const *path = buffer_get_filename(buffer);
 				char const *filename = path ? path_filename(path) : TED_UNTITLED;
 				Rect tab_rect = rect(V2(r.pos.x + tab_width * i, r.pos.y), V2(tab_width, tab_bar_height));
+				
+				if (i > 0) {
+					// make sure tab borders overlap (i.e. don't double the border thickness between tabs)
+					tab_rect.pos.x  -= border_thickness;
+					tab_rect.size.x += border_thickness;
+				}
 
 				if (node == ted->dragging_tab_node && i == ted->dragging_tab_idx) {
 					// make tab follow mouse
@@ -292,6 +298,7 @@ static void node_frame(Ted *ted, Node *node, Rect r) {
 				
 				// tab border
 				gl_geometry_rect_border(tab_rect, border_thickness, colors[COLOR_BORDER]);
+				tab_rect = rect_shrink(tab_rect, border_thickness);
 				
 				// tab title
 				{
@@ -324,6 +331,11 @@ static void node_frame(Ted *ted, Node *node, Rect r) {
 		TextBuffer *buffer = &ted->buffers[buffer_index];
 		assert(ted->buffers_used[buffer_index]);
 		Rect buffer_rect = rect_translate(r, V2(0, tab_bar_height));
+		
+		// make sure buffer border and tab border overlap
+		buffer_rect.pos.y  -= border_thickness;
+		buffer_rect.size.y += border_thickness;
+		
 		buffer_rect.size.y -= tab_bar_height;
 		buffer_render(buffer, buffer_rect);
 	} else {

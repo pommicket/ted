@@ -71,9 +71,11 @@ static float find_menu_height(Ted *ted) {
 	Font *font = ted->font;
 	float char_height = text_font_char_height(font);
 	Settings const *settings = &ted->settings;
-	float padding = settings->padding;
+	float const padding = settings->padding;
+	float const border_thickness = settings->border_thickness;
+	float const line_buffer_height = ted_line_buffer_height(ted);
 
-	return 3 * char_height + (padding + char_height) * ted->replace + 6 * padding;
+	return 3 * char_height + 4 * border_thickness + (padding + line_buffer_height) * ted->replace + 6 * padding;
 }
 
 // finds the next match in the buffer, returning false if there is no match this line.
@@ -311,13 +313,14 @@ static void find_replace_all(Ted *ted) {
 
 static void find_menu_frame(Ted *ted, Rect menu_bounds) {
 	Font *font = ted->font, *font_bold = ted->font_bold;
-	float const char_height = text_font_char_height(font),
-		char_height_bold = text_font_char_height(font_bold);
+	float const char_height = text_font_char_height(font);
 
 	Settings const *settings = &ted->settings;
 	float const padding = settings->padding;
+	float const border_thickness = settings->border_thickness;
 	u32 const *colors = settings->colors;
 	bool const replace = ted->replace;
+	float const line_buffer_height = ted_line_buffer_height(ted);
 	
 	TextBuffer *buffer = find_search_buffer(ted), *find_buffer = &ted->find_buffer, *replace_buffer = &ted->replace_buffer;
 	if (!buffer) return;
@@ -325,6 +328,10 @@ static void find_menu_frame(Ted *ted, Rect menu_bounds) {
 	u32 first_rendered_line = buffer_first_rendered_line(buffer);
 	u32 last_rendered_line = buffer_last_rendered_line(buffer);
 	
+
+	gl_geometry_rect(menu_bounds, colors[COLOR_MENU_BG]);
+	gl_geometry_rect_border(menu_bounds, border_thickness, colors[COLOR_BORDER]);
+	menu_bounds = rect_shrink(menu_bounds, border_thickness);
 
 	float x1, y1, x2, y2;
 	rect_coords(menu_bounds, &x1, &y1, &x2, &y2);
@@ -336,13 +343,13 @@ static void find_menu_frame(Ted *ted, Rect menu_bounds) {
 	
 	char const *prev_text = "Previous", *next_text = "Next";
 	char const *replace_text = "Replace", *replace_find_text = "Replace+find", *replace_all_text = "Replace all";
-	v2 prev_size = text_get_size_v2(font, prev_text);
-	v2 next_size = text_get_size_v2(font, next_text);
-	v2 replace_size = text_get_size_v2(font, replace_text);
-	v2 replace_find_size = text_get_size_v2(font, replace_find_text);
-	v2 replace_all_size = text_get_size_v2(font, replace_all_text);
+	v2 prev_size = button_get_size(ted, prev_text);
+	v2 next_size = button_get_size(ted, next_text);
+	v2 replace_size = button_get_size(ted, replace_text);
+	v2 replace_find_size = button_get_size(ted, replace_find_text);
+	v2 replace_all_size = button_get_size(ted, replace_all_text);
 	
-	float x = x1, y = y2 - char_height;
+	float x = x1, y = y2 - prev_size.y;
 	// compute positions of buttons
 	Rect button_prev = rect(V2(x, y), prev_size);
 	x += button_prev.size.x + padding;
@@ -354,6 +361,7 @@ static void find_menu_frame(Ted *ted, Rect menu_bounds) {
 	x += button_replace_find.size.x + padding;
 	Rect button_replace_all = rect(V2(x, y), replace_all_size);
 	x += button_replace_all.size.x + padding;
+	
 	
 	if (button_update(ted, button_prev))
 		find_next_in_direction(ted, -1);
@@ -387,11 +395,9 @@ static void find_menu_frame(Ted *ted, Rect menu_bounds) {
 	text_get_size(font_bold, replace ? replace_with_text : find_text, &text_width, NULL);
 	
 
-	Rect find_buffer_bounds = rect4(x1 + text_width + padding, y1, x2 - padding, y1 + char_height);
-	Rect replace_buffer_bounds = rect_translate(find_buffer_bounds, V2(0, char_height + padding));
+	Rect find_buffer_bounds = rect4(x1 + text_width + padding, y1, x2 - padding, y1 + line_buffer_height);
+	Rect replace_buffer_bounds = rect_translate(find_buffer_bounds, V2(0, line_buffer_height + padding));
 
-	gl_geometry_rect(menu_bounds, colors[COLOR_MENU_BG]);
-	gl_geometry_rect_border(menu_bounds, 1, colors[COLOR_BORDER]);
 	
 	button_render(ted, button_prev, prev_text, colors[COLOR_TEXT]);
 	button_render(ted, button_next, next_text, colors[COLOR_TEXT]);
@@ -417,11 +423,11 @@ static void find_menu_frame(Ted *ted, Rect menu_bounds) {
 	}
 
 	text_utf8(font_bold, find_text, x1, y1, colors[COLOR_TEXT]);
-	y1 += char_height_bold + padding;
+	y1 += line_buffer_height + padding;
 	
 	if (replace) {
 		text_utf8(font_bold, replace_with_text, x1, y1, colors[COLOR_TEXT]);
-		y1 += char_height_bold + padding;
+		y1 += line_buffer_height + padding;
 	}
 	
 	gl_geometry_draw();

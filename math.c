@@ -748,6 +748,15 @@ static Rect rect_shrink(Rect r, float amount) {
 	return r;
 }
 
+// adds `amount` to all sides of r
+static Rect rect_grow(Rect r, float amount) {
+	r.pos.x -= amount;
+	r.pos.y -= amount;
+	r.size.x += 2 * amount;
+	r.size.y += 2 * amount;
+	return r;
+}
+
 static v4 color_rgba_to_hsva(v4 rgba) {
 	float R = rgba.x, G = rgba.y, B = rgba.z, A = rgba.w;
 	float M = maxf(R, maxf(G, B));
