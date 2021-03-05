@@ -96,7 +96,6 @@ static char *selector_update(Ted *ted, Selector *s) {
 	float scroll_speed = 2.5f;
 	s->scroll += scroll_speed * (float)ted->scroll_total_y;
 	selector_clamp_scroll(ted, s);
-
 	return ret;
 }
 
@@ -468,6 +467,8 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 		}
 
 		free(files);
+		// set cwd to this (if no buffers are open, the "open" menu should use the last file selector's cwd)
+		strbuf_cpy(ted->cwd, cwd);
 	} else {
 		ted_seterr(ted, "Couldn't list directory '%s'.", cwd);
 	}
