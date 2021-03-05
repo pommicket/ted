@@ -57,6 +57,9 @@ it clear it's a command. Colors are formatted like `#rgb`, `#rgba`, `#rrggbb` or
 blue, and alpha (transparency/opacity). You can use a [color picker](https://www.google.com/search?q=color+picker) to help you out. 
 The extensions section is fairly self-explanatory.
 
+To reset your ted configuration to the default settings, delete your ted.cfg file (`~/.local/share/ted/ted.cfg` on Linux,
+`C:\Users\<your user name>\AppData\Local\ted\ted.cfg` on Windows) or move it somewhere else.
+
 ### IDE-like features
 
 If you are working in a compiled language, like C, you can press F4 to compile your code. The default is to run `make` in
