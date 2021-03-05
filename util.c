@@ -257,15 +257,23 @@ static char const *path_filename(char const *path) {
 static bool path_is_absolute(char const *path) {
 	return path[0] == PATH_SEPARATOR
 	#if _WIN32
-		|| path[1] == ':' && path[2] == PATH_SEPARATOR
+		|| path[1] == ':'
 	#endif
 		;
 }
 
 // assuming `dir` is an absolute path, returns the absolute path of `relpath`, relative to `dir`.
 static void path_full(char const *dir, char const *relpath, char *abspath, size_t abspath_size) {
+	assert(abspath_size);
 	if (path_is_absolute(relpath)) {
-		str_cpy(abspath, abspath_size, relpath);
+		if (strchr(ALL_PATH_SEPARATORS, relpath[0])) {
+			// make sure that on windows, if dir's drive is C: the absolute path of \a is c:\a
+			abspath[0] = '\0';
+			strn_cat(abspath, abspath_size, dir, strcspn(dir, ALL_PATH_SEPARATORS));
+			str_cat(abspath, abspath_size, relpath);
+		} else {
+			str_cpy(abspath, abspath_size, relpath);
+		}
 		return;
 	}
 	str_cpy(abspath, abspath_size, dir);
@@ -294,6 +302,17 @@ static void path_full(char const *dir, char const *relpath, char *abspath, size_
 		else
 			relpath = component_end + 1;
 	}
+}
+
+// returns true if the paths are the same.
+// handles the fact that paths are case insensitive on windows.
+// treats links as different from the files they point to.
+static bool paths_eq(char const *path1, char const *path2) {
+#if _WIN32
+	return _stricmp(path1, path2) == 0;
+#else
+	return streq(path1, path2);
+#endif
 }
 
 static void change_directory(char const *path) {

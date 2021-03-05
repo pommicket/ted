@@ -1,6 +1,3 @@
-// @TODO:
-// - test windows 7
-
 #include "base.h"
 no_warn_start
 #if _WIN32

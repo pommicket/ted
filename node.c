@@ -417,11 +417,12 @@ static void node_split(Ted *ted, Node *node, bool vertical) {
 	}
 }
 
-// swap to the other side of a split
-static void node_split_swap(Ted *ted) {
+static void node_split_switch(Ted *ted) {
 	assert(ted->active_node);
 	u16 active_node_idx = (u16)(ted->active_node - ted->nodes);
-	Node *parent = &ted->nodes[node_parent(ted, active_node_idx)];
+	i32 parent_idx = node_parent(ted, active_node_idx);
+	if (parent_idx < 0) return;
+	Node *parent = &ted->nodes[parent_idx];
 	if (parent) {
 		if (parent->split_a == active_node_idx) {
 			ted_node_switch(ted, &ted->nodes[parent->split_b]);
@@ -429,4 +430,15 @@ static void node_split_swap(Ted *ted) {
 			ted_node_switch(ted, &ted->nodes[parent->split_a]);
 		}
 	}
+}
+
+static void node_split_swap(Ted *ted) {
+	assert(ted->active_node);
+	u16 active_node_idx = (u16)(ted->active_node - ted->nodes);
+	i32 parent_idx = node_parent(ted, active_node_idx);
+	if (parent_idx < 0) return;
+	Node *parent = &ted->nodes[parent_idx];
+	u16 temp = parent->split_a;
+	parent->split_a = parent->split_b;
+	parent->split_b = temp;
 }

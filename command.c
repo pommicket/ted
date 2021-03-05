@@ -373,6 +373,9 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 	case CMD_SPLIT_JOIN:
 		if (node) node_join(ted, node);
 		break;
+	case CMD_SPLIT_SWITCH:
+		if (node) node_split_switch(ted);
+		break;
 	case CMD_SPLIT_SWAP:
 		if (node) node_split_swap(ted);
 		break;

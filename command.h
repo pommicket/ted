@@ -86,7 +86,8 @@ ENUM_U16 {
 	CMD_SPLIT_HORIZONTAL,
 	CMD_SPLIT_VERTICAL,
 	CMD_SPLIT_JOIN,
-	CMD_SPLIT_SWAP, // go to the other side of a split
+	CMD_SPLIT_SWITCH, // switch to the other side of a split
+	CMD_SPLIT_SWAP, // swap which side is which in a split.
 
 	CMD_ESCAPE, // by default this is the escape key. closes menus, etc.
 
@@ -166,6 +167,7 @@ static CommandName const command_names[] = {
 	{"split-horizontal", CMD_SPLIT_HORIZONTAL},
 	{"split-vertical", CMD_SPLIT_VERTICAL},
 	{"split-join", CMD_SPLIT_JOIN},
+	{"split-switch", CMD_SPLIT_SWITCH},
 	{"split-swap", CMD_SPLIT_SWAP},
 	{"escape", CMD_ESCAPE},
 };

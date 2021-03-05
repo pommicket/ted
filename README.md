@@ -2,13 +2,11 @@
 
 A text editor.
 
-**ted is still very new, and there are almost certainly bugs. I don't recommend using this as your main text editor yet.**
+**ted is still very new. There is no nice installer yet (if you want ted, you'll have to build it from source).
+I'll release installers after testing it a bit more to try to find any bugs there might be.**
 
 <img src="ted.png">
 
-
-To install ted, you will need to build it from source (see below). Eventually there will be a nice installer, but only when it's stable and bug-free enough for
-ordinary use.
 
 ## Why?
 
