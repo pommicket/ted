@@ -100,7 +100,7 @@ static void autocomplete_frame(Ted *ted) {
 			return;
 		}
 		
-		ted->autocomplete_cursor = (i32)mod_i64(ted->autocomplete_cursor, ncompletions);
+		ted->autocomplete_cursor = (i32)mod_i64(ted->autocomplete_cursor, (i64)ncompletions);
 		
 		v2 cursor_pos = buffer_pos_to_pixels(buffer, buffer->cursor_pos);
 		bool open_up = cursor_pos.y > 0.5f * (buffer->y1 + buffer->y2); // should the completion menu open upwards?
@@ -130,7 +130,7 @@ static void autocomplete_frame(Ted *ted) {
 			ted->cursor = ted->cursor_hand;	
 		}
 		{ // highlight cursor entry
-			Rect r = rect(V2(x, start_y + ted->autocomplete_cursor * char_height), V2(menu_width, char_height));
+			Rect r = rect(V2(x, start_y + (float)ted->autocomplete_cursor * char_height), V2(menu_width, char_height));
 			gl_geometry_rect(r, colors[COLOR_MENU_HL]);
 		}
 		
