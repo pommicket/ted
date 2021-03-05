@@ -779,7 +779,7 @@ int main(int argc, char **argv) {
 		strcpy(ted->window_title, "ted");
 
 
-		if (ted->nodes_used[0]) {
+		{
 			float const padding = settings->padding;
 			float x1 = padding, y = window_height-padding, x2 = window_width-padding;
 			Node *node = &ted->nodes[0];
@@ -796,15 +796,18 @@ int main(int argc, char **argv) {
 				y -= padding;
 			}
 
-			float y1 = padding;
-			node_frame(ted, node, rect4(x1, y1, x2, y));
-			if (ted->autocomplete) {
-				autocomplete_frame(ted);
+			if (ted->nodes_used[0]) {
+				float y1 = padding;
+				node_frame(ted, node, rect4(x1, y1, x2, y));
+				if (ted->autocomplete) {
+					autocomplete_frame(ted);
+				}
+			} else {
+				ted->autocomplete = false;
+				text_utf8_anchored(font, "Press Ctrl+O to open a file or Ctrl+N to create a new one.",
+					window_width * 0.5f, window_height * 0.5f, colors[COLOR_TEXT_SECONDARY], ANCHOR_MIDDLE);
+				text_render(font);
 			}
-		} else {
-			text_utf8_anchored(font, "Press Ctrl+O to open a file or Ctrl+N to create a new one.",
-				window_width * 0.5f, window_height * 0.5f, colors[COLOR_TEXT_SECONDARY], ANCHOR_MIDDLE);
-			text_render(font);
 		}
 
 		// stop dragging tab if mouse was released

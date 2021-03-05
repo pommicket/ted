@@ -11,8 +11,9 @@ I'll release installers after testing it a bit more to try to find any bugs ther
 ## Why?
 
 There are a lot of text editors out there. ted doesn't do anything new.
-But in the modern world of text editors running browsers internally, it can be nice to have
-a simple editor that starts up practically instantaneously, and performs well on reasonably-sized files.
+I made ted because I wanted a simple editor that starts up practically instantaneously,
+and performs well on reasonably-sized files. I've also added features I find to be particularly useful,
+while still keeping it relatively simple.
 
 ## Supported features (more coming soon)
 

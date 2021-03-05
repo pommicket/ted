@@ -1,5 +1,5 @@
 #define SESSION_FILENAME "session.txt"
-#define SESSION_VERSION "\x7fTED0001"
+#define SESSION_VERSION "\x7fTED0002"
 
 static void session_write_node(Ted *ted, FILE *fp, u16 node_idx) {
 	Node *node = &ted->nodes[node_idx];
@@ -95,6 +95,8 @@ static void session_read_buffer(Ted *ted, FILE *fp) {
 static void session_write_file(Ted *ted, FILE *fp) {
 	fwrite(SESSION_VERSION, 1, sizeof SESSION_VERSION, fp);
 
+	write_cstr(fp, ted->cwd);
+
 	write_u16(fp, ted->active_node ? (u16)(ted->active_node - ted->nodes) : U16_MAX); // active node idx
 	write_u16(fp, ted->active_buffer ? (u16)(ted->active_buffer - ted->buffers) : U16_MAX); // active buffer idx
 
@@ -122,6 +124,8 @@ static void session_read_file(Ted *ted, FILE *fp) {
 		debug_println("WARNING: Session file has wrong version (see %s:%d)!\n", __FILE__, __LINE__);
 		return; // wrong version
 	}
+
+	read_cstr(fp, ted->cwd, sizeof ted->cwd);
 
 	u16 active_node_idx = read_u16(fp);
 	u16 active_buffer_idx = read_u16(fp);
