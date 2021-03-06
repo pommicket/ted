@@ -374,25 +374,23 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 		strbuf_printf(path, "%s%s%s", cwd, cwd[strlen(cwd)-1] == PATH_SEPARATOR ? "" : PATH_SEPARATOR_STR, option_chosen);
 		char *ret = NULL;
 
-		if (fs->create_menu) {
-			// don't need to check anything
+		switch (fs_path_type(path)) {
+		case FS_NON_EXISTENT:
+		case FS_OTHER:
+			if (fs->create_menu)
+				ret = str_dup(path); // you can only select non-existent things if this is a create menu
+			break;
+		case FS_FILE:
+			// selected a file!
 			ret = str_dup(path);
-		} else {
-			switch (fs_path_type(path)) {
-			case FS_NON_EXISTENT: break;
-			case FS_OTHER: break;
-
-			case FS_FILE:
-				// selected a file!
-				ret = str_dup(path);
-				break;
-			case FS_DIRECTORY:
-				// cd there
-				file_selector_cd(ted, fs, option_chosen);
-				buffer_clear(line_buffer);
-				break;
-			}
+			break;
+		case FS_DIRECTORY:
+			// cd there
+			file_selector_cd(ted, fs, option_chosen);
+			buffer_clear(line_buffer);
+			break;
 		}
+		
 		free(option_chosen);
 		if (ret) {
 			return ret;
