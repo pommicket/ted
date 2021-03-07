@@ -51,6 +51,10 @@ static void ted_full_path(Ted *ted, char const *relpath, char *abspath, size_t a
 	path_full(ted->cwd, relpath, abspath, abspath_size);
 }
 
+static bool ted_is_regular_buffer(Ted *ted, TextBuffer *buffer) {
+	return buffer >= ted->buffers && buffer < ted->buffers + TED_MAX_BUFFERS;
+}
+
 // Check the various places a file could be, and return the full path.
 static Status ted_get_file(Ted const *ted, char const *name, char *out, size_t outsz) {
 	if (ted->search_cwd && fs_file_exists(name)) {
