@@ -3,7 +3,7 @@
 A text editor.
 
 **ted is still very new. There is no nice installer yet (if you want ted, you'll have to build it from source).
-I'll release installers after testing it a bit more to try to find any bugs there might be.**
+I'll release installers after testing it a bit more to try to find any remaining bugs.**
 
 <img src="ted.png">
 
@@ -11,9 +11,10 @@ I'll release installers after testing it a bit more to try to find any bugs ther
 ## Why?
 
 There are a lot of text editors out there. ted doesn't do anything new.
-I made ted because I wanted a simple editor that starts up practically instantaneously,
-and performs well on reasonably-sized files. I've also added features I find to be particularly useful,
-while still keeping it relatively simple.
+I made ted because I wanted a text editor that starts up practically instantaneously,
+and performs well on reasonably-sized files.
+ted isn't incredibly complicated, but it does have some nice features you might not find
+in other editors.
 
 ## Supported features (more coming soon)
 
@@ -35,6 +36,15 @@ All the keybindings listed below are customizable!
 
 After installing ted, you can just start using it like you would any other editor. The keyboard shortcuts
 are mostly what you'd expect them to be (Ctrl+o for open, Ctrl+s for save, etc.).
+
+### Tips
+
+- Even if you don't want to change anything with ted, it's a good idea to look at the config file (see below) to 
+check out all of the keyboard shortcuts!
+- You can use Ctrl+f for "find", but if you want to search for something across multiple files, you can do
+Ctrl+! (run shell command), then run `grep -n search_term *.py`, for example (on Windows, you will need to have
+cygwin or something in your PATH for this to work). The `-n` ensures that 
+ted can jump to the results, just like jumping to build errors.
 
 ### Configuration
 
@@ -60,15 +70,6 @@ The extensions section is fairly self-explanatory.
 
 To reset your ted configuration to the default settings, delete your ted.cfg file (`~/.local/share/ted/ted.cfg` on Linux,
 `C:\Users\<your user name>\AppData\Local\ted\ted.cfg` on Windows) or move it somewhere else.
-
-### Tips
-
-- Even if you don't want to change anything with ted, it's a good idea to look at the config file to see all of the
-keyboard shortcuts!
-- You can use Ctrl+f for "find", but if you want to search for something across multiple files, you can do
-Ctrl+! (run shell command), then run `grep -n search_term *.py`, for example (on Windows, you will need to have
-cygwin or something in your PATH for this to work). The `-n` ensures that 
-ted can jump to the results, just like jumping to build errors.
 
 ### IDE-like features
 
