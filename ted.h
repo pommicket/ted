@@ -309,6 +309,9 @@ typedef struct Ted {
 
 	// points to a selector if any is open, otherwise NULL.
 	Selector *selector_open;
+	
+	float build_output_height; // what % of the screen the build output takes up
+	bool resizing_build_output;
 
 	Process build_process;
 	// When we read the stdout from the build process, the tail end of the read could be an

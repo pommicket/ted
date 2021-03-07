@@ -791,7 +791,32 @@ int main(int argc, char **argv) {
 			}
 			if (ted->build_shown) {
 				float y2 = y;
-				y -= 0.3f * ted->window_height;
+				y -= ted->build_output_height * ted->window_height;
+				if (ted->build_output_height == 0) {
+					// hasn't been initialized yet
+					ted->build_output_height = 0.25f;
+				}
+				if (ted->resizing_build_output) {
+					if (ted->mouse_state & SDL_BUTTON_LMASK) {
+						// resize it
+						ted->build_output_height = clampf((y2 - ted->mouse_pos.y) / ted->window_height, 0.05f, 0.8f);
+					} else {
+						// stop resizing build output
+						ted->resizing_build_output = false;
+					}
+					ted->cursor = ted->cursor_resize_v;
+				} else {
+					Rect gap = rect4(x1, y - padding, x2, y);
+					for (uint i = 0; i < ted->nmouse_clicks[SDL_BUTTON_LEFT]; ++i) {
+						if (rect_contains_point(gap, ted->mouse_clicks[SDL_BUTTON_LEFT][i])) {
+							// start resizing build output
+							ted->resizing_build_output = true;
+						}
+					}
+					if (rect_contains_point(gap, ted->mouse_pos)) {
+						ted->cursor = ted->cursor_resize_v;
+					}
+				}
 				build_frame(ted, x1, y, x2, y2);
 				y -= padding;
 			}

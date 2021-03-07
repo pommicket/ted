@@ -61,6 +61,15 @@ The extensions section is fairly self-explanatory.
 To reset your ted configuration to the default settings, delete your ted.cfg file (`~/.local/share/ted/ted.cfg` on Linux,
 `C:\Users\<your user name>\AppData\Local\ted\ted.cfg` on Windows) or move it somewhere else.
 
+### Tips
+
+- Even if you don't want to change anything with ted, it's a good idea to look at the config file to see all of the
+keyboard shortcuts!
+- You can use Ctrl+f for "find", but if you want to search for something across multiple files, you can do
+Ctrl+! (run shell command), then run `grep -n search_term *.py`, for example (on Windows, you will need to have
+cygwin or something in your PATH for this to work). The `-n` ensures that 
+ted can jump to the results, just like jumping to build errors.
+
 ### IDE-like features
 
 If you are working in a compiled language, like C, you can press F4 to compile your code. The default is to run `make` in
