@@ -454,8 +454,9 @@ static void find_open(Ted *ted, bool replace) {
 	if (ted->active_buffer && ted_is_regular_buffer(ted, ted->active_buffer)) {
 		ted->prev_active_buffer = ted->active_buffer;
 		ted_switch_to_buffer(ted, &ted->find_buffer);
-		ted->find = true;
 		buffer_select_all(ted->active_buffer);
+		ted->find = true;
+	} else if (ted->find) {
 		ted->replace = replace;
 		find_update(ted, true);
 	}
