@@ -451,15 +451,15 @@ static void find_menu_frame(Ted *ted, Rect menu_bounds) {
 }
 
 static void find_open(Ted *ted, bool replace) {
-	if (ted->active_buffer && ted_is_regular_buffer(ted, ted->active_buffer)) {
+	if (ted->menu) return;
+	if (ted->active_buffer == &ted->build_buffer) return; 
+	if (!ted->find)
 		ted->prev_active_buffer = ted->active_buffer;
-		ted_switch_to_buffer(ted, &ted->find_buffer);
-		buffer_select_all(ted->active_buffer);
-		ted->find = true;
-	} else if (ted->find) {
-		ted->replace = replace;
-		find_update(ted, true);
-	}
+	ted_switch_to_buffer(ted, &ted->find_buffer);
+	buffer_select_all(ted->active_buffer);
+	ted->find = true;
+	ted->replace = replace;
+	find_update(ted, true);
 }
 
 static void find_close(Ted *ted) {
