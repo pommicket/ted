@@ -106,9 +106,13 @@ static void ted_load_fonts(Ted *ted) {
 // sets the active buffer to this buffer, and updates active_node, etc. accordingly
 // you can pass NULL to buffer to make it so no buffer is active.
 void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer) {
+	TextBuffer *search_buffer = find_search_buffer(ted);
 	ted->active_buffer = buffer;
 	ted->autocomplete = false;
-	if (ted->find) find_update(ted, true);
+	if (buffer != search_buffer) {
+		if (ted->find)
+			find_update(ted, true); // make sure find results are for this file
+	}
 
 	if (buffer >= ted->buffers && buffer < ted->buffers + TED_MAX_BUFFERS) {
 		ted->prev_active_buffer = buffer;
@@ -303,8 +307,10 @@ static bool ted_save_all(Ted *ted) {
 					success = false; // we haven't saved this buffer yet; we've just opened the "save as" menu.
 					break;
 				} else {
-					if (!buffer_save(buffer))
+					if (!buffer_save(buffer)) {
 						success = false;
+						ted_seterr_to_buferr(ted, buffer);
+					}
 				}
 			}
 		}

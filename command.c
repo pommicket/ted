@@ -329,12 +329,16 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 			ted->autocomplete = false;
 		} else if (ted->menu) {
 			menu_escape(ted);
-		} else if (ted->find) {
-			find_close(ted);
-		} else if (ted->build_shown) {
-			build_stop(ted);
-		} else if (buffer) {
-			buffer_disable_selection(buffer);
+		} else {
+			if (ted->find) {
+				find_close(ted);
+			}
+			if (ted->build_shown) {
+				build_stop(ted);
+			}
+			if (buffer) {
+				buffer_disable_selection(buffer);
+			}
 		}
 		break;
 	

@@ -342,3 +342,4 @@ typedef struct Ted {
 
 void command_execute(Ted *ted, Command c, i64 argument);
 void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer);
+static TextBuffer *find_search_buffer(Ted *ted);

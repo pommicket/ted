@@ -593,7 +593,8 @@ static bool buffer_edit_split(TextBuffer *buffer) {
 	if (buffer->chaining_edits) return false;
 	double curr_time = time_get_seconds();
 	double undo_time_cutoff = buffer_settings(buffer)->undo_save_time; // only keep around edits for this long (in seconds).
-	return curr_time - last_edit->time > undo_time_cutoff;
+	return last_edit->time <= timespec_to_seconds(buffer->last_write_time) // last edit happened before buffer write (we need to split this so that undo_history_write_pos works)
+		|| curr_time - last_edit->time > undo_time_cutoff;
 }
 
 // removes the last edit in the undo history if it doesn't do anything
@@ -1350,7 +1351,7 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 		i64 where_in_last_edit = last_edit ? buffer_pos_diff(buffer, last_edit->pos, pos) : -1;
 		// create a new edit, rather than adding to the old one if:
 		bool create_new_edit = where_in_last_edit < 0 || where_in_last_edit > last_edit->new_len // insertion is happening outside the previous edit,
-			|| buffer_edit_split(buffer); // or enough time has elapsed to warrant a new one.
+			|| buffer_edit_split(buffer); // or enough time has elapsed/etc to warrant a new one.
 
 		if (create_new_edit) {
 			// create a new edit for this insertion
@@ -1950,6 +1951,8 @@ void buffer_paste(TextBuffer *buffer) {
 Status buffer_load_file(TextBuffer *buffer, char const *filename) {
 	FILE *fp = fopen(filename, "rb");
 	bool success = true;
+	Line *lines = NULL;
+	u32 nlines = 0, lines_capacity = 0;
 	if (fp) {
 		fseek(fp, 0, SEEK_END);
 		long file_pos = ftell(fp);
@@ -1964,10 +1967,10 @@ Status buffer_load_file(TextBuffer *buffer, char const *filename) {
 		} else {
 			u8 *file_contents = buffer_calloc(buffer, 1, file_size);
 			if (file_contents) {
-				u32 lines_capacity = 4;
-				Line *lines = buffer_calloc(buffer, lines_capacity, sizeof *buffer->lines); // initial lines
+				lines_capacity = 4;
+				lines = buffer_calloc(buffer, lines_capacity, sizeof *buffer->lines); // initial lines
 				if (lines) {
-					u32 nlines = 1;
+					nlines = 1;
 					size_t bytes_read = fread(file_contents, 1, file_size, fp);
 					if (bytes_read == file_size) {
 						char32_t c = 0;
@@ -2000,25 +2003,6 @@ Status buffer_load_file(TextBuffer *buffer, char const *filename) {
 								buffer_line_append_char(buffer, line, c);
 							}
 						}
-						if (success) {
-							char *filename_copy = buffer_strdup(buffer, filename);
-							if (!filename_copy) success = false;
-							if (success) {
-								// everything is good
-								buffer_clear(buffer);
-								buffer->lines = lines;
-								buffer->nlines = nlines;
-								buffer->frame_earliest_line_modified = 0;
-								buffer->frame_latest_line_modified = nlines - 1;
-								buffer->lines_capacity = lines_capacity;
-								buffer->filename = filename_copy;
-								buffer->last_write_time = time_last_modified(buffer->filename);
-								if (!(fs_path_permission(filename) & FS_PERMISSION_WRITE)) {
-									// can't write to this file; make the buffer view only.
-									buffer->view_only = true;
-								}
-							}
-						}
 					} else {
 						success = false;
 					}
@@ -2043,6 +2027,25 @@ Status buffer_load_file(TextBuffer *buffer, char const *filename) {
 	} else {
 		buffer_seterr(buffer, "Couldn't open file %s: %s.", filename, strerror(errno));
 		success = false;
+	}
+	if (success) {
+		char *filename_copy = buffer_strdup(buffer, filename);
+		if (!filename_copy) success = false;
+		if (success) {
+			// everything is good
+			buffer_clear(buffer);
+			buffer->lines = lines;
+			buffer->nlines = nlines;
+			buffer->frame_earliest_line_modified = 0;
+			buffer->frame_latest_line_modified = nlines - 1;
+			buffer->lines_capacity = lines_capacity;
+			buffer->filename = filename_copy;
+			buffer->last_write_time = time_last_modified(buffer->filename);
+			if (!(fs_path_permission(filename) & FS_PERMISSION_WRITE)) {
+				// can't write to this file; make the buffer view only.
+				buffer->view_only = true;
+			}
+		}
 	}
 	return success;
 }
@@ -2088,6 +2091,7 @@ void buffer_new_file(TextBuffer *buffer, char const *filename) {
 // whether there are any unsaved changes.
 bool buffer_save(TextBuffer *buffer) {
 	Settings const *settings = buffer_settings(buffer);
+	
 	if (!buffer->is_line_buffer && buffer->filename) {
 		if (buffer->view_only) {
 			buffer_seterr(buffer, "Can't save view-only file.");

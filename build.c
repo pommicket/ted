@@ -22,22 +22,22 @@ static void build_start_with_command(Ted *ted, char const *command) {
 		build_stop(ted);
 	}
 	build_clear(ted); // clear errors from previous build
-	ted_save_all(ted);
-
-	if (process_run(&ted->build_process, command)) {
-		ted->building = true;
-		ted->build_shown = true;
-		TextBuffer *build_buffer = &ted->build_buffer;
-		// new empty build output buffer
-		buffer_new_file(build_buffer, NULL);
-		build_buffer->store_undo_events = false; // don't need undo events for build output buffer
-		char32_t text[] = {'$', ' '};
-		buffer_insert_text_at_cursor(build_buffer, str32(text, 2));
-		buffer_insert_utf8_at_cursor(build_buffer, command);
-		buffer_insert_char_at_cursor(build_buffer, '\n');
-		build_buffer->view_only = true;
-	} else {
-		ted_seterr(ted, "Couldn't start build: %s", process_geterr(&ted->build_process));
+	if (ted_save_all(ted)) {
+		if (process_run(&ted->build_process, command)) {
+			ted->building = true;
+			ted->build_shown = true;
+			TextBuffer *build_buffer = &ted->build_buffer;
+			// new empty build output buffer
+			buffer_new_file(build_buffer, NULL);
+			build_buffer->store_undo_events = false; // don't need undo events for build output buffer
+			char32_t text[] = {'$', ' '};
+			buffer_insert_text_at_cursor(build_buffer, str32(text, 2));
+			buffer_insert_utf8_at_cursor(build_buffer, command);
+			buffer_insert_char_at_cursor(build_buffer, '\n');
+			build_buffer->view_only = true;
+		} else {
+			ted_seterr(ted, "Couldn't start build: %s", process_geterr(&ted->build_process));
+		}
 	}
 }
 
