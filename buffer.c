@@ -137,6 +137,24 @@ static void buffer_validate_cursor(TextBuffer *buffer) {
 		buffer_pos_validate(buffer, &buffer->selection_pos);
 }
 
+// update *pos, given that nchars characters were deleted at del_pos.
+static void buffer_pos_handle_deleted_chars(BufferPos *pos, BufferPos del_pos, u32 nchars) {
+	if (pos->line != del_pos.line) return;
+	
+	if (pos->index >= del_pos.index + nchars) {
+		pos->index -= nchars;
+	} else if (pos->index >= del_pos.index) {
+		pos->index = del_pos.index;
+	}
+}
+static void buffer_pos_handle_inserted_chars(BufferPos *pos, BufferPos ins_pos, u32 nchars) {
+	if (pos->line != ins_pos.line) return;
+	
+	if (pos->index >= ins_pos.index) {
+		pos->index += nchars;
+	}
+}
+
 static bool buffer_pos_valid(TextBuffer *buffer, BufferPos p) {
 	return p.line < buffer->nlines && p.index <= buffer->lines[p.line].len;
 }
@@ -1375,6 +1393,8 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 		u32 new_len = old_len + text_line_len;
 		if (new_len > old_len) { // handles both overflow and empty text lines
 			if (buffer_line_set_len(buffer, line, new_len)) {
+				buffer_pos_handle_inserted_chars(&buffer->cursor_pos,    (BufferPos){line_idx, index}, text_line_len);
+				buffer_pos_handle_inserted_chars(&buffer->selection_pos, (BufferPos){line_idx, index}, text_line_len);
 				// make space for text
 				memmove(line->str + index + (new_len - old_len),
 					line->str + index,
@@ -1650,6 +1670,8 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 		}
 	} else {
 		// just delete characters from this line
+		buffer_pos_handle_deleted_chars(&buffer->cursor_pos, pos, nchars);
+		buffer_pos_handle_deleted_chars(&buffer->selection_pos, pos, nchars);
 		memmove(line->str + index, line->str + index + nchars, (size_t)(line->len - (nchars + index)) * sizeof(char32_t));
 		line->len -= nchars;
 	}
