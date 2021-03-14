@@ -155,7 +155,7 @@ static void find_update(Ted *ted, bool force) {
 		find_buffer->modified = false;
 		if (best_scroll_candidate.line != U32_MAX) // scroll to first match (if there is one)
 			buffer_scroll_to_pos(buffer, best_scroll_candidate);
-	} else {
+	} else if (find_buffer->modified) {
 		buffer_scroll_to_cursor(buffer);
 	}
 }
