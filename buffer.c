@@ -2160,9 +2160,6 @@ bool buffer_handle_click(Ted *ted, TextBuffer *buffer, v2 click, u8 times) {
 	}
 	if (buffer_pixels_to_pos(buffer, click, &buffer_pos)) {
 		// user clicked on buffer
-		if (!ted->menu || buffer->is_line_buffer) {
-			ted_switch_to_buffer(ted, buffer);
-		}
 		if (buffer == ted->active_buffer) {
 			switch (ted->key_modifier) {
 			case KEY_MODIFIER_SHIFT:
@@ -2197,6 +2194,11 @@ bool buffer_handle_click(Ted *ted, TextBuffer *buffer, v2 click, u8 times) {
 				break;
 			}
 			return true;
+		}
+		// better to do this after handing click, because some stuff called by ted_switch_to_buffer
+		// needs to know the correct cursor pos
+		if (!ted->menu || buffer->is_line_buffer) {
+			ted_switch_to_buffer(ted, buffer);
 		}
 	}
 	return false;

@@ -1,3 +1,5 @@
+// @TODO:
+// fix cursor pos in buffer_delete_chars_at_pos (try dedenting something -- the cursor moves)
 #include "base.h"
 no_warn_start
 #if _WIN32
