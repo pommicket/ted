@@ -1,3 +1,9 @@
+// @TODO:
+// - bug involving load file when going to error (specifically, stuff like ./main.c) -- duplicate file opening
+// - command to reload all (unsaved) buffers
+// - terminate process not working on windows?
+// - auto-regenerate tags (if no tag found/line number tag found)
+// - comment/uncomment selection
 #include "base.h"
 no_warn_start
 #if _WIN32

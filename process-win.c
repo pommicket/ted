@@ -79,6 +79,7 @@ long long process_read(Process *process, char *data, size_t size) {
 
 void process_kill(Process *process) {
 	TerminateProcess(process->process_info.hProcess, 1);
+	TerminateThread(process->process_info.hThread, 1);
 	CloseHandle(process->pipe_read);
 	CloseHandle(process->pipe_write);
 	CloseHandle(process->process_info.hProcess);
