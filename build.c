@@ -78,7 +78,7 @@ static void build_start(Ted *ted) {
 	if (cargo) {
 		command = "cargo build";
 	} else if (make) {
-		command = "make";
+		command = "make -j12";
 	}
 	
 	build_start_with_command(ted, command);

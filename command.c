@@ -191,6 +191,9 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 	case CMD_SAVE_ALL:
 		ted_save_all(ted);
 		break;
+	case CMD_RELOAD_ALL:
+		ted_reload_all(ted);
+		break;
 	case CMD_QUIT:
 		// pass argument of 2 to override dialog
 		if (argument == 2) {

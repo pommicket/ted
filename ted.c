@@ -1,4 +1,5 @@
 static void menu_open(Ted *ted, Menu menu);
+static void menu_close(Ted *ted);
 static void find_update(Ted *ted, bool force);
 static Command command_from_str(char const *str);
 
@@ -316,4 +317,19 @@ static bool ted_save_all(Ted *ted) {
 		}
 	}
 	return success;
+}
+
+static void ted_reload_all(Ted *ted) {
+	bool *buffers_used = ted->buffers_used;
+	for (u64 i = 0; i < TED_MAX_BUFFERS; ++i) {
+		if (buffers_used[i]) {
+			TextBuffer *buffer = &ted->buffers[i];
+			if (!buffer_unsaved_changes(buffer)) {
+				buffer_reload(buffer);
+			}
+		}
+	}
+	if (ted->menu == MENU_ASK_RELOAD) {
+		menu_close(ted);
+	}
 }
