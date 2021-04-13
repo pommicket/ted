@@ -4,16 +4,21 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <errno.h>
+#include <fcntl.h>
+
+static FsType statbuf_path_type(const struct stat *statbuf) {
+	if (S_ISREG(statbuf->st_mode))
+		return FS_FILE;
+	if (S_ISDIR(statbuf->st_mode))
+		return FS_DIRECTORY;
+	return FS_OTHER;	
+}
 
 FsType fs_path_type(char const *path) {
 	struct stat statbuf = {0};
 	if (stat(path, &statbuf) != 0)
 		return FS_NON_EXISTENT;
-	if (S_ISREG(statbuf.st_mode))
-		return FS_FILE;
-	if (S_ISDIR(statbuf.st_mode))
-		return FS_DIRECTORY;
-	return FS_OTHER;
+	return statbuf_path_type(&statbuf);
 }
 
 FsPermission fs_path_permission(char const *path) {
@@ -28,32 +33,49 @@ bool fs_file_exists(char const *path) {
 	return fs_path_type(path) == FS_FILE;
 }
 
-char **fs_list_directory(char const *dirname) {
-	char **ret = NULL;
+FsDirectoryEntry **fs_list_directory(char const *dirname) {
+	FsDirectoryEntry **entries = NULL;
 	DIR *dir = opendir(dirname);
 	if (dir) {
 		struct dirent *ent;
-		char **filenames = NULL;
 		size_t nentries = 0;
-		size_t filename_idx = 0;
-
-		while (readdir(dir)) ++nentries;
-		rewinddir(dir);
-		filenames = (char **)calloc(nentries+1, sizeof *filenames);
-
-		while ((ent = readdir(dir))) {
-			char const *filename = ent->d_name;
-			size_t len = strlen(filename);
-			char *filename_copy = (char *)malloc(len+1);
-			if (!filename_copy) break;
-			strcpy(filename_copy, filename);
-			if (filename_idx < nentries) // this could actually fail if someone creates files between calculating nentries and here. 
-				filenames[filename_idx++] = filename_copy;
+		int fd = dirfd(dir);
+		if (fd != -1) {
+			while (readdir(dir)) ++nentries;
+			rewinddir(dir);
+			entries = (FsDirectoryEntry **)calloc(nentries+1, sizeof *entries);
+			if (entries) {
+				size_t idx = 0;
+				while ((ent = readdir(dir))) {
+					char const *filename = ent->d_name;
+					size_t len = strlen(filename);
+					FsDirectoryEntry *entry = (FsDirectoryEntry *)calloc(1, sizeof *entry + len + 1);
+					if (!entry) break;
+					memcpy(entry->name, filename, len);
+					switch (ent->d_type) {
+					case DT_REG:
+						entry->type = FS_FILE;
+						break;
+					case DT_DIR:
+						entry->type = FS_DIRECTORY;
+						break;
+					case DT_LNK: // we need to dereference the link
+					case DT_UNKNOWN: { // information not available directly from dirent, we need to get it ourselves
+						struct stat statbuf = {0};
+						fstatat(fd, filename, &statbuf, 0);
+						entry->type = statbuf_path_type(&statbuf);
+					} break;
+					default:
+						entry->type = FS_OTHER;
+					}
+					if (idx < nentries) // this could actually fail if someone creates files between calculating nentries and here. 
+						entries[idx++] = entry;
+				}
+			}
 		}
-		ret = filenames;
 		closedir(dir);
 	}
-	return ret;
+	return entries;
 }
 
 int fs_mkdir(char const *path) {

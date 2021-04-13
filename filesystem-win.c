@@ -25,9 +25,9 @@ bool fs_file_exists(char const *path) {
 	return fs_path_type(path) == FS_FILE;
 }
 
-char **fs_list_directory(char const *dirname) {
+FsDirectoryEntry **fs_list_directory(char const *dirname) {
 	char file_pattern[256] = {0};
-	char **ret = NULL;
+	FsDirectoryEntry **files = NULL;
 	WIN32_FIND_DATA find_data;
 	HANDLE fhandle;
 	assert(*dirname);
@@ -43,25 +43,33 @@ char **fs_list_directory(char const *dirname) {
 		}
 		FindClose(fhandle);
 		// now, fill out files array
-		files = malloc((nfiles + 1) * sizeof *files);
+		files = calloc(nfiles + 1, sizeof *files);
 		if (files) {
 			fhandle = FindFirstFileA(file_pattern, &find_data);
 			if (fhandle != INVALID_HANDLE_VALUE) {
 				do {
 					if (idx < nfiles) {
-						char *dup = _strdup(find_data.cFileName); 
-						if (dup) {
-							files[idx++] = dup;
+						const char *filename = find_data.cFileName;
+						size_t len = strlen(filename);
+						FsDirectoryEntry *entry = calloc(1, sizeof *entry + len + 1);
+						if (entry) {
+							DWORD attrs = find_data.dwFileAttributes;
+							if (attrs & FILE_ATTRIBUTE_NORMAL)
+								entry->type = FS_FILE;
+							else if (attrs & FILE_ATTRIBUTE_DIRECTORY)
+								entry->type = FS_DIRECTORY;
+							else
+								entry->type = FS_OTHER;
+							memcpy(entry->name, filename, len);
+							files[idx++] = entry;
 						} else break; // stop now
 					}
 				} while (FindNextFile(fhandle, &find_data));
-				files[idx] = NULL;
 				FindClose(fhandle);
-				ret = files;
 			}
 		}
 	}
-	return ret;
+	return files;
 }
 
 int fs_mkdir(char const *path) {

@@ -152,7 +152,7 @@ static void selector_render(Ted *ted, Selector *s) {
 // clear the entries in the file selector
 static void file_selector_clear_entries(FileSelector *fs) {
 	for (u32 i = 0; i < fs->n_entries; ++i) {
-		free(fs->entries[i].name);
+		free(fs->entries[i].name - offsetof(FsDirectoryEntry, name)); // yes this is kinda hacky; oh well
 		free(fs->entries[i].path);
 	}
 	free(fs->entries);
@@ -400,7 +400,7 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 	// free previous entries
 	file_selector_clear_entries(fs);
 	// get new entries
-	char **files;
+	FsDirectoryEntry **files;
 	// if the directory we're in gets deleted, go back a directory.
 	for (u32 i = 0; i < 100; ++i) {
 		files = fs_list_directory(cwd);
@@ -423,9 +423,9 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 		bool increment = true;
 		for (u32 i = 0; i < nfiles; i += increment, increment = true) {
 			// remove if the file name does not contain the search term,
-			bool remove = search_term && *search_term && !stristr(files[i], search_term);
+			bool remove = search_term && *search_term && !stristr(files[i]->name, search_term);
 			// or if this is just the current directory
-			remove |= streq(files[i], ".");
+			remove |= streq(files[i]->name, ".");
 			if (remove) {
 				// remove this one
 				free(files[i]);
@@ -444,8 +444,9 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 				if (fs->sel.cursor >= fs->n_entries) fs->sel.cursor = nfiles - 1;
 				fs->entries = entries;
 				for (u32 i = 0; i < nfiles; ++i) {
-					char *name = files[i];
+					char *name = files[i]->name;
 					entries[i].name = name;
+					entries[i].type = files[i]->type;
 					// add cwd to start of file name
 					size_t path_size = strlen(name) + strlen(cwd) + 3;
 					char *path = ted_calloc(ted, 1, path_size);
@@ -454,10 +455,8 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 							cwd[strlen(cwd) - 1] == PATH_SEPARATOR ? "" : PATH_SEPARATOR_STR,
 							name);
 						entries[i].path = path;
-						entries[i].type = fs_path_type(path);
 					} else {
 						entries[i].path = NULL; // what can we do?
-						entries[i].type = FS_NON_EXISTENT;
 					}
 				}
 			}

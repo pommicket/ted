@@ -14,15 +14,20 @@ enum {
 };
 typedef u8 FsPermission;
 
+typedef struct {
+	FsType type;
+	char name[];
+} FsDirectoryEntry;
+
 // returns what kind of thing this is.
 FsType fs_path_type(char const *path);
 FsPermission fs_path_permission(char const *path);
 // Does this file exist? Returns false for directories.
 bool fs_file_exists(char const *path);
-// Returns a NULL-terminated array of the files/directories in this directory, or NULL if the directory does not exist.
-// When you're done with the file names, call free on each one, then on the array.
-// NOTE: The files aren't returned in any particular order!
-char **fs_list_directory(char const *dirname);
+// Returns a NULL-terminated array of the files/directories in this directory, or NULL if the directory does not exist/out of memory.
+// When you're done with the entries, call free on each one, then on the array.
+// NOTE: The files/directories aren't returned in any particular order!
+FsDirectoryEntry **fs_list_directory(char const *dirname);
 // Create the directory specified by `path`
 // Returns:
 // 1  if the directory was created successfully
