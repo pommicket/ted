@@ -363,7 +363,10 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 			menu_open(ted, MENU_SHELL);
 		}
 	} break;
-	
+	case CMD_GENERATE_TAGS:
+		tags_generate(ted);
+		break;
+			
 	case CMD_GOTO_DEFINITION:
 		menu_open(ted, MENU_GOTO_DEFINITION);
 		break;

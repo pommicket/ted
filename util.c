@@ -288,6 +288,7 @@ static void path_full(char const *dir, char const *relpath, char *abspath, size_
 		} else if (component_len == 2 && relpath[0] == '.' && relpath[1] == '.') {
 			// ..
 			char *lastsep = strrchr(abspath, PATH_SEPARATOR);
+			assert(lastsep);
 			if (lastsep == abspath)
 				lastsep[1] = '\0';
 			else

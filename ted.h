@@ -80,6 +80,7 @@ typedef struct {
 	u8 border_thickness;
 	u8 padding;
 	u8 scrolloff;
+	u8 tags_max_depth;
 	char build_default_command[256];
 	// [i] = comma-separated string of file extensions for language i, or NULL for none
 	char *language_extensions[LANG_COUNT];
@@ -318,6 +319,7 @@ typedef struct Ted {
 	// incomplete UTF-8 code point. This is where we store that "tail end" until more
 	// data is available. (This is up to 3 bytes, null terminated)
 	char build_incomplete_codepoint[4];
+	char **build_queue; // allows execution of multiple commands -- needed for tags generation
 	char warn_unsaved_names[TED_PATH_MAX]; // comma-separated list of files with unsaved changes (only applicable if warn_unsaved != 0)
 	char warn_overwrite[TED_PATH_MAX]; // file name user is trying to overwrite
 	char ask_reload[TED_PATH_MAX]; // file name which we want to reload

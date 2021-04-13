@@ -191,6 +191,7 @@ void config_read(Ted *ted, char const *filename) {
 		{"border-thickness", &settings->border_thickness, 1, 30},
 		{"padding", &settings->padding, 0, 100},
 		{"scrolloff", &settings->scrolloff, 1, 100},
+		{"tags-max-depth", &settings->tags_max_depth, 1, 100},
 	};
 	OptionFloat const options_float[] = {
 		{"cursor-blink-time-on", &settings->cursor_blink_time_on, 0, 1000},

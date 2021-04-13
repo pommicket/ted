@@ -1,20 +1,104 @@
-static char const *tags_filename(Ted *ted) {
+static char const *tags_filename(Ted *ted, bool error_if_does_not_exist) {
 	change_directory(ted->cwd);
 	char const *filename = "tags";
-	strbuf_printf(ted->tags_dir, ".");
+	ted_path_full(ted, ".", ted->tags_dir, sizeof ted->tags_dir);
 	if (!fs_file_exists(filename)) {
 		filename = "../tags";
-		strbuf_printf(ted->tags_dir, "..");
+		ted_path_full(ted, "..", ted->tags_dir, sizeof ted->tags_dir);
 		if (!fs_file_exists(filename)) {
 			filename = "../../tags";
-			strbuf_printf(ted->tags_dir, "../..");
+			ted_path_full(ted, "../..", ted->tags_dir, sizeof ted->tags_dir);
 			if (!fs_file_exists(filename)) {
-				ted_seterr(ted, "No tags file. Try running ctags.");
+				if (error_if_does_not_exist)
+					ted_seterr(ted, "No tags file. Try running ctags.");
 				filename = NULL;
 			}
 		}
 	}
 	return filename;
+}
+
+// is this a file we can generate tags for?
+static bool is_source_file(char const *filename) {
+	char const *dot = strchr(filename, '.');
+	char const *const extensions[] = {
+		"py", "c", "h", "cpp", "hpp", "cc", "hh", "cxx", "hxx", "C", "H",
+		"rb", "lua", "s", "asm", "js", "pl", "cs", "sh", "java", "php"
+	};
+	if (!dot) return false;
+	for (size_t i = 0; i < arr_count(extensions); ++i) {
+		if (streq(dot + 1, extensions[i])) {
+			return true;
+		}
+	}	
+	return false;
+}
+
+
+static void tags_generate_at_dir(Ted *ted, const char *dir, int depth) {
+	Settings const *settings = &ted->settings;
+	if (depth >= settings->tags_max_depth) {
+		return;
+	}
+	FsDirectoryEntry **entries = fs_list_directory(dir);
+	if (entries) {
+		char command[2048]; // 2048 is the limit on Windows XP, apparently
+		
+	#if __unix__
+		// ctags.emacs's sorting depends on the locale 
+		// (ctags-universal doesn't)
+		char const *cmd_prefix = "LC_ALL=C ctags --append";
+	#else
+		char const *cmd_prefix = "ctags --append";
+	#endif
+		bool any_files = false;
+		strcpy(command, cmd_prefix);
+		for (int i = 0; entries[i]; ++i) {
+			FsDirectoryEntry *entry = entries[i];
+			char path[TED_PATH_MAX];
+			path_full(dir, entry->name, path, sizeof path);
+			if (entry->name[0] != '.') { // ignore hidden directories and . and ..
+				switch (entry->type) {
+				case FS_FILE: {
+					if (is_source_file(entry->name)) {
+						size_t cmdlen = strlen(command), pathlen = strlen(path);
+						any_files = true;
+						// make sure command doesn't get too long
+						if (cmdlen + pathlen + 5 >= sizeof command) {
+							build_queue_command(ted, command);
+							strbuf_printf(command, "%s %s", cmd_prefix, path);
+						} else {
+							command[cmdlen++] = ' ';
+							memcpy(command + cmdlen, path, pathlen+1);
+						}
+					}
+				} break;
+				case FS_DIRECTORY:
+					tags_generate_at_dir(ted, path, depth+1);
+					break;
+				default: break;
+				}
+			}
+		}
+		if (any_files) {
+			build_queue_command(ted, command);
+		}
+	}
+}
+
+// generate/re-generate tags.
+static void tags_generate(Ted *ted) {
+	char const *filename = tags_filename(ted, false);
+	if (!filename) {
+		strcpy(ted->tags_dir, ted->cwd);
+	}
+	change_directory(ted->tags_dir);
+	strcpy(ted->build_dir, ted->tags_dir);
+	remove("tags"); // delete old tags file
+	build_queue_start(ted);
+	tags_generate_at_dir(ted, ted->tags_dir, 0);
+	build_queue_finish(ted);
+	change_directory(ted->cwd);
 }
 
 static int tag_try(FILE *fp, char const *tag) {
@@ -46,7 +130,7 @@ static int tag_try(FILE *fp, char const *tag) {
 // each element in out should be freed when you're done with them
 size_t tags_beginning_with(Ted *ted, char const *prefix, char **out, size_t out_size) {
 	assert(out_size);
-	char const *tags_name = tags_filename(ted);
+	char const *tags_name = tags_filename(ted, true);
 	if (!tags_name) return 0;
 	FILE *file = fopen(tags_name, "rb");
 	if (!file) return 0;
@@ -106,7 +190,7 @@ size_t tags_beginning_with(Ted *ted, char const *prefix, char **out, size_t out_
 
 // returns true if the tag exists.
 bool tag_goto(Ted *ted, char const *tag) {
-	char const *tags_name = tags_filename(ted);
+	char const *tags_name = tags_filename(ted, true);
 	if (!tags_name) return false;
 	FILE *file = fopen(tags_name, "rb");
 	if (!file) return false;
@@ -171,8 +255,8 @@ bool tag_goto(Ted *ted, char const *tag) {
 						}
 						assert(streq(name, tag));
 						char path[TED_PATH_MAX], full_path[TED_PATH_MAX];
-						strbuf_printf(path, "%s/%s", ted->tags_dir, filename);
-						ted_full_path(ted, path, full_path, sizeof full_path);
+						path_full(ted->tags_dir, filename, path, sizeof path);
+						ted_path_full(ted, path, full_path, sizeof full_path);
 						if (ted_open_file(ted, full_path)) {
 							TextBuffer *buffer = ted->active_buffer;
 							int line_number = atoi(address);
@@ -243,7 +327,7 @@ bool tag_goto(Ted *ted, char const *tag) {
 
 static void tag_selector_open(Ted *ted) {
 	// read tags file and extract tag names
-	char const *filename = tags_filename(ted);
+	char const *filename = tags_filename(ted, true);
 	if (!filename) return;
 	FILE *file = fopen(filename, "rb");
 	if (!file) return;

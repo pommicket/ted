@@ -48,7 +48,7 @@ static void *ted_realloc(Ted *ted, void *p, size_t new_size) {
 	return ret;
 }
 
-static void ted_full_path(Ted *ted, char const *relpath, char *abspath, size_t abspath_size) {
+static void ted_path_full(Ted *ted, char const *relpath, char *abspath, size_t abspath_size) {
 	path_full(ted->cwd, relpath, abspath, abspath_size);
 }
 
@@ -235,7 +235,7 @@ static Status ted_open_buffer(Ted *ted, u16 *buffer_idx, u16 *tab) {
 // Returns true on success
 static bool ted_open_file(Ted *ted, char const *filename) {
 	char path[TED_PATH_MAX];
-	ted_full_path(ted, filename, path, sizeof path);
+	ted_path_full(ted, filename, path, sizeof path);
 
 	// first, check if file is already open
 	bool *buffers_used = ted->buffers_used;
@@ -273,7 +273,7 @@ static bool ted_new_file(Ted *ted, char const *filename) {
 	u16 buffer_idx, tab_idx;
 	char path[TED_PATH_MAX];
 	if (filename)
-		ted_full_path(ted, filename, path, sizeof path);
+		ted_path_full(ted, filename, path, sizeof path);
 	else
 		strbuf_cpy(path, TED_UNTITLED);
 	if (ted_open_buffer(ted, &buffer_idx, &tab_idx)) {
