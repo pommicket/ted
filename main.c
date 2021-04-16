@@ -951,6 +951,11 @@ int main(int argc, char **argv) {
 	}
 
 	session_write(ted);
+	
+	arr_foreach_ptr(ted->shell_history, char *, cmd) {
+		free(*cmd);
+	}
+	arr_free(ted->shell_history);
 
 	SDL_FreeCursor(ted->cursor_arrow);
 	SDL_FreeCursor(ted->cursor_ibeam);

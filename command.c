@@ -50,10 +50,14 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		break;
 	case CMD_UP:
 		if (ted->selector_open) selector_up(ted, ted->selector_open, argument);
+		else if (ted->menu == MENU_SHELL && buffer == &ted->line_buffer)
+			menu_shell_up(ted);
 		else if (buffer) buffer_cursor_move_up(buffer, argument);
 		break;
 	case CMD_DOWN:
 		if (ted->selector_open) selector_down(ted, ted->selector_open, argument);
+		else if (ted->menu == MENU_SHELL && buffer == &ted->line_buffer)
+			menu_shell_down(ted);
 		else if (buffer) buffer_cursor_move_down(buffer, argument);
 		break;
 	case CMD_SELECT_LEFT:

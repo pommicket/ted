@@ -85,6 +85,7 @@ static void menu_open(Ted *ted, Menu menu) {
 	} break;
 	case MENU_SHELL:
 		ted_switch_to_buffer(ted, &ted->line_buffer);
+		ted->shell_history_pos = arr_len(ted->shell_history);
 		break;
 	}
 }
@@ -298,10 +299,12 @@ static void menu_update(Ted *ted) {
 	case MENU_SHELL:
 		if (line_buffer->line_buffer_submitted) {
 			char *command = str32_to_utf8_cstr(buffer_get_line(line_buffer, 0));
+			if (ted->shell_history_pos == arr_len(ted->shell_history) || line_buffer->modified) {
+				arr_add(ted->shell_history, command);
+			}
 			menu_close(ted);
 			strbuf_cpy(ted->build_dir, ted->cwd);
 			build_start_with_command(ted, command);
-			free(command);
 		}
 		break;
 	}
@@ -441,4 +444,36 @@ static void menu_render(Ted *ted) {
 		buffer_render(&ted->line_buffer, rect4(x1, y1, x2, y2));
 	} break;
 	}
+}
+
+// move to next/previous command
+static void menu_shell_move(Ted *ted, int direction) {
+	TextBuffer *line_buffer = &ted->line_buffer;
+	if (line_buffer->modified) {
+		// don't do it if the command has been edited
+		return;
+	}
+	i64 pos = ted->shell_history_pos;
+	pos += direction;
+	if (pos >= 0 && pos <= arr_len(ted->shell_history)) {
+		ted->shell_history_pos = (u32)pos;
+		buffer_clear(line_buffer);
+		if (pos == arr_len(ted->shell_history)) {
+			// bottom of history; just clear line buffer
+		} else {
+			line_buffer->store_undo_events = false;
+			buffer_insert_utf8_at_cursor(line_buffer, ted->shell_history[pos]);
+			line_buffer->store_undo_events = true;
+			line_buffer->modified = false;
+		}
+		// line_buffer->x/y1/2 are wrong (all 0), because of buffer_clear
+		line_buffer->center_cursor_next_frame = true;
+	}
+}
+
+static void menu_shell_up(Ted *ted) {
+	menu_shell_move(ted, -1);
+}
+static void menu_shell_down(Ted *ted) {
+	menu_shell_move(ted, +1);
 }

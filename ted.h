@@ -308,6 +308,8 @@ typedef struct Ted {
 	Node *resizing_split;
 	
 	char **tag_selector_entries; // an array of all tags (see tag_selector_open)
+	char **shell_history; // dynamic array of history of commands run with :shell (UTF-8)
+	u32 shell_history_pos; // for keeping track of where we are in the shell history.
 
 	// points to a selector if any is open, otherwise NULL.
 	Selector *selector_open;
