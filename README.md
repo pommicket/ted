@@ -16,14 +16,13 @@ and performs well on reasonably-sized files.
 ted isn't incredibly complicated, but it does have some nice features you might not find
 in other editors.
 
-## Supported features (more coming soon)
+## Supported features
 
-All the keybindings listed below are customizable!
-
-- Multiple tabs, each with a different file
-- Split screen (Ctrl+/, Ctrl+Shift+/)
-- Auto-indent
 - Customization of (pretty much) all colours and keyboard commands.
+- Basic stuff like copy+paste, undo+redo, etc.
+- Multiple tabs, each with a different file
+- Split screen (default: Ctrl+\, Ctrl+Shift+\)
+- Auto-indent
 - Syntax highlighting for C, C++, Rust, and Python.
 - Find and replace (with regular expressions!)
 - Run build command (F4), go to errors
@@ -31,11 +30,12 @@ All the keybindings listed below are customizable!
 - Go to definition (Ctrl+click)
 - Go to line (Ctrl+G)
 - Autocomplete (Ctrl+Space)
+- Indent/dedent selection (Tab, Shift+Tab), comment/uncomment selection (Ctrl+/)
 
 ## Getting started with ted
 
 After installing ted, you can just start using it like you would any other editor. The keyboard shortcuts
-are mostly what you'd expect them to be (Ctrl+o for open, Ctrl+s for save, etc.).
+are mostly what you'd expect them to be (Ctrl+o for open, Ctrl+n for new, Ctrl+s for save, etc.).
 
 ### Tips
 
@@ -43,7 +43,7 @@ are mostly what you'd expect them to be (Ctrl+o for open, Ctrl+s for save, etc.)
 check out all of the keyboard shortcuts!
 - You can use Ctrl+f for "find", but if you want to search for something across multiple files, you can do
 Ctrl+! (run shell command), then run `grep -n search_term *.py`, for example (on Windows, you will need to have
-cygwin or something in your PATH for this to work). The `-n` ensures that 
+cygwin or something in your PATH for this to work). The `-n` ensures that
 ted can jump to the results, just like jumping to build errors.
 
 ### Configuration
@@ -79,7 +79,7 @@ If a `Cargo.toml` file exists in this directory or one of its parents, F4 will r
 in the `[core]` section of the config file.
 
 Jump to definition and autocompletion both depend on [ctags](https://github.com/universal-ctags/ctags). You can press Ctrl+T
-at any time to generate tags for all files in the current directory. Once you have a tags file, you can Ctrl+Click on an identifier
+at any time to generate or re-generate tags. Once you have a tags file, you can Ctrl+Click on an identifier
 to go to its definition. You can also press Ctrl+D to get a searchable list of all functions/types where you can select one to go to
 its definition. Press Ctrl+space to autocomplete. If there is only one possible completion from the tags file, it will be selected automatically.
 Otherwise, you'll get a popup showing all possible completions. You can press tab to select a completion (or click on it), and press
@@ -114,7 +114,6 @@ Extract the zip, copy SDL2-2.x.y into the ted directory, and rename it to SDL2. 
 to the ted directory.  
 You will also need PCRE2. Download it here: https://ftp.pcre.org/pub/pcre/pcre2-10.36.zip,
 unzip it, and put pcre2-10.36 in the same folder as ted.
-
 Then run `make.bat`.
 
 ## Version history
