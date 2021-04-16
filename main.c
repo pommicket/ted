@@ -1,6 +1,5 @@
 // @TODO:
 // - terminate process not working on windows?
-// - auto-regenerate tags (if tag not found)
 // - comment/uncomment selection
 #include "base.h"
 no_warn_start

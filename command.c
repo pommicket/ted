@@ -364,7 +364,7 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		}
 	} break;
 	case CMD_GENERATE_TAGS:
-		tags_generate(ted);
+		tags_generate(ted, true);
 		break;
 			
 	case CMD_GOTO_DEFINITION:

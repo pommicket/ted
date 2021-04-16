@@ -35,7 +35,7 @@ static bool is_source_file(char const *filename) {
 }
 
 
-static void tags_generate_at_dir(Ted *ted, const char *dir, int depth) {
+static void tags_generate_at_dir(Ted *ted, bool run_in_build_window, const char *dir, int depth) {
 	Settings const *settings = &ted->settings;
 	if (depth >= settings->tags_max_depth) {
 		return;
@@ -65,7 +65,10 @@ static void tags_generate_at_dir(Ted *ted, const char *dir, int depth) {
 						any_files = true;
 						// make sure command doesn't get too long
 						if (cmdlen + pathlen + 5 >= sizeof command) {
-							build_queue_command(ted, command);
+							if (run_in_build_window)
+								build_queue_command(ted, command);
+							else
+								system(command);
 							strbuf_printf(command, "%s %s", cmd_prefix, path);
 						} else {
 							command[cmdlen++] = ' ';
@@ -74,20 +77,23 @@ static void tags_generate_at_dir(Ted *ted, const char *dir, int depth) {
 					}
 				} break;
 				case FS_DIRECTORY:
-					tags_generate_at_dir(ted, path, depth+1);
+					tags_generate_at_dir(ted, run_in_build_window, path, depth+1);
 					break;
 				default: break;
 				}
 			}
 		}
 		if (any_files) {
-			build_queue_command(ted, command);
+			if (run_in_build_window)
+				build_queue_command(ted, command);
+			else
+				system(command);
 		}
 	}
 }
 
 // generate/re-generate tags.
-static void tags_generate(Ted *ted) {
+static void tags_generate(Ted *ted, bool run_in_build_window) {
 	char const *filename = tags_filename(ted, false);
 	if (!filename) {
 		strcpy(ted->tags_dir, ted->cwd);
@@ -95,9 +101,9 @@ static void tags_generate(Ted *ted) {
 	change_directory(ted->tags_dir);
 	strcpy(ted->build_dir, ted->tags_dir);
 	remove("tags"); // delete old tags file
-	build_queue_start(ted);
-	tags_generate_at_dir(ted, ted->tags_dir, 0);
-	build_queue_finish(ted);
+	if (run_in_build_window) build_queue_start(ted);
+	tags_generate_at_dir(ted, run_in_build_window, ted->tags_dir, 0);
+	if (run_in_build_window) build_queue_finish(ted);
 	change_directory(ted->cwd);
 }
 
@@ -190,6 +196,11 @@ size_t tags_beginning_with(Ted *ted, char const *prefix, char **out, size_t out_
 
 // returns true if the tag exists.
 bool tag_goto(Ted *ted, char const *tag) {
+	bool already_regenerated_tags;
+	already_regenerated_tags = false;
+top:;
+	Settings const *settings = &ted->settings;
+	
 	char const *tags_name = tags_filename(ted, true);
 	if (!tags_name) return false;
 	FILE *file = fopen(tags_name, "rb");
@@ -201,6 +212,7 @@ bool tag_goto(Ted *ted, char const *tag) {
 	size_t lo = 0;
 	size_t hi = file_size;
 	bool success = false;
+	
 	while (lo < hi) {
 		size_t mid = (lo + hi)/2;
 		fseek(file, (long)mid, SEEK_SET);
@@ -303,6 +315,7 @@ bool tag_goto(Ted *ted, char const *tag) {
 												BufferPos pos = {line_idx, (u32)index};
 												buffer_cursor_move_to_pos(buffer, pos);
 												buffer->center_cursor_next_frame = true;
+												success = true;
 												break;
 											}
 										}
@@ -319,6 +332,15 @@ bool tag_goto(Ted *ted, char const *tag) {
 					}
 				}
 			}
+		}
+	}
+	if (!success) {
+		if (settings->regenerate_tags_if_not_found && !already_regenerated_tags) {
+			tags_generate(ted, false);
+			already_regenerated_tags = true;
+			goto top;
+		} else {
+			ted_seterr(ted, "No such tag: %s", tag);
 		}
 	}
 	fclose(file);

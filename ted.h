@@ -74,6 +74,7 @@ typedef struct {
 	bool line_numbers;
 	bool auto_reload;
 	bool restore_session;
+	bool regenerate_tags_if_not_found;
 	u8 tab_width;
 	u8 cursor_width;
 	u8 undo_save_time;
