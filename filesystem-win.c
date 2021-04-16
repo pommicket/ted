@@ -3,15 +3,17 @@
 #include <sys/stat.h>
 #include <io.h>
 
-FsType fs_path_type(char const *path) {
-	struct _stat statbuf = {0};
-	if (_stat(path, &statbuf) != 0)
+static FsType windows_file_attributes_to_type(DWORD attrs) {
+	if (attrs == INVALID_FILE_ATTRIBUTES)
 		return FS_NON_EXISTENT;
-	if (statbuf.st_mode & _S_IFREG)
-		return FS_FILE;
-	if (statbuf.st_mode & _S_IFDIR)
+	else if (attrs & FILE_ATTRIBUTE_DIRECTORY)
 		return FS_DIRECTORY;
-	return FS_OTHER;
+	else
+		return FS_FILE;
+}
+
+FsType fs_path_type(char const *path) {
+	return windows_file_attributes_to_type(GetFileAttributesA(path));
 }
 
 FsPermission fs_path_permission(char const *path) {
@@ -37,7 +39,6 @@ FsDirectoryEntry **fs_list_directory(char const *dirname) {
 	if (fhandle != INVALID_HANDLE_VALUE) {
 		// first, figure out number of files
 		int nfiles = 1, idx = 0;
-		char **files;
 		while (FindNextFile(fhandle, &find_data))  {
 			++nfiles;
 		}
@@ -54,12 +55,7 @@ FsDirectoryEntry **fs_list_directory(char const *dirname) {
 						FsDirectoryEntry *entry = calloc(1, sizeof *entry + len + 1);
 						if (entry) {
 							DWORD attrs = find_data.dwFileAttributes;
-							if (attrs & FILE_ATTRIBUTE_NORMAL)
-								entry->type = FS_FILE;
-							else if (attrs & FILE_ATTRIBUTE_DIRECTORY)
-								entry->type = FS_DIRECTORY;
-							else
-								entry->type = FS_OTHER;
+							entry->type = windows_file_attributes_to_type(attrs);
 							memcpy(entry->name, filename, len);
 							files[idx++] = entry;
 						} else break; // stop now
