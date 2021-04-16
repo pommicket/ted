@@ -147,6 +147,9 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 			buffer_newline(buffer);
 		}
 		break;
+	case CMD_COMMENT_SELECTION:
+		if (buffer) buffer_toggle_comment_selection(buffer);
+		break;
 
 	case CMD_BACKSPACE:
 		if (buffer) buffer_backspace_at_cursor(buffer, argument);

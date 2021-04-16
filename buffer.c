@@ -137,6 +137,12 @@ static void buffer_validate_cursor(TextBuffer *buffer) {
 		buffer_pos_validate(buffer, &buffer->selection_pos);
 }
 
+// ensure *line points to a line in buffer.
+static inline void buffer_validate_line(TextBuffer *buffer, u32 *line) {
+	if (*line >= buffer->nlines)
+		*line = buffer->nlines - 1;
+}
+
 // update *pos, given that nchars characters were deleted at del_pos.
 static void buffer_pos_handle_deleted_chars(BufferPos *pos, BufferPos del_pos, u32 nchars) {
 	if (pos->line != del_pos.line) return;
@@ -2555,6 +2561,9 @@ void buffer_indent_lines(TextBuffer *buffer, u32 first_line, u32 last_line) {
 
 void buffer_dedent_lines(TextBuffer *buffer, u32 first_line, u32 last_line) {
 	assert(first_line <= last_line);
+	buffer_validate_line(buffer, &first_line);
+	buffer_validate_line(buffer, &last_line);
+	
 	buffer_start_edit_chain(buffer);
 	Settings const *settings = buffer_settings(buffer);
 	u8 const tab_width = settings->tab_width;
@@ -2583,6 +2592,7 @@ void buffer_dedent_lines(TextBuffer *buffer, u32 first_line, u32 last_line) {
 	buffer_end_edit_chain(buffer);
 }
 
+
 void buffer_indent_selection(TextBuffer *buffer) {
 	if (!buffer->selection) return;
 	u32 l1 = buffer->cursor_pos.line;
@@ -2608,3 +2618,101 @@ void buffer_dedent_cursor_line(TextBuffer *buffer) {
 	buffer_dedent_lines(buffer, line, line);
 }
 
+
+void buffer_comment_lines(TextBuffer *buffer, u32 first_line, u32 last_line) {
+	Language lang = buffer_language(buffer);
+	const char *start = language_comment_start(lang), *end = language_comment_end(lang);
+	String32 start32 = str32_from_utf8(start), end32 = str32_from_utf8(end);
+	
+	buffer_start_edit_chain(buffer);
+	
+	for (u32 line_idx = first_line; line_idx <= last_line; ++line_idx) {
+		// insert comment start
+		if (start32.len) {
+			BufferPos sol = buffer_pos_start_of_line(buffer, line_idx);
+			buffer_insert_text_at_pos(buffer, sol, start32);
+		}
+		// insert comment end
+		if (end32.len) {
+			BufferPos eol = buffer_pos_end_of_line(buffer, line_idx);
+			buffer_insert_text_at_pos(buffer, eol, end32);
+		}
+	}
+	
+	str32_free(&start32);
+	str32_free(&end32);
+	
+	buffer_end_edit_chain(buffer);
+}
+
+static bool buffer_line_starts_with_ascii(TextBuffer *buffer, u32 line_idx, char const *prefix) {
+	buffer_validate_line(buffer, &line_idx);
+	Line *line = &buffer->lines[line_idx];
+	size_t prefix_len = strlen(prefix);
+	if (line->len < prefix_len)
+		return false;
+	for (size_t i = 0; i < prefix_len; ++i) {
+		assert(prefix[i] > 0 && prefix[i] <= 127); // check if actually ASCII
+		if ((char32_t)prefix[i] != line->str[i])
+			return false;
+	}
+	return true;
+}
+static bool buffer_line_ends_with_ascii(TextBuffer *buffer, u32 line_idx, char const *suffix) {
+	buffer_validate_line(buffer, &line_idx);
+	Line *line = &buffer->lines[line_idx];
+	size_t suffix_len = strlen(suffix), line_len = line->len;
+	if (line_len < suffix_len)
+		return false;
+	for (size_t i = 0; i < suffix_len; ++i) {
+		assert(suffix[i] > 0 && suffix[i] <= 127); // check if actually ASCII
+		if ((char32_t)suffix[i] != line->str[line_len-suffix_len+i])
+			return false;
+	}
+	return true;
+}
+
+void buffer_uncomment_lines(TextBuffer *buffer, u32 first_line, u32 last_line) {
+	Language lang = buffer_language(buffer);
+	const char *start = language_comment_start(lang), *end = language_comment_end(lang);
+	u32 start_len = (u32)strlen(start), end_len = (u32)strlen(end);
+	buffer_start_edit_chain(buffer);
+	for (u32 line_idx = first_line; line_idx <= last_line; ++line_idx) {
+		// make sure line is actually commented
+		if (buffer_line_starts_with_ascii(buffer, line_idx, start)
+			&& buffer_line_ends_with_ascii(buffer, line_idx, end)) {
+			// we should do the end first, because start and end might be overlapping,
+			// and it would cause an underflow if we deleted the start first.
+			BufferPos end_pos = buffer_pos_end_of_line(buffer, line_idx);
+			end_pos.index -= end_len;
+			buffer_delete_chars_at_pos(buffer, end_pos, end_len);
+			
+			BufferPos start_pos = buffer_pos_start_of_line(buffer, line_idx);
+			buffer_delete_chars_at_pos(buffer, start_pos, start_len);
+		}
+	}
+	buffer_end_edit_chain(buffer);
+}
+
+void buffer_toggle_comment_lines(TextBuffer *buffer, u32 first_line, u32 last_line) {
+	Language lang = buffer_language(buffer);
+	const char *start = language_comment_start(lang), *end = language_comment_end(lang);
+	// if first line is a comment, uncomment lines, otherwise, comment lines
+	if (buffer_line_starts_with_ascii(buffer, first_line, start)
+		&& buffer_line_ends_with_ascii(buffer, first_line, end))
+		buffer_uncomment_lines(buffer, first_line, last_line);
+	else
+		buffer_comment_lines(buffer, first_line, last_line);
+}
+
+void buffer_toggle_comment_selection(TextBuffer *buffer) {
+	u32 l1, l2;
+	if (buffer->selection) {
+		l1 = buffer->cursor_pos.line;
+		l2 = buffer->selection_pos.line;
+		sort2_u32(&l1, &l2); // ensure l1 <= l2
+	} else {
+		l1 = l2 = buffer->cursor_pos.line;
+	}
+	buffer_toggle_comment_lines(buffer, l1, l2);
+}

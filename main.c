@@ -1,6 +1,5 @@
 // @TODO:
 // - terminate process not working on windows?
-// - comment/uncomment selection
 #include "base.h"
 no_warn_start
 #if _WIN32

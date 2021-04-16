@@ -13,6 +13,30 @@ Language language_from_str(char const *str) {
 	return LANG_NONE;
 }
 
+// start of single line comment for language l
+char const *language_comment_start(Language l) {
+	switch (l) {
+	case LANG_C:   return "/* ";
+	case LANG_RUST:
+	case LANG_CPP: return "// ";
+	case LANG_PYTHON: return "# ";
+	case LANG_NONE:
+	case LANG_COUNT:
+		break;
+	}
+	return "";
+}
+
+// end of single line comment for language l
+char const *language_comment_end(Language l) {
+	switch (l) {
+	case LANG_C:
+		return " */";
+	default:
+		return "";
+	}
+}
+
 // NOTE: returns the color setting, not the color
 ColorSetting syntax_char_type_to_color(SyntaxCharType t) {
 	switch (t) {
