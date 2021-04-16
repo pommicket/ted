@@ -2,6 +2,7 @@
 
 struct Process {
 	HANDLE pipe_read, pipe_write;
+	HANDLE job;
 	PROCESS_INFORMATION process_info;
 	char error[200];
 };
@@ -15,7 +16,9 @@ static void get_last_error_str(char *out, size_t out_sz) {
 }
 
 bool process_run(Process *process, char const *command) {
-	// thanks to https://stackoverflow.com/a/35658917
+	// thanks to https://stackoverflow.com/a/35658917 for the pipe code
+	// thanks to https://devblogs.microsoft.com/oldnewthing/20131209-00/?p=2433 for the job code
+
 	bool success = false;
 	memset(process, 0, sizeof *process);
 	char *command_line = str_dup(command);
@@ -23,35 +26,57 @@ bool process_run(Process *process, char const *command) {
 		strbuf_printf(process->error, "Out of memory.");
 		return false;
 	}
-	HANDLE pipe_read, pipe_write;
-	SECURITY_ATTRIBUTES security_attrs = {sizeof(SECURITY_ATTRIBUTES)};
-	security_attrs.bInheritHandle = TRUE;
-	if (CreatePipe(&pipe_read, &pipe_write, &security_attrs, 0)) {
-		STARTUPINFOA startup = {sizeof(STARTUPINFOA)};
-		startup.dwFlags = STARTF_USESHOWWINDOW | STARTF_USESTDHANDLES;
-		startup.hStdOutput = pipe_write;
-		startup.hStdError = pipe_write;
-		startup.wShowWindow = SW_HIDE;
-		
-		if (CreateProcessA(NULL, command_line, NULL, NULL, TRUE, CREATE_NEW_CONSOLE,
-			NULL, NULL, &startup, &process->process_info)) {
-			process->pipe_read = pipe_read;
-			process->pipe_write = pipe_write;
-			success = true;
+	// we need to create a "job" for this, because apparently when you kill a process on windows,
+	// all its children just keep going. so cmd.exe would die, but not the actual build process.
+	// jobs fix this, apparently.
+	HANDLE job = CreateJobObjectA(NULL, NULL);
+	if (job) {
+		JOBOBJECT_EXTENDED_LIMIT_INFORMATION job_info = {0};
+		job_info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+		SetInformationJobObject(job, JobObjectExtendedLimitInformation, &job_info, sizeof job_info);
+		HANDLE pipe_read, pipe_write;
+		SECURITY_ATTRIBUTES security_attrs = {sizeof(SECURITY_ATTRIBUTES)};
+		security_attrs.bInheritHandle = TRUE;
+		if (CreatePipe(&pipe_read, &pipe_write, &security_attrs, 0)) {
+			STARTUPINFOA startup = {sizeof(STARTUPINFOA)};
+			startup.dwFlags = STARTF_USESHOWWINDOW | STARTF_USESTDHANDLES;
+			startup.hStdOutput = pipe_write;
+			startup.hStdError = pipe_write;
+			startup.wShowWindow = SW_HIDE;
+			PROCESS_INFORMATION *process_info = &process->process_info;
+			if (CreateProcessA(NULL, command_line, NULL, NULL, TRUE, CREATE_NEW_CONSOLE | CREATE_SUSPENDED,
+				NULL, NULL, &startup, process_info)) {
+				// create a suspended process, add it to the job, then resume (unsuspend) the process
+				if (AssignProcessToJobObject(job, process_info->hProcess)) {
+					if (ResumeThread(process_info->hThread) != (DWORD)-1) {
+						process->job = job;
+						process->pipe_read = pipe_read;
+						process->pipe_write = pipe_write;
+						success = true;
+					}
+				}
+				if (!success) {
+					TerminateProcess(process_info->hProcess, 1);
+					CloseHandle(process_info->hProcess);
+					CloseHandle(process_info->hThread);
+				}
+			} else {
+				char buf[150];
+				get_last_error_str(buf, sizeof buf);
+				strbuf_printf(process->error, "Couldn't run `%s`: %s", command, buf);
+			}
+			free(command_line);
+			if (!success) {
+				CloseHandle(pipe_read);
+				CloseHandle(pipe_write);
+			}
 		} else {
 			char buf[150];
 			get_last_error_str(buf, sizeof buf);
-			strbuf_printf(process->error, "Couldn't run `%s`: %s", command, buf);
+			strbuf_printf(process->error, "Couldn't create pipe: %s", buf);
 		}
-		free(command_line);
-		if (!success) {
-			CloseHandle(pipe_read);
-			CloseHandle(pipe_write);
-		}
-	} else {
-		char buf[150];
-		get_last_error_str(buf, sizeof buf);
-		strbuf_printf(process->error, "Couldn't create pipe: %s", buf);
+		if (!success)
+			CloseHandle(job);
 	}
 	return success;
 }
@@ -78,8 +103,7 @@ long long process_read(Process *process, char *data, size_t size) {
 }
 
 void process_kill(Process *process) {
-	TerminateProcess(process->process_info.hProcess, 1);
-	TerminateThread(process->process_info.hThread, 1);
+	CloseHandle(process->job);
 	CloseHandle(process->pipe_read);
 	CloseHandle(process->pipe_write);
 	CloseHandle(process->process_info.hProcess);

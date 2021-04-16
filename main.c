@@ -1,5 +1,3 @@
-// @TODO:
-// - terminate process not working on windows?
 #include "base.h"
 no_warn_start
 #if _WIN32
