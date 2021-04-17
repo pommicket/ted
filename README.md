@@ -21,7 +21,7 @@ in other editors.
 - Customization of (pretty much) all colours and keyboard commands.
 - Basic stuff like copy+paste, undo+redo, etc.
 - Multiple tabs, each with a different file
-- Split screen (default: Ctrl+\, Ctrl+Shift+\)
+- Split screen (default: Ctrl+\\, Ctrl+Shift+\\)
 - Auto-indent
 - Syntax highlighting for C, C++, Rust, and Python.
 - Find and replace (with regular expressions!)
