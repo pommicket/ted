@@ -14,12 +14,15 @@ bool process_run(Process *proc, char const *command) {
 	memset(proc, 0, sizeof *proc);
 
 	bool success = false;
-
 	int pipefd[2];
 	if (pipe(pipefd) == 0) {
 		pid_t pid = fork();
 		if (pid == 0) {
 			// child process
+			// put child in its own group. it will be in this group with all of its descendents,
+			// so by killing everything in the group, we kill all the descendents of this process.
+			// if we didn't do this, we would just be killing the sh process in process_kill.
+			setpgid(0, 0);
 			// send stdout and stderr to pipe
 			dup2(pipefd[1], STDOUT_FILENO);
 			dup2(pipefd[1], STDERR_FILENO);
@@ -64,7 +67,7 @@ long long process_read(Process *proc, char *data, size_t size) {
 }
 
 void process_kill(Process *proc) {
-	kill(proc->pid, SIGKILL);
+	kill(-proc->pid, SIGKILL); // kill everything in process group
 	// get rid of zombie process
 	waitpid(proc->pid, NULL, 0);
 	close(proc->pipe);

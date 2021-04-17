@@ -26,7 +26,7 @@ bool process_run(Process *process, char const *command) {
 		strbuf_printf(process->error, "Out of memory.");
 		return false;
 	}
-	// we need to create a "job" for this, because apparently when you kill a process on windows,
+	// we need to create a "job" for this, because when you kill a process on windows,
 	// all its children just keep going. so cmd.exe would die, but not the actual build process.
 	// jobs fix this, apparently.
 	HANDLE job = CreateJobObjectA(NULL, NULL);
