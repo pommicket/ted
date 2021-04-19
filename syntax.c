@@ -13,13 +13,14 @@ Language language_from_str(char const *str) {
 	return LANG_NONE;
 }
 
-// start of single line comment for language l
+// start of single line comment for language l -- used for comment/uncomment selection
 char const *language_comment_start(Language l) {
 	switch (l) {
 	case LANG_C:   return "/* ";
 	case LANG_RUST:
 	case LANG_CPP: return "// ";
 	case LANG_PYTHON: return "# ";
+	case LANG_TEX: return "% ";
 	case LANG_NONE:
 	case LANG_COUNT:
 		break;
@@ -552,6 +553,110 @@ static void syntax_highlight_python(SyntaxState *state, char32_t *line, u32 line
 	}
 }
 
+static bool is_tex_ident(char32_t c) {
+	// digits cannot appear in tex identifiers
+	return is32_ident(c) && !is32_digit(c);
+}
+
+static void syntax_highlight_tex(SyntaxState *state, char32_t *line, u32 line_len, SyntaxCharType *char_types) {
+	bool dollar = (*state & SYNTAX_STATE_TEX_DOLLAR) != 0;
+	bool dollardollar = (*state & SYNTAX_STATE_TEX_DOLLARDOLLAR) != 0;
+	bool verbatim = (*state & SYNTAX_STATE_TEX_VERBATIM) != 0;
+	
+	for (u32 i = 0; i < line_len; ++i) {
+		char32_t c = line[i];
+		bool has_1_char = i + 1 < line_len;
+		
+		if (char_types)
+			char_types[i] = dollar || dollardollar ? SYNTAX_MATH : SYNTAX_NORMAL;
+		switch (c) {
+		case '\\':
+			if (has_1_char) {
+				if (is32_graph(line[i+1])) {
+					if (is_tex_ident(line[i+1])) {
+						// command, e.g. \begin
+						String32 command_str = {
+							.str = line + i+1,
+							.len = line_len - (i+1),
+						};
+						bool new_verbatim = false;
+						if (!dollar && !dollardollar) {
+							if (!verbatim && str32_has_ascii_prefix(command_str, "begin{verbatim}")) {
+								new_verbatim = true;
+							} else if (verbatim && str32_has_ascii_prefix(command_str, "end{verbatim}")) {
+								verbatim = false;
+							}
+						}
+						
+						if (!verbatim) {
+							if (char_types) char_types[i] = SYNTAX_KEYWORD;
+							for (++i; i < line_len; ++i) {
+								if (is_tex_ident(line[i])) {
+									if (char_types) char_types[i] = SYNTAX_KEYWORD;
+								} else {
+									--i;
+									break;
+								}
+							}
+							verbatim = new_verbatim;
+						}
+					} else if (!verbatim) {
+						// something like \\, \%, etc.
+						if (char_types) char_types[i] = SYNTAX_KEYWORD;
+						++i;
+						if (char_types) char_types[i] = SYNTAX_KEYWORD;
+					}
+				}
+			}
+			break;
+		case '%':
+			// comment
+			if (!verbatim) {
+				for (; i < line_len; ++i) {
+					if (char_types)
+						char_types[i] = SYNTAX_COMMENT;
+				}
+			}
+			break;
+		case '&':
+			// table/matrix/etc. separator
+			if (char_types && !verbatim)
+				char_types[i] = SYNTAX_BUILTIN;
+			break;
+		case '$':
+			if (!verbatim) {
+				if (!dollar && has_1_char && line[i+1] == '$') {
+					// $$
+					if (dollardollar) {
+						if (char_types) char_types[i] = SYNTAX_MATH;
+						++i;
+						if (char_types) char_types[i] = SYNTAX_MATH;
+						dollardollar = false;
+					} else {
+						if (char_types) char_types[i] = SYNTAX_MATH;
+						dollardollar = true;
+					}
+				} else if (!dollardollar) {
+					// single $
+					if (dollar) {
+						dollar = false;
+					} else {
+						dollar = true;
+						if (char_types) char_types[i] = SYNTAX_MATH;
+					}
+				}
+			}
+			break;
+		}
+	}
+	
+	*state = (SyntaxState)(
+		(dollar * SYNTAX_STATE_TEX_DOLLAR)
+		| (dollardollar * SYNTAX_STATE_TEX_DOLLARDOLLAR)
+		| (verbatim * SYNTAX_STATE_TEX_VERBATIM)
+	);
+}
+
 // This is the main syntax highlighting function. It will determine which colors to use for each character.
 // Rather than returning colors, it returns a character type (e.g. comment) which can be converted to a color.
 // To highlight multiple lines, start out with a zeroed SyntaxState, and pass a pointer to it each time.
@@ -573,6 +678,9 @@ void syntax_highlight(SyntaxState *state, Language lang, char32_t *line, u32 lin
 		break;
 	case LANG_PYTHON:
 		syntax_highlight_python(state, line, line_len, char_types);
+		break;
+	case LANG_TEX:
+		syntax_highlight_tex(state, line, line_len, char_types);
 		break;
 	case LANG_COUNT: assert(0); break;
 	}

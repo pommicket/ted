@@ -27,6 +27,12 @@ enum {
 	SYNTAX_STATE_PYTHON_STRING_DBL_QUOTED = 0x02u, // is this a """ string, as opposed to a ''' string?
 };
 
+enum {
+	SYNTAX_STATE_TEX_DOLLAR = 0x01u, // inside math $ ... $
+	SYNTAX_STATE_TEX_DOLLARDOLLAR = 0x02u, // inside math $$ ... $$
+	SYNTAX_STATE_TEX_VERBATIM = 0x04u, // inside \begin{verbatim} ... \end{verbatim}
+};
+
 typedef u8 SyntaxState;
 
 ENUM_U16 {
@@ -35,6 +41,7 @@ ENUM_U16 {
 	LANG_CPP,
 	LANG_RUST,
 	LANG_PYTHON,
+	LANG_TEX,
 	LANG_COUNT
 } ENUM_U16_END(Language);
 
@@ -49,7 +56,10 @@ static LanguageName const language_names[] = {
 	{LANG_CPP, "C++"},
 	{LANG_RUST, "Rust"},
 	{LANG_PYTHON, "Python"},
+	{LANG_TEX, "Tex"},
 };
+
+static_assert_if_possible(arr_count(language_names) == LANG_COUNT)
 
 ENUM_U8 {
 	SYNTAX_NORMAL,
@@ -61,6 +71,8 @@ ENUM_U8 {
 	SYNTAX_CHARACTER,
 	SYNTAX_CONSTANT,
 } ENUM_U8_END(SyntaxCharType);
+
+#define SYNTAX_MATH SYNTAX_STRING // for tex
 
 typedef struct {
 	float cursor_blink_time_on, cursor_blink_time_off;

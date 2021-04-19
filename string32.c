@@ -76,6 +76,43 @@ static char *str32_to_utf8_cstr(String32 s) {
 	return utf8;
 }
 
+// compare s to the ASCII string `ascii`
+static int str32_cmp_ascii(String32 s, char const *ascii) {
+	for (size_t i = 0; i < s.len; ++i) {
+		assert((char32_t)ascii[i] < 128);
+		if ((char32_t)ascii[i] == '\0')
+			return -1; // ascii is a prefix of s
+		if (s.str[i] > (char32_t)ascii[i])
+			return +1;
+		if (s.str[i] < (char32_t)ascii[i])
+			return -1;
+	}
+	if (ascii[s.len]) {
+		// s is a prefix of ascii
+		return +1;
+	}
+	return 0;
+}
+
+// check if s starts with the ASCII string `ascii`
+static int str32_has_ascii_prefix(String32 s, char const *ascii) {
+	for (size_t i = 0; i < s.len; ++i) {
+		assert((char32_t)ascii[i] < 128);
+		if ((char32_t)ascii[i] == '\0')
+			return true; // ascii is a prefix of s
+		if (s.str[i] > (char32_t)ascii[i])
+			return false;
+		if (s.str[i] < (char32_t)ascii[i])
+			return false;
+	}
+	if (ascii[s.len]) {
+		// s is a prefix of ascii
+		return false;
+	}
+	// s is the same as ascii
+	return true;
+}
+
 // returns the index of the given character in the string, or the length of the string if it's not found.
 size_t str32chr(String32 s, char32_t c) {
 	for (size_t i = 0; i < s.len; ++i) {
@@ -127,8 +164,11 @@ bool is32_digit(char32_t c) {
 	return c <= WINT_MAX && iswdigit((wint_t)c);
 }
 
+bool is32_graph(char32_t c) {
+	return c <= WINT_MAX && iswgraph((wint_t)c);
+}
+
 // could this character appear in a C-style identifier?
 bool is32_ident(char32_t c) {
 	return c <= WINT_MAX && (iswalnum((wint_t)c) || c == '_');
 }
-
