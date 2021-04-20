@@ -119,6 +119,8 @@ wget https://ftp.pcre.org/pub/pcre/pcre2-10.36.zip
 sudo make install -j4
 ```
 
+You can also run `make ted.deb` to build the .deb installer.
+
 On Windows (64-bit), first you will need to install Microsoft Visual Studio, then find and add vcvarsall.bat to your PATH.
 Next you will need the SDL2 VC development libraries: https://www.libsdl.org/download-2.0.php  
 Extract the zip, copy SDL2-2.x.y into the ted directory, and rename it to SDL2. Also copy SDL2\\lib\\x64\\SDL2.dll
@@ -126,6 +128,10 @@ to the ted directory.
 You will also need PCRE2. Download it here: https://ftp.pcre.org/pub/pcre/pcre2-10.36.zip,
 unzip it, and put pcre2-10.36 in the same folder as ted.
 Then run `make.bat release`.
+
+To build the .msi file, you will need Visual Studio, as well as the
+[Visual Studio Installer Projects extension](https://marketplace.visualstudio.com/items?itemName=VisualStudioClient.MicrosoftVisualStudio2017InstallerProjects).
+Then, open windows\_installer\\ted\\ted.sln, and build.
 
 ## Version history
 
@@ -142,6 +148,7 @@ Then run `make.bat release`.
 <tr><td>0.6</td> <td>Split-screen</td> <td>2021 Feb 28</td></tr>
 <tr><td>0.7</td> <td>Restore session, command selector, :shell, big bug fixes</td> <td>2021 Mar 3</td></tr>
 <tr><td>0.8</td> <td>Autocomplete</td> <td>2021 Mar 4</td></tr>
+<tr><td>1.0</td> <td>Bugfixes, small additional features, installers</td> <td>2021 Apr 20</td></tr>
 </table>
 
 ## License

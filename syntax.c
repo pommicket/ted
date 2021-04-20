@@ -903,7 +903,7 @@ static void syntax_highlight_html(SyntaxState *state, char32_t const *line, u32 
 		} else if (in_sgl_string || in_dbl_string) {
 			if (char_types)
 				char_types[i] = SYNTAX_STRING;
-			if (line[i] == (in_sgl_string ? '\'' : '"') && backslashes % 2 == 0)
+			if (line[i] == (char32_t)(in_sgl_string ? '\'' : '"') && backslashes % 2 == 0)
 				in_sgl_string = in_dbl_string = false;
 		} else {
 			if (char_types) char_types[i] = SYNTAX_NORMAL;
