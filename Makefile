@@ -16,7 +16,7 @@ release: *.[ch] libpcre2-32.a
 profile: *.[ch] libpcre2-32.a
 	$(CC) main.c -o ted $(PROFILE_CFLAGS) $(LIBS)
 clean:
-	rm -f ted *.o
+	rm -f ted *.o *.a
 install: release
 	@[ -w `dirname $(GLOBAL_DATA_DIR)` ] || { echo "You need permission to write to $(GLOBAL_DATA_DIR). Try running with sudo/as root." && exit 1; }
 	@[ -w `dirname $(INSTALL_BIN_DIR)` ] || { echo "You need permission to write to $(INSTALL_BIN_DIR). Try running with sudo/as root." && exit 1; }

@@ -11,6 +11,8 @@
 
 #if __GNUC__
 #define FALLTHROUGH __attribute__((fallthrough));
+#else
+#define FALLTHROUGH
 #endif
 
 #if _WIN32
