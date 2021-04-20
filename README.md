@@ -23,7 +23,7 @@ in other editors.
 - Multiple tabs, each with a different file
 - Split screen (default: Ctrl+\\, Ctrl+Shift+\\)
 - Auto-indent
-- Syntax highlighting for C, C++, Rust, Python, LaTeX, and Markdown.
+- Syntax highlighting for C, C++, HTML, LaTeX, Markdown, Python, and Rust.
 - Find and replace (with regular expressions!)
 - Run build command (F4), go to errors
 - Run any shell command (Ctrl+!)

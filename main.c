@@ -1,5 +1,3 @@
-// Highlighting for:
-// - Config (cfg)
 // :set-language command; -1 = default language for this extension
 
 #include "base.h"

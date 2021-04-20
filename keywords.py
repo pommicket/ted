@@ -243,6 +243,9 @@ attributes_html = [
 	'srclang','srcset','start','step','style','tabindex','target',
 	'title','translate','type','usemap','value','width','wrap'
 ]
+constants_config = [
+	'on', 'off', 'yes', 'no', 'true', 'false'
+]
 
 assert len(attributes_html) == len(set(attributes_html))
 
@@ -274,4 +277,5 @@ output_keywords(file, cpp_things, 'cpp')
 output_keywords(file, label(keywords_rust, SYNTAX_KEYWORD) + label(builtins_rust, SYNTAX_BUILTIN) + label(constants_rust, SYNTAX_CONSTANT), 'rust')
 output_keywords(file, label(keywords_python, SYNTAX_KEYWORD) + label(builtins_python, SYNTAX_BUILTIN), 'python')
 output_keywords(file, label(builtins_html, SYNTAX_BUILTIN), 'html')
+output_keywords(file, label(constants_config, SYNTAX_CONSTANT), 'config')
 file.close()

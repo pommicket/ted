@@ -203,3 +203,12 @@ static Keyword const *const syntax_all_keywords_html[] = {
 	['a'] = syntax_keywords_html_a, ['b'] = syntax_keywords_html_b, ['c'] = syntax_keywords_html_c, ['d'] = syntax_keywords_html_d, ['e'] = syntax_keywords_html_e, ['f'] = syntax_keywords_html_f, ['h'] = syntax_keywords_html_h, ['i'] = syntax_keywords_html_i, ['k'] = syntax_keywords_html_k, ['l'] = syntax_keywords_html_l, ['m'] = syntax_keywords_html_m, ['n'] = syntax_keywords_html_n, ['o'] = syntax_keywords_html_o, ['p'] = syntax_keywords_html_p, ['r'] = syntax_keywords_html_r, ['s'] = syntax_keywords_html_s, ['t'] = syntax_keywords_html_t, ['u'] = syntax_keywords_html_u, ['v'] = syntax_keywords_html_v, ['w'] = syntax_keywords_html_w
 };
 
+static Keyword const syntax_keywords_config_f[2] = {{"false", SYNTAX_CONSTANT}};
+static Keyword const syntax_keywords_config_n[2] = {{"no", SYNTAX_CONSTANT}};
+static Keyword const syntax_keywords_config_o[3] = {{"off", SYNTAX_CONSTANT},{"on", SYNTAX_CONSTANT}};
+static Keyword const syntax_keywords_config_t[2] = {{"true", SYNTAX_CONSTANT}};
+static Keyword const syntax_keywords_config_y[2] = {{"yes", SYNTAX_CONSTANT}};
+static Keyword const *const syntax_all_keywords_config[] = {
+	['f'] = syntax_keywords_config_f, ['n'] = syntax_keywords_config_n, ['o'] = syntax_keywords_config_o, ['t'] = syntax_keywords_config_t, ['y'] = syntax_keywords_config_y
+};
+

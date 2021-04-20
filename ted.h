@@ -52,6 +52,7 @@ ENUM_U16 {
 	LANG_TEX,
 	LANG_MARKDOWN,
 	LANG_HTML,
+	LANG_CONFIG, // .cfg files, e.g. ted.cfg
 	LANG_COUNT
 } ENUM_U16_END(Language);
 
@@ -69,6 +70,7 @@ static LanguageName const language_names[] = {
 	{LANG_TEX, "Tex"},
 	{LANG_MARKDOWN, "Markdown"},
 	{LANG_HTML, "HTML"},
+	{LANG_CONFIG, "Config"},
 };
 
 static_assert_if_possible(arr_count(language_names) == LANG_COUNT)

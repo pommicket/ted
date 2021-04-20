@@ -16,12 +16,18 @@ Language language_from_str(char const *str) {
 // start of single line comment for language l -- used for comment/uncomment selection
 char const *language_comment_start(Language l) {
 	switch (l) {
-	case LANG_C:   return "/* ";
+	case LANG_C:
+		return "/* ";
 	case LANG_RUST:
-	case LANG_CPP: return "// ";
-	case LANG_PYTHON: return "# ";
-	case LANG_TEX: return "% ";
-	case LANG_HTML: return "<!-- ";
+	case LANG_CPP:
+		return "// ";
+	case LANG_CONFIG:
+	case LANG_PYTHON:
+		return "# ";
+	case LANG_TEX:
+		return "% ";
+	case LANG_HTML:
+		return "<!-- ";
 	case LANG_NONE:
 	case LANG_MARKDOWN:
 	case LANG_COUNT:
@@ -697,7 +703,7 @@ static void syntax_highlight_markdown(SyntaxState *state, char32_t const *line, 
 	}
 
 	if (multiline_code) {
-		static_assert_if_possible(sizeof *char_types == 1)
+		static_assert_if_possible(sizeof *char_types == 1) // NOTE: memset is used extensively in this file this way
 		memset(char_types, SYNTAX_CODE, line_len);
 		return;
 	}
@@ -947,6 +953,10 @@ static void syntax_highlight_html(SyntaxState *state, char32_t const *line, u32 
 				break;
 			default:
 				if (char_types) {
+				
+					if ((i && is32_ident(line[i - 1])) || !is32_ident(line[i]))
+						break; // can't be a keyword on its own.
+					
 					u32 keyword_len = syntax_keyword_len(LANG_HTML, line, i, line_len);
 					Keyword const *keyword = syntax_keyword_lookup(syntax_all_keywords_html, arr_count(syntax_all_keywords_html),
 						&line[i], keyword_len);
@@ -971,6 +981,66 @@ static void syntax_highlight_html(SyntaxState *state, char32_t const *line, u32 
 	}
 	
 	*state = (comment * SYNTAX_STATE_HTML_COMMENT);
+}
+
+static void syntax_highlight_config(SyntaxState *state, char32_t const *line, u32 line_len, SyntaxCharType *char_types) {
+	(void)state;
+	if (line_len == 0) return;
+	if (!char_types) return; // there's no state for config files.
+	
+	if (line[0] == '#') {
+		memset(char_types, SYNTAX_COMMENT, line_len);
+		return;
+	}
+	if (line[0] == '[' && line[line_len - 1] == ']') {
+		memset(char_types, SYNTAX_BUILTIN, line_len);
+		return;
+	}
+	bool string = false;
+	for (u32 i = 0; i < line_len; ++i) {
+		char_types[i] = string ? SYNTAX_STRING : SYNTAX_NORMAL;
+		switch (line[i]) {
+		case '"':
+			string = !string;
+			if (string)
+				char_types[i] = SYNTAX_STRING;
+			break;
+		case '#':
+			// don't try highlighting the rest of the line.
+			// for ted.cfg, this could be a color, but for other cfg files,
+			// it might be a comment
+			memset(&char_types[i], 0, line_len - i);
+			i = line_len;
+			break;
+		case ANY_DIGIT:
+			if (i > 0 && !string) {
+				if (is32_ident(line[i-1]) // something like e5
+					|| line[i-1] == '+') // key combinations, e.g. Alt+0
+					break;
+				while (i < line_len && syntax_number_continues(line, line_len, i))
+					char_types[i++] = SYNTAX_CONSTANT;
+			}
+			break;
+		default: {
+			if (i == 0) // none of the keywords in syntax_all_keywords_config should appear at the start of the line
+				break;
+			if (is32_ident(line[i - 1]) || !is32_ident(line[i]))
+				break; // can't be a keyword on its own.
+			
+			u32 keyword_len = syntax_keyword_len(LANG_CONFIG, line, i, line_len);
+			Keyword const *keyword = syntax_keyword_lookup(syntax_all_keywords_config, arr_count(syntax_all_keywords_config),
+				&line[i], keyword_len);
+			if (keyword) {
+				SyntaxCharType type = keyword->type;
+				for (size_t j = 0; j < keyword_len; ++j) {
+					char_types[i++] = type;
+				}
+				--i; // we'll increment i from the for loop
+				break;
+			}
+		} break;
+		}
+	}
 }
 
 // This is the main syntax highlighting function. It will determine which colors to use for each character.
@@ -1003,6 +1073,9 @@ void syntax_highlight(SyntaxState *state, Language lang, char32_t const *line, u
 		break;
 	case LANG_HTML:
 		syntax_highlight_html(state, line, line_len, char_types);
+		break;
+	case LANG_CONFIG:
+		syntax_highlight_config(state, line, line_len, char_types);
 		break;
 	case LANG_COUNT: assert(0); break;
 	}
