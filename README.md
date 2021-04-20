@@ -100,7 +100,7 @@ To install `ted` on Linux, you will need:
 These can be installed on Ubuntu/Debian with:
 
 ```
-sudo apt install gcc libsdl2-dev wget unzip cmake
+sudo apt install clang libsdl2-dev wget unzip cmake
 ```
 
 Then run

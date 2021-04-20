@@ -573,8 +573,10 @@ static void syntax_highlight_python(SyntaxState *state, char32_t const *line, u3
 	}
 	*state = 0;
 	if (in_string && string_is_multiline) {
-		*state |= SYNTAX_STATE_PYTHON_STRING
-			| (SYNTAX_STATE_PYTHON_STRING_DBL_QUOTED * string_is_dbl_quoted);
+		*state |= (SyntaxState)(
+			SYNTAX_STATE_PYTHON_STRING
+			| (SYNTAX_STATE_PYTHON_STRING_DBL_QUOTED * string_is_dbl_quoted)
+		);
 	}
 }
 

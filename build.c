@@ -160,7 +160,7 @@ static int parse_nonnegative_integer(char32_t **str, char32_t *end) {
 	int n = 0;
 	for (number_len = 0; s != end && s[number_len] >= '0' && s[number_len] <= '9'; ++number_len) {
 		n *= 10;
-		n += s[number_len] - '0';
+		n += (int)s[number_len] - '0';
 	}
 	if (number_len == 0)
 		return -1;

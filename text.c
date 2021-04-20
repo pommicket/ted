@@ -322,12 +322,12 @@ top:
 		}
 		if (state->render) {
 			float r = state->color[0], g = state->color[1], b = state->color[2], a = state->color[3];
-			TextVertex v1 = {{x0, y0}, {s0, t0}, {r, g, b, a}};
-			TextVertex v2 = {{x0, y1}, {s0, t1}, {r, g, b, a}};
-			TextVertex v3 = {{x1, y1}, {s1, t1}, {r, g, b, a}};
-			TextVertex v4 = {{x1, y0}, {s1, t0}, {r, g, b, a}};
-			TextTriangle triangle1 = {v1, v2, v3};
-			TextTriangle triangle2 = {v3, v4, v1};
+			TextVertex v_1 = {{x0, y0}, {s0, t0}, {r, g, b, a}};
+			TextVertex v_2 = {{x0, y1}, {s0, t1}, {r, g, b, a}};
+			TextVertex v_3 = {{x1, y1}, {s1, t1}, {r, g, b, a}};
+			TextVertex v_4 = {{x1, y0}, {s1, t0}, {r, g, b, a}};
+			TextTriangle triangle1 = {v_1, v_2, v_3};
+			TextTriangle triangle2 = {v_3, v_4, v_1};
 			arr_add(font->triangles[page], triangle1);
 			arr_add(font->triangles[page], triangle2);
 		}

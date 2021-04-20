@@ -66,7 +66,14 @@ static int gl_version_minor;
 
 static void gl_get_procs(void) {
 	#define gl_get_proc(upper, lower) gl##lower = (PFNGL##upper##PROC)SDL_GL_GetProcAddress("gl" #lower);
+#if __GNUC__ && !__clang__
+	#pragma GCC diagnostic push
+	#pragma GCC diagnostic ignored "-Wpedantic"
+#endif
 	gl_for_each_proc(gl_get_proc)
+#if __GNUC__ && !__clang__
+	#pragma GCC diagnostic pop
+#endif
 	#undef gl_get_proc
 }
 

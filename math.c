@@ -810,11 +810,12 @@ static u32 color_interpolate(float x, u32 color1, u32 color2) {
 	// to make it interpolate more nicely, convert to hsv, interpolate in that space, then convert back
 	c1 = color_rgba_to_hsva(c1);
 	c2 = color_rgba_to_hsva(c2);
-	float h1 = c1.x, s1 = c1.y, v1 = c1.z, a1 = c1.w;
-	float h2 = c2.x, s2 = c2.y, v2 = c2.z, a2 = c2.w;
+	// v_1/2 named differently to avoid shadowing
+	float h1 = c1.x, s1 = c1.y, v_1 = c1.z, a1 = c1.w;
+	float h2 = c2.x, s2 = c2.y, v_2 = c2.z, a2 = c2.w;
 	
 	float s_out = lerpf(x, s1, s2);
-	float v_out = lerpf(x, v1, v2);
+	float v_out = lerpf(x, v_1, v_2);
 	float a_out = lerpf(x, a1, a2);
 	
 	float h_out;
