@@ -1,3 +1,4 @@
+// HTML highlighting
 #include "base.h"
 no_warn_start
 #if _WIN32

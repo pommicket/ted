@@ -9,6 +9,10 @@
 #define _GNU_SOURCE
 #endif
 
+#if __GNUC__
+#define FALLTHROUGH __attribute__((fallthrough));
+#endif
+
 #if _WIN32
 #include <windows.h>
 #include <shlobj.h>

@@ -22,6 +22,7 @@ char const *language_comment_start(Language l) {
 	case LANG_PYTHON: return "# ";
 	case LANG_TEX: return "% ";
 	case LANG_NONE:
+	case LANG_MARKDOWN:
 	case LANG_COUNT:
 		break;
 	}
@@ -657,6 +658,193 @@ static void syntax_highlight_tex(SyntaxState *state, char32_t *line, u32 line_le
 	);
 }
 
+static void syntax_highlight_markdown(SyntaxState *state, char32_t *line, u32 line_len, SyntaxCharType *char_types) {
+	bool multiline_code = (*state & SYNTAX_STATE_MARKDOWN_CODE) != 0;
+	
+	*state = (multiline_code * SYNTAX_STATE_MARKDOWN_CODE);
+	
+	if (line_len >= 3 && line[0] == '`' && line[1] == '`' && line[2] == '`') {
+		if (multiline_code) {
+			// end of multi-line code
+			*state = 0;
+		} else {
+			// start of multi-line code
+			multiline_code = true;
+			*state = SYNTAX_STATE_MARKDOWN_CODE;
+		}
+	}
+
+	if (!char_types) {
+		return;
+	}
+
+	if (multiline_code) {
+		static_assert_if_possible(sizeof *char_types == 1)
+		memset(char_types, SYNTAX_CODE, line_len);
+		return;
+	}
+	
+	bool start_of_line = true; // is this the start of the line (not counting whitespace)
+	int backslashes = 0;
+	char const *format_ending = NULL; // "**" if we are inside **bold**, etc.
+	
+	for (u32 i = 0; i < line_len; ++i) {
+		char32_t c = line[i];
+		bool next_sol = start_of_line && is32_space(c);
+		bool has_1_char = i+1 < line_len;
+		bool next_is_space = has_1_char && is32_space(line[i+1]);
+		
+		char_types[i] = SYNTAX_NORMAL;
+		if (format_ending) {
+			if (streq(format_ending, "`"))
+				char_types[i] = SYNTAX_CODE;
+			else
+				char_types[i] = SYNTAX_STRING;
+		}
+		
+		String32 remains = {
+			.str = line + i,
+			.len = line_len - i
+		};
+		if (!format_ending && str32_has_ascii_prefix(remains, "http")) {
+			if (str32_has_ascii_prefix(remains, "http://")
+				|| str32_has_ascii_prefix(remains, "https://")) {
+				// a link!
+				for (; i < line_len; ++i) {
+					if (is32_space(line[i]))
+						break;
+					char_types[i] = SYNTAX_LINK;
+				}
+				if (line[i-1] < 128 && strchr(".!,", (char)line[i-1])) {
+					// punctuation after URLs
+					char_types[i-1] = SYNTAX_NORMAL;
+				}
+				goto bottom;
+			}
+		}
+		
+		switch (c) {
+		case '#':
+			if (start_of_line) {
+				memset(char_types + i, SYNTAX_STRING, line_len - i);
+				i = line_len;
+			}
+			break;
+		case '*':
+			if (start_of_line && next_is_space) {
+				// bullet list item
+				char_types[i] = SYNTAX_BUILTIN;
+			}
+			FALLTHROUGH
+		case '_':
+			if (backslashes % 2 == 1) {
+				// \* or \_
+			} else if (has_1_char && line[i+1] == c) {
+				// **bold** or __bold__
+				char const *end = c == '*' ? "**" : "__";
+				if (format_ending) {
+					if (streq(format_ending, end)) {
+						char_types[i++] = SYNTAX_STRING;
+						char_types[i] = SYNTAX_STRING;
+						format_ending = NULL;
+					}
+				} else if (!next_is_space) {
+					char_types[i++] = SYNTAX_STRING;
+					char_types[i] = SYNTAX_STRING;
+					format_ending = end;
+				}
+			} else {
+				// *italics* or _italics_
+				char const *end = c == '*' ? "*" : "_";
+				if (format_ending) {
+					if (streq(format_ending, end))
+						format_ending = NULL;
+				} else if (!next_is_space) {
+					char_types[i] = SYNTAX_STRING;
+					format_ending = end;
+				}
+			}
+			break;
+		case '`':
+			if (backslashes % 2 == 1) {
+				// \`
+			} else if (format_ending) {
+				if (streq(format_ending, "`"))
+					format_ending = NULL;
+			} else {
+				char_types[i] = SYNTAX_CODE;
+				format_ending = "`";
+			}
+			break;
+		case '-':
+		case '>':
+			if (start_of_line && next_is_space) {
+				// list item/blockquote
+				char_types[i] = SYNTAX_BUILTIN;
+			}
+			break;
+		case ANY_DIGIT:
+			if (start_of_line) {
+				size_t spn = str32_ascii_spn(remains, "0123456789");
+				size_t end = i + spn;
+				if (end < line_len && line[end] == '.') {
+					// numbered list item
+					for (; i <= end; ++i) {
+						char_types[i] = SYNTAX_BUILTIN;
+					}
+				}
+			}
+			break;
+		case '[': {
+			if (backslashes % 2 == 0) {
+				// [URLS](like-this.com)
+				u32 j;
+				for (j = i+1; j < line_len; ++j) {
+					if (line[j] == ']' && backslashes % 2 == 0)
+						break;
+					if (line[j] == '\\')
+						++backslashes;
+					else
+						backslashes = 0;
+				}
+				backslashes = 0;
+				u32 closing_bracket = j;
+				if (closing_bracket+2 < line_len && line[closing_bracket+1] == '(') {
+					for (j = closing_bracket+2; j < line_len; ++j) {
+						if (line[j] == ')' && backslashes % 2 == 0)
+							break;
+						if (line[j] == '\\')
+							++backslashes;
+						else
+							backslashes = 0;
+					}
+					u32 closing_parenthesis = j;
+					if (closing_parenthesis < line_len) {
+						// hooray!
+						if (i > 0 && line[i-1] == '!')
+							--i; // images are links, but with ! before them
+						memset(&char_types[i], SYNTAX_LINK, closing_parenthesis+1 - i);
+						i = closing_parenthesis;
+					}
+					backslashes = 0;
+					
+				}
+			}
+		} break;
+		}
+	bottom:
+		if (i >= line_len) break;
+		
+		if (line[i] != '\\')
+			backslashes = 0;
+		else
+			++backslashes;
+		
+		start_of_line = next_sol;
+	}
+	
+}
+
 // This is the main syntax highlighting function. It will determine which colors to use for each character.
 // Rather than returning colors, it returns a character type (e.g. comment) which can be converted to a color.
 // To highlight multiple lines, start out with a zeroed SyntaxState, and pass a pointer to it each time.
@@ -681,6 +869,9 @@ void syntax_highlight(SyntaxState *state, Language lang, char32_t *line, u32 lin
 		break;
 	case LANG_TEX:
 		syntax_highlight_tex(state, line, line_len, char_types);
+		break;
+	case LANG_MARKDOWN:
+		syntax_highlight_markdown(state, line, line_len, char_types);
 		break;
 	case LANG_COUNT: assert(0); break;
 	}

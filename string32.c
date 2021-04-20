@@ -148,6 +148,25 @@ size_t str32_remove_all_instances_of_char(String32 *s, char32_t c) {
 	return ndeleted;
 }
 
+// returns the length of the longest prefix of `s` containing only
+// ASCII characters in the C-string `charset`.
+size_t str32_ascii_spn(String32 s, char const *charset) {
+	for (u32 i = 0; i < s.len; ++i) {
+		if (s.str[i] >= 128)
+			return i; // non-ASCII character in s, so that can't be in charset.
+		bool found = false;
+		for (char const *p = charset; *p; ++p) {
+			assert((char32_t)*p < 128);
+			if ((char32_t)*p == s.str[i]) {
+				found = true;
+				break;
+			}
+		}
+		if (!found) return i;
+	}
+	return s.len;
+}
+
 bool is32_space(char32_t c) {
 	return c <= WINT_MAX && iswspace((wint_t)c);
 }

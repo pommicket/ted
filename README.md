@@ -2,8 +2,8 @@
 
 A text editor.
 
-**ted is still very new. There is no nice installer yet (if you want ted, you'll have to build it from source).
-I'll release installers after testing it a bit more to try to find any remaining bugs.**
+**ted is still very new. There is no nice installer yet (if you want ted, you'll have to build it from source).**
+**I'll release installers after testing it a bit more to try to find any remaining bugs.**
 
 <img src="ted.png">
 

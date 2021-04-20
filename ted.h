@@ -33,6 +33,10 @@ enum {
 	SYNTAX_STATE_TEX_VERBATIM = 0x04u, // inside \begin{verbatim} ... \end{verbatim}
 };
 
+enum {
+	SYNTAX_STATE_MARKDOWN_CODE = 0x01u, // inside ``` ``` code section
+};
+
 typedef u8 SyntaxState;
 
 ENUM_U16 {
@@ -42,6 +46,7 @@ ENUM_U16 {
 	LANG_RUST,
 	LANG_PYTHON,
 	LANG_TEX,
+	LANG_MARKDOWN,
 	LANG_COUNT
 } ENUM_U16_END(Language);
 
@@ -57,6 +62,7 @@ static LanguageName const language_names[] = {
 	{LANG_RUST, "Rust"},
 	{LANG_PYTHON, "Python"},
 	{LANG_TEX, "Tex"},
+	{LANG_MARKDOWN, "Markdown"},
 };
 
 static_assert_if_possible(arr_count(language_names) == LANG_COUNT)
@@ -73,6 +79,8 @@ ENUM_U8 {
 } ENUM_U8_END(SyntaxCharType);
 
 #define SYNTAX_MATH SYNTAX_STRING // for tex
+#define SYNTAX_CODE SYNTAX_PREPROCESSOR // for markdown
+#define SYNTAX_LINK SYNTAX_CONSTANT // for markdown
 
 typedef struct {
 	float cursor_blink_time_on, cursor_blink_time_off;
