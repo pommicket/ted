@@ -21,6 +21,7 @@ char const *language_comment_start(Language l) {
 	case LANG_CPP: return "// ";
 	case LANG_PYTHON: return "# ";
 	case LANG_TEX: return "% ";
+	case LANG_HTML: return "<!-- ";
 	case LANG_NONE:
 	case LANG_MARKDOWN:
 	case LANG_COUNT:
@@ -34,6 +35,8 @@ char const *language_comment_end(Language l) {
 	switch (l) {
 	case LANG_C:
 		return " */";
+	case LANG_HTML:
+		return " -->";
 	default:
 		return "";
 	}
@@ -54,10 +57,10 @@ ColorSetting syntax_char_type_to_color(SyntaxCharType t) {
 	return COLOR_TEXT;
 }
 
-static inline bool syntax_keyword_matches(char32_t *text, size_t len, char const *keyword) {
+static inline bool syntax_keyword_matches(char32_t const *text, size_t len, char const *keyword) {
 	if (len == strlen(keyword)) {
 		bool matches = true;
-		char32_t *p = text;
+		char32_t const *p = text;
 		// check if `p` starts with `keyword`
 		for (char const *q = keyword; *q; ++p, ++q) {
 			if (*p != (char32_t)*q) {
@@ -98,7 +101,7 @@ bool syntax_is_opening_bracket(Language lang, char32_t c) {
 }
 
 // lookup the given string in the keywords table
-static Keyword const *syntax_keyword_lookup(Keyword const *const *all_keywords, size_t n_all_keywords, char32_t *str, size_t len) {
+static Keyword const *syntax_keyword_lookup(Keyword const *const *all_keywords, size_t n_all_keywords, char32_t const *str, size_t len) {
 	if (!len) return NULL;
 	if (str[0] >= n_all_keywords) return NULL;
 
@@ -115,7 +118,7 @@ static Keyword const *syntax_keyword_lookup(Keyword const *const *all_keywords, 
 }
 
 // does i continue the number literal from i-1
-static inline bool syntax_number_continues(char32_t *line, u32 line_len, u32 i) {
+static inline bool syntax_number_continues(char32_t const *line, u32 line_len, u32 i) {
 	if (line[i] == '.' && ((i && line[i-1] == '.') || (i < line_len-1 && line[i+1] == '.')))
 		return false; // can't have two .s in a row
 	return (line[i] < CHAR_MAX && 
@@ -123,19 +126,34 @@ static inline bool syntax_number_continues(char32_t *line, u32 line_len, u32 i) 
 		|| (i && line[i-1] == 'e' && (line[i] == '+' || line[i] == '-'))));
 }
 
+static bool is_keyword(Language lang, char32_t c) {
+	if (is32_ident(c)) return true;
+	switch (lang) {
+	case LANG_RUST:
+		// Rust builtin macros
+		if (c == '!')
+			return true;
+		break;
+	case LANG_HTML:
+		if (c == '-' || c == '=')
+			return true;
+		break;
+	default: break;
+	}
+	return false;
+}
+
 // find how long this keyword would be (if this is a keyword)
-static inline u32 syntax_keyword_len(Language lang, char32_t *line, u32 i, u32 line_len) {
+static inline u32 syntax_keyword_len(Language lang, char32_t const *line, u32 i, u32 line_len) {
 	u32 keyword_end;
-	for (keyword_end = i; 
-		keyword_end < line_len 
-		&& (is32_ident(line[keyword_end]) 
-		|| (lang == LANG_RUST && line[keyword_end] == '!')) // for rust builtin macros		
-		; ++keyword_end);
+	for (keyword_end = i; keyword_end < line_len; ++keyword_end) {
+		if (!is_keyword(lang, line[keyword_end]))
+			break;
+	}
 	return keyword_end - i;
 }	
 
-
-static void syntax_highlight_c_cpp(SyntaxState *state_ptr, bool cpp, char32_t *line, u32 line_len, SyntaxCharType *char_types) {
+static void syntax_highlight_c_cpp(SyntaxState *state_ptr, bool cpp, char32_t const *line, u32 line_len, SyntaxCharType *char_types) {
 	SyntaxState state = *state_ptr;
 	bool in_preprocessor = (state & SYNTAX_STATE_CPP_PREPROCESSOR) != 0;
 	bool in_string = (state & SYNTAX_STATE_CPP_STRING) != 0;
@@ -293,7 +311,7 @@ static void syntax_highlight_c_cpp(SyntaxState *state_ptr, bool cpp, char32_t *l
 	);
 }
 
-static void syntax_highlight_rust(SyntaxState *state, char32_t *line, u32 line_len, SyntaxCharType *char_types) {
+static void syntax_highlight_rust(SyntaxState *state, char32_t const *line, u32 line_len, SyntaxCharType *char_types) {
 	u32 comment_depth = (((u32)*state & SYNTAX_STATE_RUST_COMMENT_DEPTH_MASK) / SYNTAX_STATE_RUST_COMMENT_DEPTH_MUL);
 	bool in_string = (*state & SYNTAX_STATE_RUST_STRING) != 0;
 	bool string_is_raw = (*state & SYNTAX_STATE_RUST_STRING_IS_RAW) != 0;
@@ -446,7 +464,7 @@ static void syntax_highlight_rust(SyntaxState *state, char32_t *line, u32 line_l
 	);
 }
 
-static void syntax_highlight_python(SyntaxState *state, char32_t *line, u32 line_len, SyntaxCharType *char_types) {
+static void syntax_highlight_python(SyntaxState *state, char32_t const *line, u32 line_len, SyntaxCharType *char_types) {
 	(void)state;
 	bool in_string = (*state & SYNTAX_STATE_PYTHON_STRING) != 0;
 	bool string_is_dbl_quoted = (*state & SYNTAX_STATE_PYTHON_STRING_DBL_QUOTED) != 0;
@@ -559,7 +577,7 @@ static bool is_tex_ident(char32_t c) {
 	return is32_ident(c) && !is32_digit(c);
 }
 
-static void syntax_highlight_tex(SyntaxState *state, char32_t *line, u32 line_len, SyntaxCharType *char_types) {
+static void syntax_highlight_tex(SyntaxState *state, char32_t const *line, u32 line_len, SyntaxCharType *char_types) {
 	bool dollar = (*state & SYNTAX_STATE_TEX_DOLLAR) != 0;
 	bool dollardollar = (*state & SYNTAX_STATE_TEX_DOLLARDOLLAR) != 0;
 	bool verbatim = (*state & SYNTAX_STATE_TEX_VERBATIM) != 0;
@@ -577,7 +595,7 @@ static void syntax_highlight_tex(SyntaxState *state, char32_t *line, u32 line_le
 					if (is_tex_ident(line[i+1])) {
 						// command, e.g. \begin
 						String32 command_str = {
-							.str = line + i+1,
+							.str = (char32_t *)line + i+1,
 							.len = line_len - (i+1),
 						};
 						bool new_verbatim = false;
@@ -658,7 +676,7 @@ static void syntax_highlight_tex(SyntaxState *state, char32_t *line, u32 line_le
 	);
 }
 
-static void syntax_highlight_markdown(SyntaxState *state, char32_t *line, u32 line_len, SyntaxCharType *char_types) {
+static void syntax_highlight_markdown(SyntaxState *state, char32_t const *line, u32 line_len, SyntaxCharType *char_types) {
 	bool multiline_code = (*state & SYNTAX_STATE_MARKDOWN_CODE) != 0;
 	
 	*state = (multiline_code * SYNTAX_STATE_MARKDOWN_CODE);
@@ -703,7 +721,7 @@ static void syntax_highlight_markdown(SyntaxState *state, char32_t *line, u32 li
 		}
 		
 		String32 remains = {
-			.str = line + i,
+			.str = (char32_t *)line + i,
 			.len = line_len - i
 		};
 		if (!format_ending && str32_has_ascii_prefix(remains, "http")) {
@@ -845,11 +863,121 @@ static void syntax_highlight_markdown(SyntaxState *state, char32_t *line, u32 li
 	
 }
 
+static bool is_html_tag_char(char32_t c) {
+	return c == '<' || c == '/' || c == '!' || is32_alnum(c);
+}
+
+static void syntax_highlight_html(SyntaxState *state, char32_t const *line, u32 line_len, SyntaxCharType *char_types) {
+	bool comment = (*state & SYNTAX_STATE_HTML_COMMENT) != 0;
+	bool in_sgl_string = false; // 'string'
+	bool in_dbl_string = false; // "string"
+	int backslashes = 0;
+	for (u32 i = 0; i < line_len; ++i) {
+		String32 remains = {
+			.str = (char32_t *)line + i,
+			.len = line_len - i
+		};
+		bool has_1_char = i + 1 < line_len;
+		
+		if (comment) {
+			if (str32_has_ascii_prefix(remains, "-->")) {
+				if (char_types)
+					memset(&char_types[i], SYNTAX_COMMENT, 3);
+				i += 2;
+				// (don't worry, comments can't nest in HTML)
+				comment = false;
+			} else {
+				if (char_types) char_types[i] = SYNTAX_COMMENT;
+			}
+		} else if (!in_sgl_string && !in_dbl_string && str32_has_ascii_prefix(remains, "<!--")) {
+			comment = true;
+			if (char_types) char_types[i] = SYNTAX_COMMENT;
+		} else if (in_sgl_string || in_dbl_string) {
+			if (char_types)
+				char_types[i] = SYNTAX_STRING;
+			if (line[i] == (in_sgl_string ? '\'' : '"') && backslashes % 2 == 0)
+				in_sgl_string = in_dbl_string = false;
+		} else {
+			if (char_types) char_types[i] = SYNTAX_NORMAL;
+			switch (line[i]) {
+			case '"':
+				if (i > 0 && line[i-1] == '=') {
+					in_dbl_string = true;
+					if (char_types)
+						char_types[i] = SYNTAX_STRING;
+				}
+				break;
+			case '\'':
+				if (i > 0 && line[i-1] == '=') {
+					in_sgl_string = true;
+					if (char_types)
+						char_types[i] = SYNTAX_STRING;
+				}
+				break;
+			case '&':
+				for (; i < line_len; ++i) {
+					if (char_types)
+						char_types[i] = SYNTAX_BUILTIN;
+					if (line[i] == ';')
+						break;
+				}
+				break;
+			case '<':
+				if (has_1_char && is_html_tag_char(line[i+1])) {
+					for (; i < line_len; ++i) {
+						if (!is_html_tag_char(line[i])) {
+							--i;
+							break;
+						}
+						if (char_types)
+							char_types[i] = SYNTAX_KEYWORD;
+					}
+				}
+				break;
+			case '>':
+				if (char_types) {
+					// we want to check if the character before it is a space so that
+					// > in JavaScript/PHP doesn't get picked up as a "tag".
+					if (i > 0 && !is32_space(line[i-1])) {
+						char_types[i] = SYNTAX_KEYWORD;
+						if (line[i-1] == '/') // tags like <thing+ />
+							char_types[i-1] = SYNTAX_KEYWORD;
+					}
+				}
+				break;
+			default:
+				if (char_types) {
+					u32 keyword_len = syntax_keyword_len(LANG_HTML, line, i, line_len);
+					Keyword const *keyword = syntax_keyword_lookup(syntax_all_keywords_html, arr_count(syntax_all_keywords_html),
+						&line[i], keyword_len);
+					if (keyword) {
+						SyntaxCharType type = keyword->type;
+						for (size_t j = 0; j < keyword_len; ++j) {
+							char_types[i++] = type;
+						}
+						--i; // we'll increment i from the for loop
+						break;
+					}
+				}
+				break;
+			}
+		}
+		if (i < line_len) {
+			if (line[i] == '\\')
+				++backslashes;
+			else
+				backslashes = 0;
+		}
+	}
+	
+	*state = (comment * SYNTAX_STATE_HTML_COMMENT);
+}
+
 // This is the main syntax highlighting function. It will determine which colors to use for each character.
 // Rather than returning colors, it returns a character type (e.g. comment) which can be converted to a color.
 // To highlight multiple lines, start out with a zeroed SyntaxState, and pass a pointer to it each time.
 // You can set char_types to NULL if you just want to advance the state, and don't care about the character types.
-void syntax_highlight(SyntaxState *state, Language lang, char32_t *line, u32 line_len, SyntaxCharType *char_types) {
+void syntax_highlight(SyntaxState *state, Language lang, char32_t const *line, u32 line_len, SyntaxCharType *char_types) {
 	switch (lang) {
 	case LANG_NONE:
 		if (char_types)
@@ -872,6 +1000,9 @@ void syntax_highlight(SyntaxState *state, Language lang, char32_t *line, u32 lin
 		break;
 	case LANG_MARKDOWN:
 		syntax_highlight_markdown(state, line, line_len, char_types);
+		break;
+	case LANG_HTML:
+		syntax_highlight_html(state, line, line_len, char_types);
 		break;
 	case LANG_COUNT: assert(0); break;
 	}

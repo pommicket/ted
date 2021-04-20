@@ -37,6 +37,10 @@ enum {
 	SYNTAX_STATE_MARKDOWN_CODE = 0x01u, // inside ``` ``` code section
 };
 
+enum {
+	SYNTAX_STATE_HTML_COMMENT = 0x01u
+};
+
 typedef u8 SyntaxState;
 
 ENUM_U16 {
@@ -47,6 +51,7 @@ ENUM_U16 {
 	LANG_PYTHON,
 	LANG_TEX,
 	LANG_MARKDOWN,
+	LANG_HTML,
 	LANG_COUNT
 } ENUM_U16_END(Language);
 
@@ -63,6 +68,7 @@ static LanguageName const language_names[] = {
 	{LANG_PYTHON, "Python"},
 	{LANG_TEX, "Tex"},
 	{LANG_MARKDOWN, "Markdown"},
+	{LANG_HTML, "HTML"},
 };
 
 static_assert_if_possible(arr_count(language_names) == LANG_COUNT)

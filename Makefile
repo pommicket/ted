@@ -31,7 +31,8 @@ libpcre2-32.a: pcre2-10.36.zip
 	unzip pcre2-10.36.zip
 	cd pcre2-10.36 && cmake -DPCRE2_BUILD_PCRE2_32=ON . && $(MAKE) -j8
 	cp pcre2-10.36/libpcre2-32.a ./
-
+keywords.h: keywords.py
+	./keywords.py
 ted.deb: release
 	rm -rf /tmp/ted
 	mkdir -p /tmp/ted/DEBIAN
