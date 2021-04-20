@@ -2,11 +2,18 @@
 
 A text editor.
 
-**ted is still very new. There is no nice installer yet (if you want ted, you'll have to build it from source).**
-**I'll release installers after testing it a bit more to try to find any remaining bugs.**
-
 <img src="ted.png">
 
+This repository is for the latest experimental version of ted. If you want a stable version,
+go to the [releases](https://github.com/pommicket/ted/releases). You will also find
+installers for Windows and Debian/Ubuntu there.
+
+To get autocomplete and go-to-definiton you will need [ctags](https://github.com/universal-ctags/ctags).
+You can install ctags on Debian/Ubuntu with:
+
+```bash
+sudo apt install universal-ctags
+```
 
 ## Why?
 
@@ -45,6 +52,8 @@ check out all of the keyboard shortcuts!
 Ctrl+! (run shell command), then run `grep -n search_term *.py`, for example (on Windows, you will need to have
 cygwin or something in your PATH for this to work). The `-n` ensures that
 ted can jump to the results, just like jumping to build errors.
+- ted uses PCRE for regular expressions. This means that when using find+replace, if you want to
+replace with a captured group, you need to use `$1`, not (as you might expect) `\1`.
 
 ### Configuration
 
@@ -90,7 +99,7 @@ variable names. Sorry.
 
 ## Building from source
 
-To install `ted` on Linux, you will need:
+To install `ted` from source on Linux, you will need:
 
 - A C compiler
 - The SDL2 development libraries
@@ -116,7 +125,7 @@ Extract the zip, copy SDL2-2.x.y into the ted directory, and rename it to SDL2. 
 to the ted directory.  
 You will also need PCRE2. Download it here: https://ftp.pcre.org/pub/pcre/pcre2-10.36.zip,
 unzip it, and put pcre2-10.36 in the same folder as ted.
-Then run `make.bat`.
+Then run `make.bat release`.
 
 ## Version history
 
