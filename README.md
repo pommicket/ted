@@ -19,18 +19,18 @@ in other editors.
 ## Supported features
 
 - Customization of (pretty much) all colours and keyboard commands.
-- Basic stuff like copy+paste, undo+redo, etc.
+- Basic text editing like copy+paste, undo+redo, etc.
 - Multiple tabs, each with a different file
-- Split screen (default: Ctrl+\\, Ctrl+Shift+\\)
+- Split screen
 - Auto-indent
 - Syntax highlighting for C, C++, HTML, LaTeX, Markdown, Python, and Rust.
 - Find and replace (with regular expressions!)
-- Run build command (F4), go to errors
-- Run any shell command (Ctrl+!)
-- Go to definition (Ctrl+click)
-- Go to line (Ctrl+G)
-- Autocomplete (Ctrl+Space)
-- Indent/dedent selection (Tab, Shift+Tab), comment/uncomment selection (Ctrl+/)
+- Run build command, go to errors
+- Run any shell command
+- Go to definition
+- Go to line number
+- Autocomplete
+- Indent/dedent selection, comment/uncomment selection
 
 ## Getting started with ted
 
@@ -81,7 +81,9 @@ in the `[core]` section of the config file.
 Jump to definition and autocompletion both depend on [ctags](https://github.com/universal-ctags/ctags). You can press Ctrl+T
 at any time to generate or re-generate tags. Once you have a tags file, you can Ctrl+Click on an identifier
 to go to its definition. You can also press Ctrl+D to get a searchable list of all functions/types where you can select one to go to
-its definition. Press Ctrl+space to autocomplete. If there is only one possible completion from the tags file, it will be selected automatically.
+its definition.
+
+Press Ctrl+space to autocomplete. If there is only one possible completion from the tags file, it will be selected automatically.
 Otherwise, you'll get a popup showing all possible completions. You can press tab to select a completion (or click on it), and press
 Ctrl+space/Ctrl+shift+space to cycle between suggestions. Note that autocomplete just completes to stuff in the tags file, so it won't complete local
 variable names. Sorry.
@@ -110,7 +112,7 @@ sudo make install -j4
 
 On Windows (64-bit), first you will need to install Microsoft Visual Studio, then find and add vcvarsall.bat to your PATH.
 Next you will need the SDL2 VC development libraries: https://www.libsdl.org/download-2.0.php  
-Extract the zip, copy SDL2-2.x.y into the ted directory, and rename it to SDL2. Also copy SDL2\lib\x64\SDL2.dll
+Extract the zip, copy SDL2-2.x.y into the ted directory, and rename it to SDL2. Also copy SDL2\\lib\\x64\\SDL2.dll
 to the ted directory.  
 You will also need PCRE2. Download it here: https://ftp.pcre.org/pub/pcre/pcre2-10.36.zip,
 unzip it, and put pcre2-10.36 in the same folder as ted.

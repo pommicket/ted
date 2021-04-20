@@ -275,6 +275,7 @@ static void menu_update(Ted *ted) {
 				}
 			}
 			selector->n_entries = (u32)(entry - entries);
+			selector_sort_entries_by_name(selector);
 		}
 
 		char *chosen_command = selector_update(ted, &ted->command_selector);

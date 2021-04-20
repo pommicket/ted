@@ -56,6 +56,16 @@ static void selector_down(Ted const *ted, Selector *s, i64 n) {
 	selector_up(ted, s, -n);
 }
 
+static int selectory_entry_cmp_name(void const *av, void const *bv) {
+	SelectorEntry const *a = av, *b = bv;
+	return strcmp(a->name, b->name);
+}
+
+// sort entries alphabetically
+static void selector_sort_entries_by_name(Selector *s) {
+	qsort(s->entries, s->n_entries, sizeof *s->entries, selectory_entry_cmp_name);
+}
+
 // returns a null-terminated UTF-8 string of the option selected, or NULL if none was.
 // you should call free() on the return value.
 static char *selector_update(Ted *ted, Selector *s) {

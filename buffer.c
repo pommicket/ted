@@ -250,6 +250,8 @@ static inline Settings const *buffer_settings(TextBuffer *buffer) {
 
 // what programming language is this?
 Language buffer_language(TextBuffer *buffer) {
+	if (buffer->manual_language >= 1 && buffer->manual_language <= LANG_COUNT)
+		return (Language)(buffer->manual_language - 1);
 	Settings const *settings = buffer_settings(buffer);
 	char const *filename = buffer->filename;
 	if (!filename)

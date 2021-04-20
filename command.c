@@ -116,6 +116,10 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		if (ted->replace && buffer == &ted->find_buffer) {
 			ted_switch_to_buffer(ted, &ted->replace_buffer);
 			buffer_select_all(buffer);
+		} else if (ted->menu == MENU_COMMAND_SELECTOR && buffer == &ted->argument_buffer) {
+			buffer = &ted->line_buffer;
+			ted_switch_to_buffer(ted, buffer);
+			buffer_select_all(buffer);
 		} else if (ted->autocomplete) {
 			autocomplete_select_cursor_completion(ted);
 		} else if (buffer) {
@@ -128,6 +132,10 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 	case CMD_BACKTAB:
 		if (ted->replace && buffer == &ted->replace_buffer) {
 			ted_switch_to_buffer(ted, &ted->find_buffer);
+			buffer_select_all(buffer);
+		} else if (ted->menu == MENU_COMMAND_SELECTOR && buffer == &ted->line_buffer) {
+			buffer = &ted->argument_buffer;
+			ted_switch_to_buffer(ted, buffer);
 			buffer_select_all(buffer);
 		} else if (buffer) {
 			if (buffer->selection)
@@ -227,7 +235,15 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 			}
 		}
 		break;
-		
+	
+	case CMD_SET_LANGUAGE:
+		if (buffer && !buffer->is_line_buffer) {
+			if (argument < 0 || argument >= LANG_COUNT)
+				buffer->manual_language = -1;
+			else
+				buffer->manual_language = (i16)(argument + 1);
+		}
+		break;
 	case CMD_AUTOCOMPLETE:
 		if (ted->autocomplete)
 			++ted->autocomplete_cursor;
@@ -238,6 +254,7 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		if (ted->autocomplete)
 			--ted->autocomplete_cursor;
 		break;
+		
 	case CMD_UNDO:
 		if (buffer) buffer_undo(buffer, argument);
 		break;

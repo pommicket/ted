@@ -43,16 +43,18 @@ enum {
 
 typedef u8 SyntaxState;
 
+// If you are adding new languages, DO NOT change the constant values
+// of the previous languages. It will mess up config files!
 ENUM_U16 {
-	LANG_NONE,
-	LANG_C,
-	LANG_CPP,
-	LANG_RUST,
-	LANG_PYTHON,
-	LANG_TEX,
-	LANG_MARKDOWN,
-	LANG_HTML,
-	LANG_CONFIG, // .cfg files, e.g. ted.cfg
+	LANG_NONE = 0,
+	LANG_C = 1,
+	LANG_CPP = 2,
+	LANG_RUST = 3,
+	LANG_PYTHON = 4,
+	LANG_TEX = 5,
+	LANG_MARKDOWN = 6,
+	LANG_HTML = 7,
+	LANG_CONFIG = 8, // .cfg files, e.g. ted.cfg
 	LANG_COUNT
 } ENUM_U16_END(Language);
 
@@ -159,6 +161,7 @@ typedef struct {
 	struct Ted *ted; // we keep a back-pointer to the ted instance so we don't have to pass it in to every buffer function
 	double scroll_x, scroll_y; // number of characters scrolled in the x/y direction
 	struct timespec last_write_time; // last write time to filename.
+	i16 manual_language; // 1 + the language the buffer has been manually set to, or 0 if it hasn't been manually set to anything
 	BufferPos cursor_pos;
 	BufferPos selection_pos; // if selection is true, the text between selection_pos and cursor_pos is selected.
 	bool is_line_buffer; // "line buffers" are buffers which can only have one line of text (used for inputs)

@@ -870,7 +870,7 @@ static void syntax_highlight_markdown(SyntaxState *state, char32_t const *line, 
 }
 
 static bool is_html_tag_char(char32_t c) {
-	return c == '<' || c == '/' || c == '!' || is32_alnum(c);
+	return c == '<' || c == '/' || c == '!' || c == ':' || is32_alnum(c);
 }
 
 static void syntax_highlight_html(SyntaxState *state, char32_t const *line, u32 line_len, SyntaxCharType *char_types) {
@@ -1024,7 +1024,7 @@ static void syntax_highlight_config(SyntaxState *state, char32_t const *line, u3
 		default: {
 			if (i == 0) // none of the keywords in syntax_all_keywords_config should appear at the start of the line
 				break;
-			if (is32_ident(line[i - 1]) || !is32_ident(line[i]))
+			if (is32_ident(line[i-1]) || line[i-1] == '-' || !is32_ident(line[i]))
 				break; // can't be a keyword on its own.
 			
 			u32 keyword_len = syntax_keyword_len(LANG_CONFIG, line, i, line_len);

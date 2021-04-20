@@ -1,5 +1,3 @@
-// :set-language command; -1 = default language for this extension
-
 #include "base.h"
 no_warn_start
 #if _WIN32

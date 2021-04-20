@@ -56,6 +56,7 @@ ENUM_U16 {
 	CMD_RELOAD_ALL, // reload all buffers from file
 	CMD_QUIT,
 	
+	CMD_SET_LANGUAGE,
 	CMD_AUTOCOMPLETE,
 	CMD_AUTOCOMPLETE_BACK,
 	
@@ -143,6 +144,7 @@ static CommandName const command_names[] = {
 	{"save-all", CMD_SAVE_ALL},
 	{"reload-all", CMD_RELOAD_ALL},
 	{"quit", CMD_QUIT},
+	{"set-language", CMD_SET_LANGUAGE},
 	{"command-selector", CMD_COMMAND_SELECTOR},
 	{"open-config", CMD_OPEN_CONFIG},
 	{"undo", CMD_UNDO},
