@@ -265,20 +265,24 @@ static bool path_is_absolute(char const *path) {
 // assuming `dir` is an absolute path, returns the absolute path of `relpath`, relative to `dir`.
 static void path_full(char const *dir, char const *relpath, char *abspath, size_t abspath_size) {
 	assert(abspath_size);
+	abspath[0] = '\0';
+	
 	if (path_is_absolute(relpath)) {
 		if (strchr(ALL_PATH_SEPARATORS, relpath[0])) {
 			// make sure that on windows, if dir's drive is C: the absolute path of \a is c:\a
-			abspath[0] = '\0';
 			strn_cat(abspath, abspath_size, dir, strcspn(dir, ALL_PATH_SEPARATORS));
-			str_cat(abspath, abspath_size, relpath);
 		} else {
-			str_cpy(abspath, abspath_size, relpath);
+			// copy drive component (e.g. set abspath to "C:")
+			size_t drive_len = strcspn(relpath, ALL_PATH_SEPARATORS);
+			strn_cat(abspath, abspath_size, relpath, drive_len);
+			relpath += drive_len;
+			if (*relpath) ++relpath; // move past separator
 		}
-		return;
+	} else {
+		str_cpy(abspath, abspath_size, dir);
 	}
-	str_cpy(abspath, abspath_size, dir);
-
-	while (1) {
+	
+	while (*relpath) {
 		size_t component_len = strcspn(relpath, ALL_PATH_SEPARATORS);
 		char const *component_end = relpath + component_len;
 

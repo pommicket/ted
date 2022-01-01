@@ -672,6 +672,7 @@ static Status buffer_lines_set_min_capacity(TextBuffer *buffer, Line **lines, u3
 }
 
 static void buffer_line_append_char(TextBuffer *buffer, Line *line, char32_t c) {
+	if (c == '\r') return;
 	if (buffer_line_set_len(buffer, line, line->len + 1))
 		line->str[line->len-1] = c;
 }
@@ -1343,16 +1344,28 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 		BufferPos ret = {0,0};
 		return ret;
 	}
-
-	if (buffer->is_line_buffer) {
-		// remove all the newlines from str.
-		str32_remove_all_instances_of_char(&str, '\n');
-	}
-
 	if (str.len == 0) {
 		// no text to insert
 		return pos;
 	}
+	
+	// create a copy of str. we need to do this to remove carriage returns and newlines in the case of line buffers
+	char32_t str_copy[256];
+	if (str.len > arr_count(str_copy)) {
+		char32_t *new_str = buffer_calloc(buffer, str.len, sizeof *new_str);
+		memcpy(new_str, str.str, str.len * sizeof *str.str);
+		str.str = new_str;
+	} else {
+		memcpy(str_copy, str.str, str.len * sizeof *str.str);
+		str.str = str_copy;
+	}
+	
+	if (buffer->is_line_buffer) {
+		// remove all the newlines from str.
+		str32_remove_all_instances_of_char(&str, '\n');
+	}
+	str32_remove_all_instances_of_char(&str, '\r');
+
 
 	if (buffer->store_undo_events) {
 		BufferEdit *last_edit = arr_lastp(buffer->undo_history);
@@ -1434,6 +1447,9 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 	buffer_lines_modified(buffer, pos.line, line_idx);
 
 	BufferPos b = {.line = line_idx, .index = index};
+	if (str.len > arr_count(str_copy)) {
+		free(str.str);
+	}
 	return b;
 }
 

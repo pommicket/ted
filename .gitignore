@@ -17,6 +17,7 @@ TAGS
 *.res
 *.zip
 *.a
-pcre2-10.36
+pcre2*
 SDL2
 *.deb
+test.txt

@@ -23,7 +23,7 @@ no_warn_end
 #endif
 #define PCRE2_STATIC
 #define PCRE2_CODE_UNIT_WIDTH 32
-#include "pcre2-10.36/pcre2.h"
+#include <pcre2.h>
 
 #include "unicode.h"
 #include "util.c"

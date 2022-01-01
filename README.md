@@ -125,8 +125,8 @@ On Windows (64-bit), first you will need to install Microsoft Visual Studio, the
 Next you will need the SDL2 VC development libraries: https://www.libsdl.org/download-2.0.php  
 Extract the zip, copy SDL2-2.x.y into the ted directory, and rename it to SDL2. Also copy SDL2\\lib\\x64\\SDL2.dll
 to the ted directory.  
-You will also need PCRE2. Download it here: https://ftp.pcre.org/pub/pcre/pcre2-10.36.zip,
-unzip it, and put pcre2-10.36 in the same folder as ted.
+You will also need PCRE2. Download it here: https://github.com/PhilipHazel/pcre2/releases,
+unzip it, put pcre2-10.X in the same folder as ted, and rename it to pcre2.
 Then run `make.bat release`.
 
 To build the .msi file, you will need Visual Studio, as well as the
