@@ -1,5 +1,6 @@
 ALL_CFLAGS=$(CFLAGS) -Wall -Wextra -Wshadow -Wconversion -Wpedantic -pedantic -std=gnu11 \
-	-Wno-unused-function -Wno-fixed-enum-extension -Wimplicit-fallthrough -Wno-format-truncation -Wno-unknown-warning-option
+	-Wno-unused-function -Wno-fixed-enum-extension -Wimplicit-fallthrough -Wno-format-truncation -Wno-unknown-warning-option \
+	-Ipcre2
 LIBS=-lSDL2 -lGL -lm libpcre2-32.a
 DEBUG_CFLAGS=$(ALL_CFLAGS) -DDEBUG -O0 -g
 RELEASE_CFLAGS=$(ALL_CFLAGS) -O3
@@ -26,11 +27,9 @@ install: release
 	cp -r assets $(GLOBAL_DATA_DIR)
 	install -m 644 ted.cfg $(GLOBAL_DATA_DIR)
 	install ted $(INSTALL_BIN_DIR)
-libpcre2-32.a: pcre2-10.36.zip
-	rm -rf pcre2-10.36
-	unzip pcre2-10.36.zip
-	cd pcre2-10.36 && cmake -DPCRE2_BUILD_PCRE2_32=ON . && $(MAKE) -j8
-	cp pcre2-10.36/libpcre2-32.a ./
+libpcre2-32.a: pcre2
+	cd pcre2 && cmake -DPCRE2_BUILD_PCRE2_32=ON . && $(MAKE) -j8
+	cp pcre2/libpcre2-32.a ./
 keywords.h: keywords.py
 	./keywords.py
 ted.deb: release

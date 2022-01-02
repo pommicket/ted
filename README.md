@@ -99,34 +99,28 @@ variable names. Sorry.
 
 ## Building from source
 
-To install `ted` from source on Linux, you will need:
+First, you will need PCRE2: https://github.com/PhilipHazel/pcre2/releases.
+Unzip it, put pcre2-10.X in the same folder as ted, and rename it to pcre2.
+
+To install `ted` from source on Linux, you will also need:
 
 - A C compiler
 - The SDL2 development libraries
-- wget, unzip (for downloading, extracting PCRE2)
 - cmake (for PCRE2)
 
 These can be installed on Ubuntu/Debian with:
 
 ```
-sudo apt install clang libsdl2-dev wget unzip cmake
+sudo apt install clang libsdl2-dev cmake
 ```
 
-Then run
-
-```
-wget https://ftp.pcre.org/pub/pcre/pcre2-10.36.zip
-sudo make install -j4
-```
-
+Then run `make -j4 release` to build or `sudo make install -j4` to build and install.
 You can also run `make ted.deb` to build the .deb installer.
 
-On Windows (64-bit), first you will need to install Microsoft Visual Studio, then find and add vcvarsall.bat to your PATH.
+On Windows (64-bit), you will need to install Microsoft Visual Studio, then find and add vcvarsall.bat to your PATH.
 Next you will need the SDL2 VC development libraries: https://www.libsdl.org/download-2.0.php  
 Extract the zip, copy SDL2-2.x.y into the ted directory, and rename it to SDL2. Also copy SDL2\\lib\\x64\\SDL2.dll
-to the ted directory.  
-You will also need PCRE2. Download it here: https://github.com/PhilipHazel/pcre2/releases,
-unzip it, put pcre2-10.X in the same folder as ted, and rename it to pcre2.
+to the ted directory.
 Then run `make.bat release`.
 
 To build the .msi file, you will need Visual Studio, as well as the

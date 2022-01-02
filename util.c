@@ -281,6 +281,8 @@ static void path_full(char const *dir, char const *relpath, char *abspath, size_
 	} else {
 		str_cpy(abspath, abspath_size, dir);
 	}
+	if (abspath[strlen(abspath) - 1] != PATH_SEPARATOR)
+		str_cat(abspath, abspath_size, PATH_SEPARATOR_STR);
 	
 	while (*relpath) {
 		size_t component_len = strcspn(relpath, ALL_PATH_SEPARATORS);
