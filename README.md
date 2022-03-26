@@ -25,7 +25,7 @@ in other editors.
 
 ## Supported features
 
-- Customization of (pretty much) all colours and keyboard commands.
+- Customization of (pretty much) all colors and keyboard commands.
 - Basic text editing like copy+paste, undo+redo, etc.
 - Multiple tabs, each with a different file
 - Split screen
@@ -143,6 +143,8 @@ Then, open windows\_installer\\ted\\ted.sln, and build.
 <tr><td>0.7</td> <td>Restore session, command selector, :shell, big bug fixes</td> <td>2021 Mar 3</td></tr>
 <tr><td>0.8</td> <td>Autocomplete</td> <td>2021 Mar 4</td></tr>
 <tr><td>1.0</td> <td>Bugfixes, small additional features, installers</td> <td>2021 Apr 20</td></tr>
+<tr><td>1.0r1</td> <td>Windows-specific bugfixes, update to new version of PCRE2</td> <td>2022 Jan 1</td></tr>
+<tr><td>1.0r2</td> <td>Various ctrl+w (:tab-close) bugfixes</td> <td>2022 Mar 26</td></tr>
 </table>
 
 ## License

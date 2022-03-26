@@ -5,6 +5,8 @@ LIBS=-lSDL2 -lGL -lm libpcre2-32.a
 DEBUG_CFLAGS=$(ALL_CFLAGS) -DDEBUG -O0 -g
 RELEASE_CFLAGS=$(ALL_CFLAGS) -O3
 PROFILE_CFLAGS=$(ALL_CFLAGS) -O3 -DPROFILE=1
+# if you change the directories below, ted won't work.
+# we don't yet have support for using different data directories
 GLOBAL_DATA_DIR=/usr/share/ted
 LOCAL_DATA_DIR=/home/`logname`/.local/share/ted
 INSTALL_BIN_DIR=/usr/bin

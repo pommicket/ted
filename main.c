@@ -317,7 +317,7 @@ int main(int argc, char **argv) {
 	// make sure signal handler has access to ted.
 	error_signal_handler_ted = ted;
 
-	{ // get local data directory
+	{ // get local and global data directory
 #if _WIN32
 		wchar_t *appdata = NULL;
 		KNOWNFOLDERID id = FOLDERID_LocalAppData;
