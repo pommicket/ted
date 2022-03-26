@@ -12,6 +12,10 @@ static void build_stop(Ted *ted) {
 		free(*cmd);
 	}
 	arr_clear(ted->build_queue);
+	if (ted->active_buffer == &ted->build_buffer) {
+		ted->active_buffer = NULL;
+		ted_reset_active_buffer(ted);
+	}
 }
 
 // call before adding anything to the build queue

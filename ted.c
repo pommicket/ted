@@ -139,6 +139,19 @@ void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer) {
 	}
 }
 
+// set ted->active_buffer to something nice
+static void ted_reset_active_buffer(Ted *ted) {
+	if (ted->nodes_used[0]) {
+		Node *node = &ted->nodes[0];
+		while (!node->tabs)
+			node = &ted->nodes[node->split_a]; // arbitrarily pick split_a.
+		ted_switch_to_buffer(ted, &ted->buffers[node->tabs[node->active_tab]]);
+	} else {
+		// there's nothing to set it to
+		ted->active_buffer = NULL;
+	}
+}
+
 
 // returns the index of an available buffer, or -1 if none are available 
 static i32 ted_new_buffer(Ted *ted) {

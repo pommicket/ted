@@ -301,23 +301,29 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 	case CMD_TAB_CLOSE: {
 		if (ted->menu) {
 			menu_close(ted);
-		} else {
-			if (node) {
-				u16 tab_idx = node->active_tab;
-				buffer = &ted->buffers[node->tabs[tab_idx]];
-				// (an argument of 2 overrides the unsaved changes dialog)
-				if (argument != 2 && buffer_unsaved_changes(buffer)) {
-					// there are unsaved changes!
-					ted->warn_unsaved = CMD_TAB_CLOSE;
-					strbuf_printf(ted->warn_unsaved_names, "%s", path_filename(buffer->filename));
-					menu_open(ted, MENU_WARN_UNSAVED);
-				} else {
-					node_tab_close(ted, node, node->active_tab);
-				}
+		} else if (ted->find) {
+			find_close(ted);
+		} else if (node) {
+			u16 tab_idx = node->active_tab;
+			buffer = &ted->buffers[node->tabs[tab_idx]];
+			// (an argument of 2 overrides the unsaved changes dialog)
+			if (argument != 2 && buffer_unsaved_changes(buffer)) {
+				// there are unsaved changes!
+				ted->warn_unsaved = CMD_TAB_CLOSE;
+				strbuf_printf(ted->warn_unsaved_names, "%s", path_filename(buffer->filename));
+				menu_open(ted, MENU_WARN_UNSAVED);
 			} else {
-				command_execute(ted, CMD_QUIT, 1);
-				return;
+				node_tab_close(ted, node, node->active_tab);
 			}
+		} else if (ted->build_shown) {
+			build_stop(ted);
+		} else if (ted->nodes_used[0]) {
+			// there are nodes open, but no active node.
+			// do nothing.
+		} else {
+			// no nodes open
+			command_execute(ted, CMD_QUIT, 1);
+			return;
 		}
 	} break;
 	case CMD_TAB_NEXT:
