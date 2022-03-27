@@ -15,9 +15,11 @@ TAGS
 *.pdb
 *.ilk
 *.res
+*.msi
 *.zip
 *.a
 pcre2*
 SDL2
 *.deb
 test.txt
+UpgradeLog.htm
