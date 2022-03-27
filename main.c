@@ -947,7 +947,12 @@ int main(int argc, char **argv) {
 	#endif
 
 	}
-
+	
+	if (ted->find)
+		find_close(ted);
+	build_stop(ted);
+	if (ted->menu)
+		menu_close(ted);
 	session_write(ted);
 	
 	arr_foreach_ptr(ted->shell_history, char *, cmd) {
@@ -964,11 +969,7 @@ int main(int argc, char **argv) {
 	SDL_GL_DeleteContext(glctx);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
-	build_stop(ted);
-	if (ted->menu)
-		menu_close(ted); // free any memory used by the current menu
 	if (log) fclose(log);
-	find_close(ted);
 	tag_selector_close(ted);
 	for (u16 i = 0; i < TED_MAX_BUFFERS; ++i)
 		if (ted->buffers_used[i])
