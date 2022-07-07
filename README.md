@@ -123,8 +123,8 @@ Extract the zip, copy SDL2-2.x.y into the ted directory, and rename it to SDL2. 
 to the ted directory.
 Then run `make.bat release`.
 
-To build the .msi file, you will need Visual Studio, as well as the
-[Visual Studio Installer Projects extension](https://marketplace.visualstudio.com/items?itemName=VisualStudioClient.MicrosoftVisualStudio2017InstallerProjects).
+To build the .msi file, you will need Visual Studio 2022, as well as the
+[Visual Studio Installer Projects extension](https://marketplace.visualstudio.com/items?itemName=VisualStudioClient.MicrosoftVisualStudio2022InstallerProjects).
 Then, open windows\_installer\\ted\\ted.sln, and build.
 
 ## Version history
