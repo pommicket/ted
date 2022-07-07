@@ -145,6 +145,7 @@ Then, open windows\_installer\\ted\\ted.sln, and build.
 <tr><td>1.0</td> <td>Bugfixes, small additional features, installers</td> <td>2021 Apr 20</td></tr>
 <tr><td>1.0r1</td> <td>Windows-specific bugfixes, update to new version of PCRE2</td> <td>2022 Jan 1</td></tr>
 <tr><td>1.0r2</td> <td>Various bugfixes involving closing tabs and windows</td> <td>2022 Mar 26</td></tr>
+<tr><td>1.0r3</td> <td>Better Tex syntax highlighting, move to cursor on backspace/delete</td> <td>2022 Jul 7</td></tr>
 </table>
 
 ## License
