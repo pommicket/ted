@@ -133,6 +133,7 @@ static inline bool syntax_number_continues(char32_t const *line, u32 line_len, u
 }
 
 static bool is_keyword(Language lang, char32_t c) {
+	if (c == '_' && lang == LANG_TEX) return false;
 	if (is32_ident(c)) return true;
 	switch (lang) {
 	case LANG_RUST:
@@ -581,8 +582,8 @@ static void syntax_highlight_python(SyntaxState *state, char32_t const *line, u3
 }
 
 static bool is_tex_ident(char32_t c) {
-	// digits cannot appear in tex identifiers
-	return is32_ident(c) && !is32_digit(c);
+	// digits and underscores cannot appear in tex identifiers
+	return is32_ident(c) && !is32_digit(c) && c != '_';
 }
 
 static void syntax_highlight_tex(SyntaxState *state, char32_t const *line, u32 line_len, SyntaxCharType *char_types) {
