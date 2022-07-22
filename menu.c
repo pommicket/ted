@@ -246,7 +246,7 @@ static void menu_update(Ted *ted) {
 		TextBuffer *buffer = ted->prev_active_buffer;
 		if (*contents != '\0' && *end == '\0') {
 			if (line_number < 1) line_number = 1;
-			if (line_number > buffer->nlines) line_number = (long)buffer->nlines; 
+			if (line_number > (long)buffer->nlines) line_number = (long)buffer->nlines; 
 			BufferPos pos = {(u32)line_number - 1, 0};
 			
 			if (line_buffer->line_buffer_submitted) {
