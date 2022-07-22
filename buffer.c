@@ -2183,6 +2183,13 @@ bool buffer_save(TextBuffer *buffer) {
 bool buffer_save_as(TextBuffer *buffer, char const *new_filename) {
 	char *prev_filename = buffer->filename;
 	if ((buffer->filename = buffer_strdup(buffer, new_filename))) {
+		buffer->view_only = false;
+		
+		// ensure whole file is syntax highlighted when saving with a different
+		//  file extension
+		buffer->frame_earliest_line_modified = 0;
+		buffer->frame_latest_line_modified = buffer->nlines - 1;
+		
 		if (buffer_save(buffer)) {
 			free(prev_filename);
 			return true;
@@ -2428,6 +2435,8 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	if (buffer->frame_latest_line_modified >= buffer->frame_earliest_line_modified
 		&& syntax_highlighting) {
 		// update syntax cache
+		if (buffer->frame_latest_line_modified >= buffer->nlines)
+			buffer->frame_latest_line_modified = buffer->nlines - 1;
 		Line *earliest = &buffer->lines[buffer->frame_earliest_line_modified];
 		Line *latest = &buffer->lines[buffer->frame_latest_line_modified];
 		Line *buffer_last_line = &buffer->lines[buffer->nlines - 1];

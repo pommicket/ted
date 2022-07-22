@@ -41,6 +41,15 @@ enum {
 	SYNTAX_STATE_HTML_COMMENT = 0x01u
 };
 
+enum {
+	SYNTAX_STATE_JAVASCRIPT_TEMPLATE_STRING = 0x01u,
+	SYNTAX_STATE_JAVASCRIPT_MULTILINE_COMMENT = 0x02u,
+};
+
+enum {
+	SYNTAX_STATE_JAVA_MULTILINE_COMMENT = 0x01u
+};
+
 typedef u8 SyntaxState;
 
 // If you are adding new languages, DO NOT change the constant values
@@ -55,6 +64,8 @@ ENUM_U16 {
 	LANG_MARKDOWN = 6,
 	LANG_HTML = 7,
 	LANG_CONFIG = 8, // .cfg files, e.g. ted.cfg
+	LANG_JAVASCRIPT = 9,
+	LANG_JAVA = 10,
 	LANG_COUNT
 } ENUM_U16_END(Language);
 
@@ -73,6 +84,8 @@ static LanguageName const language_names[] = {
 	{LANG_MARKDOWN, "Markdown"},
 	{LANG_HTML, "HTML"},
 	{LANG_CONFIG, "Config"},
+	{LANG_JAVASCRIPT, "Javascript"},
+	{LANG_JAVA, "Java"},
 };
 
 static_assert_if_possible(arr_count(language_names) == LANG_COUNT)

@@ -131,6 +131,65 @@ static Keyword const *const syntax_all_keywords_rust[] = {
 	['A'] = syntax_keywords_rust_A, ['B'] = syntax_keywords_rust_B, ['C'] = syntax_keywords_rust_C, ['D'] = syntax_keywords_rust_D, ['E'] = syntax_keywords_rust_E, ['F'] = syntax_keywords_rust_F, ['I'] = syntax_keywords_rust_I, ['N'] = syntax_keywords_rust_N, ['O'] = syntax_keywords_rust_O, ['P'] = syntax_keywords_rust_P, ['R'] = syntax_keywords_rust_R, ['S'] = syntax_keywords_rust_S, ['T'] = syntax_keywords_rust_T, ['U'] = syntax_keywords_rust_U, ['V'] = syntax_keywords_rust_V, ['a'] = syntax_keywords_rust_a, ['b'] = syntax_keywords_rust_b, ['c'] = syntax_keywords_rust_c, ['d'] = syntax_keywords_rust_d, ['e'] = syntax_keywords_rust_e, ['f'] = syntax_keywords_rust_f, ['g'] = syntax_keywords_rust_g, ['i'] = syntax_keywords_rust_i, ['l'] = syntax_keywords_rust_l, ['m'] = syntax_keywords_rust_m, ['o'] = syntax_keywords_rust_o, ['p'] = syntax_keywords_rust_p, ['r'] = syntax_keywords_rust_r, ['s'] = syntax_keywords_rust_s, ['t'] = syntax_keywords_rust_t, ['u'] = syntax_keywords_rust_u, ['v'] = syntax_keywords_rust_v, ['w'] = syntax_keywords_rust_w, ['y'] = syntax_keywords_rust_y
 };
 
+static Keyword const syntax_keywords_javascript_A[8] = {{"AggregateError", SYNTAX_BUILTIN},{"Array", SYNTAX_BUILTIN},{"ArrayBuffer", SYNTAX_BUILTIN},{"AsyncFunction", SYNTAX_BUILTIN},{"AsyncGenerator", SYNTAX_BUILTIN},{"AsyncGeneratorFunction", SYNTAX_BUILTIN},{"Atomics", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_javascript_B[5] = {{"BigInt", SYNTAX_BUILTIN},{"BigInt64Array", SYNTAX_BUILTIN},{"BigUint64Array", SYNTAX_BUILTIN},{"Boolean", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_javascript_D[3] = {{"DataView", SYNTAX_BUILTIN},{"Date", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_javascript_E[3] = {{"Error", SYNTAX_BUILTIN},{"EvalError", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_javascript_F[5] = {{"FinalizationRegistry", SYNTAX_BUILTIN},{"Float32Array", SYNTAX_BUILTIN},{"Float64Array", SYNTAX_BUILTIN},{"Function", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_javascript_G[3] = {{"Generator", SYNTAX_BUILTIN},{"GeneratorFunction", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_javascript_I[7] = {{"Infinity", SYNTAX_BUILTIN},{"Int16Array", SYNTAX_BUILTIN},{"Int32Array", SYNTAX_BUILTIN},{"Int8Array", SYNTAX_BUILTIN},{"InternalError", SYNTAX_BUILTIN},{"Intl", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_javascript_J[2] = {{"JSON", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_javascript_M[3] = {{"Map", SYNTAX_BUILTIN},{"Math", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_javascript_N[3] = {{"NaN", SYNTAX_BUILTIN},{"Number", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_javascript_O[2] = {{"Object", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_javascript_P[3] = {{"Promise", SYNTAX_BUILTIN},{"Proxy", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_javascript_R[5] = {{"RangeError", SYNTAX_BUILTIN},{"ReferenceError", SYNTAX_BUILTIN},{"Reflect", SYNTAX_BUILTIN},{"RegExp", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_javascript_S[6] = {{"Set", SYNTAX_BUILTIN},{"SharedArrayBuffer", SYNTAX_BUILTIN},{"String", SYNTAX_BUILTIN},{"Symbol", SYNTAX_BUILTIN},{"SyntaxError", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_javascript_T[3] = {{"TypeError", SYNTAX_BUILTIN},{"TypedArray", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_javascript_U[6] = {{"URIError", SYNTAX_BUILTIN},{"Uint16Array", SYNTAX_BUILTIN},{"Uint32Array", SYNTAX_BUILTIN},{"Uint8Array", SYNTAX_BUILTIN},{"Uint8ClampedArray", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_javascript_W[5] = {{"WeakMap", SYNTAX_BUILTIN},{"WeakRef", SYNTAX_BUILTIN},{"WeakSet", SYNTAX_BUILTIN},{"WebAssembly", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_javascript_a[2] = {{"await", SYNTAX_KEYWORD}};
+static Keyword const syntax_keywords_javascript_b[2] = {{"break", SYNTAX_KEYWORD}};
+static Keyword const syntax_keywords_javascript_c[6] = {{"case", SYNTAX_KEYWORD},{"catch", SYNTAX_KEYWORD},{"class", SYNTAX_KEYWORD},{"const", SYNTAX_KEYWORD},{"continue", SYNTAX_KEYWORD}};
+static Keyword const syntax_keywords_javascript_d[7] = {{"debugger", SYNTAX_KEYWORD},{"default", SYNTAX_KEYWORD},{"delete", SYNTAX_KEYWORD},{"do", SYNTAX_KEYWORD},{"decodeURI", SYNTAX_BUILTIN},{"decodeURIComponent", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_javascript_e[7] = {{"else", SYNTAX_KEYWORD},{"export", SYNTAX_KEYWORD},{"extends", SYNTAX_KEYWORD},{"encodeURI", SYNTAX_BUILTIN},{"encodeURIComponent", SYNTAX_BUILTIN},{"eval", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_javascript_f[5] = {{"finally", SYNTAX_KEYWORD},{"for", SYNTAX_KEYWORD},{"function", SYNTAX_KEYWORD},{"false", SYNTAX_CONSTANT}};
+static Keyword const syntax_keywords_javascript_g[2] = {{"globalThis", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_javascript_i[7] = {{"if", SYNTAX_KEYWORD},{"import", SYNTAX_KEYWORD},{"in", SYNTAX_KEYWORD},{"instanceof", SYNTAX_KEYWORD},{"isFinite", SYNTAX_BUILTIN},{"isNaN", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_javascript_l[2] = {{"let", SYNTAX_KEYWORD}};
+static Keyword const syntax_keywords_javascript_n[3] = {{"new", SYNTAX_KEYWORD},{"null", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_javascript_p[3] = {{"parseFloat", SYNTAX_BUILTIN},{"parseInt", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_javascript_r[2] = {{"return", SYNTAX_KEYWORD}};
+static Keyword const syntax_keywords_javascript_s[3] = {{"super", SYNTAX_KEYWORD},{"switch", SYNTAX_KEYWORD}};
+static Keyword const syntax_keywords_javascript_t[6] = {{"this", SYNTAX_KEYWORD},{"throw", SYNTAX_KEYWORD},{"try", SYNTAX_KEYWORD},{"typeof", SYNTAX_KEYWORD},{"true", SYNTAX_CONSTANT}};
+static Keyword const syntax_keywords_javascript_u[2] = {{"undefined", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_javascript_v[3] = {{"var", SYNTAX_KEYWORD},{"void", SYNTAX_KEYWORD}};
+static Keyword const syntax_keywords_javascript_w[3] = {{"while", SYNTAX_KEYWORD},{"with", SYNTAX_KEYWORD}};
+static Keyword const syntax_keywords_javascript_y[2] = {{"yield", SYNTAX_KEYWORD}};
+static Keyword const *const syntax_all_keywords_javascript[] = {
+	['A'] = syntax_keywords_javascript_A, ['B'] = syntax_keywords_javascript_B, ['D'] = syntax_keywords_javascript_D, ['E'] = syntax_keywords_javascript_E, ['F'] = syntax_keywords_javascript_F, ['G'] = syntax_keywords_javascript_G, ['I'] = syntax_keywords_javascript_I, ['J'] = syntax_keywords_javascript_J, ['M'] = syntax_keywords_javascript_M, ['N'] = syntax_keywords_javascript_N, ['O'] = syntax_keywords_javascript_O, ['P'] = syntax_keywords_javascript_P, ['R'] = syntax_keywords_javascript_R, ['S'] = syntax_keywords_javascript_S, ['T'] = syntax_keywords_javascript_T, ['U'] = syntax_keywords_javascript_U, ['W'] = syntax_keywords_javascript_W, ['a'] = syntax_keywords_javascript_a, ['b'] = syntax_keywords_javascript_b, ['c'] = syntax_keywords_javascript_c, ['d'] = syntax_keywords_javascript_d, ['e'] = syntax_keywords_javascript_e, ['f'] = syntax_keywords_javascript_f, ['g'] = syntax_keywords_javascript_g, ['i'] = syntax_keywords_javascript_i, ['l'] = syntax_keywords_javascript_l, ['n'] = syntax_keywords_javascript_n, ['p'] = syntax_keywords_javascript_p, ['r'] = syntax_keywords_javascript_r, ['s'] = syntax_keywords_javascript_s, ['t'] = syntax_keywords_javascript_t, ['u'] = syntax_keywords_javascript_u, ['v'] = syntax_keywords_javascript_v, ['w'] = syntax_keywords_javascript_w, ['y'] = syntax_keywords_javascript_y
+};
+
+static Keyword const syntax_keywords_java_a[3] = {{"abstract", SYNTAX_KEYWORD},{"assert", SYNTAX_KEYWORD}};
+static Keyword const syntax_keywords_java_b[4] = {{"boolean", SYNTAX_KEYWORD},{"break", SYNTAX_KEYWORD},{"byte", SYNTAX_KEYWORD}};
+static Keyword const syntax_keywords_java_c[7] = {{"case", SYNTAX_KEYWORD},{"catch", SYNTAX_KEYWORD},{"char", SYNTAX_KEYWORD},{"class", SYNTAX_KEYWORD},{"const", SYNTAX_KEYWORD},{"continue", SYNTAX_KEYWORD}};
+static Keyword const syntax_keywords_java_d[4] = {{"default", SYNTAX_KEYWORD},{"do", SYNTAX_KEYWORD},{"double", SYNTAX_KEYWORD}};
+static Keyword const syntax_keywords_java_e[4] = {{"else", SYNTAX_KEYWORD},{"enum", SYNTAX_KEYWORD},{"extends", SYNTAX_KEYWORD}};
+static Keyword const syntax_keywords_java_f[6] = {{"final", SYNTAX_KEYWORD},{"finally", SYNTAX_KEYWORD},{"float", SYNTAX_KEYWORD},{"for", SYNTAX_KEYWORD},{"false", SYNTAX_CONSTANT}};
+static Keyword const syntax_keywords_java_g[2] = {{"goto", SYNTAX_KEYWORD}};
+static Keyword const syntax_keywords_java_i[7] = {{"if", SYNTAX_KEYWORD},{"implements", SYNTAX_KEYWORD},{"import", SYNTAX_KEYWORD},{"instanceof", SYNTAX_KEYWORD},{"int", SYNTAX_KEYWORD},{"interface", SYNTAX_KEYWORD}};
+static Keyword const syntax_keywords_java_l[2] = {{"long", SYNTAX_KEYWORD}};
+static Keyword const syntax_keywords_java_n[4] = {{"native", SYNTAX_KEYWORD},{"new", SYNTAX_KEYWORD},{"null", SYNTAX_CONSTANT}};
+static Keyword const syntax_keywords_java_p[5] = {{"package", SYNTAX_KEYWORD},{"private", SYNTAX_KEYWORD},{"protected", SYNTAX_KEYWORD},{"public", SYNTAX_KEYWORD}};
+static Keyword const syntax_keywords_java_r[2] = {{"return", SYNTAX_KEYWORD}};
+static Keyword const syntax_keywords_java_s[7] = {{"short", SYNTAX_KEYWORD},{"static", SYNTAX_KEYWORD},{"strictfp", SYNTAX_KEYWORD},{"super", SYNTAX_KEYWORD},{"switch", SYNTAX_KEYWORD},{"synchronized", SYNTAX_KEYWORD}};
+static Keyword const syntax_keywords_java_t[7] = {{"this", SYNTAX_KEYWORD},{"throw", SYNTAX_KEYWORD},{"throws", SYNTAX_KEYWORD},{"transient", SYNTAX_KEYWORD},{"try", SYNTAX_KEYWORD},{"true", SYNTAX_CONSTANT}};
+static Keyword const syntax_keywords_java_v[4] = {{"var", SYNTAX_KEYWORD},{"void", SYNTAX_KEYWORD},{"volatile", SYNTAX_KEYWORD}};
+static Keyword const syntax_keywords_java_w[2] = {{"while", SYNTAX_KEYWORD}};
+static Keyword const *const syntax_all_keywords_java[] = {
+	['a'] = syntax_keywords_java_a, ['b'] = syntax_keywords_java_b, ['c'] = syntax_keywords_java_c, ['d'] = syntax_keywords_java_d, ['e'] = syntax_keywords_java_e, ['f'] = syntax_keywords_java_f, ['g'] = syntax_keywords_java_g, ['i'] = syntax_keywords_java_i, ['l'] = syntax_keywords_java_l, ['n'] = syntax_keywords_java_n, ['p'] = syntax_keywords_java_p, ['r'] = syntax_keywords_java_r, ['s'] = syntax_keywords_java_s, ['t'] = syntax_keywords_java_t, ['v'] = syntax_keywords_java_v, ['w'] = syntax_keywords_java_w
+};
+
 static Keyword const syntax_keywords_python_A[4] = {{"ArithmeticError", SYNTAX_BUILTIN},{"AssertionError", SYNTAX_BUILTIN},{"AttributeError", SYNTAX_BUILTIN}};
 static Keyword const syntax_keywords_python_B[6] = {{"BaseException", SYNTAX_BUILTIN},{"BlockingIOError", SYNTAX_BUILTIN},{"BrokenPipeError", SYNTAX_BUILTIN},{"BufferError", SYNTAX_BUILTIN},{"BytesWarning", SYNTAX_BUILTIN}};
 static Keyword const syntax_keywords_python_C[6] = {{"ChildProcessError", SYNTAX_BUILTIN},{"ConnectionAbortedError", SYNTAX_BUILTIN},{"ConnectionError", SYNTAX_BUILTIN},{"ConnectionRefusedError", SYNTAX_BUILTIN},{"ConnectionResetError", SYNTAX_BUILTIN}};

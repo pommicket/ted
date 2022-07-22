@@ -20,6 +20,8 @@ char const *language_comment_start(Language l) {
 		return "/* ";
 	case LANG_RUST:
 	case LANG_CPP:
+	case LANG_JAVASCRIPT:
+	case LANG_JAVA:
 		return "// ";
 	case LANG_CONFIG:
 	case LANG_PYTHON:
@@ -497,12 +499,12 @@ static void syntax_highlight_python(SyntaxState *state, char32_t const *line, u3
 		case '\'':
 		case '"': {
 			bool dbl_quoted = c == '"';
-			bool is_triple = i < line_len - 2 &&
+			bool is_triple = i+2 < line_len &&
 				line[i+1] == c && line[i+2] == c;
 			if (in_string) {
 				if (!string_is_multiline || is_triple) {
-					// end of string
 					if (string_is_dbl_quoted == dbl_quoted && backslashes % 2 == 0) {
+						// end of string
 						in_string = false;
 						if (char_types) {
 							char_types[i] = SYNTAX_STRING;
@@ -1046,6 +1048,249 @@ static void syntax_highlight_config(SyntaxState *state, char32_t const *line, u3
 	}
 }
 
+static void syntax_highlight_javascript(SyntaxState *state, char32_t const *line, u32 line_len, SyntaxCharType *char_types) {
+	(void)state;
+	bool string_is_template = (*state & SYNTAX_STATE_JAVASCRIPT_TEMPLATE_STRING) != 0;
+	bool in_multiline_comment = (*state & SYNTAX_STATE_JAVASCRIPT_MULTILINE_COMMENT) != 0;
+	bool string_is_dbl_quoted = false;
+	bool in_number = false;
+	bool in_string = string_is_template;
+	uint backslashes = 0;
+	
+	for (u32 i = 0; i < line_len; ++i) {
+		char32_t c = line[i];
+		bool dealt_with = false;
+		switch (c) {
+		case '/':
+			if (!in_string) {
+				if (i > 0) {
+					if (line[i-1] == '*') {
+						// end of multi line comment
+						in_multiline_comment = false;
+						if (char_types) char_types[i] = SYNTAX_COMMENT;
+						dealt_with = true;
+					}
+				}
+				if (!dealt_with && i+1 < line_len) {
+					if (line[i+1] == '/') {
+						// single line comment
+						if (char_types) memset(&char_types[i], SYNTAX_COMMENT, line_len - i);
+						i = line_len - 1;
+						dealt_with = true;
+					} else if (line[i+1] == '*') {
+						// multi line comment
+						in_multiline_comment = true;
+						if (char_types) char_types[i] = SYNTAX_COMMENT;
+						dealt_with = true;
+					}
+				}
+			}
+			break;
+		case '\'':
+		case '"':
+		case '`': {
+			if (!in_multiline_comment) {
+				bool dbl_quoted = c == '"';
+				bool template = c == '`';
+				if (in_string) {
+					if (string_is_dbl_quoted == dbl_quoted && string_is_template == template && backslashes % 2 == 0) {
+						// end of string
+						in_string = false;
+						if (char_types) char_types[i] = SYNTAX_STRING;
+						dealt_with = true;
+					}
+				} else {
+					// start of string
+					string_is_dbl_quoted = dbl_quoted;
+					string_is_template = template;
+					in_string = true;
+				}
+			}
+		} break;
+		case ANY_DIGIT:
+			if (char_types && !in_string && !in_number && !in_multiline_comment) {
+				in_number = true;
+				if (i) {
+					if (line[i - 1] == '.') {
+						// support .6, for example
+						char_types[i - 1] = SYNTAX_CONSTANT;
+					} else if (is32_ident(line[i - 1])) {
+						// actually, this isn't a number. it's something like a*6* or u3*2*.
+						in_number = false;
+					}
+				}
+			}
+			break;
+		case '\\':
+			++backslashes;
+			break;
+		default:
+			if ((i && is32_ident(line[i - 1])) || !is32_ident(c))
+				break; // can't be a keyword on its own.
+			
+			if (char_types && !in_string && !in_number && !in_multiline_comment) {
+				u32 keyword_len = syntax_keyword_len(LANG_JAVASCRIPT, line, i, line_len);
+				Keyword const *keyword = syntax_keyword_lookup(syntax_all_keywords_javascript, arr_count(syntax_all_keywords_javascript),
+					&line[i], keyword_len);
+				if (keyword) {
+					SyntaxCharType type = keyword->type;
+					for (size_t j = 0; j < keyword_len; ++j) {
+						char_types[i++] = type;
+					}
+					--i; // we'll increment i from the for loop
+					dealt_with = true;
+					break;
+				}
+			}
+			break;
+		}
+		if (c != '\\') backslashes = 0;
+		if (in_number && !syntax_number_continues(line, line_len, i))
+			in_number = false;
+		
+		if (char_types && !dealt_with) {
+			SyntaxCharType type = SYNTAX_NORMAL;
+			if (in_multiline_comment)
+				type = SYNTAX_COMMENT;
+			else if (in_string)
+				type = SYNTAX_STRING;
+			else if (in_number)
+				type = SYNTAX_CONSTANT;
+			char_types[i] = type;
+		}
+	}
+	*state = 0;
+	if (in_string && string_is_template)
+		*state |= SYNTAX_STATE_JAVASCRIPT_TEMPLATE_STRING;
+	if (in_multiline_comment)
+		*state |= SYNTAX_STATE_JAVASCRIPT_MULTILINE_COMMENT;
+}
+
+static void syntax_highlight_java(SyntaxState *state_ptr, char32_t const *line, u32 line_len, SyntaxCharType *char_types) {
+	SyntaxState state = *state_ptr;
+	bool in_string = false;
+	bool in_multiline_comment = (state & SYNTAX_STATE_CPP_MULTI_LINE_COMMENT) != 0;
+	bool in_char = false;
+	bool in_number = false;
+	
+	int backslashes = 0;
+	for (u32 i = 0; i < line_len; ++i) {
+
+		// are there 1/2 characters left in the line?
+		bool has_1_char =  i + 1 < line_len;
+		
+		bool dealt_with = false;
+		
+		char32_t c = line[i];
+		
+		switch (c) {
+		case '\\':
+			++backslashes;
+			break;
+		case '/':
+			if (!in_multiline_comment && !in_string && !in_char && has_1_char) {
+				if (line[i + 1] == '/') {
+						if (char_types) memset(&char_types[i], SYNTAX_COMMENT, line_len - i);
+						i = line_len - 1;
+						dealt_with = true;
+				} else if (line[i + 1] == '*') {
+					in_multiline_comment = true; // /*
+				}
+			} else if (in_multiline_comment) {
+				if (i > 0 && line[i - 1] == '*') {
+					// */
+					in_multiline_comment = false;
+					if (char_types) {
+						dealt_with = true;
+						char_types[i] = SYNTAX_COMMENT;
+					}
+				}
+			}
+			break;
+		case '"':
+			if (in_string && backslashes % 2 == 0) {
+				in_string = false;
+				if (char_types) {
+					dealt_with = true;
+					char_types[i] = SYNTAX_STRING;
+				}
+			} else if (!in_multiline_comment && !in_char) {
+				in_string = true;
+			}
+			break;
+		case '\'':
+			if (in_char && backslashes % 2 == 0) {
+				in_char = false;
+				if (char_types) {
+					dealt_with = true;
+					char_types[i] = SYNTAX_CHARACTER;
+				}
+			} else if (!in_multiline_comment && !in_string) {
+				in_char = true;
+			}
+			break;
+		case ANY_DIGIT:
+			// a number!
+			if (char_types && !in_multiline_comment && !in_string && !in_number && !in_char) {
+				in_number = true;
+				if (i) {
+					if (line[i - 1] == '.') {
+						// support .6, for example
+						char_types[i - 1] = SYNTAX_CONSTANT;
+					} else if (is32_ident(line[i - 1])) {
+						// actually, this isn't a number. it's something like a*6* or u3*2*.
+						in_number = false;
+					}
+				}
+			}
+			break;
+		default: {
+			if ((i && is32_ident(line[i - 1])) || !is32_ident(c))
+				break; // can't be a keyword on its own.
+			
+			// keywords don't matter for advancing the state
+			if (char_types && !in_multiline_comment && !in_number && !in_string && !in_char) {
+				u32 keyword_len = syntax_keyword_len(LANG_JAVA, line, i, line_len);
+				Keyword const *keyword = syntax_keyword_lookup(syntax_all_keywords_java, arr_count(syntax_all_keywords_java),
+						&line[i], keyword_len);
+				
+				
+				if (keyword) {
+					SyntaxCharType type = keyword->type;
+					for (size_t j = 0; j < keyword_len; ++j) {
+						char_types[i++] = type;
+					}
+					--i; // we'll increment i from the for loop
+					dealt_with = true;
+					break;
+				}
+			}
+		} break;
+		}
+		if (c != '\\') backslashes = 0;
+		if (in_number && !syntax_number_continues(line, line_len, i)) {
+			in_number = false;
+		}
+
+		if (char_types && !dealt_with) {
+			SyntaxCharType type = SYNTAX_NORMAL;
+			if (in_multiline_comment)
+				type = SYNTAX_COMMENT;
+			else if (in_string)
+				type = SYNTAX_STRING;
+			else if (in_char)
+				type = SYNTAX_CHARACTER;
+			else if (in_number)
+				type = SYNTAX_CONSTANT;
+
+			char_types[i] = type;
+		}
+	}
+	*state_ptr = (SyntaxState)(
+		(in_multiline_comment * SYNTAX_STATE_JAVA_MULTILINE_COMMENT)
+	);
+}
+
 // This is the main syntax highlighting function. It will determine which colors to use for each character.
 // Rather than returning colors, it returns a character type (e.g. comment) which can be converted to a color.
 // To highlight multiple lines, start out with a zeroed SyntaxState, and pass a pointer to it each time.
@@ -1079,6 +1324,12 @@ void syntax_highlight(SyntaxState *state, Language lang, char32_t const *line, u
 		break;
 	case LANG_CONFIG:
 		syntax_highlight_config(state, line, line_len, char_types);
+		break;
+	case LANG_JAVASCRIPT:
+		syntax_highlight_javascript(state, line, line_len, char_types);
+		break;
+	case LANG_JAVA:
+		syntax_highlight_java(state, line, line_len, char_types);
 		break;
 	case LANG_COUNT: assert(0); break;
 	}
