@@ -507,11 +507,17 @@ int main(int argc, char **argv) {
 	{
 		if (starting_filename) {
 			if (fs_file_exists(starting_filename)) {
-				if (!ted_open_file(ted, starting_filename))
-					ted_seterr(ted, "Couldn't load file: %s", ted_geterr(ted));
+				if (!ted_open_file(ted, starting_filename)) {
+					char err[512] = {0};
+					sprintf(err, "%.500s", ted_geterr(ted)); // -Wrestrict (rightly) complains without this intermediate step
+					ted_seterr(ted, "Couldn't load file: %s", err);
+				}
 			} else {
-				if (!ted_new_file(ted, starting_filename))
-					ted_seterr(ted, "Couldn't create file: %s", ted_geterr(ted));
+				if (!ted_new_file(ted, starting_filename)) {
+					char err[512] = {0};
+					sprintf(err, "%.500s", ted_geterr(ted));
+					ted_seterr(ted, "Couldn't create file: %s", err);
+				}
 			}
 		} else {
 			session_read(ted);

@@ -588,7 +588,7 @@ static void popup_get_rects(Ted const *ted, u32 options, Rect *popup, Rect *butt
 }
 
 static PopupOption popup_update(Ted *ted, u32 options) {
-	Rect r, button_yes, button_no, button_cancel;
+	Rect r = {0}, button_yes = {0}, button_no = {0}, button_cancel = {0};
 	popup_get_rects(ted, options, &r, &button_yes, &button_no, &button_cancel);
 	if (button_update(ted, button_yes))
 		return POPUP_YES;
