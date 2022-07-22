@@ -170,6 +170,27 @@ static Keyword const *const syntax_all_keywords_javascript[] = {
 	['A'] = syntax_keywords_javascript_A, ['B'] = syntax_keywords_javascript_B, ['D'] = syntax_keywords_javascript_D, ['E'] = syntax_keywords_javascript_E, ['F'] = syntax_keywords_javascript_F, ['G'] = syntax_keywords_javascript_G, ['I'] = syntax_keywords_javascript_I, ['J'] = syntax_keywords_javascript_J, ['M'] = syntax_keywords_javascript_M, ['N'] = syntax_keywords_javascript_N, ['O'] = syntax_keywords_javascript_O, ['P'] = syntax_keywords_javascript_P, ['R'] = syntax_keywords_javascript_R, ['S'] = syntax_keywords_javascript_S, ['T'] = syntax_keywords_javascript_T, ['U'] = syntax_keywords_javascript_U, ['W'] = syntax_keywords_javascript_W, ['a'] = syntax_keywords_javascript_a, ['b'] = syntax_keywords_javascript_b, ['c'] = syntax_keywords_javascript_c, ['d'] = syntax_keywords_javascript_d, ['e'] = syntax_keywords_javascript_e, ['f'] = syntax_keywords_javascript_f, ['g'] = syntax_keywords_javascript_g, ['i'] = syntax_keywords_javascript_i, ['l'] = syntax_keywords_javascript_l, ['n'] = syntax_keywords_javascript_n, ['p'] = syntax_keywords_javascript_p, ['r'] = syntax_keywords_javascript_r, ['s'] = syntax_keywords_javascript_s, ['t'] = syntax_keywords_javascript_t, ['u'] = syntax_keywords_javascript_u, ['v'] = syntax_keywords_javascript_v, ['w'] = syntax_keywords_javascript_w, ['y'] = syntax_keywords_javascript_y
 };
 
+static Keyword const syntax_keywords_go_a[2] = {{"append", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_go_b[4] = {{"break", SYNTAX_KEYWORD},{"bool", SYNTAX_BUILTIN},{"byte", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_go_c[12] = {{"case", SYNTAX_KEYWORD},{"chan", SYNTAX_KEYWORD},{"const", SYNTAX_KEYWORD},{"continue", SYNTAX_KEYWORD},{"cap", SYNTAX_BUILTIN},{"close", SYNTAX_BUILTIN},{"comparable", SYNTAX_BUILTIN},{"complex", SYNTAX_BUILTIN},{"complex128", SYNTAX_BUILTIN},{"complex64", SYNTAX_BUILTIN},{"copy", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_go_d[4] = {{"default", SYNTAX_KEYWORD},{"defer", SYNTAX_KEYWORD},{"delete", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_go_e[3] = {{"else", SYNTAX_KEYWORD},{"error", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_go_f[7] = {{"fallthrough", SYNTAX_KEYWORD},{"for", SYNTAX_KEYWORD},{"func", SYNTAX_KEYWORD},{"false", SYNTAX_CONSTANT},{"float32", SYNTAX_BUILTIN},{"float64", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_go_g[3] = {{"go", SYNTAX_KEYWORD},{"goto", SYNTAX_KEYWORD}};
+static Keyword const syntax_keywords_go_i[11] = {{"if", SYNTAX_KEYWORD},{"import", SYNTAX_KEYWORD},{"interface", SYNTAX_KEYWORD},{"iota", SYNTAX_CONSTANT},{"imag", SYNTAX_BUILTIN},{"int", SYNTAX_BUILTIN},{"int16", SYNTAX_BUILTIN},{"int32", SYNTAX_BUILTIN},{"int64", SYNTAX_BUILTIN},{"int8", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_go_l[2] = {{"len", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_go_m[3] = {{"map", SYNTAX_KEYWORD},{"make", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_go_n[3] = {{"nil", SYNTAX_CONSTANT},{"new", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_go_p[5] = {{"package", SYNTAX_KEYWORD},{"panic", SYNTAX_BUILTIN},{"print", SYNTAX_BUILTIN},{"println", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_go_r[6] = {{"range", SYNTAX_KEYWORD},{"return", SYNTAX_KEYWORD},{"real", SYNTAX_BUILTIN},{"recover", SYNTAX_BUILTIN},{"rune", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_go_s[5] = {{"select", SYNTAX_KEYWORD},{"struct", SYNTAX_KEYWORD},{"switch", SYNTAX_KEYWORD},{"string", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_go_t[3] = {{"type", SYNTAX_KEYWORD},{"true", SYNTAX_CONSTANT}};
+static Keyword const syntax_keywords_go_u[7] = {{"uint", SYNTAX_BUILTIN},{"uint16", SYNTAX_BUILTIN},{"uint32", SYNTAX_BUILTIN},{"uint64", SYNTAX_BUILTIN},{"uint8", SYNTAX_BUILTIN},{"uintptr", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_go_v[2] = {{"var", SYNTAX_KEYWORD}};
+static Keyword const *const syntax_all_keywords_go[] = {
+	['a'] = syntax_keywords_go_a, ['b'] = syntax_keywords_go_b, ['c'] = syntax_keywords_go_c, ['d'] = syntax_keywords_go_d, ['e'] = syntax_keywords_go_e, ['f'] = syntax_keywords_go_f, ['g'] = syntax_keywords_go_g, ['i'] = syntax_keywords_go_i, ['l'] = syntax_keywords_go_l, ['m'] = syntax_keywords_go_m, ['n'] = syntax_keywords_go_n, ['p'] = syntax_keywords_go_p, ['r'] = syntax_keywords_go_r, ['s'] = syntax_keywords_go_s, ['t'] = syntax_keywords_go_t, ['u'] = syntax_keywords_go_u, ['v'] = syntax_keywords_go_v
+};
+
 static Keyword const syntax_keywords_java_a[3] = {{"abstract", SYNTAX_KEYWORD},{"assert", SYNTAX_KEYWORD}};
 static Keyword const syntax_keywords_java_b[4] = {{"boolean", SYNTAX_KEYWORD},{"break", SYNTAX_KEYWORD},{"byte", SYNTAX_KEYWORD}};
 static Keyword const syntax_keywords_java_c[7] = {{"case", SYNTAX_KEYWORD},{"catch", SYNTAX_KEYWORD},{"char", SYNTAX_KEYWORD},{"class", SYNTAX_KEYWORD},{"const", SYNTAX_KEYWORD},{"continue", SYNTAX_KEYWORD}};

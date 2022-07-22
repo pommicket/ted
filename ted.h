@@ -50,6 +50,11 @@ enum {
 	SYNTAX_STATE_JAVA_MULTILINE_COMMENT = 0x01u
 };
 
+enum {
+	SYNTAX_STATE_GO_RAW_STRING = 0x01u, // backtick-enclosed string
+	SYNTAX_STATE_GO_MULTILINE_COMMENT = 0x02u
+};
+
 typedef u8 SyntaxState;
 
 // If you are adding new languages, DO NOT change the constant values
@@ -66,6 +71,7 @@ ENUM_U16 {
 	LANG_CONFIG = 8, // .cfg files, e.g. ted.cfg
 	LANG_JAVASCRIPT = 9,
 	LANG_JAVA = 10,
+	LANG_GO = 11,
 	LANG_COUNT
 } ENUM_U16_END(Language);
 
@@ -86,6 +92,7 @@ static LanguageName const language_names[] = {
 	{LANG_CONFIG, "Config"},
 	{LANG_JAVASCRIPT, "Javascript"},
 	{LANG_JAVA, "Java"},
+	{LANG_GO, "Go"},
 };
 
 static_assert_if_possible(arr_count(language_names) == LANG_COUNT)

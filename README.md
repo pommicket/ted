@@ -30,7 +30,7 @@ in other editors.
 - Multiple tabs, each with a different file
 - Split screen
 - Auto-indent
-- Syntax highlighting for C, C++, HTML, Java, JavaScript, LaTeX, Markdown, Python, and Rust.
+- Syntax highlighting for C, C++, Go, HTML, Java, JavaScript, LaTeX, Markdown, Python, and Rust.
 - Find and replace (with regular expressions!)
 - Run build command, go to errors
 - Run any shell command
@@ -146,7 +146,7 @@ Then, open windows\_installer\\ted\\ted.sln, and build.
 <tr><td>1.0r1</td> <td>Windows-specific bugfixes, update to new version of PCRE2</td> <td>2022 Jan 1</td></tr>
 <tr><td>1.0r2</td> <td>Various bugfixes involving closing tabs and windows</td> <td>2022 Mar 26</td></tr>
 <tr><td>1.0r3</td> <td>Better TeX syntax highlighting, move to cursor on backspace/delete</td> <td>2022 Jul 7</td></tr>
-<tr><td>1.1</td> <td>Minor fixes, syntax highlighting for JavaScript and Java</td> <td>2022 Jul 22</td></tr>
+<tr><td>1.1</td> <td>Minor fixes, syntax highlighting for JavaScript, Java, and Go</td> <td>2022 Jul 22</td></tr>
 </table>
 
 ## License
