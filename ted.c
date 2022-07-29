@@ -354,8 +354,8 @@ static void ted_reload_all(Ted *ted) {
 }
 
 // load/reload configs
-void ted_load_configs(Ted *ted) {
-	config_free(ted);
+void ted_load_configs(Ted *ted, bool reloading) {
+	if (reloading) config_free(ted);
 	
 	// copy global config to local config
 	char local_config_filename[TED_PATH_MAX];
@@ -386,4 +386,9 @@ void ted_load_configs(Ted *ted) {
 	config_read(ted, global_config_filename, 1);
 	config_read(ted, local_config_filename, 1);
 	if (ted->search_cwd) config_read(ted, TED_CFG, 1);
+	
+	if (reloading) {
+		// reset text size
+		ted_load_fonts(ted);
+	}
 }

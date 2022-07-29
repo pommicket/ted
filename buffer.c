@@ -2182,7 +2182,7 @@ bool buffer_save(TextBuffer *buffer) {
 				buffer->undo_history_write_pos = arr_len(buffer->undo_history);
 				char const *name = buffer->filename ? path_filename(buffer->filename) : TED_UNTITLED;
 				if (streq(name, "ted.cfg") && buffer_settings(buffer)->auto_reload_config) {
-					ted_load_configs(buffer->ted);
+					ted_load_configs(buffer->ted, true);
 				}
 			}
 			return success;

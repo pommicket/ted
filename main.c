@@ -398,7 +398,7 @@ int main(int argc, char **argv) {
 	
 	PROFILE_TIME(misc_end)
 	PROFILE_TIME(configs_start)
-	ted_load_configs(ted);
+	ted_load_configs(ted, false);
 	if (ted_haserr(ted)) {
 		strcpy(config_err, ted->error);
 		ted_clearerr(ted); // clear the error so later things (e.g. loading font) don't detect an error
