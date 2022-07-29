@@ -245,17 +245,17 @@ INT WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	(void)hInstance; (void)hPrevInstance; (void)lpCmdLine; (void)nCmdShow;
 	int argc = 0;
     LPWSTR* wide_argv = CommandLineToArgvW(GetCommandLineW(), &argc);
-    char** argv = malloc(argc * sizeof *argv);
+    char** argv = calloc(argc + 1, sizeof *argv);
 	if (!argv) {
 		die("Out of memory.");
 	}
     for (int i = 0; i < argc; i++) {
         LPWSTR wide_arg = wide_argv[i];
         int len = (int)wcslen(wide_arg);
-        argv[i] = malloc(len + 1);
-		if (!argv[i]) die("Out of memory.");
-        for (int j = 0; j <= len; j++)
-            argv[i][j] = (char)wide_arg[j];
+        int bufsz = len * 4 + 8;
+        argv[i] = calloc((size_t)bufsz, 1);
+	if (!argv[i]) die("Out of memory.");
+	WideCharToMultiByte(CP_UTF8, 0, wide_arg, len, argv[i], bufsz - 1, NULL, NULL);
     }
     LocalFree(wide_argv);
 #else
@@ -281,7 +281,11 @@ int main(int argc, char **argv) {
 	#error "Unrecognized operating system."
 #endif
 	
-	setlocale(LC_ALL, ""); // allow unicode
+	#if _WIN32
+	setlocale(LC_ALL, ".65001");
+	#else
+	setlocale(LC_ALL, "C.UTF-8");
+	#endif
 	
 	// read command-line arguments
 	char const *starting_filename = NULL;
@@ -335,8 +339,10 @@ int main(int argc, char **argv) {
 		}
 		
 		// on Windows, the global data directory is just the directory where the executable is.
+		WCHAR executable_wide_path[TED_PATH_MAX] = {0};
 		char executable_path[TED_PATH_MAX] = {0};
-		if (GetModuleFileNameA(NULL, executable_path, sizeof executable_path) > 0) {
+		if (GetModuleFileNameW(NULL, executable_wide_path, sizeof executable_wide_path - 1) > 0) {
+			WideCharToMultiByte(CP_UTF8, 0, executable_wide_path, -1, executable_path, sizeof executable_path, NULL, NULL);
 			char *last_backslash = strrchr(executable_path, '\\');
 			if (last_backslash) {
 				*last_backslash = '\0';
