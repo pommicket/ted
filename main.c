@@ -45,6 +45,22 @@ no_warn_end
 #error "Unrecognized operating system."
 #endif
 
+static void die(char const *fmt, ...) {
+	char buf[256] = {0};
+	
+	va_list args;
+	va_start(args, fmt);
+	vsnprintf(buf, sizeof buf - 1, fmt, args);
+	va_end(args);
+	
+	// show a message box, and if that fails, print it
+	if (SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", buf, NULL) < 0) {
+		debug_println("%s\n", buf);
+	}
+	
+	exit(EXIT_FAILURE);
+}
+
 #include "io.c"
 
 #include "text.h"
@@ -76,22 +92,6 @@ bool tag_goto(Ted *ted, char const *tag);
 #else
 #define PROFILE_TIME(var)
 #endif
-
-static void die(char const *fmt, ...) {
-	char buf[256] = {0};
-	
-	va_list args;
-	va_start(args, fmt);
-	vsnprintf(buf, sizeof buf - 1, fmt, args);
-	va_end(args);
-	
-	// show a message box, and if that fails, print it
-	if (SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", buf, NULL) < 0) {
-		debug_println("%s\n", buf);
-	}
-	
-	exit(EXIT_FAILURE);
-}
 
 static Rect error_box_rect(Ted *ted) {
 	Font *font = ted->font;
@@ -398,40 +398,10 @@ int main(int argc, char **argv) {
 	
 	PROFILE_TIME(misc_end)
 	PROFILE_TIME(configs_start)
-	{
-		// copy global config to local config
-		char local_config_filename[TED_PATH_MAX];
-		strbuf_printf(local_config_filename, "%s" PATH_SEPARATOR_STR TED_CFG, ted->local_data_dir);
-		char global_config_filename[TED_PATH_MAX];
-		strbuf_printf(global_config_filename, "%s" PATH_SEPARATOR_STR TED_CFG, ted->global_data_dir);
-		if (!fs_file_exists(local_config_filename)) {
-			if (fs_file_exists(global_config_filename)) {
-				if (!copy_file(global_config_filename, local_config_filename)) {
-					die("Couldn't copy config %s to %s.", global_config_filename, local_config_filename);
-				}
-			} else {
-				die("ted's backup config file, %s, does not exist. Try reinstalling ted?", global_config_filename);
-			}
-		}
-		
-		// read global settings
-		config_read(ted, global_config_filename, 0);
-		config_read(ted, local_config_filename, 0);
-		if (ted->search_cwd) {
-			// read config in cwd
-			config_read(ted, TED_CFG, 0);
-		}
-		// copy global settings to language-specific settings
-		for (int l = 1; l < LANG_COUNT; ++l)
-			ted->settings_by_language[l] = ted->settings_by_language[0];
-		// read language-specific settings
-		config_read(ted, global_config_filename, 1);
-		config_read(ted, local_config_filename, 1);
-		if (ted->search_cwd) config_read(ted, TED_CFG, 1);
-		if (ted_haserr(ted)) {
-			strcpy(config_err, ted->error);
-			ted_clearerr(ted); // clear the error so later things (e.g. loading font) don't detect an error
-		}
+	ted_load_configs(ted);
+	if (ted_haserr(ted)) {
+		strcpy(config_err, ted->error);
+		ted_clearerr(ted); // clear the error so later things (e.g. loading font) don't detect an error
 	}
 	PROFILE_TIME(configs_end)
 	

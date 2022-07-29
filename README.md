@@ -68,7 +68,7 @@ to open the command palette, and select "open-config". There are several section
 
 Comments begin with `#`, and all other lines are of the form `key = value`.
 
-You need to restart ted when you make a change to ted.cfg.
+By default ted's settings will automatically update when you save the config file.
 
 The `core` section's settings should be pretty familiar (font size, etc.) or should have comments on the previous line
 explaining what they do. Keyboard shortcuts are of the form `key combo = action`, where `action` is an argument (number or string),

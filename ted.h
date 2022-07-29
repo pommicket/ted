@@ -141,6 +141,7 @@ typedef struct {
 	bool syntax_highlighting;
 	bool line_numbers;
 	bool auto_reload;
+	bool auto_reload_config;
 	bool restore_session;
 	bool regenerate_tags_if_not_found;
 	bool indent_with_spaces;
@@ -403,4 +404,7 @@ void command_execute(Ted *ted, Command c, i64 argument);
 void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer);
 // the settings of the active buffer, or the default settings if there is no active buffer
 Settings *ted_active_settings(Ted *ted);
+void ted_load_configs(Ted *ted);
 static TextBuffer *find_search_buffer(Ted *ted);
+void config_read(Ted *ted, const char *filename, int pass);
+void config_free(Ted *ted);

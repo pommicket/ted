@@ -235,6 +235,7 @@ void config_read(Ted *ted, char const *filename, int pass) {
 		{"auto-indent", &nullset->auto_indent, true},
 		{"auto-add-newline", &nullset->auto_add_newline, true},
 		{"auto-reload", &nullset->auto_reload, true},
+		{"auto-reload-config", &nullset->auto_reload_config, false},
 		{"syntax-highlighting", &nullset->syntax_highlighting, true},
 		{"line-numbers", &nullset->line_numbers, true},
 		{"restore-session", &nullset->restore_session, false},
@@ -521,7 +522,7 @@ void config_read(Ted *ted, char const *filename, int pass) {
 							boolean = false;
 						}
 
-						// go through all  options
+						// go through all options
 						bool recognized = false;
 						for (size_t i = 0; i < arr_count(all_options) && !recognized; ++i) {
 							OptionAny const *any = &all_options[i];
@@ -574,6 +575,12 @@ void config_read(Ted *ted, char const *filename, int pass) {
 								}
 							}
 						}
+						
+						// this is probably a bad idea:
+						//if (!recognized)
+						//	config_err(cfg, "Unrecognized option: %s", key);
+						// because if we ever remove an option in the future
+						// everyone will get errors
 					} break;
 					}
 				}
@@ -594,7 +601,7 @@ void config_read(Ted *ted, char const *filename, int pass) {
 	fclose(fp);
 }
 
-static void config_free(Ted *ted) {
+void config_free(Ted *ted) {
 	for (u16 i = 0; i < LANG_COUNT; ++i) {
 		free(ted->settings_by_language[0].language_extensions[i]);
 		for (u16 l = 0; l < LANG_COUNT; ++l) {
