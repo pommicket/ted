@@ -155,6 +155,7 @@ Then, open windows\_installer\\ted\\ted.sln, and build.
 <tr><td>1.0r2</td> <td>Various bugfixes involving closing tabs and windows</td> <td>2022 Mar 26</td></tr>
 <tr><td>1.0r3</td> <td>Better TeX syntax highlighting, move to cursor on backspace/delete</td> <td>2022 Jul 7</td></tr>
 <tr><td>1.1</td> <td>Minor fixes, syntax highlighting for JavaScript, Java, and Go</td> <td>2022 Jul 22</td></tr>
+<tr><td>1.2</td> <td>Bug fixes, per-language settings</td> <td>2022 Jul 29</td></tr>
 </table>
 
 ## License
