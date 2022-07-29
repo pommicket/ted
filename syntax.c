@@ -1053,6 +1053,7 @@ static void syntax_highlight_javascript(SyntaxState *state, char32_t const *line
 	bool string_is_template = (*state & SYNTAX_STATE_JAVASCRIPT_TEMPLATE_STRING) != 0;
 	bool in_multiline_comment = (*state & SYNTAX_STATE_JAVASCRIPT_MULTILINE_COMMENT) != 0;
 	bool string_is_dbl_quoted = false;
+	bool string_is_regex = false;
 	bool in_number = false;
 	bool in_string = string_is_template;
 	uint backslashes = 0;
@@ -1063,7 +1064,7 @@ static void syntax_highlight_javascript(SyntaxState *state, char32_t const *line
 		switch (c) {
 		case '/':
 			if (!in_string) {
-				if (i > 0) {
+				if (i > 0 && in_multiline_comment) {
 					if (line[i-1] == '*') {
 						// end of multi line comment
 						in_multiline_comment = false;
@@ -1084,6 +1085,35 @@ static void syntax_highlight_javascript(SyntaxState *state, char32_t const *line
 						dealt_with = true;
 					}
 				}
+				if (!dealt_with && !in_multiline_comment && !in_string) {
+					// this is not foolproof for detecting regex literals
+					//  but should handle all "reasonable" uses of regex.
+					bool is_regex = i == 0 // slash is first char in line
+						|| (line[i-1] <= WCHAR_MAX && iswspace(line[i-1])) // slash preceded by space
+						|| (line[i-1] <= 128 && strchr(";({[=,:", (char)line[i-1])); // slash preceded by any of these characters
+					if (is_regex) {
+						in_string = true;
+						string_is_regex = true;
+					}
+				}
+			} else if (in_string && string_is_regex) {
+				if (backslashes % 2 == 0) {
+					// end of regex literal
+					if (char_types) {
+						char_types[i] = SYNTAX_STRING;
+						++i;
+						// flags
+						for (; i < line_len; ++i) {
+							if (line[i] >= 128 || !strchr("dgimsuy", (char)line[i]))
+								break;
+							char_types[i] = SYNTAX_STRING;	
+						}
+						--i; // back to last char in flags
+					}
+					dealt_with = true;
+					in_string = false;
+					string_is_regex = false;
+				}
 			}
 			break;
 		case '\'':
@@ -1093,7 +1123,8 @@ static void syntax_highlight_javascript(SyntaxState *state, char32_t const *line
 				bool dbl_quoted = c == '"';
 				bool template = c == '`';
 				if (in_string) {
-					if (string_is_dbl_quoted == dbl_quoted && string_is_template == template && backslashes % 2 == 0) {
+					if (!string_is_regex && backslashes % 2 == 0
+						&& string_is_dbl_quoted == dbl_quoted && string_is_template == template) {
 						// end of string
 						in_string = false;
 						if (char_types) char_types[i] = SYNTAX_STRING;
@@ -1197,7 +1228,7 @@ static void syntax_highlight_java(SyntaxState *state_ptr, char32_t const *line, 
 					in_multiline_comment = true; // /*
 				}
 			} else if (in_multiline_comment) {
-				if (i > 0 && line[i - 1] == '*') {
+				if (i > 0 && line[i - 1] == '*' && in_multiline_comment) {
 					// */
 					in_multiline_comment = false;
 					if (char_types) {
@@ -1324,7 +1355,7 @@ static void syntax_highlight_go(SyntaxState *state_ptr, char32_t const *line, u3
 					in_multiline_comment = true; // /*
 				}
 			} else if (in_multiline_comment) {
-				if (i > 0 && line[i - 1] == '*') {
+				if (i > 0 && line[i - 1] == '*' && in_multiline_comment) {
 					// */
 					in_multiline_comment = false;
 					if (char_types) {

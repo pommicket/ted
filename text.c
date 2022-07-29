@@ -42,6 +42,7 @@ typedef struct {
 } TextTriangle;
 
 struct Font {
+	bool force_monospace;
 	float char_width; // width of the character 'a'. calculated when font is loaded.
 	float char_height;
 	GLuint textures[CHAR_PAGE_COUNT];
@@ -220,6 +221,10 @@ Font *text_font_load(char const *ttf_filename, float font_size) {
 	return font;
 }
 
+void text_font_set_force_monospace(Font *font, bool force) {
+	font->force_monospace = force;
+}
+
 float text_font_char_height(Font *font) {
 	return font->char_height;
 }
@@ -280,11 +285,20 @@ top:
 	}
 	stbtt_bakedchar *char_data = font->char_pages[page];
 	float const char_height = font->char_height;
+	float const char_width = font->char_width;
 	if (char_data) { // if page was successfully loaded
 		stbtt_aligned_quad q = {0};
 		state->y += char_height * 0.75f;
-		stbtt_GetBakedQuad(char_data, font->tex_widths[page], font->tex_heights[page],
-			(int)index, &state->x, &state->y, &q, 1);
+		{
+			float x = state->x, y = state->y;
+			float *xp = &state->x, *yp = &state->y;
+			if (font->force_monospace)
+				xp = &x, yp = &y;
+			stbtt_GetBakedQuad(char_data, font->tex_widths[page], font->tex_heights[page],
+				(int)index, xp, yp, &q, 1);
+			if (font->force_monospace)
+				state->x += char_width; // ignore actual character width
+		}
 		state->y -= char_height * 0.75f;
 		float s0 = q.s0, t0 = q.t0;
 		float s1 = q.s1, t1 = q.t1;

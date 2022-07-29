@@ -765,7 +765,7 @@ static v4 color_rgba_to_hsva(v4 rgba) {
 	float H = 0;
 	if (C == 0)
 		H = 0;
-	if (M == R)
+	else if (M == R)
 		H = fmodf((G - B) / C, 6);
 	else if (M == G)
 		H = (B - R) / C + 2;

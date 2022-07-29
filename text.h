@@ -49,6 +49,8 @@ extern float text_font_char_height(Font *font);
 // Width of the character 'a' of this font in pixels.
 // This is meant to be only used for monospace fonts.
 extern float text_font_char_width(Font *font);
+// Force text to advance by text_font_char_width(font) pixels per character (actually, per code point).
+extern void text_font_set_force_monospace(Font *font, bool force);
 // Get the dimensions of some text.
 extern void text_get_size(Font *font, char const *text, float *width, float *height);
 extern v2 text_get_size_v2(Font *font, char const *text);
