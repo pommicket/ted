@@ -122,7 +122,7 @@ static WarnUnusedResult bool find_match(Ted *ted, BufferPos *pos, u32 *match_sta
 }
 
 // check if the search term needs to be recompiled
-static void find_update(Ted *ted, bool force) {
+void find_update(Ted *ted, bool force) {
 	TextBuffer *find_buffer = &ted->find_buffer;
 	u32 flags = find_compilation_flags(ted);
 	if (!force

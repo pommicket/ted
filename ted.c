@@ -1,7 +1,7 @@
-static void menu_open(Ted *ted, Menu menu);
-static void menu_close(Ted *ted);
-static void find_update(Ted *ted, bool force);
-static Command command_from_str(char const *str);
+void menu_open(Ted *ted, Menu menu);
+void menu_close(Ted *ted);
+void find_update(Ted *ted, bool force);
+Command command_from_str(char const *str);
 
 // this is a macro so we get -Wformat warnings
 #define ted_seterr(ted, ...) \

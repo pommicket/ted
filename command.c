@@ -211,12 +211,13 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		break;
 	case CMD_QUIT:
 		// pass argument of 2 to override dialog
-		if (argument == 2) {
+		if (argument == 2 || ted->warn_unsaved == CMD_QUIT) {
 			ted->quit = true;
 		} else {
 			*ted->warn_unsaved_names = 0;
 			bool *buffers_used = ted->buffers_used;
 			bool first = true;
+			
 			for (u16 i = 0; i < TED_MAX_BUFFERS; ++i) {
 				if (buffers_used[i]) {
 					buffer = &ted->buffers[i];
@@ -226,6 +227,7 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 					}
 				}
 			}
+			
 			if (*ted->warn_unsaved_names) {
 				ted->warn_unsaved = CMD_QUIT;
 				menu_open(ted, MENU_WARN_UNSAVED);
