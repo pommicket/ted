@@ -84,12 +84,12 @@ static void die(char const *fmt, ...) {
 	va_start(args, fmt);
 	vsnprintf(buf, sizeof buf - 1, fmt, args);
 	va_end(args);
-
+	
 	// show a message box, and if that fails, print it
 	if (SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", buf, NULL) < 0) {
 		debug_println("%s\n", buf);
 	}
-
+	
 	exit(EXIT_FAILURE);
 }
 

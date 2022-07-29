@@ -1756,6 +1756,17 @@ void buffer_insert_utf8_at_cursor(TextBuffer *buffer, char const *utf8) {
 	}
 }
 
+void buffer_insert_tab_at_cursor(TextBuffer *buffer) {
+	Settings const *settings = buffer_settings(buffer);
+	
+	if (settings->indent_with_spaces) {
+		for (int i = 0; i < settings->tab_width; ++i)
+			buffer_insert_char_at_cursor(buffer, ' ');
+	} else {
+		buffer_insert_char_at_cursor(buffer, '\t');
+	}
+}
+
 // insert newline at cursor and auto-indent
 void buffer_newline(TextBuffer *buffer) {
 	if (buffer->is_line_buffer) {
@@ -2584,11 +2595,17 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 
 void buffer_indent_lines(TextBuffer *buffer, u32 first_line, u32 last_line) {
 	assert(first_line <= last_line);
+	Settings const *settings = buffer_settings(buffer);
+	
 	buffer_start_edit_chain(buffer);
-	for (u32 i = first_line; i <= last_line; ++i) {
-		BufferPos pos = {.line = i, .index = 0};
-		char32_t c = '\t';
-		buffer_insert_text_at_pos(buffer, pos, str32(&c, 1));
+	for (u32 l = first_line; l <= last_line; ++l) {
+		BufferPos pos = {.line = l, .index = 0};
+		if (settings->indent_with_spaces) {
+			for (int i = 0; i < settings->tab_width; ++i)
+				buffer_insert_char_at_pos(buffer, pos, ' ');
+		} else {
+			buffer_insert_char_at_pos(buffer, pos, '\t');
+		}
 	}
 	buffer_end_edit_chain(buffer);
 }

@@ -126,7 +126,7 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 			if (buffer->selection)
 				buffer_indent_selection(buffer);
 			else
-				buffer_insert_char_at_cursor(buffer, '\t');
+				buffer_insert_tab_at_cursor(buffer);
 		}
 		break;
 	case CMD_BACKTAB:

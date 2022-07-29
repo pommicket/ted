@@ -239,6 +239,7 @@ void config_read(Ted *ted, char const *filename, int pass) {
 		{"line-numbers", &nullset->line_numbers, true},
 		{"restore-session", &nullset->restore_session, false},
 		{"regenerate-tags-if-not-found", &nullset->regenerate_tags_if_not_found, true},
+		{"indent-with-spaces", &nullset->indent_with_spaces, true},
 	};
 	OptionU8 const options_u8[] = {
 		{"tab-width", &nullset->tab_width, 1, 100, true},

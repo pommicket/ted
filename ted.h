@@ -143,6 +143,7 @@ typedef struct {
 	bool auto_reload;
 	bool restore_session;
 	bool regenerate_tags_if_not_found;
+	bool indent_with_spaces;
 	u8 tab_width;
 	u8 cursor_width;
 	u8 undo_save_time;
