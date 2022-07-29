@@ -18,8 +18,8 @@ typedef struct {
 	bool render;
 	bool wrap; // should the text wrap around to min_x when it reaches max_x? NOTE: this is character-by-character wrapping, not word wrap
 
-	float x, y;
-	// points at which the text should be cut off
+	double x, y;
+	// points where the text should be cut off
 	float min_x, max_x, min_y, max_y;
 	// [0] = r, [1] = g, [2] = b, [3] = a.
 	float color[4];
@@ -55,8 +55,8 @@ extern void text_font_set_force_monospace(Font *font, bool force);
 extern void text_get_size(Font *font, char const *text, float *width, float *height);
 extern v2 text_get_size_v2(Font *font, char const *text);
 extern void text_get_size32(Font *font, char32_t const *text, u64 len, float *width, float *height);
-extern void text_utf8(Font *font, char const *text, float x, float y, u32 color);
-extern void text_utf8_anchored(Font *font, char const *text, float x, float y, u32 color, Anchor anchor);
+extern void text_utf8(Font *font, char const *text, double x, double y, u32 color);
+extern void text_utf8_anchored(Font *font, char const *text, double x, double y, u32 color, Anchor anchor);
 extern void text_char_with_state(Font *font, TextRenderState *state, char32_t c);
 extern void text_utf8_with_state(Font *font, TextRenderState *state, char const *str);
 // Free memory used by font.

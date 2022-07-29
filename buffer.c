@@ -2383,7 +2383,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 
 	
 	// what x coordinate to start rendering the text from
-	float render_start_x = x1 - (float)buffer->scroll_x * char_width;
+	double render_start_x = x1 - (double)buffer->scroll_x * char_width;
 	u32 column = 0;
 
 	if (buffer->selection) { // draw selection

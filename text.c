@@ -288,24 +288,36 @@ top:
 	float const char_width = font->char_width;
 	if (char_data) { // if page was successfully loaded
 		stbtt_aligned_quad q = {0};
-		state->y += char_height * 0.75f;
+		
 		{
-			float x = state->x, y = state->y;
-			float *xp = &state->x, *yp = &state->y;
-			if (font->force_monospace)
-				xp = &x, yp = &y;
+			float x, y;
+			x = (float)(state->x - floor(state->x));
+			y = (float)(state->y - floor(state->y));
+			y += char_height * 0.75f;
 			stbtt_GetBakedQuad(char_data, font->tex_widths[page], font->tex_heights[page],
-				(int)index, xp, yp, &q, 1);
-			if (font->force_monospace)
+				(int)index, &x, &y, &q, 1);
+			y -= char_height * 0.75f;
+			
+			q.x0 += (float)floor(state->x);
+			q.y0 += (float)floor(state->y);
+			q.x1 += (float)floor(state->x);
+			q.y1 += (float)floor(state->y);
+			
+			if (font->force_monospace) {
 				state->x += char_width; // ignore actual character width
+			} else {
+				state->x = x + floor(state->x);
+				state->y = y + floor(state->y);
+			}
 		}
-		state->y -= char_height * 0.75f;
+		
 		float s0 = q.s0, t0 = q.t0;
 		float s1 = q.s1, t1 = q.t1;
 		float x0 = q.x0, y0 = q.y0;
 		float x1 = q.x1, y1 = q.y1;
 		float const min_x = state->min_x, max_x = state->max_x;
 		float const min_y = state->min_y, max_y = state->max_y;
+		
 		if (state->wrap && x1 >= max_x) {
 			state->x = min_x;
 			state->y += char_height;
@@ -366,7 +378,7 @@ void text_utf8_with_state(Font *font, TextRenderState *state, char const *str) {
 	}
 }
 
-static void text_render_utf8_internal(Font *font, char const *text, float *x, float *y, u32 color, bool render) {
+static void text_render_utf8_internal(Font *font, char const *text, double *x, double *y, u32 color, bool render) {
 	TextRenderState render_state = text_render_state_default;
 	render_state.render = render;
 	render_state.x = *x;
@@ -377,11 +389,11 @@ static void text_render_utf8_internal(Font *font, char const *text, float *x, fl
 	*y = render_state.y;
 }
 
-void text_utf8(Font *font, char const *text, float x, float y, u32 color) {
+void text_utf8(Font *font, char const *text, double x, double y, u32 color) {
 	text_render_utf8_internal(font, text, &x, &y, color, true);
 }
 
-void text_utf8_anchored(Font *font, char const *text, float x, float y, u32 color, Anchor anchor) {
+void text_utf8_anchored(Font *font, char const *text, double x, double y, u32 color, Anchor anchor) {
 	float w = 0, h = 0; // width, height of text
 	text_get_size(font, text, &w, &h);
 	float hw = w * 0.5f, hh = h * 0.5f; // half-width, half-height
@@ -400,10 +412,10 @@ void text_utf8_anchored(Font *font, char const *text, float x, float y, u32 colo
 }
 
 void text_get_size(Font *font, char const *text, float *width, float *height) {
-	float x = 0, y = 0;
+	double x = 0, y = 0;
 	text_render_utf8_internal(font, text, &x, &y, 0, false);
-	if (width)  *width = x;
-	if (height) *height = y + font->char_height;
+	if (width)  *width = (float)x;
+	if (height) *height = (float)y + font->char_height;
 }
 
 v2 text_get_size_v2(Font *font, char const *text) {
@@ -419,8 +431,8 @@ void text_get_size32(Font *font, char32_t const *text, u64 len, float *width, fl
 	for (u64 i = 0; i < len; ++i) {
 		text_char_with_state(font, &render_state, text[i]);
 	}
-	if (width) *width = render_state.x;
-	if (height) *height = render_state.y + font->char_height * (2/3.0f);
+	if (width) *width = (float)render_state.x;
+	if (height) *height = (float)render_state.y + font->char_height * (2/3.0f);
 }
 
 void text_font_free(Font *font) {
