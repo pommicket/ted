@@ -688,7 +688,7 @@ int main(int argc, char **argv) {
 					(u32)((modifier & (KMOD_LSHIFT|KMOD_RSHIFT)) != 0) << KEY_MODIFIER_SHIFT_BIT |
 					(u32)((modifier & (KMOD_LALT|KMOD_RALT)) != 0) << KEY_MODIFIER_ALT_BIT;
 				if (key_combo < KEY_COMBO_COUNT) {
-					KeyAction *action = &ted->key_actions[key_combo];
+					KeyAction *action = &ted_active_settings(ted)->key_actions[key_combo];
 					if (action->command) {
 						command_execute(ted, action->command, action->argument);
 					}

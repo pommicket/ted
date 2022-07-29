@@ -7,7 +7,7 @@
 // returns the language this string is referring to, or LANG_NONE if it's invalid.
 Language language_from_str(char const *str) {
 	for (int i = 0; i < LANG_COUNT; ++i) {
-		if (streq(language_names[i].name, str))
+		if (strcmp_case_insensitive(language_names[i].name, str) == 0)
 			return language_names[i].lang;
 	}
 	return LANG_NONE;

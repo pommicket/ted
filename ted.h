@@ -112,6 +112,24 @@ ENUM_U8 {
 #define SYNTAX_CODE SYNTAX_PREPROCESSOR // for markdown
 #define SYNTAX_LINK SYNTAX_CONSTANT // for markdown
 
+
+#define SCANCODE_COUNT 0x120 // SDL scancodes should be less than this value.
+// a "key combo" is some subset of {control, shift, alt} + some key.
+#define KEY_COMBO_COUNT (SCANCODE_COUNT << 3)
+#define KEY_MODIFIER_CTRL_BIT 0
+#define KEY_MODIFIER_SHIFT_BIT 1
+#define KEY_MODIFIER_ALT_BIT 2
+#define KEY_MODIFIER_CTRL ((u32)1<<KEY_MODIFIER_CTRL_BIT)
+#define KEY_MODIFIER_SHIFT ((u32)1<<KEY_MODIFIER_SHIFT_BIT)
+#define KEY_MODIFIER_ALT ((u32)1<<KEY_MODIFIER_ALT_BIT)
+// ctrl+alt+c is encoded as SDL_SCANCODE_C << 3 | KEY_MODIFIER_CTRL | KEY_MODIFIER_ALT
+
+typedef struct KeyAction {
+	u32 line_number; // config line number where this was set
+	Command command; // this will be 0 (COMMAND_UNKNOWN) if there's no action for the key
+	i64 argument;
+} KeyAction;
+
 typedef struct {
 	float cursor_blink_time_on, cursor_blink_time_off;
 	u32 colors[COLOR_COUNT];
@@ -135,24 +153,8 @@ typedef struct {
 	char build_default_command[256];
 	// [i] = comma-separated string of file extensions for language i, or NULL for none
 	char *language_extensions[LANG_COUNT];
+	KeyAction key_actions[KEY_COMBO_COUNT];
 } Settings;
-
-#define SCANCODE_COUNT 0x120 // SDL scancodes should be less than this value.
-// a "key combo" is some subset of {control, shift, alt} + some key.
-#define KEY_COMBO_COUNT (SCANCODE_COUNT << 3)
-#define KEY_MODIFIER_CTRL_BIT 0
-#define KEY_MODIFIER_SHIFT_BIT 1
-#define KEY_MODIFIER_ALT_BIT 2
-#define KEY_MODIFIER_CTRL ((u32)1<<KEY_MODIFIER_CTRL_BIT)
-#define KEY_MODIFIER_SHIFT ((u32)1<<KEY_MODIFIER_SHIFT_BIT)
-#define KEY_MODIFIER_ALT ((u32)1<<KEY_MODIFIER_ALT_BIT)
-// ctrl+alt+c is encoded as SDL_SCANCODE_C << 3 | KEY_MODIFIER_CTRL | KEY_MODIFIER_ALT
-
-typedef struct KeyAction {
-	u32 line_number; // config line number where this was set
-	Command command; // this will be 0 (COMMAND_UNKNOWN) if there's no action for the key
-	i64 argument;
-} KeyAction;
 
 // a position in the buffer
 typedef struct {
@@ -320,7 +322,6 @@ typedef struct Ted {
 	TextBuffer argument_buffer; // used for command selector
 	double error_time; // time error box was opened (in seconds -- see time_get_seconds)
 	double cursor_error_time; // time which the cursor error animation started (cursor turns red, e.g. when there's no autocomplete suggestion)
-	KeyAction key_actions[KEY_COMBO_COUNT];
 	bool search_cwd; // should the working directory be searched for files? set to true if the executable isn't "installed"
 	bool quit; // if set to true, the window will close next frame. NOTE: this doesn't check for unsaved changes!!
 	bool find; // is the find or find+replace menu open?

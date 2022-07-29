@@ -371,6 +371,7 @@ void config_read(Ted *ted, char const *filename, int pass) {
 					switch (section) {
 					case SECTION_CORE:
 					case SECTION_COLORS:
+					case SECTION_KEYBOARD:
 						break;
 					default:
 						config_err(cfg, "%s settings cannot be configured for individual languages.",
@@ -431,7 +432,7 @@ void config_read(Ted *ted, char const *filename, int pass) {
 					case SECTION_KEYBOARD: {
 						// lines like Ctrl+Down = 10 :down
 						u32 key_combo = config_parse_key_combo(cfg, key);
-						KeyAction *action = &ted->key_actions[key_combo];
+						KeyAction *action = &settings->key_actions[key_combo];
 						llong argument = 1;
 						if (isdigit(*value)) {
 							// read the argument
