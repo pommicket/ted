@@ -48,6 +48,10 @@ static void *ted_realloc(Ted *ted, void *p, size_t new_size) {
 	return ret;
 }
 
+Settings *ted_active_settings(Ted *ted) {
+	return ted->active_buffer ? buffer_settings(ted->active_buffer) : ted->settings;
+}
+
 static void ted_path_full(Ted *ted, char const *relpath, char *abspath, size_t abspath_size) {
 	path_full(ted->cwd, relpath, abspath, abspath_size);
 }
@@ -81,7 +85,7 @@ static Status ted_get_file(Ted const *ted, char const *name, char *out, size_t o
 static void ted_load_font(Ted *ted, char const *filename, Font **out) {
 	char font_filename[TED_PATH_MAX];
 	if (ted_get_file(ted, filename, font_filename, sizeof font_filename)) {
-		Font *font = text_font_load(font_filename, ted->settings.text_size);
+		Font *font = text_font_load(font_filename, ted_active_settings(ted)->text_size);
 		if (font) {
 			// we don't properly handle variable-width fonts
 			text_font_set_force_monospace(font, true);
@@ -199,9 +203,8 @@ static i32 ted_new_node(Ted *ted) {
 
 // how tall is a line buffer?
 static float ted_line_buffer_height(Ted const *ted) {
-	Settings const *settings = &ted->settings;
 	float const char_height = text_font_char_height(ted->font);
-	return char_height + 2 * settings->border_thickness;
+	return char_height + 2 * ted->settings->border_thickness;
 }
 
 // switch to this node

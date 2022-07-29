@@ -36,7 +36,7 @@ static bool is_source_file(char const *filename) {
 
 
 static void tags_generate_at_dir(Ted *ted, bool run_in_build_window, const char *dir, int depth) {
-	Settings const *settings = &ted->settings;
+	Settings const *settings = ted->settings;
 	if (depth >= settings->tags_max_depth) {
 		return;
 	}
@@ -199,7 +199,7 @@ bool tag_goto(Ted *ted, char const *tag) {
 	bool already_regenerated_tags;
 	already_regenerated_tags = false;
 top:;
-	Settings const *settings = &ted->settings;
+	Settings const *settings = ted_active_settings(ted);
 	
 	char const *tags_name = tags_filename(ted, true);
 	if (!tags_name) return false;
@@ -385,7 +385,7 @@ static void tag_selector_close(Ted *ted) {
 // returns tag selected (should be free'd), or NULL if none was.
 static char *tag_selector_update(Ted *ted) {
 	Selector *sel = &ted->tag_selector;
-	u32 color = ted->settings.colors[COLOR_TEXT];
+	u32 color = ted->settings->colors[COLOR_TEXT];
 	sel->enable_cursor = true;
 	
 	// create selector entries based on search term

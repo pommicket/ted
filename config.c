@@ -16,9 +16,9 @@ typedef enum {
 } Section;
 
 // all worth it for the -Wformat warnings
-#define config_err(cfg, ...) snprintf((cfg)->ted->error, sizeof (cfg)->ted->error - 1, "%s:%u: ",  (cfg)->filename, (cfg)->line_number), \
+#define config_err(cfg, ...) do { snprintf((cfg)->ted->error, sizeof (cfg)->ted->error - 1, "%s:%u: ",  (cfg)->filename, (cfg)->line_number), \
 	snprintf((cfg)->ted->error + strlen((cfg)->ted->error), sizeof (cfg)->ted->error - 1 - strlen((cfg)->ted->error), __VA_ARGS__), \
-	(cfg)->error = true
+	(cfg)->error = true; } while (0)
 
 typedef struct {
 	Ted *ted;
@@ -143,7 +143,82 @@ static u32 config_parse_key_combo(ConfigReader *cfg, char const *str) {
 	return (u32)scancode << 3 | modifier;
 }
 
-void config_read(Ted *ted, char const *filename) {
+
+// all the "control" pointers here are relative to a NULL Settings object.
+typedef struct {
+	char const *name;
+	const bool *control;
+	bool per_language; // allow per-language control
+} OptionBool;
+typedef struct {
+	char const *name;
+	const u8 *control;
+	u8 min, max;
+	bool per_language;
+} OptionU8;
+typedef struct {
+	char const *name;
+	const float *control;
+	float min, max;
+	bool per_language;
+} OptionFloat;
+typedef struct {
+	char const *name;
+	const u16 *control;
+	u16 min, max;
+	bool per_language;
+} OptionU16;
+typedef struct {
+	char const *name;
+	const char *control;
+	size_t buf_size;
+	bool per_language;
+} OptionString;
+
+typedef enum {
+	OPTION_BOOL = 1,
+	OPTION_U8,
+	OPTION_U16,
+	OPTION_FLOAT,
+	OPTION_STRING
+} OptionType;
+typedef struct {
+	OptionType type;
+	const char *name;
+	bool per_language;
+	union {
+		OptionU8 _u8;
+		OptionBool _bool;
+		OptionU16 _u16;
+		OptionFloat _float;
+		OptionString _string;
+	} u;
+} OptionAny;
+
+static void option_bool_set(Settings *settings, const OptionBool *opt, bool value) {
+	*(bool *)((char *)settings + (size_t)opt->control) = value;
+}
+static void option_u8_set(Settings *settings, const OptionU8 *opt, u8 value) {
+	if (value >= opt->min && value <= opt->max)
+		*(u8 *)((char *)settings + (size_t)opt->control) = value;
+}
+static void option_u16_set(Settings *settings, const OptionU16 *opt, u16 value) {
+	if (value >= opt->min && value <= opt->max)
+		*(u16 *)((char *)settings + (size_t)opt->control) = value;
+}
+static void option_float_set(Settings *settings, const OptionFloat *opt, float value) {
+	if (value >= opt->min && value <= opt->max)
+		*(float *)((char *)settings + (size_t)opt->control) = value;
+}
+static void option_string_set(Settings *settings, const OptionString *opt, const char *value) {
+	char *control = (char *)settings + (size_t)opt->control;
+	str_cpy(control, opt->buf_size, value);
+}
+
+// two passes are done
+//   pass 0 reads global settings
+//   pass 1 reads language-specific settings
+void config_read(Ted *ted, char const *filename, int pass) {
 	ConfigReader cfg_reader = {
 		.ted = ted,
 		.filename = filename,
@@ -151,317 +226,380 @@ void config_read(Ted *ted, char const *filename) {
 		.error = false
 	};
 	ConfigReader *cfg = &cfg_reader;
-	Settings *settings = &ted->settings;
+	Settings *settings = ted->settings;
 	
-	typedef struct {
-		char const *name;
-		bool *control;
-	} OptionBool;
-	typedef struct {
-		char const *name;
-		u8 *control, min, max;
-	} OptionU8;
-	typedef struct {
-		char const *name;
-		float *control, min, max;
-	} OptionFloat;
-	typedef struct {
-		char const *name;
-		u16 *control, min, max;
-	} OptionU16;
-	typedef struct {
-		char const *name;
-		char *control;
-		size_t buf_size;
-	} OptionString;
 	// core options
 	// (these go at the start so they don't need to be re-computed each time)
+	const Settings *nullset = NULL;
 	OptionBool const options_bool[] = {
-		{"auto-indent", &settings->auto_indent},
-		{"auto-add-newline", &settings->auto_add_newline},
-		{"auto-reload", &settings->auto_reload},
-		{"syntax-highlighting", &settings->syntax_highlighting},
-		{"line-numbers", &settings->line_numbers},
-		{"restore-session", &settings->restore_session},
-		{"regenerate-tags-if-not-found", &settings->regenerate_tags_if_not_found},
+		{"auto-indent", &nullset->auto_indent, true},
+		{"auto-add-newline", &nullset->auto_add_newline, true},
+		{"auto-reload", &nullset->auto_reload, true},
+		{"syntax-highlighting", &nullset->syntax_highlighting, true},
+		{"line-numbers", &nullset->line_numbers, true},
+		{"restore-session", &nullset->restore_session, false},
+		{"regenerate-tags-if-not-found", &nullset->regenerate_tags_if_not_found, true},
 	};
 	OptionU8 const options_u8[] = {
-		{"tab-width", &settings->tab_width, 1, 100},
-		{"cursor-width", &settings->cursor_width, 1, 100},
-		{"undo-save-time", &settings->undo_save_time, 1, 200},
-		{"border-thickness", &settings->border_thickness, 1, 30},
-		{"padding", &settings->padding, 0, 100},
-		{"scrolloff", &settings->scrolloff, 1, 100},
-		{"tags-max-depth", &settings->tags_max_depth, 1, 100},
-	};
-	OptionFloat const options_float[] = {
-		{"cursor-blink-time-on", &settings->cursor_blink_time_on, 0, 1000},
-		{"cursor-blink-time-off", &settings->cursor_blink_time_off, 0, 1000},
+		{"tab-width", &nullset->tab_width, 1, 100, true},
+		{"cursor-width", &nullset->cursor_width, 1, 100, true},
+		{"undo-save-time", &nullset->undo_save_time, 1, 200, true},
+		{"border-thickness", &nullset->border_thickness, 1, 30, false},
+		{"padding", &nullset->padding, 0, 100, false},
+		{"scrolloff", &nullset->scrolloff, 1, 100, true},
+		{"tags-max-depth", &nullset->tags_max_depth, 1, 100, false},
 	};
 	OptionU16 const options_u16[] = {
-		{"text-size", &settings->text_size, TEXT_SIZE_MIN, TEXT_SIZE_MAX},
-		{"max-menu-width", &settings->max_menu_width, 10, U16_MAX},
-		{"error-display-time", &settings->error_display_time, 0, U16_MAX},
+		{"text-size", &nullset->text_size, TEXT_SIZE_MIN, TEXT_SIZE_MAX, true},
+		{"max-menu-width", &nullset->max_menu_width, 10, U16_MAX, false},
+		{"error-display-time", &nullset->error_display_time, 0, U16_MAX, false},
+	};
+	OptionFloat const options_float[] = {
+		{"cursor-blink-time-on", &nullset->cursor_blink_time_on, 0, 1000, true},
+		{"cursor-blink-time-off", &nullset->cursor_blink_time_off, 0, 1000, true},
 	};
 	OptionString const options_string[] = {
-		{"build-default-command", settings->build_default_command, sizeof settings->build_default_command},
+		{"build-default-command", nullset->build_default_command, sizeof nullset->build_default_command, true},
 	};
+	
+	OptionAny all_options[1000] = {0};
+	OptionAny *all_options_end = all_options;
+	for (size_t i = 0; i < arr_count(options_bool); ++i) {
+		OptionAny *opt = all_options_end++;
+		opt->type = OPTION_BOOL;
+		opt->name = options_bool[i].name;
+		opt->per_language = options_bool[i].per_language;
+		opt->u._bool = options_bool[i];
+	}
+	for (size_t i = 0; i < arr_count(options_u8); ++i) {
+		OptionAny *opt = all_options_end++;
+		opt->type = OPTION_U8;
+		opt->name = options_u8[i].name;
+		opt->per_language = options_u8[i].per_language;
+		opt->u._u8 = options_u8[i];
+	}
+	for (size_t i = 0; i < arr_count(options_u16); ++i) {
+		OptionAny *opt = all_options_end++;
+		opt->type = OPTION_U16;
+		opt->name = options_u16[i].name;
+		opt->per_language = options_u16[i].per_language;
+		opt->u._u16 = options_u16[i];
+	}
+	for (size_t i = 0; i < arr_count(options_float); ++i) {
+		OptionAny *opt = all_options_end++;
+		opt->type = OPTION_FLOAT;
+		opt->name = options_float[i].name;
+		opt->per_language = options_float[i].per_language;
+		opt->u._float = options_float[i];
+	}
+	for (size_t i = 0; i < arr_count(options_string); ++i) {
+		OptionAny *opt = all_options_end++;
+		opt->type = OPTION_STRING;
+		opt->name = options_string[i].name;
+		opt->per_language = options_string[i].per_language;
+		opt->u._string = options_string[i];
+	}
 
 	FILE *fp = fopen(filename, "rb");
-	if (fp) {
-		int line_cap = 4096;
-		char *line = ted_malloc(ted, (size_t)line_cap);
-		if (line) {
-			Section section = SECTION_NONE;
+	if (!fp) {
+		ted_seterr(ted, "Couldn't open config file %s.", filename);
+		return;
+	}
+	
+	char line[4096] = {0};
+	int line_cap = sizeof line;
+	
+	Section section = SECTION_NONE;
+	Language language = LANG_NONE;
+	bool skip_section = false;
+	
+	while (fgets(line, line_cap, fp)) {
+		char *newline = strchr(line, '\n');
+		if (!newline && !feof(fp)) {
+			config_err(cfg, "Line is too long.");
+			break;
+		}
+		
+		if (newline) *newline = '\0';
+		char *carriage_return = strchr(line, '\r');
+		if (carriage_return) *carriage_return = '\0';
 
-			while (fgets(line, line_cap, fp)) {
-				char *newline = strchr(line, '\n');
-				if (newline || feof(fp)) {
-					if (newline) *newline = '\0';
-					char *carriage_return = strchr(line, '\r');
-					if (carriage_return) *carriage_return = '\0';
-
-					// ok, we've now read a line.
-					switch (line[0]) {
-					case '#': // comment
-					case '\0': // blank line
+		// ok, we've now read a line.
+		switch (line[0]) {
+		case '#': // comment
+		case '\0': // blank line
+			break;
+		case '[': { // section header
+		#define SECTION_HEADER_HELP "Section headers should look like this: [section-name]"
+			char *closing = strchr(line, ']');
+			if (!closing) {
+				config_err(cfg, "Unmatched [. " SECTION_HEADER_HELP);
+			} else if (closing[1] != '\0') {
+				config_err(cfg, "Text after section. " SECTION_HEADER_HELP);
+			} else {
+				*closing = '\0';
+				char *section_name = line + 1;
+				char *dot = strchr(section_name, '.');
+				
+				if (dot) {
+					*dot = '\0';
+					language = language_from_str(section_name);
+					if (!language) {
+						config_err(cfg, "Unrecognized language: %s.", section_name);
+						break; // skip section name check
+					}
+					section_name = dot + 1;
+				} else {
+					language = 0;
+				}
+				
+				if (streq(section_name, "keyboard")) {
+					section = SECTION_KEYBOARD;
+				} else if (streq(section_name, "colors")) {
+					section = SECTION_COLORS;
+				} else if (streq(section_name, "core")) {
+					section = SECTION_CORE;
+				} else if (streq(section_name, "extensions")) {
+					section = SECTION_EXTENSIONS;
+				} else {
+					config_err(cfg, "Unrecognized section: [%s].", section_name);
+					break;
+				}
+				
+				skip_section = false;
+				if (language) {
+					switch (section) {
+					case SECTION_CORE:
+					case SECTION_COLORS:
 						break;
-					case '[': { // section header
-					#define SECTION_HEADER_HELP "Section headers should look like this: [section-name]"
-						char *closing = strchr(line, ']');
-						if (!closing) {
-							config_err(cfg, "Unmatched [. " SECTION_HEADER_HELP);
-						} else if (closing[1] != '\0') {
-							config_err(cfg, "Text after section. " SECTION_HEADER_HELP);
-						} else {
-							*closing = '\0';
-							char *section_name = line + 1;
-							if (streq(section_name, "keyboard")) {
-								section = SECTION_KEYBOARD;
-							} else if (streq(section_name, "colors")) {
-								section = SECTION_COLORS;
-							} else if (streq(section_name, "core")) {
-								section = SECTION_CORE;
-							} else if (streq(section_name, "extensions")) {
-								section = SECTION_EXTENSIONS;
+					default:
+						config_err(cfg, "%s settings cannot be configured for individual languages.",
+							section_name);
+						break;
+					}
+					if (pass == 0) {
+						skip_section = true;
+					}
+				} else {
+					if (pass == 1) {
+						skip_section = true;
+					}
+				}
+				if (pass == 1) {
+					settings = &ted->settings_by_language[language];
+				}
+			}
+		} break;
+		default: {
+			if (skip_section) break;
+			
+			char *equals = strchr(line, '=');
+			if (equals) {
+				char const *key = line;
+				*equals = '\0';
+				char const *value = equals + 1;
+				while (isspace(*key)) ++key;
+				while (isspace(*value)) ++value;
+				if (equals != line) {
+					for (char *p = equals - 1; p > line; --p) {
+						// remove trailing spaces after key
+						if (isspace(*p)) *p = '\0';
+						else break;
+					}
+				}
+				if (key[0] == '\0') {
+					config_err(cfg, "Empty property name. This line should look like: key = value");
+				} else {
+					switch (section) {
+					case SECTION_NONE:
+						config_err(cfg, "Line outside of any section."
+							"Try putting a section header, e.g. [keyboard] before this line?");
+						break;
+					case SECTION_COLORS: {
+						ColorSetting setting = color_setting_from_str(key);
+						if (setting != COLOR_UNKNOWN) {
+							u32 color = 0;
+							if (color_from_str(value, &color)) {
+								settings->colors[setting] = color;
 							} else {
-								config_err(cfg, "Unrecognized section: [%s].", section_name);
+								config_err(cfg, "'%s' is not a valid color. Colors should look like #rgb, #rgba, #rrggbb, or #rrggbbaa.", value);
+							}
+						} else {
+							config_err(cfg, "No such color option: %s", key);
+						}
+					} break;
+					case SECTION_KEYBOARD: {
+						// lines like Ctrl+Down = 10 :down
+						u32 key_combo = config_parse_key_combo(cfg, key);
+						KeyAction *action = &ted->key_actions[key_combo];
+						llong argument = 1;
+						if (isdigit(*value)) {
+							// read the argument
+							char *endp;
+							argument = strtoll(value, &endp, 10);
+							value = endp;
+						} else if (*value == '"') {
+							// string argument
+							int backslashes = 0;
+							char const *p;
+							for (p = value + 1; *p; ++p) {
+								bool done = false;
+								switch (*p) {
+								case '\\':
+									++backslashes;
+									break;
+								case '"':
+									if (backslashes % 2 == 0)
+										done = true;
+									break;
+								}
+								if (done) break;
+							}
+							if (!*p) {
+								config_err(cfg, "String doesn't end.");
+								break;
+							}
+							if (ted->nstrings < TED_MAX_STRINGS) {
+								char *str = strn_dup(value + 1, (size_t)(p - (value + 1)));
+								argument = ted->nstrings | ARG_STRING;
+								ted->strings[ted->nstrings++] = str;
+							}
+							value = p + 1;
+						}
+						while (isspace(*value)) ++value; // skip past space following argument
+						if (*value == ':') {
+							// read the command
+							Command command = command_from_str(value + 1);
+							if (command != CMD_UNKNOWN) {
+								action->command = command;
+								action->argument = argument;
+								action->line_number = cfg->line_number;
+							} else {
+								config_err(cfg, "Unrecognized command %s", value);
+							}
+						} else {
+							config_err(cfg, "Expected ':' for key action. This line should look something like: %s = :command.", key);
+						}
+					} break;
+					case SECTION_EXTENSIONS: {
+						Language lang = language_from_str(key);
+						if (lang == LANG_NONE) {
+							config_err(cfg, "Invalid programming language: %s.", key);
+						} else {
+							char *new_str = malloc(strlen(value) + 1);
+							if (!new_str) {
+								config_err(cfg, "Out of memory.");
+							} else {
+								char *dst = new_str;
+								// get rid of whitespace in extension list
+								for (char const *src = value; *src; ++src)
+									if (!isspace(*src))
+										*dst++ = *src;
+								*dst = 0;
+								if (settings->language_extensions[lang])
+									free(settings->language_extensions[lang]);
+								settings->language_extensions[lang] = new_str;
 							}
 						}
 					} break;
-					default: {
-						char *equals = strchr(line, '=');
-						if (equals) {
-							char const *key = line;
-							*equals = '\0';
-							char const *value = equals + 1;
-							while (isspace(*key)) ++key;
-							while (isspace(*value)) ++value;
-							if (equals != line) {
-								for (char *p = equals - 1; p > line; --p) {
-									// remove trailing spaces after key
-									if (isspace(*p)) *p = '\0';
-									else break;
-								}
-							}
-							if (key[0] == '\0') {
-								config_err(cfg, "Empty property name. This line should look like: key = value");
-							} else {
-								switch (section) {
-								case SECTION_NONE:
-									config_err(cfg, "Line outside of any section."
-										"Try putting a section header, e.g. [keyboard] before this line?");
+					case SECTION_CORE: {
+						char const *endptr;
+						long long const integer = strtoll(value, (char **)&endptr, 10);
+						bool const is_integer = *endptr == '\0';
+						double const floating = strtod(value, (char **)&endptr);
+						bool const is_floating = *endptr == '\0';
+						bool is_bool = false;
+						bool boolean = false;
+					#define BOOL_HELP "(should be yes/no/on/off)"
+						if (streq(value, "yes") || streq(value, "on")) {
+							is_bool = true;
+							boolean = true;
+						} else if (streq(value, "no") || streq(value, "off")) {
+							is_bool = true;
+							boolean = false;
+						}
+
+						// go through all  options
+						bool recognized = false;
+						for (size_t i = 0; i < arr_count(all_options) && !recognized; ++i) {
+							OptionAny const *any = &all_options[i];
+							if (any->type == 0) break;
+							if (streq(key, any->name)) {
+								recognized = true;
+								
+								if (language != 0 && !any->per_language) {
+									config_err(cfg, "Option %s cannot be controlled for individual languages.", key);
 									break;
-								case SECTION_COLORS: {
-									ColorSetting setting = color_setting_from_str(key);
-									if (setting != COLOR_UNKNOWN) {
-										u32 color = 0;
-										if (color_from_str(value, &color)) {
-											settings->colors[setting] = color;
-										} else {
-											config_err(cfg, "'%s' is not a valid color. Colors should look like #rgb, #rgba, #rrggbb, or #rrggbbaa.", value);
-										}
-									} else {
-										config_err(cfg, "No such color option: %s", key);
-									}
+								}
+								
+								switch (any->type) {
+								case OPTION_BOOL: {
+									OptionBool const *option = &any->u._bool;
+									if (is_bool)
+										option_bool_set(settings, option, boolean);
+									else
+										config_err(cfg, "Invalid %s: %s. This should be yes, no, on, or off.", option->name, value);
 								} break;
-								case SECTION_KEYBOARD: {
-									// lines like Ctrl+Down = 10 :down
-									u32 key_combo = config_parse_key_combo(cfg, key);
-									KeyAction *action = &ted->key_actions[key_combo];
-									llong argument = 1;
-									if (isdigit(*value)) {
-										// read the argument
-										char *endp;
-										argument = strtoll(value, &endp, 10);
-										value = endp;
-									} else if (*value == '"') {
-										// string argument
-										int backslashes = 0;
-										char const *p;
-										for (p = value + 1; *p; ++p) {
-											bool done = false;
-											switch (*p) {
-											case '\\':
-												++backslashes;
-												break;
-											case '"':
-												if (backslashes % 2 == 0)
-													done = true;
-												break;
-											}
-											if (done) break;
-										}
-										if (!*p) {
-											config_err(cfg, "String doesn't end.");
-											break;
-										}
-										if (ted->nstrings < TED_MAX_STRINGS) {
-											char *str = strn_dup(value + 1, (size_t)(p - (value + 1)));
-											argument = ted->nstrings | ARG_STRING;
-											ted->strings[ted->nstrings++] = str;
-										}
-										value = p + 1;
-									}
-									while (isspace(*value)) ++value; // skip past space following argument
-									if (*value == ':') {
-										// read the command
-										Command command = command_from_str(value + 1);
-										if (command != CMD_UNKNOWN) {
-											action->command = command;
-											action->argument = argument;
-											action->line_number = cfg->line_number;
-										} else {
-											config_err(cfg, "Unrecognized command %s", value);
-										}
-									} else {
-										config_err(cfg, "Expected ':' for key action. This line should look something like: %s = :command.", key);
-									}
+								case OPTION_U8: {
+									OptionU8 const *option = &any->u._u8;
+									if (is_integer && integer >= option->min && integer <= option->max)
+										option_u8_set(settings, option, (u8)integer);
+									else
+										config_err(cfg, "Invalid %s: %s. This should be an integer from %u to %u.", option->name, value, option->min, option->max);
 								} break;
-								case SECTION_EXTENSIONS: {
-									Language lang = language_from_str(key);
-									if (lang == LANG_NONE) {
-										config_err(cfg, "Invalid programming language: %s.", key);
-									} else {
-										char *new_str = malloc(strlen(value) + 1);
-										if (!new_str) {
-											config_err(cfg, "Out of memory.");
-										} else {
-											char *dst = new_str;
-											// get rid of whitespace in extension list
-											for (char const *src = value; *src; ++src)
-												if (!isspace(*src))
-													*dst++ = *src;
-											*dst = 0;
-											if (settings->language_extensions[lang])
-												free(settings->language_extensions[lang]);
-											settings->language_extensions[lang] = new_str;
-										}
-									}
+								case OPTION_U16: {
+									OptionU16 const *option = &any->u._u16;
+									if (is_integer && integer >= option->min && integer <= option->max)
+										option_u16_set(settings, option, (u16)integer);
+									else
+										config_err(cfg, "Invalid %s: %s. This should be an integer from %u to %u.", option->name, value, option->min, option->max);
 								} break;
-								case SECTION_CORE: {
-									char const *endptr;
-									long long const integer = strtoll(value, (char **)&endptr, 10);
-									bool const is_integer = *endptr == '\0';
-									double const floating = strtod(value, (char **)&endptr);
-									bool const is_floating = *endptr == '\0';
-									bool is_bool = false;
-									bool boolean = false;
-								#define BOOL_HELP "(should be yes/no/on/off)"
-									if (streq(value, "yes") || streq(value, "on")) {
-										is_bool = true;
-										boolean = true;
-									} else if (streq(value, "no") || streq(value, "off")) {
-										is_bool = true;
-										boolean = false;
+								case OPTION_FLOAT: {
+									OptionFloat const *option = &any->u._float;
+									if (is_floating && floating >= option->min && floating <= option->max)
+										option_float_set(settings, option, (float)floating);
+									else
+										config_err(cfg, "Invalid %s: %s. This should be a number from %g to %g.", option->name, value, option->min, option->max);
+								} break;
+								case OPTION_STRING: {
+									OptionString const *option = &any->u._string;
+									if (strlen(value) >= option->buf_size) {
+										config_err(cfg, "%s is too long (length: %zu, maximum length: %zu).", key, strlen(value), option->buf_size - 1);
+									} else {
+										option_string_set(settings, option, value);
 									}
-
-									// go through all types of options
-									for (size_t i = 0; i < arr_count(options_bool); ++i) {
-										OptionBool const *option = &options_bool[i];
-										if (streq(key, option->name)) {
-											if (is_bool)
-												*option->control = boolean;
-											else
-												config_err(cfg, "Invalid %s: %s. This should be yes, no, on, or off.", option->name, value);
-										}
-									}
-
-									for (size_t i = 0; i < arr_count(options_u8); ++i) {
-										OptionU8 const *option = &options_u8[i];
-										if (streq(key, option->name)) {
-											if (is_integer && integer >= option->min && integer <= option->max)
-												*option->control = (u8)integer;
-											else
-												config_err(cfg, "Invalid %s: %s. This should be an integer from %u to %u.", option->name, value, option->min, option->max);
-										}
-									}
-
-									for (size_t i = 0; i < arr_count(options_u16); ++i) {
-										OptionU16 const *option = &options_u16[i];
-										if (streq(key, option->name)) {
-											if (is_integer && integer >= option->min && integer <= option->max)
-												*option->control = (u16)integer;
-											else
-												config_err(cfg, "Invalid %s: %s. This should be an integer from %u to %u.", option->name, value, option->min, option->max);
-										}
-									}
-
-
-									for (size_t i = 0; i < arr_count(options_float); ++i) {
-										OptionFloat const *option = &options_float[i];
-										if (streq(key, option->name)) {
-											if (is_floating && floating >= option->min && floating <= option->max)
-												*option->control = (float)floating;
-											else
-												config_err(cfg, "Invalid %s: %s. This should be a number from %g to %g.", option->name, value, option->min, option->max);
-										}
-									}
-									
-									for (size_t i = 0; i < arr_count(options_string); ++i) {
-										OptionString const *option = &options_string[i];
-										if (streq(key, option->name)) {
-											if (strlen(value) >= option->buf_size) {
-												config_err(cfg, "%s is too long (length: %zu, maximum length: %zu).", key, strlen(value), option->buf_size - 1);
-											} else {
-												str_cpy(option->control, option->buf_size, value);
-											}
-										}
-									}
-
 								} break;
 								}
 							}
-						} else {
-							config_err(cfg, "Invalid line syntax. "
-								"Lines should either look like [section-name] or key = value");
 						}
 					} break;
 					}
-
-					if (cfg->error) break;
-
-					++cfg->line_number;
-				} else {
-					config_err(cfg, "Line is too long.");
-					break;
 				}
+			} else {
+				config_err(cfg, "Invalid line syntax. "
+					"Lines should either look like [section-name] or key = value");
 			}
+		} break;
 		}
-		free(line);
-		if (ferror(fp))
-			ted_seterr(ted, "Error reading %s.", filename);
-		fclose(fp);
-	} else {
-		ted_seterr(ted, "Couldn't open file %s.", filename);
+		if (cfg->error) break;
+
+		++cfg->line_number;
 	}
+	
+	
+	if (ferror(fp))
+		ted_seterr(ted, "Error reading %s.", filename);
+	fclose(fp);
 }
 
 static void config_free(Ted *ted) {
-	Settings *settings = &ted->settings;
 	for (u16 i = 0; i < LANG_COUNT; ++i) {
-		free(settings->language_extensions[i]);
-		settings->language_extensions[i] = NULL;
+		free(ted->settings_by_language[0].language_extensions[i]);
+		for (u16 l = 0; l < LANG_COUNT; ++l) {
+			// these are just aliases to settings_by_language[0].language_extensions[i]
+			// (you cant change language extensions on a per language basis. that would be weird.)
+			ted->settings_by_language[l].language_extensions[i] = NULL;
+		}
 	}
 	for (u32 i = 0; i < ted->nstrings; ++i) {
 		free(ted->strings[i]);

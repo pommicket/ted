@@ -101,13 +101,13 @@ static void menu_escape(Ted *ted) {
 }
 
 static float menu_get_width(Ted *ted) {
-	Settings *settings = &ted->settings;
+	Settings const *settings = ted->settings;
 	return minf(settings->max_menu_width, ted->window_width - 2.0f * settings->padding);
 }
 
 // returns the rectangle of the screen coordinates of the menu
 static Rect menu_rect(Ted *ted) {
-	Settings *settings = &ted->settings;
+	Settings *settings = ted->settings;
 	float window_width = ted->window_width, window_height = ted->window_height;
 	float padding = settings->padding;
 	float menu_width = menu_get_width(ted);
@@ -119,7 +119,7 @@ static Rect menu_rect(Ted *ted) {
 
 static void menu_update(Ted *ted) {
 	Menu menu = ted->menu;
-	Settings const *settings = &ted->settings;
+	Settings const *settings = ted->settings;
 	u32 const *colors = settings->colors;
 	TextBuffer *line_buffer = &ted->line_buffer;
 
@@ -316,7 +316,7 @@ static void menu_update(Ted *ted) {
 static void menu_render(Ted *ted) {
 	Menu menu = ted->menu;
 	assert(menu);
-	Settings const *settings = &ted->settings;
+	Settings const *settings = ted->settings;
 	u32 const *colors = settings->colors;
 	float const window_width = ted->window_width, window_height = ted->window_height;
 	Font *font_bold = ted->font_bold, *font = ted->font;

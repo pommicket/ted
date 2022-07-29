@@ -22,6 +22,7 @@ char const *language_comment_start(Language l) {
 	case LANG_CPP:
 	case LANG_JAVASCRIPT:
 	case LANG_JAVA:
+	case LANG_GO:
 		return "// ";
 	case LANG_CONFIG:
 	case LANG_PYTHON:

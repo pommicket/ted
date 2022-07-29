@@ -70,7 +70,7 @@ static void find_free_pattern(Ted *ted) {
 static float find_menu_height(Ted *ted) {
 	Font *font = ted->font;
 	float char_height = text_font_char_height(font);
-	Settings const *settings = &ted->settings;
+	Settings const *settings = ted->settings;
 	float const padding = settings->padding;
 	float const border_thickness = settings->border_thickness;
 	float const line_buffer_height = ted_line_buffer_height(ted);
@@ -315,7 +315,7 @@ static void find_menu_frame(Ted *ted, Rect menu_bounds) {
 	Font *font = ted->font, *font_bold = ted->font_bold;
 	float const char_height = text_font_char_height(font);
 
-	Settings const *settings = &ted->settings;
+	Settings const *settings = ted->settings;
 	float const padding = settings->padding;
 	float const border_thickness = settings->border_thickness;
 	u32 const *colors = settings->colors;

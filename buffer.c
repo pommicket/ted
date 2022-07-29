@@ -243,16 +243,11 @@ static inline Font *buffer_font(TextBuffer *buffer) {
 	return buffer->ted->font;
 }
 
-// Get the settings used for this buffer.
-static inline Settings const *buffer_settings(TextBuffer *buffer) {
-	return &buffer->ted->settings;
-}
-
 // what programming language is this?
 Language buffer_language(TextBuffer *buffer) {
 	if (buffer->manual_language >= 1 && buffer->manual_language <= LANG_COUNT)
 		return (Language)(buffer->manual_language - 1);
-	Settings const *settings = buffer_settings(buffer);
+	Settings const *settings = buffer->ted->settings;
 	char const *filename = buffer->filename;
 	if (!filename)
 		return LANG_NONE;
@@ -276,6 +271,12 @@ Language buffer_language(TextBuffer *buffer) {
 	// no extensions matched
 	return LANG_NONE;
 }
+
+// Get the settings used for this buffer.
+Settings *buffer_settings(TextBuffer *buffer) {
+	return &buffer->ted->settings_by_language[buffer_language(buffer)];
+}
+
 
 // NOTE: this string will be invalidated when the line is edited!!!
 // only use it briefly!!

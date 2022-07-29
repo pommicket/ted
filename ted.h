@@ -296,7 +296,8 @@ typedef struct Ted {
 	// the old active buffer needs to be restored. that's what this stores.
 	TextBuffer *prev_active_buffer; 
 	Node *active_node;
-	Settings settings;
+	Settings settings_by_language[LANG_COUNT];
+	Settings *settings; // "default" settings  (equal to &settings_per_language[0])
 	float window_width, window_height;
 	u32 key_modifier; // which of shift, alt, ctrl are down right now.
 	v2 mouse_pos;
@@ -398,4 +399,6 @@ typedef struct Ted {
 
 void command_execute(Ted *ted, Command c, i64 argument);
 void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer);
+// the settings of the active buffer, or the default settings if there is no active buffer
+Settings *ted_active_settings(Ted *ted);
 static TextBuffer *find_search_buffer(Ted *ted);

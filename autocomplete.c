@@ -1,5 +1,5 @@
 
-#define AUTOCOMPLETE_NCOMPLETIONS 10 // max # of completions to show
+#define AUTOCOMPLETE_NCOMPLETIONS 10 // max # of completions to show
 
 // get the thing to be completed (and what buffer it's in)
 // returns false if this is a read only buffer or something
@@ -80,16 +80,16 @@ static void autocomplete_open(Ted *ted) {
 }
 
 static void autocomplete_frame(Ted *ted) {
-	Settings const *settings = &ted->settings;
-	u32 const *colors = settings->colors;
-	float const padding = settings->padding;
 	
 	char *start;
 	TextBuffer *buffer;
 	if (autocomplete_get(ted, &start, &buffer)) {
 		Font *font = ted->font;
 		float char_height = text_font_char_height(font);
-		
+		Settings const *settings = buffer_settings(buffer);
+		u32 const *colors = settings->colors;
+		float const padding = settings->padding;
+	
 		char *completions[AUTOCOMPLETE_NCOMPLETIONS];
 		size_t ncompletions = tags_beginning_with(ted, start, completions, arr_count(completions));
 		float menu_width = 400, menu_height = (float)ncompletions * char_height + 2 * padding;

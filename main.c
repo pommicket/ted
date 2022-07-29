@@ -95,7 +95,7 @@ static void die(char const *fmt, ...) {
 
 static Rect error_box_rect(Ted *ted) {
 	Font *font = ted->font;
-	Settings const *settings = &ted->settings;
+	Settings const *settings = ted->settings;
 	float padding = settings->padding;
 	float window_width = ted->window_width, window_height = ted->window_height;
 	float char_height = text_font_char_height(font);
@@ -314,6 +314,8 @@ int main(int argc, char **argv) {
 		die("Not enough memory available to run ted.");
 	}
 	
+	ted->settings = &ted->settings_by_language[0];
+	
 	// make sure signal handler has access to ted.
 	error_signal_handler_ted = ted;
 
@@ -392,7 +394,6 @@ int main(int argc, char **argv) {
 	#endif
 
 
-	Settings *settings = &ted->settings;
 	char config_err[sizeof ted->error] = {0};
 	
 	PROFILE_TIME(misc_end)
@@ -412,16 +413,24 @@ int main(int argc, char **argv) {
 				die("ted's backup config file, %s, does not exist. Try reinstalling ted?", global_config_filename);
 			}
 		}
-		config_read(ted, global_config_filename);
-		config_read(ted, local_config_filename);
+		
+		// read global settings
+		config_read(ted, global_config_filename, 0);
+		config_read(ted, local_config_filename, 0);
+		if (ted->search_cwd) {
+			// read config in cwd
+			config_read(ted, TED_CFG, 0);
+		}
+		// copy global settings to language-specific settings
+		for (int l = 1; l < LANG_COUNT; ++l)
+			ted->settings_by_language[l] = ted->settings_by_language[0];
+		// read language-specific settings
+		config_read(ted, global_config_filename, 1);
+		config_read(ted, local_config_filename, 1);
+		if (ted->search_cwd) config_read(ted, TED_CFG, 1);
 		if (ted_haserr(ted)) {
 			strcpy(config_err, ted->error);
 			ted_clearerr(ted); // clear the error so later things (e.g. loading font) don't detect an error
-		}
-
-		if (ted->search_cwd) {
-			// read config in cwd
-			config_read(ted, TED_CFG);
 		}
 	}
 	PROFILE_TIME(configs_end)
@@ -525,7 +534,7 @@ int main(int argc, char **argv) {
 	}
 
 
-	u32 *colors = settings->colors; (void)colors;
+	u32 *colors = ted->settings->colors; (void)colors;
 
 	ted->cursor_ibeam = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_IBEAM);
 	ted->cursor_arrow = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
@@ -729,7 +738,7 @@ int main(int argc, char **argv) {
 		{
 			TextBuffer *active_buffer = ted->active_buffer;
 			if (active_buffer && buffer_externally_changed(active_buffer)) {
-				if (settings->auto_reload)
+				if (buffer_settings(active_buffer)->auto_reload)
 					buffer_reload(active_buffer);
 				else {
 					strbuf_cpy(ted->ask_reload, buffer_get_filename(active_buffer));
@@ -774,7 +783,7 @@ int main(int argc, char **argv) {
 		glViewport(0, 0, (GLsizei)window_width, (GLsizei)window_height);
 		{ // clear (background)
 			float bg_color[4];
-			rgba_u32_to_floats(settings->colors[COLOR_BG], bg_color);
+			rgba_u32_to_floats(colors[COLOR_BG], bg_color);
 			glClearColor(bg_color[0], bg_color[1], bg_color[2], bg_color[3]);
 		}
 		glClear(GL_COLOR_BUFFER_BIT);
@@ -786,7 +795,7 @@ int main(int argc, char **argv) {
 
 
 		{
-			float const padding = settings->padding;
+			float const padding = ted->settings->padding;
 			float x1 = padding, y = window_height-padding, x2 = window_width-padding;
 			Node *node = &ted->nodes[0];
 			if (ted->find) {
@@ -882,15 +891,15 @@ int main(int argc, char **argv) {
 		if (*ted->error_shown) {
 			double t = time_get_seconds();
 			double time_passed = t - ted->error_time;
-			if (time_passed > settings->error_display_time) {
+			if (time_passed > ted->settings->error_display_time) {
 				// stop showing error
 				*ted->error_shown = '\0';
 			} else {
 				Rect r = error_box_rect(ted);
-				float padding = settings->padding;
+				float padding = ted->settings->padding;
 
 				gl_geometry_rect(r, colors[COLOR_ERROR_BG]);
-				gl_geometry_rect_border(r, settings->border_thickness, colors[COLOR_ERROR_BORDER]);
+				gl_geometry_rect_border(r, ted->settings->border_thickness, colors[COLOR_ERROR_BORDER]);
 
 				float text_x1 = rect_x1(r) + padding, text_x2 = rect_x2(r) - padding;
 				float text_y1 = rect_y1(r) + padding;

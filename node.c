@@ -187,7 +187,7 @@ static bool node_tab_close(Ted *ted, Node *node, u16 index) {
 }
 
 static void node_frame(Ted *ted, Node *node, Rect r) {
-	Settings const *settings = &ted->settings;
+	Settings const *settings = ted_active_settings(ted);
 	if (node->tabs) {
 		bool is_active = node == ted->active_node;
 		u32 const *colors = settings->colors;

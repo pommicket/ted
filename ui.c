@@ -3,7 +3,7 @@
 #endif
 
 static float selector_entries_start_y(Ted const *ted, Selector const *s) {
-	float padding = ted->settings.padding;
+	float padding = ted->settings->padding;
 
 	return s->bounds.pos.y
 		+ ted_line_buffer_height(ted) + padding; // make room for line buffer
@@ -24,7 +24,7 @@ static void selector_clamp_scroll(Ted const *ted, Selector *s) {
 
 static void selector_scroll_to_cursor(Ted const *ted, Selector *s) {
 	u32 n_display_entries = selector_n_display_entries(ted, s);
-	float scrolloff = ted->settings.scrolloff;
+	float scrolloff = ted->settings->scrolloff;
 	float min_scroll = (float)s->cursor - ((float)n_display_entries - scrolloff);
 	float max_scroll = (float)s->cursor - scrolloff;
 	s->scroll = clampf(s->scroll, min_scroll, max_scroll);
@@ -111,7 +111,7 @@ static char *selector_update(Ted *ted, Selector *s) {
 
 // NOTE: also renders the line buffer
 static void selector_render(Ted *ted, Selector *s) {
-	Settings const *settings = &ted->settings;
+	Settings const *settings = ted->settings;
 	u32 const *colors = settings->colors;
 	Font *font = ted->font;
 
@@ -483,7 +483,7 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 }
 
 static void file_selector_render(Ted *ted, FileSelector *fs) {
-	Settings const *settings = &ted->settings;
+	Settings const *settings = ted->settings;
 	u32 const *colors = settings->colors;
 	Rect bounds = fs->bounds;
 	Font *font = ted->font;
@@ -523,12 +523,12 @@ static void file_selector_render(Ted *ted, FileSelector *fs) {
 }
 
 static v2 button_get_size(Ted *ted, char const *text) {
-	float border_thickness = ted->settings.border_thickness;
+	float border_thickness = ted->settings->border_thickness;
 	return v2_add_const(text_get_size_v2(ted->font, text), 2 * border_thickness);
 }
 
 static void button_render(Ted *ted, Rect button, char const *text, u32 color) {
-	u32 const *colors = ted->settings.colors;
+	u32 const *colors = ted->settings->colors;
 	
 	if (rect_contains_point(button, ted->mouse_pos)) {
 		// highlight button when hovering over it
@@ -536,7 +536,7 @@ static void button_render(Ted *ted, Rect button, char const *text, u32 color) {
 		gl_geometry_rect(button, new_color);
 	}
 	
-	gl_geometry_rect_border(button, ted->settings.border_thickness, colors[COLOR_BORDER]);
+	gl_geometry_rect_border(button, ted->settings->border_thickness, colors[COLOR_BORDER]);
 	gl_geometry_draw();
 
 	v2 pos = rect_center(button);
@@ -604,7 +604,7 @@ static void popup_render(Ted *ted, u32 options, char const *title, char const *b
 	Font *font = ted->font;
 	Font *font_bold = ted->font_bold;
 	Rect r, button_yes, button_no, button_cancel;
-	Settings const *settings = &ted->settings;
+	Settings const *settings = ted->settings;
 	u32 const *colors = settings->colors;
 	float const char_height_bold = text_font_char_height(font_bold);
 	float const padding = settings->padding;
@@ -653,7 +653,7 @@ static v2 checkbox_frame(Ted *ted, bool *value, char const *label, v2 pos) {
 	Font *font = ted->font;
 	float char_height = text_font_char_height(font);
 	float checkbox_size = char_height;
-	Settings const *settings = &ted->settings;
+	Settings const *settings = ted->settings;
 	u32 const *colors = settings->colors;
 	float padding = settings->padding;
 	float border_thickness = settings->border_thickness;
