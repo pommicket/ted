@@ -4,9 +4,8 @@ A text editor.
 
 <img src="ted.png">
 
-This repository is for the latest experimental version of ted. If you want a stable version,
-go to the [releases](https://github.com/pommicket/ted/releases). You will also find
-installers for Windows and Debian/Ubuntu there.
+To download installers for ted for Windows and Debian/Ubuntu, go to
+the [releases](https://github.com/pommicket/ted/releases).
 
 To get autocomplete and go-to-definiton you will need [ctags](https://github.com/universal-ctags/ctags).
 You can install ctags on Debian/Ubuntu with:
