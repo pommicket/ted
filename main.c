@@ -545,6 +545,15 @@ int main(int argc, char **argv) {
 	print(" - Read configs: %.1fms\n", 1000 * (configs_end - configs_start));
 	print(" - Get ready: %.1fms\n", 1000 * (get_ready_end - get_ready_start));
 #endif
+
+	{
+		// clear event queue
+		// this is probably only a problem for me, but
+		//  some events that the WM should have consumed
+		//  are going to ted
+		SDL_Event event;
+		while (SDL_PollEvent(&event));
+	}
 	
 	while (!ted->quit) {
 		double frame_start = time_get_seconds();
