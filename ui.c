@@ -162,7 +162,7 @@ static void selector_render(Ted *ted, Selector *s) {
 // clear the entries in the file selector
 static void file_selector_clear_entries(FileSelector *fs) {
 	for (u32 i = 0; i < fs->n_entries; ++i) {
-		free(fs->entries[i].name - offsetof(FsDirectoryEntry, name)); // yes this is kinda hacky; oh well
+		free(fs->entries[i].name);
 		free(fs->entries[i].path);
 	}
 	free(fs->entries);
@@ -455,7 +455,7 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 				fs->entries = entries;
 				for (u32 i = 0; i < nfiles; ++i) {
 					char *name = files[i]->name;
-					entries[i].name = name;
+					entries[i].name = str_dup(name);
 					entries[i].type = files[i]->type;
 					// add cwd to start of file name
 					size_t path_size = strlen(name) + strlen(cwd) + 3;
@@ -466,6 +466,8 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 					} else {
 						entries[i].path = NULL; // what can we do?
 					}
+					free(files[i]);
+					files[i] = NULL;
 				}
 			}
 			qsort_with_context(entries, nfiles, sizeof *entries, qsort_file_entry_cmp, search_term);
