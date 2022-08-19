@@ -597,6 +597,13 @@ int main(int argc, char **argv) {
 				Uint32 button = event.button.button;
 				u8 times = event.button.clicks; // number of clicks
 				float x = (float)event.button.x, y = (float)event.button.y;
+				
+				if (button == SDL_BUTTON_X1) {
+					ted_press_key(ted, SCANCODE_MOUSE_X1, key_modifier);
+				} else if (button == SDL_BUTTON_X2) {
+					ted_press_key(ted, SCANCODE_MOUSE_X2, key_modifier);
+				}
+				
 				if (button < arr_count(ted->nmouse_clicks) 
 					&& ted->nmouse_clicks[button] < arr_count(ted->mouse_clicks[button])) {
 					v2 pos = V2(x, y);
@@ -667,16 +674,7 @@ int main(int argc, char **argv) {
 			case SDL_KEYDOWN: {
 				SDL_Scancode scancode = event.key.keysym.scancode;
 				SDL_Keymod modifier = event.key.keysym.mod;
-				u32 key_combo = (u32)scancode << 3 |
-					(u32)((modifier & (KMOD_LCTRL|KMOD_RCTRL)) != 0) << KEY_MODIFIER_CTRL_BIT |
-					(u32)((modifier & (KMOD_LSHIFT|KMOD_RSHIFT)) != 0) << KEY_MODIFIER_SHIFT_BIT |
-					(u32)((modifier & (KMOD_LALT|KMOD_RALT)) != 0) << KEY_MODIFIER_ALT_BIT;
-				if (key_combo < KEY_COMBO_COUNT) {
-					KeyAction *action = &ted_active_settings(ted)->key_actions[key_combo];
-					if (action->command) {
-						command_execute(ted, action->command, action->argument);
-					}
-				}
+				ted_press_key(ted, scancode, modifier);
 			} break;
 			case SDL_TEXTINPUT: {
 				char *text = event.text.text;

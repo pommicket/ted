@@ -71,9 +71,13 @@ Comments begin with `#`, and all other lines are of the form `key = value`.
 By default ted's settings will automatically update when you save the config file.
 
 The `core` section's settings should be pretty familiar (font size, etc.) or should have comments on the previous line
-explaining what they do. Keyboard shortcuts are of the form `key combo = action`, where `action` is an argument (number or string),
+explaining what they do.
+
+Keyboard shortcuts are of the form `key combo = action`, where `action` is an argument (number or string),
 followed by a command. The commands match the things in the command palette (Ctrl+Shift+p), but `:` is added to the beginning to make
-it clear it's a command. Colors are formatted like `#rgb`, `#rgba`, `#rrggbb` or `#rrggbbaa`, where r, g, b, and a are red, green,
+it clear it's a command.
+
+Colors are formatted like `#rgb`, `#rgba`, `#rrggbb` or `#rrggbbaa`, where r, g, b, and a are red, green,
 blue, and alpha (transparency/opacity). You can use a [color picker](https://www.google.com/search?q=color+picker) to help you out. 
 The extensions section is fairly self-explanatory.
 
@@ -156,6 +160,7 @@ Then, open windows\_installer\\ted\\ted.sln, and build.
 <tr><td>1.0r3</td> <td>Better TeX syntax highlighting, move to cursor on backspace/delete</td> <td>2022 Jul 7</td></tr>
 <tr><td>1.1</td> <td>Minor fixes, syntax highlighting for JavaScript, Java, and Go</td> <td>2022 Jul 22</td></tr>
 <tr><td>1.2</td> <td>Bug fixes, per-language settings</td> <td>2022 Jul 29</td></tr>
+<tr><td>1.2r1</td> <td>Mouse X1/X2 bug fix, support for X1/X2 commands.</td> <td>2022 Aug 19</td></tr>
 </table>
 
 ## License

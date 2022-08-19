@@ -392,3 +392,16 @@ void ted_load_configs(Ted *ted, bool reloading) {
 		ted_load_fonts(ted);
 	}
 }
+
+void ted_press_key(Ted *ted, SDL_Scancode scancode, SDL_Keymod modifier) {
+	u32 key_combo = (u32)scancode << 3 |
+		(u32)((modifier & (KMOD_LCTRL|KMOD_RCTRL)) != 0) << KEY_MODIFIER_CTRL_BIT |
+		(u32)((modifier & (KMOD_LSHIFT|KMOD_RSHIFT)) != 0) << KEY_MODIFIER_SHIFT_BIT |
+		(u32)((modifier & (KMOD_LALT|KMOD_RALT)) != 0) << KEY_MODIFIER_ALT_BIT;
+	if (key_combo < KEY_COMBO_COUNT) {
+		KeyAction *action = &ted_active_settings(ted)->key_actions[key_combo];
+		if (action->command) {
+			command_execute(ted, action->command, action->argument);
+		}
+	}
+}

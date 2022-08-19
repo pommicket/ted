@@ -113,7 +113,9 @@ ENUM_U8 {
 #define SYNTAX_LINK SYNTAX_CONSTANT // for markdown
 
 
-#define SCANCODE_COUNT 0x120 // SDL scancodes should be less than this value.
+#define SCANCODE_MOUSE_X1 (SDL_NUM_SCANCODES)
+#define SCANCODE_MOUSE_X2 (SDL_NUM_SCANCODES+1)
+#define SCANCODE_COUNT (SDL_NUM_SCANCODES+2)
 // a "key combo" is some subset of {control, shift, alt} + some key.
 #define KEY_COMBO_COUNT (SCANCODE_COUNT << 3)
 #define KEY_MODIFIER_CTRL_BIT 0

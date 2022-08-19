@@ -107,6 +107,8 @@ static u32 config_parse_key_combo(ConfigReader *cfg, char const *str) {
 			{"Question Mark", "?", SDL_SCANCODE_SLASH, 1},
 			{"Question", 0, SDL_SCANCODE_SLASH, 1},
 			{"Tilde", "~", SDL_SCANCODE_GRAVE, 1},
+			{"X1", "x1", SCANCODE_MOUSE_X1, 0},
+			{"X2", "x2", SCANCODE_MOUSE_X2, 0}
 		};
 
 		// @OPTIMIZE: sort key_names (and split keyname1/2); do a binary search
