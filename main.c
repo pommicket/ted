@@ -547,9 +547,6 @@ int main(int argc, char **argv) {
 #endif
 	
 	while (!ted->quit) {
-	#if DEBUG
-		//printf("\033[H\033[2J");
-	#endif
 		double frame_start = time_get_seconds();
 
 		SDL_Event event;
@@ -639,9 +636,11 @@ int main(int argc, char **argv) {
 			} break;
 			case SDL_MOUSEBUTTONUP: {
 				Uint8 button = event.button.button;
-				v2 pos = V2((float)event.button.x, (float)event.button.y);
-				if (ted->nmouse_releases[button] < arr_count(ted->mouse_releases[button])) {
-					ted->mouse_releases[button][ted->nmouse_releases[button]++] = pos;
+				if (button < arr_count(ted->nmouse_releases)) {
+					v2 pos = V2((float)event.button.x, (float)event.button.y);
+					if (ted->nmouse_releases[button] < arr_count(ted->mouse_releases[button])) {
+						ted->mouse_releases[button][ted->nmouse_releases[button]++] = pos;
+					}
 				}
 			} break;
 			case SDL_MOUSEMOTION: {
