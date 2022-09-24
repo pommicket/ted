@@ -101,13 +101,17 @@ static void build_start(Ted *ted) {
 		ted_path_full(ted, "../..", ted->build_dir, sizeof ted->build_dir);
 		cargo = true;
 	} else 
-	// Check if Makefile exists in this or the parent directory
+	// Check if Makefile exists in this or the parent/parent's parent directory
 	if (fs_file_exists("Makefile")) {
 		make = true;
 	} else if (fs_file_exists(".." PATH_SEPARATOR_STR "Makefile")) {
 		ted_path_full(ted, "..", ted->build_dir, sizeof ted->build_dir);
 		make = true;
+	} else if (fs_file_exists(".." PATH_SEPARATOR_STR ".." PATH_SEPARATOR_STR "Makefile")) {
+		ted_path_full(ted, "../..", ted->build_dir, sizeof ted->build_dir);
+		make = true;
 	}
+	
 	
 	// @TODO(eventually): `go build`
 	

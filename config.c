@@ -172,7 +172,7 @@ typedef struct {
 } OptionU16;
 typedef struct {
 	char const *name;
-	const char *control;
+	char *control;
 	size_t buf_size;
 	bool per_language;
 } OptionString;
@@ -232,7 +232,7 @@ void config_read(Ted *ted, char const *filename, int pass) {
 	
 	// core options
 	// (these go at the start so they don't need to be re-computed each time)
-	const Settings *nullset = NULL;
+	Settings *nullset = NULL;
 	OptionBool const options_bool[] = {
 		{"auto-indent", &nullset->auto_indent, true},
 		{"auto-add-newline", &nullset->auto_add_newline, true},
