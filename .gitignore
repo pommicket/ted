@@ -8,6 +8,7 @@ Release
 tags
 TAGS
 *.o
+*.out
 *.obj
 *.exe
 *.dll

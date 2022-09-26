@@ -26,7 +26,9 @@ ENUM_U16 {
 	CMD_SELECT_START_OF_FILE,
 	CMD_SELECT_END_OF_FILE,
 	CMD_SELECT_ALL, // select entire buffer
-
+	CMD_SELECT_PAGE_UP,
+	CMD_SELECT_PAGE_DOWN,
+	
 	// insertion
 	CMD_TAB, // insert '\t'
 	CMD_BACKTAB,
@@ -125,6 +127,8 @@ static CommandName const command_names[] = {
 	{"end-of-file", CMD_END_OF_FILE},
 	{"select-start-of-file", CMD_SELECT_START_OF_FILE},
 	{"select-end-of-file", CMD_SELECT_END_OF_FILE},
+	{"select-page-up", CMD_SELECT_PAGE_UP},
+	{"select-page-down", CMD_SELECT_PAGE_DOWN},
 	{"select-all", CMD_SELECT_ALL},
 	{"page-up", CMD_PAGE_UP},
 	{"page-down", CMD_PAGE_DOWN},

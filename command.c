@@ -182,6 +182,12 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 	case CMD_PAGE_UP:
 		if (buffer) buffer_page_up(buffer, argument);
 		break;
+	case CMD_SELECT_PAGE_DOWN:
+		if (buffer) buffer_select_page_down(buffer, argument);
+		break;
+	case CMD_SELECT_PAGE_UP:
+		if (buffer) buffer_select_page_up(buffer, argument);
+		break;
 	
 	case CMD_OPEN:
 		menu_open(ted, MENU_OPEN);

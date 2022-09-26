@@ -842,14 +842,6 @@ void buffer_scroll(TextBuffer *buffer, double dx, double dy) {
 	buffer_correct_scroll(buffer);
 }
 
-void buffer_page_up(TextBuffer *buffer, i64 npages) {
-	buffer_scroll(buffer, 0, (double)-npages * buffer_display_lines(buffer));
-}
-
-void buffer_page_down(TextBuffer *buffer, i64 npages) {
-	buffer_scroll(buffer, 0, (double)+npages * buffer_display_lines(buffer));
-}
-
 // returns the position of the character at the given position in the buffer.
 v2 buffer_pos_to_pixels(TextBuffer *buffer, BufferPos pos) {
 	u32 line = pos.line, index = pos.index;
@@ -1553,6 +1545,22 @@ void buffer_disable_selection(TextBuffer *buffer) {
 		buffer->cursor_pos = buffer->selection_pos;
 		buffer->selection = false;
 	}
+}
+
+void buffer_page_up(TextBuffer *buffer, i64 npages) {
+	buffer_scroll(buffer, 0, (double)-npages * buffer_display_lines(buffer));
+}
+
+void buffer_page_down(TextBuffer *buffer, i64 npages) {
+	buffer_scroll(buffer, 0, (double)+npages * buffer_display_lines(buffer));
+}
+
+void buffer_select_page_up(TextBuffer *buffer, i64 npages) {
+	buffer_select_up(buffer, npages * (i64)buffer_display_lines(buffer));
+}
+
+void buffer_select_page_down(TextBuffer *buffer, i64 npages) {
+	buffer_select_down(buffer, npages * (i64)buffer_display_lines(buffer));
 }
 
 static void buffer_shorten_line(Line *line, u32 new_len) {
