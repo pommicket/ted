@@ -23,7 +23,7 @@ static bool is_source_file(char const *filename) {
 	char const *dot = strchr(filename, '.');
 	char const *const extensions[] = {
 		"py", "c", "h", "cpp", "hpp", "cc", "hh", "cxx", "hxx", "C", "H",
-		"rb", "lua", "s", "asm", "js", "pl", "cs", "sh", "java", "php"
+		"rb", "rs", "go", "lua", "s", "asm", "js", "pl", "cs", "sh", "java", "php"
 	};
 	if (!dot) return false;
 	for (size_t i = 0; i < arr_count(extensions); ++i) {
