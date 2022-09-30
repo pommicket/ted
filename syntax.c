@@ -326,7 +326,9 @@ static void syntax_highlight_rust(SyntaxState *state, char32_t const *line, u32 
 	bool in_string = (*state & SYNTAX_STATE_RUST_STRING) != 0;
 	bool string_is_raw = (*state & SYNTAX_STATE_RUST_STRING_IS_RAW) != 0;
 	bool in_number = false;
-	uint backslashes = 0;
+	bool in_attribute = false;
+	int backslashes = 0;
+	int bracket_depth = 0;
 	
 	for (u32 i = 0; i < line_len; ++i) {
 		char32_t c = line[i];
@@ -426,10 +428,39 @@ static void syntax_highlight_rust(SyntaxState *state, char32_t const *line, u32 
 				}
 			}
 			break;
+		case '[':
+			if (in_attribute && !in_string && !comment_depth) {
+				++bracket_depth;
+			}
+			break;
+		case ']':
+			if (in_attribute && !in_string && !comment_depth) {
+				--bracket_depth;
+				if (bracket_depth < 0) {
+					in_attribute = false;
+				}
+			}
+			break;
+		case '#':
+			if (!in_string && !comment_depth) {
+				if (i && line[i-1] == 'r') {
+					// raw identifier -- not an attribute
+					break;
+				}
+				if (!has_2_chars) break;
+				if (line[i+1] == '[' || (line[i+1] == '!' && line[i+2] == '[')) {
+					in_attribute = true;
+					bracket_depth = 0;
+				}
+			}
+			break;
 		default: {
 			if ((i && is32_ident(line[i - 1])) || !is32_ident(c))
 				break; // can't be a keyword on its own.
-			
+			if (i >= 2 && line[i-2] == 'r' && line[i-1] == '#') {
+				// raw identifier
+				break;
+			}
 			if (char_types && !in_string && !comment_depth && !in_number) {
 				u32 keyword_len = syntax_keyword_len(LANG_RUST, line, i, line_len);
 				Keyword const *keyword = syntax_keyword_lookup(syntax_all_keywords_rust, arr_count(syntax_all_keywords_rust),
@@ -458,6 +489,8 @@ static void syntax_highlight_rust(SyntaxState *state, char32_t const *line, u32 
 				type = SYNTAX_STRING;
 			} else if (in_number) {
 				type = SYNTAX_CONSTANT;
+			} else if (in_attribute) {
+				type = SYNTAX_PREPROCESSOR;
 			}
 			char_types[i] = type;
 		}
