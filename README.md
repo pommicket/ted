@@ -91,6 +91,9 @@ tab-width = 2
 To reset your ted configuration to the default settings, delete your ted.cfg file (`~/.local/share/ted/ted.cfg` on Linux,
 `C:\Users\<your user name>\AppData\Local\ted\ted.cfg` on Windows) or move it somewhere else.
 
+To change the font, create files called `font.ttf` and `font-bold.ttf` in the same directory as `ted.cfg`.
+At the moment, only monospace fonts are supported.
+
 ### IDE-like features
 
 If you are working in a compiled language, like C, you can press F4 to compile your code. The default is to run `make` in
@@ -160,6 +163,7 @@ Then, open windows\_installer\\ted\\ted.sln, and build.
 <tr><td>1.1</td> <td>Minor fixes, syntax highlighting for JavaScript, Java, and Go</td> <td>2022 Jul 22</td></tr>
 <tr><td>1.2</td> <td>Bug fixes, per-language settings</td> <td>2022 Jul 29</td></tr>
 <tr><td>1.2r1</td> <td>Mouse X1/X2 bug fix, support for X1/X2 commands.</td> <td>2022 Aug 19</td></tr>
+<tr><td>1.2r2</td> <td>Shift+PgUp/PgDown, many rust-related fixes.</td> <td>2022 Sep 30</td></tr>
 </table>
 
 ## License
