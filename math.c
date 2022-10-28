@@ -176,7 +176,10 @@ static inline float randf(void) {
 
 static float rand_gauss(void) {
 	// https://en.wikipedia.org/wiki/Normal_distribution#Generating_values_from_normal_distribution
-	float U = randf(), V = randf();
+	float U, V;
+	do
+		U = randf(), V = randf();
+	while (U == 0 || V == 0);
 	return sqrtf(-2 * logf(U)) * cosf(TAUf * V);
 }
 

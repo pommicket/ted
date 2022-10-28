@@ -394,6 +394,10 @@ static void syntax_highlight_rust(SyntaxState *state, char32_t const *line, u32 
 					if (line[char_end] == '\'' && backslashes % 2 == 0) {
 						break;
 					}
+					if (line[char_end] == '\\')
+						++backslashes;
+					else
+						backslashes = 0;
 					if (line[char_end] < CHAR_MAX
 					&& line[char_end - 1] != '\\'
 					&& !strchr("abcdefABCDEF0123456789", (char)line[char_end]))

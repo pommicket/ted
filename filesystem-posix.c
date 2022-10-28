@@ -22,10 +22,9 @@ FsType fs_path_type(char const *path) {
 }
 
 FsPermission fs_path_permission(char const *path) {
-	int bits = access(path, R_OK | W_OK);
 	FsPermission perm = 0;
-	if (!(bits & R_OK)) perm |= FS_PERMISSION_READ;
-	if (!(bits & W_OK)) perm |= FS_PERMISSION_WRITE;
+	if (access(path, R_OK) == 0) perm |= FS_PERMISSION_READ;
+	if (access(path, W_OK) == 0) perm |= FS_PERMISSION_WRITE;
 	return perm;
 }
 
