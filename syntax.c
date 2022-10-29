@@ -127,9 +127,16 @@ static Keyword const *syntax_keyword_lookup(Keyword const *const *all_keywords, 
 }
 
 // does i continue the number literal from i-1
-static inline bool syntax_number_continues(char32_t const *line, u32 line_len, u32 i) {
-	if (line[i] == '.' && ((i && line[i-1] == '.') || (i < line_len-1 && line[i+1] == '.')))
-		return false; // can't have two .s in a row
+static inline bool syntax_number_continues(Language lang, char32_t const *line, u32 line_len, u32 i) {
+	if (line[i] == '.') {
+		if ((i && line[i-1] == '.') || (i < line_len-1 && line[i+1] == '.'))
+			return false; // can't have two .s in a row
+		if (i < line_len-1 && lang == LANG_RUST && !isdigit(line[i+1]) && line[i+1] != '_') {
+			// don't highlight 0.into() weirdly
+			// (in Rust, only 0123456789_ can follow a decimal point)
+			return false;
+		}
+	}
 	return (line[i] < CHAR_MAX && 
 		(strchr(SYNTAX_DIGITS, (char)line[i])
 		|| (i && line[i-1] == 'e' && (line[i] == '+' || line[i] == '-'))));
@@ -292,7 +299,7 @@ static void syntax_highlight_c_cpp(SyntaxState *state_ptr, bool cpp, char32_t co
 		} break;
 		}
 		if (c != '\\') backslashes = 0;
-		if (in_number && !syntax_number_continues(line, line_len, i)) {
+		if (in_number && !syntax_number_continues(LANG_CPP, line, line_len, i)) {
 			in_number = false;
 		}
 
@@ -482,7 +489,7 @@ static void syntax_highlight_rust(SyntaxState *state, char32_t const *line, u32 
 		} break;
 		}
 		if (c != '\\') backslashes = 0;
-		if (in_number && !syntax_number_continues(line, line_len, i))
+		if (in_number && !syntax_number_continues(LANG_RUST, line, line_len, i))
 			in_number = false;
 		
 		if (char_types && !dealt_with) {
@@ -600,7 +607,7 @@ static void syntax_highlight_python(SyntaxState *state, char32_t const *line, u3
 			break;
 		}
 		if (c != '\\') backslashes = 0;
-		if (in_number && !syntax_number_continues(line, line_len, i))
+		if (in_number && !syntax_number_continues(LANG_PYTHON, line, line_len, i))
 			in_number = false;
 		
 		if (char_types && !dealt_with) {
@@ -1060,7 +1067,7 @@ static void syntax_highlight_config(SyntaxState *state, char32_t const *line, u3
 				if (is32_ident(line[i-1]) // something like e5
 					|| line[i-1] == '+') // key combinations, e.g. Alt+0
 					break;
-				while (i < line_len && syntax_number_continues(line, line_len, i))
+				while (i < line_len && syntax_number_continues(LANG_CONFIG, line, line_len, i))
 					char_types[i++] = SYNTAX_CONSTANT;
 			}
 			break;
@@ -1214,7 +1221,7 @@ static void syntax_highlight_javascript(SyntaxState *state, char32_t const *line
 			break;
 		}
 		if (c != '\\') backslashes = 0;
-		if (in_number && !syntax_number_continues(line, line_len, i))
+		if (in_number && !syntax_number_continues(LANG_JAVASCRIPT, line, line_len, i))
 			in_number = false;
 		
 		if (char_types && !dealt_with) {
@@ -1337,7 +1344,7 @@ static void syntax_highlight_java(SyntaxState *state_ptr, char32_t const *line, 
 		} break;
 		}
 		if (c != '\\') backslashes = 0;
-		if (in_number && !syntax_number_continues(line, line_len, i)) {
+		if (in_number && !syntax_number_continues(LANG_JAVA, line, line_len, i)) {
 			in_number = false;
 		}
 
@@ -1478,7 +1485,7 @@ static void syntax_highlight_go(SyntaxState *state_ptr, char32_t const *line, u3
 		} break;
 		}
 		if (c != '\\') backslashes = 0;
-		if (in_number && !syntax_number_continues(line, line_len, i)) {
+		if (in_number && !syntax_number_continues(LANG_GO, line, line_len, i)) {
 			in_number = false;
 		}
 
