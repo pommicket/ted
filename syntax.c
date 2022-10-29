@@ -342,6 +342,7 @@ static void syntax_highlight_rust(SyntaxState *state, char32_t const *line, u32 
 		bool dealt_with = false;
 		bool has_1_char = i + 1 < line_len;
 		bool has_2_chars = i + 2 < line_len;
+		bool has_3_chars = i + 3 < line_len;
 		
 		switch (c) {
 		case '/':
@@ -370,6 +371,30 @@ static void syntax_highlight_rust(SyntaxState *state, char32_t const *line, u32 
 				}
 			}
 			break;
+		case 'r':
+			if (char_types && !comment_depth) {
+				if (has_2_chars && line[i+1] == '#' && line[i+2] == '"') {
+					// r before raw string
+					char_types[i] = SYNTAX_STRING;
+					dealt_with = true;
+				}
+			}
+			break;
+		case 'b':
+			if (char_types && !comment_depth) {
+				if ((has_1_char && line[i+1] == '"')
+					|| (has_3_chars && line[i+1] == 'r' && line[i+2] == '#' && line[i+3] == '"')) {
+					// b before byte string
+					char_types[i] = SYNTAX_STRING;
+					dealt_with = true;
+				}
+				if (has_1_char && line[i+1] == '\'') {
+					// b before byte char
+					char_types[i] = SYNTAX_CHARACTER;
+					dealt_with = true;
+				}
+			}
+			break;
 		case '"':
 			if (!comment_depth) {
 				if (in_string) {
@@ -380,6 +405,11 @@ static void syntax_highlight_rust(SyntaxState *state, char32_t const *line, u32 
 							if (char_types) {
 								char_types[i] = SYNTAX_STRING;
 								dealt_with = true;
+								if (string_is_raw && has_1_char) {
+									// highlighting for final #
+									++i;
+									char_types[i] = SYNTAX_STRING;
+								}
 							}
 							string_is_raw = false;
 						}
@@ -453,9 +483,15 @@ static void syntax_highlight_rust(SyntaxState *state, char32_t const *line, u32 
 			}
 			break;
 		case '#':
-			if (!in_string && !comment_depth) {
+			if (char_types && !in_string && !comment_depth) {
 				if (i && line[i-1] == 'r') {
-					// raw identifier -- not an attribute
+					if (has_1_char && line[i+1] == '"') {
+						// raw string
+						char_types[i] = SYNTAX_STRING;
+						dealt_with = true;
+					} else {
+						// raw identifier
+					}
 					break;
 				}
 				if (!has_2_chars) break;
@@ -539,6 +575,16 @@ static void syntax_highlight_python(SyntaxState *state, char32_t const *line, u3
 					dealt_with = true;
 				}
 				i = line_len - 1;
+			}
+			break;
+		case 'f':
+		case 'r':
+		case 'b':
+			if (char_types && i+1 < line_len && (line[i+1] == '\'' || line[i+1] == '"')) {
+				// format/raw/byte string
+				// @TODO(eventually): we don't handle raw string highlighting correctly.
+				char_types[i] = SYNTAX_STRING;
+				dealt_with = true;
 			}
 			break;
 		case '\'':
