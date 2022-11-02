@@ -61,7 +61,7 @@ static char32_t const *util_mem32chr_const(char32_t const *s, char32_t c, size_t
 	return NULL;
 }
 
-static bool str_is_prefix(char const *str, char const *prefix) {
+static bool str_has_prefix(char const *str, char const *prefix) {
 	return strncmp(str, prefix, strlen(prefix)) == 0;
 }
 

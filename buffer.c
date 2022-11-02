@@ -277,13 +277,15 @@ static long context_score(const char *path, Language lang, const SettingsContext
 	long score = 0;
 	
 	if (lang == context->language) {
-		score += 100000;
+		score += 10000;
 	}
 	
 	if (context->path) {
-		int i;
-		for (i = 0; i < TED_PATH_MAX && path[i] == context->path[i]; ++i);
-		score += i;
+		if (path && str_has_prefix(path, context->path)) {
+			score += (long)strlen(context->path);
+		} else {
+			score -= 100000;
+		}
 	}
 	
 	return score;

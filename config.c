@@ -35,7 +35,7 @@ static bool context_is_parent(const SettingsContext *parent, const SettingsConte
 	if (parent->path) {
 		if (!child->path)
 			return false;
-		if (!str_is_prefix(parent->path, child->path))
+		if (!str_has_prefix(child->path, parent->path))
 			return false;
 	}
 	return true;
@@ -74,21 +74,21 @@ static u32 config_parse_key_combo(ConfigReader *cfg, char const *str) {
 	u32 modifier = 0;
 	// read modifier
 	while (true) {
-		if (str_is_prefix(str, "Ctrl+")) {
+		if (str_has_prefix(str, "Ctrl+")) {
 			if (modifier & KEY_MODIFIER_CTRL) {
 				config_err(cfg, "Ctrl+ written twice");
 				return 0;
 			}
 			modifier |= KEY_MODIFIER_CTRL;
 			str += strlen("Ctrl+");
-		} else if (str_is_prefix(str, "Shift+")) {
+		} else if (str_has_prefix(str, "Shift+")) {
 			if (modifier & KEY_MODIFIER_SHIFT) {
 				config_err(cfg, "Shift+ written twice");
 				return 0;
 			}
 			modifier |= KEY_MODIFIER_SHIFT;
 			str += strlen("Shift+");
-		} else if (str_is_prefix(str, "Alt+")) {
+		} else if (str_has_prefix(str, "Alt+")) {
 			if (modifier & KEY_MODIFIER_ALT) {
 				config_err(cfg, "Alt+ written twice");
 				return 0;
@@ -548,7 +548,7 @@ static void config_parse_line(ConfigReader *cfg, Settings *settings, const Confi
 		// lines like Ctrl+Down = 10 :down
 		u32 key_combo = config_parse_key_combo(cfg, key);
 		KeyAction *action = &settings->key_actions[key_combo];
-		llong argument = 1;
+		llong argument = 1; // default argument = 1
 		if (isdigit(*value)) {
 			// read the argument
 			char *endp;
@@ -733,7 +733,7 @@ void config_parse(Ted *ted, ConfigPart **pparts) {
 				--parent;
 				if (context_is_parent(&parent->context, &part->context)) {
 					// copy parent's settings
-					settings_copy(settings, parent->settings);
+					settings_copy(settings, &ted->all_settings[parent->settings]);
 					break;
 				}
 			}
@@ -741,7 +741,7 @@ void config_parse(Ted *ted, ConfigPart **pparts) {
 			context_free(&settings->context);
 			context_copy(&settings->context, &part->context);
 		}
-		part->settings = settings;
+		part->settings = arr_len(ted->all_settings) - 1;
 		
 		
 		arr_add(part->text, '\0'); // null termination

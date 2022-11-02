@@ -197,8 +197,8 @@ static int qsort_file_entry_cmp(void *search_termv, void const *av, void const *
 		return +1;
 	}
 	if (search_term) {
-		bool a_prefix = str_is_prefix(a->name, search_term);
-		bool b_prefix = str_is_prefix(b->name, search_term);
+		bool a_prefix = str_has_prefix(a->name, search_term);
+		bool b_prefix = str_has_prefix(b->name, search_term);
 		if (a_prefix && !b_prefix) {
 			return -1;
 		}

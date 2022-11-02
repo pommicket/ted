@@ -196,7 +196,7 @@ typedef struct {
 	char *file;
 	u32 line;
 	char *text;
-	Settings *settings; // only used in config_parse
+	u32 settings; // index into ted->all_settings. only used in config_parse
 } ConfigPart;
 
 // this refers to replacing prev_len characters (found in prev_text) at pos with new_len characters
