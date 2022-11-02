@@ -168,7 +168,7 @@ static void session_read_file(Ted *ted, FILE *fp) {
 }
 
 static void session_write(Ted *ted) {
-	Settings const *settings = ted->settings;
+	Settings const *settings = ted_active_settings(ted);
 	if (!settings->restore_session)
 		return;
 	// first we write to a prefixed file so in case something goes wrong we still have the old session.
@@ -189,7 +189,7 @@ static void session_write(Ted *ted) {
 }
 
 static void session_read(Ted *ted) {
-	Settings const *settings = ted->settings;
+	Settings const *settings = ted_active_settings(ted);
 	if (settings->restore_session) {
 		char filename[TED_PATH_MAX];
 		strbuf_printf(filename, "%s/" SESSION_FILENAME, ted->local_data_dir);

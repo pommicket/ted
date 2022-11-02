@@ -247,7 +247,7 @@ static inline Font *buffer_font(TextBuffer *buffer) {
 Language buffer_language(TextBuffer *buffer) {
 	if (buffer->manual_language >= 1 && buffer->manual_language <= LANG_COUNT)
 		return (Language)(buffer->manual_language - 1);
-	Settings const *settings = buffer->ted->settings;
+	Settings const *settings = buffer->ted->default_settings; // important we don't use buffer_settings here since that would cause a loop!
 	char const *filename = buffer->filename;
 	if (!filename)
 		return LANG_NONE;
@@ -272,17 +272,17 @@ Language buffer_language(TextBuffer *buffer) {
 	return LANG_NONE;
 }
 
-// score is higher if buffer more closely matches context.
-static long buffer_context_score(TextBuffer *buffer, const SettingsContext *context) {
+// score is higher if context is closer match.
+static long context_score(const char *path, Language lang, const SettingsContext *context) {
 	long score = 0;
 	
-	if (buffer_language(buffer) == context->language) {
+	if (lang == context->language) {
 		score += 100000;
 	}
 	
 	if (context->path) {
 		int i;
-		for (i = 0; i < TED_PATH_MAX && buffer->filename[i] == context->path[i]; ++i);
+		for (i = 0; i < TED_PATH_MAX && path[i] == context->path[i]; ++i);
 		score += i;
 	}
 	
@@ -293,10 +293,10 @@ static long buffer_context_score(TextBuffer *buffer, const SettingsContext *cont
 Settings *buffer_settings(TextBuffer *buffer) {
 	Ted *ted = buffer->ted;
 	long best_score = 0;
-	Settings *settings = ted->settings;
-	
+	Settings *settings = ted->default_settings;
+	Language language = buffer_language(buffer);
 	arr_foreach_ptr(ted->all_settings, Settings, s) {
-		long score = buffer_context_score(buffer, &s->context);
+		long score = context_score(buffer->filename, language, &s->context);
 		if (score > best_score) {
 			best_score = score;
 			settings = s;

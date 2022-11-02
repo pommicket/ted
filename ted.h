@@ -190,6 +190,7 @@ typedef enum {
 // this structure is used temporarily when loading settings
 // it's needed because we want more specific contexts to be dealt with last.
 typedef struct {
+	int index; // index in order of which part was read first.
 	SettingsContext context;
 	ConfigSection section;
 	char *file;
@@ -329,7 +330,7 @@ typedef struct Ted {
 	TextBuffer *prev_active_buffer; 
 	Node *active_node;
 	Settings *all_settings; // dynamic array of Settings. use Settings.context to figure out which one to use.
-	Settings *settings; // "default" settings
+	Settings *default_settings;
 	float window_width, window_height;
 	u32 key_modifier; // which of shift, alt, ctrl are down right now.
 	v2 mouse_pos;

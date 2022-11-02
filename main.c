@@ -1,9 +1,6 @@
 /* 
-@TODO:
-- make sure [/path//extensions] works
-
 FUTURE FEATURES:
-- path-based settings
+- [/path//extensions]
 - custom shaders
     - texture, time, time since last save
 - config variables
@@ -781,10 +778,9 @@ int main(int argc, char **argv) {
 		
 		Font *font = ted->font;
 
-		// default window titlel
+		// default window title
 		strcpy(ted->window_title, "ted");
-
-
+		
 		{
 			float const padding = ted_active_settings(ted)->padding;
 			float x1 = padding, y = window_height-padding, x2 = window_width-padding;

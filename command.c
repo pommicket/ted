@@ -31,7 +31,7 @@ char const *arg_get_string(Ted *ted, i64 argument) {
 void command_execute(Ted *ted, Command c, i64 argument) {
 	TextBuffer *buffer = ted->active_buffer;
 	Node *node = ted->active_node;
-	Settings *settings = buffer ? buffer_settings(buffer) : ted->settings;
+	Settings *settings = ted_active_settings(ted);
 
 
 	switch (c) {

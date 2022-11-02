@@ -81,7 +81,7 @@ static void build_start(Ted *ted) {
 	bool cargo = false, make = false;
 	
 	strbuf_cpy(ted->build_dir, ted->cwd);
-	Settings *settings = ted->active_buffer ? buffer_settings(ted->active_buffer) : ted->settings;
+	Settings *settings = ted_active_settings(ted);
 	
 	char *command = settings->build_default_command;
 	

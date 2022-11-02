@@ -2,29 +2,29 @@
 #include <fcntl.h>
 #endif
 
-static float selector_entries_start_y(Ted const *ted, Selector const *s) {
-	float padding = ted->settings->padding;
+static float selector_entries_start_y(Ted *ted, Selector const *s) {
+	float padding = ted_active_settings(ted)->padding;
 
 	return s->bounds.pos.y
 		+ ted_line_buffer_height(ted) + padding; // make room for line buffer
 }
 
 // number of entries that can be displayed on the screen
-static u32 selector_n_display_entries(Ted const *ted, Selector const *s) {
+static u32 selector_n_display_entries(Ted *ted, Selector const *s) {
 	float char_height = text_font_char_height(ted->font);
 	float entries_h = rect_y2(s->bounds) - selector_entries_start_y(ted, s);
 	return (u32)(entries_h / char_height);
 }
 
-static void selector_clamp_scroll(Ted const *ted, Selector *s) {
+static void selector_clamp_scroll(Ted *ted, Selector *s) {
 	float max_scroll = (float)s->n_entries - (float)selector_n_display_entries(ted, s);
 	if (max_scroll < 0) max_scroll = 0;
 	s->scroll = clampf(s->scroll, 0, max_scroll);
 }
 
-static void selector_scroll_to_cursor(Ted const *ted, Selector *s) {
+static void selector_scroll_to_cursor(Ted *ted, Selector *s) {
 	u32 n_display_entries = selector_n_display_entries(ted, s);
-	float scrolloff = ted->settings->scrolloff;
+	float scrolloff = ted_active_settings(ted)->scrolloff;
 	float min_scroll = (float)s->cursor - ((float)n_display_entries - scrolloff);
 	float max_scroll = (float)s->cursor - scrolloff;
 	s->scroll = clampf(s->scroll, min_scroll, max_scroll);
@@ -33,7 +33,7 @@ static void selector_scroll_to_cursor(Ted const *ted, Selector *s) {
 
 // where is the ith entry in the selector on the screen?
 // returns false if it's completely offscreen
-static bool selector_entry_pos(Ted const *ted, Selector const *s, u32 i, Rect *r) {
+static bool selector_entry_pos(Ted *ted, Selector const *s, u32 i, Rect *r) {
 	Rect bounds = s->bounds;
 	float char_height = text_font_char_height(ted->font);
 	*r = rect(V2(bounds.pos.x, selector_entries_start_y(ted, s)
@@ -43,7 +43,7 @@ static bool selector_entry_pos(Ted const *ted, Selector const *s, u32 i, Rect *r
 	return rect_clip_to_rect(r, bounds);
 }
 
-static void selector_up(Ted const *ted, Selector *s, i64 n) {
+static void selector_up(Ted *ted, Selector *s, i64 n) {
 	if (!s->enable_cursor || s->n_entries == 0) {
 		// can't do anything
 		return;
@@ -52,7 +52,7 @@ static void selector_up(Ted const *ted, Selector *s, i64 n) {
 	selector_scroll_to_cursor(ted, s);
 }
 
-static void selector_down(Ted const *ted, Selector *s, i64 n) {
+static void selector_down(Ted *ted, Selector *s, i64 n) {
 	selector_up(ted, s, -n);
 }
 
@@ -111,7 +111,7 @@ static char *selector_update(Ted *ted, Selector *s) {
 
 // NOTE: also renders the line buffer
 static void selector_render(Ted *ted, Selector *s) {
-	Settings const *settings = ted->settings;
+	Settings const *settings = ted_active_settings(ted);
 	u32 const *colors = settings->colors;
 	Font *font = ted->font;
 
@@ -485,7 +485,7 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 }
 
 static void file_selector_render(Ted *ted, FileSelector *fs) {
-	Settings const *settings = ted->settings;
+	Settings const *settings = ted_active_settings(ted);
 	u32 const *colors = settings->colors;
 	Rect bounds = fs->bounds;
 	Font *font = ted->font;
@@ -525,12 +525,12 @@ static void file_selector_render(Ted *ted, FileSelector *fs) {
 }
 
 static v2 button_get_size(Ted *ted, char const *text) {
-	float border_thickness = ted->settings->border_thickness;
+	float border_thickness = ted_active_settings(ted)->border_thickness;
 	return v2_add_const(text_get_size_v2(ted->font, text), 2 * border_thickness);
 }
 
 static void button_render(Ted *ted, Rect button, char const *text, u32 color) {
-	u32 const *colors = ted->settings->colors;
+	u32 const *colors = ted_active_settings(ted)->colors;
 	
 	if (rect_contains_point(button, ted->mouse_pos)) {
 		// highlight button when hovering over it
@@ -538,7 +538,7 @@ static void button_render(Ted *ted, Rect button, char const *text, u32 color) {
 		gl_geometry_rect(button, new_color);
 	}
 	
-	gl_geometry_rect_border(button, ted->settings->border_thickness, colors[COLOR_BORDER]);
+	gl_geometry_rect_border(button, ted_active_settings(ted)->border_thickness, colors[COLOR_BORDER]);
 	gl_geometry_draw();
 
 	v2 pos = rect_center(button);
@@ -606,7 +606,7 @@ static void popup_render(Ted *ted, u32 options, char const *title, char const *b
 	Font *font = ted->font;
 	Font *font_bold = ted->font_bold;
 	Rect r, button_yes, button_no, button_cancel;
-	Settings const *settings = ted->settings;
+	Settings const *settings = ted_active_settings(ted);
 	u32 const *colors = settings->colors;
 	float const char_height_bold = text_font_char_height(font_bold);
 	float const padding = settings->padding;
@@ -655,7 +655,7 @@ static v2 checkbox_frame(Ted *ted, bool *value, char const *label, v2 pos) {
 	Font *font = ted->font;
 	float char_height = text_font_char_height(font);
 	float checkbox_size = char_height;
-	Settings const *settings = ted->settings;
+	Settings const *settings = ted_active_settings(ted);
 	u32 const *colors = settings->colors;
 	float padding = settings->padding;
 	float border_thickness = settings->border_thickness;

@@ -42,9 +42,12 @@ static bool context_is_parent(const SettingsContext *parent, const SettingsConte
 }
 
 static void settings_copy(Settings *dest, const Settings *src) {
+	*dest = *src;
 	context_copy(&dest->context, &src->context);
-	for (u32 i = 0; i < LANG_COUNT; ++i)
-		dest->language_extensions[i] = str_dup(src->language_extensions[i]);
+	for (u32 i = 0; i < LANG_COUNT; ++i) {
+		if (src->language_extensions[i])
+			dest->language_extensions[i] = str_dup(src->language_extensions[i]);
+	}
 }
 
 static void context_free(SettingsContext *ctx) {
@@ -331,6 +334,10 @@ static void parse_section_header(ConfigReader *cfg, char *line, ConfigPart *part
 		} else if (streq(section, "core")) {
 			part->section = SECTION_CORE;
 		} else if (streq(section, "extensions")) {
+			if (part->context.language != 0 || part->context.path) {
+				config_err(cfg, "Extensions section cannot be language- or path-specific.");
+				return;
+			}
 			part->section = SECTION_EXTENSIONS;
 		} else {
 			config_err(cfg, "Unrecognized section: [%s].", section);
@@ -416,6 +423,7 @@ void config_read(Ted *ted, ConfigPart **parts, char const *filename) {
 		if (line[0] == '[') {
 			// a new part!
 			part = arr_addp(*parts);
+			part->index = (int)arr_len(*parts);
 			part->file = str_dup(filename);
 			part->line = cfg_reader.line_number + 1;
 			parse_section_header(&cfg_reader, line, part);
@@ -440,13 +448,12 @@ void config_read(Ted *ted, ConfigPart **parts, char const *filename) {
 	fclose(fp);
 }
 
-
-// REQUIREMENTS FOR THIS FUNCTION:
-//     - two configs compare equal iff their contexts are identical
+// IMPORTANT REQUIREMENT FOR THIS FUNCTION:
 //     - less specific contexts compare as less
 //            (i.e. if context_is_parent(a.context, b.context), then we return -1, and vice versa.)
-static int config_part_qsort_cmp(const void *av, const void *bv) {
-	const ConfigPart *ap = av, *bp = bv;
+// if total = true, this gives a total ordering
+// if total = false, parts with identical contexts will compare equal.
+static int config_part_cmp(const ConfigPart *ap, const ConfigPart *bp, bool total) {
 	const SettingsContext *a = &ap->context, *b = &bp->context;
 	if (a->language == 0 && b->language != 0)
 		return -1;
@@ -465,7 +472,20 @@ static int config_part_qsort_cmp(const void *av, const void *bv) {
 		return -1;
 	if (a->language > b->language)
 		return +1;
-	return strcmp(a_path, b_path);
+	int cmp = strcmp(a_path, b_path);
+	if (cmp != 0) return cmp;
+	if (total) {
+		if (ap->index < bp->index)
+			return -1;
+		if (ap->index > bp->index)
+			return +1;
+	}
+	return 0;
+	
+}
+
+static int config_part_qsort_cmp(const void *av, const void *bv) {
+	return config_part_cmp(av, bv, true);
 }
 
 static void config_parse_line(ConfigReader *cfg, Settings *settings, const ConfigPart *part, const char *line) {
@@ -699,10 +719,9 @@ void config_parse(Ted *ted, ConfigPart **pparts) {
 		cfg->filename = part->file;
 		cfg->line_number = part->line;
 		
-		if (part == parts || config_part_qsort_cmp(part, part - 1) != 0) {
+		if (part == parts || config_part_cmp(part, part - 1, false) != 0) {
 			// new settings
 			settings = arr_addp(ted->all_settings);
-			context_copy(&settings->context, &part->context);
 			
 			// go backwards to find most specific parent
 			ConfigPart *parent = part;
@@ -718,8 +737,12 @@ void config_parse(Ted *ted, ConfigPart **pparts) {
 					break;
 				}
 			}
+			
+			context_free(&settings->context);
+			context_copy(&settings->context, &part->context);
 		}
 		part->settings = settings;
+		
 		
 		arr_add(part->text, '\0'); // null termination
 		char *line = part->text;
@@ -746,7 +769,7 @@ void config_parse(Ted *ted, ConfigPart **pparts) {
 	arr_foreach_ptr(ted->all_settings, Settings, s) {
 		SettingsContext *ctx = &s->context;
 		if (ctx->language == 0 && (!ctx->path || !*ctx->path)) {
-			ted->settings = s;
+			ted->default_settings = s;
 			break;
 		}
 	}
@@ -766,5 +789,5 @@ void config_free(Ted *ted) {
 		free(ted->strings[i]);
 	}
 	arr_clear(ted->all_settings);
-	ted->settings = NULL;
+	ted->default_settings = NULL;
 }

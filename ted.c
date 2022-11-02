@@ -49,7 +49,7 @@ static void *ted_realloc(Ted *ted, void *p, size_t new_size) {
 }
 
 Settings *ted_active_settings(Ted *ted) {
-	return ted->active_buffer ? buffer_settings(ted->active_buffer) : ted->settings;
+	return ted->active_buffer ? buffer_settings(ted->active_buffer) : ted->default_settings;
 }
 
 u32 ted_color(Ted *ted, ColorSetting color) {
@@ -206,9 +206,9 @@ static i32 ted_new_node(Ted *ted) {
 }
 
 // how tall is a line buffer?
-static float ted_line_buffer_height(Ted const *ted) {
+static float ted_line_buffer_height(Ted *ted) {
 	float const char_height = text_font_char_height(ted->font);
-	return char_height + 2 * ted->settings->border_thickness;
+	return char_height + 2 * ted_active_settings(ted)->border_thickness;
 }
 
 // switch to this node
@@ -385,6 +385,7 @@ void ted_load_configs(Ted *ted, bool reloading) {
 		config_read(ted, &parts, TED_CFG);
 	}
 	config_parse(ted, &parts);
+	
 	
 	if (reloading) {
 		// reset text size
