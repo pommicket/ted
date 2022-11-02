@@ -1,3 +1,15 @@
+/* 
+@TODO:
+- make sure [/path//extensions] works
+
+FUTURE FEATURES:
+- path-based settings
+- custom shaders
+    - texture, time, time since last save
+- config variables
+- config multi-line strings
+*/
+
 #include "base.h"
 no_warn_start
 #if _WIN32
@@ -95,7 +107,7 @@ bool tag_goto(Ted *ted, char const *tag);
 
 static Rect error_box_rect(Ted *ted) {
 	Font *font = ted->font;
-	Settings const *settings = ted->settings;
+	Settings const *settings = ted_active_settings(ted);
 	float padding = settings->padding;
 	float window_width = ted->window_width, window_height = ted->window_height;
 	float char_height = text_font_char_height(font);
@@ -318,8 +330,6 @@ int main(int argc, char **argv) {
 		die("Not enough memory available to run ted.");
 	}
 	
-	ted->settings = &ted->settings_by_language[0];
-	
 	// make sure signal handler has access to ted.
 	error_signal_handler_ted = ted;
 
@@ -510,7 +520,6 @@ int main(int argc, char **argv) {
 	}
 
 
-	u32 *colors = ted->settings->colors; (void)colors;
 
 	ted->cursor_ibeam = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_IBEAM);
 	ted->cursor_arrow = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
@@ -765,7 +774,7 @@ int main(int argc, char **argv) {
 		glViewport(0, 0, (GLsizei)window_width, (GLsizei)window_height);
 		{ // clear (background)
 			float bg_color[4];
-			rgba_u32_to_floats(colors[COLOR_BG], bg_color);
+			rgba_u32_to_floats(ted_color(ted, COLOR_BG), bg_color);
 			glClearColor(bg_color[0], bg_color[1], bg_color[2], bg_color[3]);
 		}
 		glClear(GL_COLOR_BUFFER_BIT);
@@ -777,7 +786,7 @@ int main(int argc, char **argv) {
 
 
 		{
-			float const padding = ted->settings->padding;
+			float const padding = ted_active_settings(ted)->padding;
 			float x1 = padding, y = window_height-padding, x2 = window_width-padding;
 			Node *node = &ted->nodes[0];
 			if (ted->find) {
@@ -827,7 +836,7 @@ int main(int argc, char **argv) {
 			} else {
 				ted->autocomplete = false;
 				text_utf8_anchored(font, "Press Ctrl+O to open a file or Ctrl+N to create a new one.",
-					window_width * 0.5f, window_height * 0.5f, colors[COLOR_TEXT_SECONDARY], ANCHOR_MIDDLE);
+					window_width * 0.5f, window_height * 0.5f, ted_color(ted, COLOR_TEXT_SECONDARY), ANCHOR_MIDDLE);
 				text_render(font);
 			}
 		}
@@ -873,15 +882,16 @@ int main(int argc, char **argv) {
 		if (*ted->error_shown) {
 			double t = time_get_seconds();
 			double time_passed = t - ted->error_time;
-			if (time_passed > ted->settings->error_display_time) {
+			Settings *settings = ted_active_settings(ted);
+			if (time_passed > settings->error_display_time) {
 				// stop showing error
 				*ted->error_shown = '\0';
 			} else {
 				Rect r = error_box_rect(ted);
-				float padding = ted->settings->padding;
+				float padding = settings->padding;
 
-				gl_geometry_rect(r, colors[COLOR_ERROR_BG]);
-				gl_geometry_rect_border(r, ted->settings->border_thickness, colors[COLOR_ERROR_BORDER]);
+				gl_geometry_rect(r, ted_color(ted, COLOR_ERROR_BG));
+				gl_geometry_rect_border(r, settings->border_thickness, ted_color(ted, COLOR_ERROR_BORDER));
 
 				float text_x1 = rect_x1(r) + padding, text_x2 = rect_x2(r) - padding;
 				float text_y1 = rect_y1(r) + padding;
@@ -893,7 +903,7 @@ int main(int argc, char **argv) {
 				text_state.x = text_x1;
 				text_state.y = text_y1;
 				text_state.wrap = true;
-				rgba_u32_to_floats(colors[COLOR_ERROR_TEXT], text_state.color);
+				rgba_u32_to_floats(ted_color(ted, COLOR_ERROR_TEXT), text_state.color);
 				text_utf8_with_state(font, &text_state, ted->error_shown);
 				gl_geometry_draw();
 				text_render(font);

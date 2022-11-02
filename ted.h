@@ -133,6 +133,12 @@ typedef struct KeyAction {
 } KeyAction;
 
 typedef struct {
+	Language language; // these settings apply to this language.
+	char *path; // these settings apply to all paths which start with this string, or all paths if path=NULL
+} SettingsContext;
+
+typedef struct {
+	SettingsContext context;
 	float cursor_blink_time_on, cursor_blink_time_off;
 	u32 colors[COLOR_COUNT];
 	u16 text_size;
@@ -171,6 +177,26 @@ typedef struct {
 	u32 len;
 	char32_t *str;
 } Line;
+
+
+typedef enum {
+	SECTION_NONE,
+	SECTION_CORE,
+	SECTION_KEYBOARD,
+	SECTION_COLORS,
+	SECTION_EXTENSIONS
+} ConfigSection;
+
+// this structure is used temporarily when loading settings
+// it's needed because we want more specific contexts to be dealt with last.
+typedef struct {
+	SettingsContext context;
+	ConfigSection section;
+	char *file;
+	u32 line;
+	char *text;
+	Settings *settings; // only used in config_parse
+} ConfigPart;
 
 // this refers to replacing prev_len characters (found in prev_text) at pos with new_len characters
 typedef struct {
@@ -302,8 +328,8 @@ typedef struct Ted {
 	// the old active buffer needs to be restored. that's what this stores.
 	TextBuffer *prev_active_buffer; 
 	Node *active_node;
-	Settings settings_by_language[LANG_COUNT];
-	Settings *settings; // "default" settings  (equal to &settings_per_language[0])
+	Settings *all_settings; // dynamic array of Settings. use Settings.context to figure out which one to use.
+	Settings *settings; // "default" settings
 	float window_width, window_height;
 	u32 key_modifier; // which of shift, alt, ctrl are down right now.
 	v2 mouse_pos;
@@ -408,5 +434,6 @@ void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer);
 Settings *ted_active_settings(Ted *ted);
 void ted_load_configs(Ted *ted, bool reloading);
 static TextBuffer *find_search_buffer(Ted *ted);
-void config_read(Ted *ted, const char *filename, int pass);
+void config_read(Ted *ted, ConfigPart **parts, const char *filename);
+void config_parse(Ted *ted, ConfigPart **parts);
 void config_free(Ted *ted);

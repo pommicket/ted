@@ -237,7 +237,6 @@ static int qsort_with_context_cmp(const void *a, const void *b) {
 }
 
 static void qsort_with_context(void *base, size_t nmemb, size_t size, int (*compar)(void *, const void *, const void *), void *arg) {
-	// @TODO(eventually): write this yourself
 	// just use global variables. hopefully we don't try to run this in something multithreaded!
 	qsort_ctx_arg = arg;
 	qsort_ctx_cmp = compar;
@@ -299,7 +298,7 @@ static void path_full(char const *dir, char const *relpath, char *abspath, size_
 			else
 				lastsep[0] = '\0';
 		} else {
-			if (abspath[len - 1] != PATH_SEPARATOR)
+			if (len == 0 || abspath[len - 1] != PATH_SEPARATOR)
 				str_cat(abspath, abspath_size, PATH_SEPARATOR_STR);
 			strn_cat(abspath, abspath_size, relpath, component_len);
 		}

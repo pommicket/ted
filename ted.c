@@ -52,6 +52,10 @@ Settings *ted_active_settings(Ted *ted) {
 	return ted->active_buffer ? buffer_settings(ted->active_buffer) : ted->settings;
 }
 
+u32 ted_color(Ted *ted, ColorSetting color) {
+	return ted_active_settings(ted)->colors[color];
+}
+
 static void ted_path_full(Ted *ted, char const *relpath, char *abspath, size_t abspath_size) {
 	path_full(ted->cwd, relpath, abspath, abspath_size);
 }
@@ -372,20 +376,15 @@ void ted_load_configs(Ted *ted, bool reloading) {
 		}
 	}
 	
-	// read global settings
-	config_read(ted, global_config_filename, 0);
-	config_read(ted, local_config_filename, 0);
+	
+	ConfigPart *parts = NULL;
+	config_read(ted, &parts, global_config_filename);
+	config_read(ted, &parts, local_config_filename);
 	if (ted->search_cwd) {
 		// read config in cwd
-		config_read(ted, TED_CFG, 0);
+		config_read(ted, &parts, TED_CFG);
 	}
-	// copy global settings to language-specific settings
-	for (int l = 1; l < LANG_COUNT; ++l)
-		ted->settings_by_language[l] = ted->settings_by_language[0];
-	// read language-specific settings
-	config_read(ted, global_config_filename, 1);
-	config_read(ted, local_config_filename, 1);
-	if (ted->search_cwd) config_read(ted, TED_CFG, 1);
+	config_parse(ted, &parts);
 	
 	if (reloading) {
 		// reset text size

@@ -272,9 +272,37 @@ Language buffer_language(TextBuffer *buffer) {
 	return LANG_NONE;
 }
 
+// score is higher if buffer more closely matches context.
+static long buffer_context_score(TextBuffer *buffer, const SettingsContext *context) {
+	long score = 0;
+	
+	if (buffer_language(buffer) == context->language) {
+		score += 100000;
+	}
+	
+	if (context->path) {
+		int i;
+		for (i = 0; i < TED_PATH_MAX && buffer->filename[i] == context->path[i]; ++i);
+		score += i;
+	}
+	
+	return score;
+}
+
 // Get the settings used for this buffer.
 Settings *buffer_settings(TextBuffer *buffer) {
-	return &buffer->ted->settings_by_language[buffer_language(buffer)];
+	Ted *ted = buffer->ted;
+	long best_score = 0;
+	Settings *settings = ted->settings;
+	
+	arr_foreach_ptr(ted->all_settings, Settings, s) {
+		long score = buffer_context_score(buffer, &s->context);
+		if (score > best_score) {
+			best_score = score;
+			settings = s;
+		}
+	}
+	return settings;
 }
 
 
