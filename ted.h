@@ -143,6 +143,16 @@ typedef struct {
 	char *path; // these settings apply to all paths which start with this string, or all paths if path=NULL
 } SettingsContext;
 
+// shader-array-buffer combo.
+// need to use refcounting for this because of Settings.
+// (we copy parent settings to children)
+typedef struct {
+	u32 ref_count;
+	u32 shader;
+	u32 array;
+	u32 buffer;
+} GlRcSAB;
+
 typedef struct {
 	SettingsContext context;
 	float cursor_blink_time_on, cursor_blink_time_off;
@@ -166,10 +176,9 @@ typedef struct {
 	u8 padding;
 	u8 scrolloff;
 	u8 tags_max_depth;
-	u32 bg_shader;
-	u32 bg_buffer;
-	u32 bg_array;
+	GlRcSAB *bg_shader;
 	char bg_shader_text[4096];
+	char bg_shader_image[TED_PATH_MAX];
 	char build_default_command[256];
 	// [i] = comma-separated string of file extensions for language i, or NULL for none
 	char *language_extensions[LANG_COUNT];

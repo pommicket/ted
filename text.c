@@ -16,10 +16,9 @@ typedef struct
 extern void stbtt_GetBakedQuad(const stbtt_bakedchar *chardata, int pw, int ph, int char_index, float *xpos, float *ypos, stbtt_aligned_quad *q, int opengl_fillrule); 
 extern int stbtt_BakeFontBitmap(const unsigned char *data, int offset, float pixel_height, unsigned char *pixels, int pw, int ph, int first_char, int num_chars, stbtt_bakedchar *chardata); 
 #else
-#define STB_TRUETYPE_IMPLEMENTATION
 #define STBTT_STATIC
 no_warn_start
-#include "lib/stb_truetype.h"
+#include "stb_truetype.c"
 no_warn_end
 #endif
 

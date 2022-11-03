@@ -32,6 +32,15 @@ no_warn_end
 #define PCRE2_CODE_UNIT_WIDTH 32
 #include <pcre2.h>
 
+#if DEBUG
+extern unsigned char *stbi_load(char const *filename, int *x, int *y, int *comp, int req_comp);
+#else
+#define STB_IMAGE_STATIC
+no_warn_start
+#include "stb_image.c"
+no_warn_end
+#endif
+
 #include "unicode.h"
 #include "util.c"
 #if _WIN32
@@ -792,16 +801,19 @@ int main(int argc, char **argv) {
 			// background shader
 			Settings *s = ted_active_settings(ted);
 			if (s->bg_shader) {
-				glUseProgram(s->bg_shader);
-				if (s->bg_array)
-					glBindVertexArray(s->bg_array);
+				GLuint shader = s->bg_shader->shader;
+				GLuint buffer = s->bg_shader->buffer;
+				GLuint array = s->bg_shader->array;
+				
+				glUseProgram(shader);
+				if (array) glBindVertexArray(array);
 				double t = time_get_seconds();
-				glUniform1f(glGetUniformLocation(s->bg_shader, "t_time"), (float)fmod(t - start_time, 3600));
-				glUniform2f(glGetUniformLocation(s->bg_shader, "t_aspect"), (float)window_width / (float)window_height, 1);
-				glUniform1f(glGetUniformLocation(s->bg_shader, "t_save_time"), (float)(t - ted->last_save_time));
-				glBindBuffer(GL_ARRAY_BUFFER, s->bg_buffer);
-				if (!s->bg_array) {
-					GLuint v_pos = (GLuint)glGetAttribLocation(s->bg_shader, "v_pos");
+				glUniform1f(glGetUniformLocation(shader, "t_time"), (float)fmod(t - start_time, 3600));
+				glUniform2f(glGetUniformLocation(shader, "t_aspect"), (float)window_width / (float)window_height, 1);
+				glUniform1f(glGetUniformLocation(shader, "t_save_time"), (float)(t - ted->last_save_time));
+				glBindBuffer(GL_ARRAY_BUFFER, buffer);
+				if (!array) {
+					GLuint v_pos = (GLuint)glGetAttribLocation(shader, "v_pos");
 					glVertexAttribPointer(v_pos, 2, GL_FLOAT, 0, 2 * sizeof(float), 0);
 					glEnableVertexAttribArray(v_pos);
 				}

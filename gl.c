@@ -60,6 +60,33 @@
 gl_for_each_proc(gl_declare_proc)
 #undef gl_declare_proc
 
+GlRcSAB *gl_rc_sab_new(GLuint shader, GLuint array, GLuint buffer) {
+	GlRcSAB *s = calloc(1, sizeof *s);
+	s->ref_count = 1;
+	s->shader = shader;
+	s->array = array;
+	s->buffer = buffer;
+	return s;
+}
+
+void gl_rc_sab_incref(GlRcSAB *s) {
+	if (!s) return;
+	++s->ref_count;
+}
+
+void gl_rc_sab_decref(GlRcSAB **ps) {
+	GlRcSAB *s = *ps;
+	if (!s) return;
+	if (--s->ref_count == 0) {
+		debug_println("Delete program %u", s->shader);
+		glDeleteProgram(s->shader);
+		glDeleteBuffers(1, &s->buffer);
+		glDeleteVertexArrays(1, &s->array);
+		free(s);
+	}
+	*ps = NULL;
+}
+
 // set by main()
 static int gl_version_major;
 static int gl_version_minor;

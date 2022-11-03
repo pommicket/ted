@@ -44,10 +44,7 @@ static bool context_is_parent(const SettingsContext *parent, const SettingsConte
 static void settings_copy(Settings *dest, const Settings *src) {
 	*dest = *src;
 	
-	// we only use this function before generating these
-	assert(!src->bg_shader);
-	assert(!src->bg_buffer);
-	assert(!src->bg_array);
+	gl_rc_sab_incref(dest->bg_shader);
 	
 	context_copy(&dest->context, &src->context);
 	for (u32 i = 0; i < LANG_COUNT; ++i) {
@@ -59,19 +56,6 @@ static void settings_copy(Settings *dest, const Settings *src) {
 static void context_free(SettingsContext *ctx) {
 	free(ctx->path);
 	memset(ctx, 0, sizeof *ctx);
-}
-
-static void settings_free(Settings *settings) {
-	context_free(&settings->context);
-	for (u32 i = 0; i < LANG_COUNT; ++i)
-		free(settings->language_extensions[i]);
-	if (settings->bg_shader)
-		glDeleteProgram(settings->bg_shader);
-	if (settings->bg_buffer)
-		glDeleteBuffers(1, &settings->bg_buffer);
-	if (settings->bg_array)
-		glDeleteVertexArrays(1, &settings->bg_array);
-	memset(settings, 0, sizeof *settings);
 }
 
 static void config_part_free(ConfigPart *part) {
@@ -285,6 +269,7 @@ static OptionFloat const options_float[] = {
 static OptionString const options_string[] = {
 	{"build-default-command", options_zero.build_default_command, sizeof options_zero.build_default_command, true},
 	{"bg-shader", options_zero.bg_shader_text, sizeof options_zero.bg_shader_text, true},
+	{"bg-texture", options_zero.bg_shader_image, sizeof options_zero.bg_shader_image, true},
 };
 
 static void option_bool_set(Settings *settings, const OptionBool *opt, bool value) {
@@ -575,6 +560,53 @@ static i64 config_read_string(Ted *ted, ConfigReader *cfg, char **ptext) {
 	return str_idx;
 }
 
+static void settings_load_bg_shader(Ted *ted, Settings *s) {
+	char vshader[8192] ;
+	strbuf_printf(vshader, "attribute vec2 v_pos;\n\
+varying vec2 t_pos;\n\
+void main() { \n\
+	gl_Position = vec4(v_pos * 2.0 - 1.0, 0.0, 1.0);\n\
+	t_pos = v_pos;\n\
+}");
+	char fshader[8192];
+	strbuf_printf(fshader, "varying vec2 t_pos;\n\
+uniform float t_time;\n\
+uniform float t_save_time;\n\
+uniform vec2 t_aspect;\n\
+#line 1\n\
+%s", s->bg_shader_text);
+	
+	if (s->bg_shader) gl_rc_sab_decref(&s->bg_shader);
+	
+	GLuint shader = gl_compile_and_link_shaders(ted->error, vshader, fshader);
+	if (shader) {
+		GLuint buffer = 0, array = 0;
+		glGenBuffers(1, &buffer);
+		if (gl_version_major >= 3) {
+			glGenVertexArrays(1, &array);
+			glBindVertexArray(array);
+		}
+		
+		
+		float buffer_data[][2] = {
+			{0,0},
+			{1,0},
+			{1,1},
+			{0,0},
+			{1,1},
+			{0,1}
+		};
+
+		GLuint v_pos = (GLuint)glGetAttribLocation(shader, "v_pos");
+		glBindBuffer(GL_ARRAY_BUFFER, buffer);
+		glBufferData(GL_ARRAY_BUFFER, sizeof buffer_data, buffer_data, GL_STATIC_DRAW);
+		glVertexAttribPointer(v_pos, 2, GL_FLOAT, 0, 2 * sizeof(float), 0);
+		glEnableVertexAttribArray(v_pos);
+		
+		s->bg_shader = gl_rc_sab_new(shader, array, buffer);
+	}
+}
+
 // reads a single "line" of the config file, but it may include a multiline string,
 // so it may read multiple lines.
 static void config_parse_line(ConfigReader *cfg, Settings *settings, const ConfigPart *part, char **pline) {
@@ -800,6 +832,10 @@ static void config_parse_line(ConfigReader *cfg, Settings *settings, const Confi
 			}
 		}
 		
+		if (streq(key, "bg-shader")) {
+			settings_load_bg_shader(ted, settings);
+		}
+		
 		// this is probably a bad idea:
 		//if (!recognized)
 		//	config_err(cfg, "Unrecognized option: %s", key);
@@ -864,6 +900,8 @@ void config_parse(Ted *ted, ConfigPart **pparts) {
 	
 			++cfg->line_number;
 		}
+		
+		
 	}
 	
 	arr_foreach_ptr(ted->all_settings, Settings, s) {
@@ -874,54 +912,6 @@ void config_parse(Ted *ted, ConfigPart **pparts) {
 		}
 	}
 	
-	arr_foreach_ptr(ted->all_settings, Settings, s) {
-		if (*s->bg_shader_text) {
-			// load bg shader
-			char vshader[8192] ;
-			strbuf_printf(vshader, "attribute vec2 v_pos;\n\
-	varying vec2 t_pos;\n\
-	void main() { \n\
-		gl_Position = vec4(v_pos * 2.0 - 1.0, 0.0, 1.0);\n\
-		t_pos = v_pos;\n\
-	}");
-			char fshader[8192];
-			strbuf_printf(fshader, "varying vec2 t_pos;\n\
-	uniform float t_time;\n\
-	uniform float t_save_time;\n\
-	uniform vec2 t_aspect;\n\
-	#line 1\n\
-	%s", settings->bg_shader_text);
-			
-			s->bg_shader = gl_compile_and_link_shaders(ted->error, vshader, fshader);
-			if (s->bg_shader) {
-				GLuint bg_buffer = 0, bg_array = 0;
-				glGenBuffers(1, &bg_buffer);
-				if (gl_version_major >= 3) {
-					glGenVertexArrays(1, &bg_array);
-					glBindVertexArray(bg_array);
-				}
-				
-				s->bg_buffer = bg_buffer;
-				s->bg_array = bg_array;
-				
-				float bg_buffer_data[][2] = {
-					{0,0},
-					{1,0},
-					{1,1},
-					{0,0},
-					{1,1},
-					{0,1}
-				};
-	
-				GLuint v_pos = (GLuint)glGetAttribLocation(s->bg_shader, "v_pos");
-				glBindBuffer(GL_ARRAY_BUFFER, bg_buffer);
-				glBufferData(GL_ARRAY_BUFFER, sizeof bg_buffer_data, bg_buffer_data, GL_STATIC_DRAW);
-				glVertexAttribPointer(v_pos, 2, GL_FLOAT, 0, 2 * sizeof(float), 0);
-				glEnableVertexAttribArray(v_pos);
-			}
-		}
-	}
-	
 	arr_foreach_ptr(parts, ConfigPart, part) {
 		config_part_free(part);
 	}
@@ -929,15 +919,48 @@ void config_parse(Ted *ted, ConfigPart **pparts) {
 	arr_clear(*pparts);
 }
 
-void config_free(Ted *ted) {
-	arr_foreach_ptr(ted->all_settings, Settings, s) {
-		settings_free(s);
+static int gluint_cmp(const void *av, const void *bv) {
+	const GLuint *ap = av, *bp = bv;
+	GLuint a = *ap, b = *bp;
+	if (a < b)
+		return -1;
+	if (a > b)
+		return 1;
+	return 0;
+}
+
+static void gluint_eliminate_duplicates(GLuint **arr) {
+	arr_qsort(*arr, gluint_cmp);
+	
+	GLuint *start = *arr;
+	GLuint *end = *arr + arr_len(*arr);
+	GLuint *out = start;
+	const GLuint *in = start;
+	
+	while (in < end) {
+		if (in == start || in[0] != in[-1])
+			*out++ = *in;
+		++in;
 	}
+	size_t count = (size_t)(out - *arr);
+	arr_set_len(*arr, count);
+}
+
+void config_free(Ted *ted) {
+	arr_foreach_ptr(ted->all_settings, Settings, settings) {
+		context_free(&settings->context);
+		for (u32 i = 0; i < LANG_COUNT; ++i)
+			free(settings->language_extensions[i]);
+		gl_rc_sab_decref(&settings->bg_shader);
+	}
+	
+	
+	arr_clear(ted->all_settings);
+	
 	for (u32 i = 0; i < ted->nstrings; ++i) {
 		free(ted->strings[i]);
 		ted->strings[i] = NULL;
 	}
 	ted->nstrings = 0;
-	arr_clear(ted->all_settings);
 	ted->default_settings = NULL;
 }
