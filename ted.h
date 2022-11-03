@@ -143,9 +143,21 @@ typedef struct {
 	char *path; // these settings apply to all paths which start with this string, or all paths if path=NULL
 } SettingsContext;
 
-// shader-array-buffer combo.
 // need to use refcounting for this because of Settings.
-// (we copy parent settings to children)
+// => we copy parent settings to children
+// e.g.
+//     [core]
+//     bg-texture = "blablabla.png"
+//     [Javascript.core]
+//     some random shit
+// the main Settings' bg_texture will get copied to javascript's Settings,
+// so we need to be extra careful about when we delete textures.
+typedef struct {
+	u32 ref_count;
+	u32 texture;
+} GlRcTexture;
+
+// shader-array-buffer combo.
 typedef struct {
 	u32 ref_count;
 	u32 shader;
@@ -177,6 +189,7 @@ typedef struct {
 	u8 scrolloff;
 	u8 tags_max_depth;
 	GlRcSAB *bg_shader;
+	GlRcTexture *bg_texture;
 	char bg_shader_text[4096];
 	char bg_shader_image[TED_PATH_MAX];
 	char build_default_command[256];

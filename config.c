@@ -45,6 +45,7 @@ static void settings_copy(Settings *dest, const Settings *src) {
 	*dest = *src;
 	
 	gl_rc_sab_incref(dest->bg_shader);
+	gl_rc_texture_incref(dest->bg_texture);
 	
 	context_copy(&dest->context, &src->context);
 	for (u32 i = 0; i < LANG_COUNT; ++i) {
@@ -258,7 +259,7 @@ static OptionU8 const options_u8[] = {
 	{"tags-max-depth", &options_zero.tags_max_depth, 1, 100, false},
 };
 static OptionU16 const options_u16[] = {
-	{"text-size", &options_zero.text_size, TEXT_SIZE_MIN, TEXT_SIZE_MAX, true},
+	{"text-size", &options_zero.text_size, TEXT_SIZE_MIN, TEXT_SIZE_MAX, false},
 	{"max-menu-width", &options_zero.max_menu_width, 10, U16_MAX, false},
 	{"error-display-time", &options_zero.error_display_time, 0, U16_MAX, false},
 };
@@ -573,10 +574,11 @@ void main() { \n\
 uniform float t_time;\n\
 uniform float t_save_time;\n\
 uniform vec2 t_aspect;\n\
+uniform sampler2D t_texture;\n\
 #line 1\n\
 %s", s->bg_shader_text);
 	
-	if (s->bg_shader) gl_rc_sab_decref(&s->bg_shader);
+	gl_rc_sab_decref(&s->bg_shader);
 	
 	GLuint shader = gl_compile_and_link_shaders(ted->error, vshader, fshader);
 	if (shader) {
@@ -604,6 +606,26 @@ uniform vec2 t_aspect;\n\
 		glEnableVertexAttribArray(v_pos);
 		
 		s->bg_shader = gl_rc_sab_new(shader, array, buffer);
+	}
+}
+
+static void settings_load_bg_texture(Ted *ted, Settings *s) {
+	gl_rc_texture_decref(&s->bg_texture);
+	
+	const char *path = s->bg_shader_image;
+	char expanded[TED_PATH_MAX];
+	expanded[0] = '\0';
+	if (path[0] == '~') {
+		strbuf_cpy(expanded, ted->home);
+		++path;
+	}
+	strbuf_cat(expanded, path);
+	
+	GLuint texture = gl_load_texture_from_image(expanded);
+	if (texture) {
+		s->bg_texture = gl_rc_texture_new(texture);
+	} else {
+		ted_seterr(ted, "Couldn't load image %s", path);
 	}
 }
 
@@ -832,9 +854,10 @@ static void config_parse_line(ConfigReader *cfg, Settings *settings, const Confi
 			}
 		}
 		
-		if (streq(key, "bg-shader")) {
+		if (streq(key, "bg-shader"))
 			settings_load_bg_shader(ted, settings);
-		}
+		if (streq(key, "bg-texture"))
+			settings_load_bg_texture(ted, settings);
 		
 		// this is probably a bad idea:
 		//if (!recognized)
@@ -952,6 +975,7 @@ void config_free(Ted *ted) {
 		for (u32 i = 0; i < LANG_COUNT; ++i)
 			free(settings->language_extensions[i]);
 		gl_rc_sab_decref(&settings->bg_shader);
+		gl_rc_texture_decref(&settings->bg_texture);
 	}
 	
 	
