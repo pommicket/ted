@@ -78,7 +78,7 @@ static void gl_get_procs(void) {
 }
 
 // compile a GLSL shader
-static GLuint gl_compile_shader(char const *code, GLenum shader_type) {
+static GLuint gl_compile_shader(char error_buf[256], char const *code, GLenum shader_type) {
 	GLuint shader = glCreateShader(shader_type);
 	glShaderSource(shader, 1, &code, NULL);
 	glCompileShader(shader);
@@ -87,14 +87,17 @@ static GLuint gl_compile_shader(char const *code, GLenum shader_type) {
 	if (status == GL_FALSE) {
 		char log[1024] = {0};
 		glGetShaderInfoLog(shader, sizeof log - 1, NULL, log);
-		debug_println("Error compiling shader: %s", log);
+		if (error_buf)
+			str_printf(error_buf, 256, "Error compiling shader: %s", log);
+		else
+			debug_println("Error compiling shader: %s", log);
 		return 0;
 	}
 	return shader;
 }
 
 // link together GL shaders
-static GLuint gl_link_program(GLuint *shaders, size_t count) {
+static GLuint gl_link_program(char error_buf[256], GLuint *shaders, size_t count) {
 	GLuint program = glCreateProgram();
 	if (program) {
 		for (size_t i = 0; i < count; ++i) {
@@ -110,7 +113,11 @@ static GLuint gl_link_program(GLuint *shaders, size_t count) {
 		if (status == GL_FALSE) {
 			char log[1024] = {0};
 			glGetProgramInfoLog(program, sizeof log - 1, NULL, log);
-			debug_println("Error linking shaders: %s", log);
+			if (error_buf) {
+				str_printf(error_buf, 256, "Error linking shaders: %s", log);
+			} else {
+				debug_println("Error linking shaders: %s", log);
+			}
 			glDeleteProgram(program);
 			return 0;
 		}
@@ -118,11 +125,11 @@ static GLuint gl_link_program(GLuint *shaders, size_t count) {
 	return program;
 }
 
-static GLuint gl_compile_and_link_shaders(char const *vshader_code, char const *fshader_code) {
+static GLuint gl_compile_and_link_shaders(char error_buf[256], char const *vshader_code, char const *fshader_code) {
 	GLuint shaders[2];
-	shaders[0] = gl_compile_shader(vshader_code, GL_VERTEX_SHADER);
-	shaders[1] = gl_compile_shader(fshader_code, GL_FRAGMENT_SHADER);
-	GLuint program = gl_link_program(shaders, 2);
+	shaders[0] = gl_compile_shader(error_buf, vshader_code, GL_VERTEX_SHADER);
+	shaders[1] = gl_compile_shader(error_buf, fshader_code, GL_FRAGMENT_SHADER);
+	GLuint program = gl_link_program(error_buf, shaders, 2);
 	if (shaders[0]) glDeleteShader(shaders[0]);
 	if (shaders[1]) glDeleteShader(shaders[1]);
 	if (program) {
@@ -180,7 +187,7 @@ static void gl_geometry_init(void) {
 	}\n\
 	";
 
-	gl_geometry_program = gl_compile_and_link_shaders(vshader_code, fshader_code);
+	gl_geometry_program = gl_compile_and_link_shaders(NULL, vshader_code, fshader_code);
 	gl_geometry_v_pos = gl_attrib_loc(gl_geometry_program, "v_pos");
 	gl_geometry_v_color = gl_attrib_loc(gl_geometry_program, "v_color");
 

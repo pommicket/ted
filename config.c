@@ -394,7 +394,7 @@ static void config_init_options(void) {
 void config_read(Ted *ted, ConfigPart **parts, char const *filename) {
 	FILE *fp = fopen(filename, "rb");
 	if (!fp) {
-		ted_seterr(ted, "Couldn't open config file %s.", filename);
+		ted_seterr(ted, "Couldn't open config file %s: %s.", filename, strerror(errno));
 		return;
 	}
 	
@@ -488,8 +488,60 @@ static int config_part_qsort_cmp(const void *av, const void *bv) {
 	return config_part_cmp(av, bv, true);
 }
 
-static void config_parse_line(ConfigReader *cfg, Settings *settings, const ConfigPart *part, const char *line) {
+static i64 config_read_string(Ted *ted, ConfigReader *cfg, char **ptext) {
+	char *p;
+	int backslashes = 0;
+	u32 start_line = cfg->line_number;
+	char *start = *ptext + 1;
+	for (p = start; ; ++p) {
+		bool done = false;
+		switch (*p) {
+		case '\\':
+			++backslashes;
+			break;
+		case '"':
+			if (backslashes % 2 == 0)
+				done = true;
+			break;
+		case '\n':
+			++cfg->line_number;
+			break;
+		case '\0':
+			cfg->line_number = start_line;
+			config_err(cfg, "String doesn't end.");
+			*ptext += strlen(*ptext);
+			return -1;
+		}
+		if (done) break;
+	}
+	
+	i64 str_idx = -1;
+	if (ted->nstrings < TED_MAX_STRINGS) {
+		char *str = strn_dup(start, (size_t)(p - start));
+		str_idx = ted->nstrings;
+		ted->strings[ted->nstrings++] = str;
+	}
+	*ptext = p + 1;
+	return str_idx;
+}
+
+// reads a single "line" of the config file, but it may include a multiline string,
+// so it may read multiple lines.
+static void config_parse_line(ConfigReader *cfg, Settings *settings, const ConfigPart *part, char **pline) {
+	char *line = *pline;
 	Ted *ted = cfg->ted;
+	
+	char *newline = strchr(line, '\n');
+	if (!newline) {
+		config_err(cfg, "No newline at end of file?");
+		*pline += strlen(*pline);
+		return;
+	}
+	
+	if (newline) *newline = '\0';
+	char *carriage_return = strchr(line, '\r');
+	if (carriage_return) *carriage_return = '\0';
+	*pline = newline + 1;
 	
 	if (part->section == 0) {
 		// there was an error reading this section. don't bother with anything else.
@@ -509,9 +561,9 @@ static void config_parse_line(ConfigReader *cfg, Settings *settings, const Confi
 		return;
 	}
 
-	char const *key = line;
+	char *key = line;
 	*equals = '\0';
-	char const *value = equals + 1;
+	char *value = equals + 1;
 	while (isspace(*key)) ++key;
 	while (isspace(*value)) ++value;
 	if (equals != line) {
@@ -556,31 +608,20 @@ static void config_parse_line(ConfigReader *cfg, Settings *settings, const Confi
 			value = endp;
 		} else if (*value == '"') {
 			// string argument
-			int backslashes = 0;
-			char const *p;
-			for (p = value + 1; *p; ++p) {
-				bool done = false;
-				switch (*p) {
-				case '\\':
-					++backslashes;
-					break;
-				case '"':
-					if (backslashes % 2 == 0)
-						done = true;
-					break;
-				}
-				if (done) break;
+			
+			// restore newline to handle multi-line strings
+			// a little bit hacky oh well
+			*newline = '\n';
+			argument = config_read_string(ted, cfg, &value);
+			
+			newline = strchr(value, '\n');
+			if (!newline) {
+				config_err(cfg, "No newline at end of file?");
+				*pline += strlen(*pline);
+				return;
 			}
-			if (!*p) {
-				config_err(cfg, "String doesn't end.");
-				break;
-			}
-			if (ted->nstrings < TED_MAX_STRINGS) {
-				char *str = strn_dup(value + 1, (size_t)(p - (value + 1)));
-				argument = ted->nstrings | ARG_STRING;
-				ted->strings[ted->nstrings++] = str;
-			}
-			value = p + 1;
+			*newline = '\0';
+			*pline = newline + 1;
 		}
 		while (isspace(*value)) ++value; // skip past space following argument
 		if (*value == ':') {
@@ -633,6 +674,26 @@ static void config_parse_line(ConfigReader *cfg, Settings *settings, const Confi
 		} else if (streq(value, "no") || streq(value, "off")) {
 			is_bool = true;
 			boolean = false;
+		}
+		
+		if (value[0] == '"') {
+			// restore newline to handle multi-line strings
+			// a little bit hacky oh well
+			*newline = '\n';
+			
+			i64 string = config_read_string(ted, cfg, &value);
+			
+			newline = strchr(value, '\n');
+			if (!newline) {
+				config_err(cfg, "No newline at end of file?");
+				*pline += strlen(*pline);
+				return;
+			}
+			*newline = '\0';
+			*pline = newline + 1;
+			if (string >= 0 && string < TED_MAX_STRINGS) {
+				value = ted->strings[string];
+			}
 		}
 
 		// go through all options
@@ -747,22 +808,11 @@ void config_parse(Ted *ted, ConfigPart **pparts) {
 		arr_add(part->text, '\0'); // null termination
 		char *line = part->text;
 		while (*line) {
-			char *newline = strchr(line, '\n');
-			if (!newline) {
-				config_err(cfg, "No newline at end of file?");
-				break;
-			}
-			
-			if (newline) *newline = '\0';
-			char *carriage_return = strchr(line, '\r');
-			if (carriage_return) *carriage_return = '\0';
-			
-			config_parse_line(cfg, settings, part, line);
+			config_parse_line(cfg, settings, part, &line);
 	
 			if (cfg->error) break;
 	
 			++cfg->line_number;
-			line = newline + 1;
 		}
 	}
 	

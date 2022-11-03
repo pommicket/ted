@@ -66,9 +66,9 @@ static bool ted_is_regular_buffer(Ted *ted, TextBuffer *buffer) {
 
 // Check the various places a file could be, and return the full path.
 static Status ted_get_file(Ted const *ted, char const *name, char *out, size_t outsz) {
-	if (ted->search_cwd && fs_file_exists(name)) {
-		// check in current working directory
-		str_cpy(out, outsz, name);
+	if (ted->search_start_cwd && fs_file_exists(name)) {
+		// check in start_cwd
+		path_full(ted->start_cwd, name, out, outsz);
 		return true;
 	}
 	if (*ted->local_data_dir) {
@@ -380,9 +380,12 @@ void ted_load_configs(Ted *ted, bool reloading) {
 	ConfigPart *parts = NULL;
 	config_read(ted, &parts, global_config_filename);
 	config_read(ted, &parts, local_config_filename);
-	if (ted->search_cwd) {
-		// read config in cwd
-		config_read(ted, &parts, TED_CFG);
+	if (ted->search_start_cwd) {
+		// read config in start_cwd
+		char start_cwd_filename[TED_PATH_MAX];
+		strbuf_printf(start_cwd_filename, "%s" PATH_SEPARATOR_STR TED_CFG, ted->start_cwd);
+		
+		config_read(ted, &parts, start_cwd_filename);
 	}
 	config_parse(ted, &parts);
 	

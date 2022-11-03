@@ -1,10 +1,10 @@
 /* 
 FUTURE FEATURES:
-- [/path//extensions]
 - custom shaders
     - texture, time, time since last save
 - config variables
 - config multi-line strings
+- plugins?
 */
 
 #include "base.h"
@@ -272,7 +272,7 @@ int main(int argc, char **argv) {
 #endif
 	PROFILE_TIME(init_start)
 	PROFILE_TIME(basic_init_start)
-		
+	
 #if __unix__
 	{
 		struct sigaction act = {0};
@@ -330,6 +330,7 @@ int main(int argc, char **argv) {
 	// make sure signal handler has access to ted.
 	error_signal_handler_ted = ted;
 
+	fs_get_cwd(ted->start_cwd, sizeof ted->start_cwd);
 	{ // get local and global data directory
 #if _WIN32
 		wchar_t *appdata = NULL;
@@ -395,7 +396,7 @@ int main(int argc, char **argv) {
 			char *last_slash = strrchr(executable_path, '/');
 			if (last_slash) {
 				*last_slash = '\0';
-				ted->search_cwd = streq(cwd, executable_path);
+				ted->search_start_cwd = streq(cwd, executable_path);
 			}
 		}
 	#endif
@@ -438,27 +439,36 @@ int main(int argc, char **argv) {
 	PROFILE_TIME(window_end)
 	PROFILE_TIME(gl_start)
 	
-	gl_version_major = 4;
-	gl_version_minor = 3;
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, gl_version_major);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, gl_version_minor);
-#if DEBUG
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
-#endif
-	SDL_GLContext *glctx = SDL_GL_CreateContext(window);
-	if (!glctx) {
-		debug_println("Couldn't get GL 4.3 context. Falling back to 2.0.");
-		gl_version_major = 2;
-		gl_version_minor = 0;
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, gl_version_major);
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, gl_version_minor);
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
-		glctx = SDL_GL_CreateContext(window);
+	SDL_GLContext *glctx = NULL;
+	{ // get OpenGL context
+		int gl_versions[][2] = {
+			{4,3},
+			{3,0},
+			{2,0},
+			{0,0},
+		};
+		for (int i = 0; gl_versions[i][0]; ++i) {
+			gl_version_major = gl_versions[i][0];
+			gl_version_minor = gl_versions[i][1];
+			SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, gl_version_major);
+			SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, gl_version_minor);
+		#if DEBUG
+			SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
+		#endif
+			glctx = SDL_GL_CreateContext(window);
+			if (!glctx) {
+				debug_println("Couldn't get GL %d.%d context. Falling back to %d.%d.",
+					gl_versions[i][0], gl_versions[i][1], gl_versions[i+1][0], gl_versions[i+1][1]);
+				gl_version_major = 3;
+				gl_version_minor = 0;
+			}
+		}
+		
 		if (!glctx)
 			die("%s", SDL_GetError());
+		gl_get_procs();
 	}
-	gl_get_procs();
-
+	
 #if DEBUG
 	if (gl_version_major * 100 + gl_version_minor >= 403) {
 		GLint flags = 0;

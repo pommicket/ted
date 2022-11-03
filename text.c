@@ -112,7 +112,7 @@ void main() {\n\
 }\n\
 ";
 
-	text_program = gl_compile_and_link_shaders(vshader_code, fshader_code);
+	text_program = gl_compile_and_link_shaders(NULL, vshader_code, fshader_code);
 	text_v_pos = gl_attrib_loc(text_program, "v_pos");
 	text_v_color = gl_attrib_loc(text_program, "v_color");
 	text_v_tex_coord = gl_attrib_loc(text_program, "v_tex_coord");

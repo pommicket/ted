@@ -353,7 +353,8 @@ typedef struct Ted {
 	TextBuffer argument_buffer; // used for command selector
 	double error_time; // time error box was opened (in seconds -- see time_get_seconds)
 	double cursor_error_time; // time which the cursor error animation started (cursor turns red, e.g. when there's no autocomplete suggestion)
-	bool search_cwd; // should the working directory be searched for files? set to true if the executable isn't "installed"
+	bool search_start_cwd; // should start_cwd be searched for files? set to true if the executable isn't "installed"
+	char start_cwd[TED_PATH_MAX];
 	bool quit; // if set to true, the window will close next frame. NOTE: this doesn't check for unsaved changes!!
 	bool find; // is the find or find+replace menu open?
 	bool replace; // is the find+replace menu open?
