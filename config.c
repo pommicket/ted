@@ -297,6 +297,7 @@ static void option_string_set(Settings *settings, const OptionString *opt, const
 
 static void parse_section_header(ConfigReader *cfg, char *line, ConfigPart *part) {
 	#define SECTION_HEADER_HELP "Section headers should look like this: [(path//)(language.)section-name]"
+	Ted *ted = cfg->ted;
 	char *closing = strchr(line, ']');
 	if (!closing) {
 		config_err(cfg, "Unmatched [. " SECTION_HEADER_HELP);
@@ -310,8 +311,17 @@ static void parse_section_header(ConfigReader *cfg, char *line, ConfigPart *part
 		char *path_end = strstr(section, "//");
 		if (path_end) {
 			size_t path_len = (size_t)(path_end - section);
-			// @TODO: expand ~
-			part->context.path = strn_dup(section, path_len);
+			char path[TED_PATH_MAX];
+			path[0] = '\0';
+			
+			// expand ~
+			if (section[0] == '~') {
+				str_cpy(path, sizeof path, ted->home);
+				++section;
+				--path_len;
+			}
+			strn_cat(path, sizeof path, section, path_len);
+			part->context.path = str_dup(path);
 			section = path_end + 2;
 		}
 		
