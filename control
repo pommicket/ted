@@ -1,11 +1,11 @@
 Package: ted
-Version: 1.2r2
+Version: 1.3
 Section: text
 Priority: optional
 Architecture: amd64
 Essential: no
 Maintainer: Pommicket <pommicket@gmail.com>
 Description: A text editor.
-Installed-Size: 3145728
+Installed-Size: 2144000
 Depends: libsdl2-2.0-0
 Homepage: https://github.com/pommicket/ted
