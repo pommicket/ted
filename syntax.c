@@ -25,6 +25,7 @@ char const *language_comment_start(Language l) {
 	case LANG_GO:
 		return "// ";
 	case LANG_CONFIG:
+	case LANG_TED_CFG:
 	case LANG_PYTHON:
 		return "# ";
 	case LANG_TEX:
@@ -1079,50 +1080,60 @@ static void syntax_highlight_html(SyntaxState *state, char32_t const *line, u32 
 	*state = (comment * SYNTAX_STATE_HTML_COMMENT);
 }
 
-static void syntax_highlight_config(SyntaxState *state, char32_t const *line, u32 line_len, SyntaxCharType *char_types) {
-	(void)state;
-	if (line_len == 0) return;
-	if (!char_types) return; // there's no state for config files.
+static void syntax_highlight_config(SyntaxState *state, char32_t const *line, u32 line_len, SyntaxCharType *char_types, bool is_ted_cfg) {
+	bool string = (*state & SYNTAX_STATE_TED_CFG_STRING) != 0;
 	
-	if (line[0] == '#') {
-		memset(char_types, SYNTAX_COMMENT, line_len);
+	if (line_len == 0) return;
+	
+	if (!string && line[0] == '#') {
+		if (char_types) memset(char_types, SYNTAX_COMMENT, line_len);
 		return;
 	}
-	if (line[0] == '[' && line[line_len - 1] == ']') {
-		memset(char_types, SYNTAX_BUILTIN, line_len);
+	if (!string && line[0] == '[' && line[line_len - 1] == ']') {
+		if (char_types) memset(char_types, SYNTAX_BUILTIN, line_len);
 		return;
 	}
-	bool string = false;
+	
+	int backslashes = 0;
+	
 	for (u32 i = 0; i < line_len; ++i) {
-		char_types[i] = string ? SYNTAX_STRING : SYNTAX_NORMAL;
+		if (char_types)
+			char_types[i] = string ? SYNTAX_STRING : SYNTAX_NORMAL;
 		switch (line[i]) {
 		case '"':
-			string = !string;
-			if (string)
+			if (string && backslashes % 2 == 0) {
+				string = false;
+			} else {
+				string = true;
+			}
+			if (char_types)
 				char_types[i] = SYNTAX_STRING;
 			break;
 		case '#':
 			// don't try highlighting the rest of the line.
 			// for ted.cfg, this could be a color, but for other cfg files,
 			// it might be a comment
-			memset(&char_types[i], 0, line_len - i);
+			if (char_types)
+				memset(&char_types[i], 0, line_len - i);
 			i = line_len;
 			break;
 		case ANY_DIGIT:
-			if (i > 0 && !string) {
+			if (char_types && i > 0 && !string) {
 				if (is32_ident(line[i-1]) // something like e5
 					|| line[i-1] == '+') // key combinations, e.g. Alt+0
 					break;
-				while (i < line_len && syntax_number_continues(LANG_CONFIG, line, line_len, i))
+				while (i < line_len && syntax_number_continues(LANG_CONFIG, line, line_len, i)) {
 					char_types[i++] = SYNTAX_CONSTANT;
+				}
 			}
 			break;
 		default: {
+			if (!char_types)
+				break; // don't care
 			if (i == 0) // none of the keywords in syntax_all_keywords_config should appear at the start of the line
 				break;
 			if (is32_ident(line[i-1]) || line[i-1] == '-' || !is32_ident(line[i]))
 				break; // can't be a keyword on its own.
-			
 			u32 keyword_len = syntax_keyword_len(LANG_CONFIG, line, i, line_len);
 			Keyword const *keyword = syntax_keyword_lookup(syntax_all_keywords_config, arr_count(syntax_all_keywords_config),
 				&line[i], keyword_len);
@@ -1136,6 +1147,16 @@ static void syntax_highlight_config(SyntaxState *state, char32_t const *line, u3
 			}
 		} break;
 		}
+		if (i < line_len) {
+			if (line[i] == '\\')
+				++backslashes;
+			else
+				backslashes = 0;
+		}
+	}
+	
+	if (is_ted_cfg) {
+		*state = SYNTAX_STATE_TED_CFG_STRING * string;
 	}
 }
 
@@ -1587,7 +1608,10 @@ void syntax_highlight(SyntaxState *state, Language lang, char32_t const *line, u
 		syntax_highlight_html(state, line, line_len, char_types);
 		break;
 	case LANG_CONFIG:
-		syntax_highlight_config(state, line, line_len, char_types);
+		syntax_highlight_config(state, line, line_len, char_types, false);
+		break;
+	case LANG_TED_CFG:
+		syntax_highlight_config(state, line, line_len, char_types, true);
 		break;
 	case LANG_JAVASCRIPT:
 		syntax_highlight_javascript(state, line, line_len, char_types);

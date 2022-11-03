@@ -55,11 +55,15 @@ enum {
 	SYNTAX_STATE_GO_MULTILINE_COMMENT = 0x02u
 };
 
+enum {
+	SYNTAX_STATE_TED_CFG_STRING = 0x01u,
+};
+
 typedef u8 SyntaxState;
 
 // If you are adding new languages, DO NOT change the constant values
-// of the previous languages. It will mess up config files!
-ENUM_U16 {
+// of the previous languages. It will mess up config files which use :set-language!
+typedef enum {
 	LANG_NONE = 0,
 	LANG_C = 1,
 	LANG_CPP = 2,
@@ -68,12 +72,13 @@ ENUM_U16 {
 	LANG_TEX = 5,
 	LANG_MARKDOWN = 6,
 	LANG_HTML = 7,
-	LANG_CONFIG = 8, // .cfg files, e.g. ted.cfg
+	LANG_CONFIG = 8, // .cfg files
 	LANG_JAVASCRIPT = 9,
 	LANG_JAVA = 10,
 	LANG_GO = 11,
+	LANG_TED_CFG = 12, // like LANG_CONFIG, but with multiline strings.
 	LANG_COUNT
-} ENUM_U16_END(Language);
+} Language;
 
 typedef struct {
 	Language lang;
@@ -93,6 +98,7 @@ static LanguageName const language_names[] = {
 	{LANG_JAVASCRIPT, "Javascript"},
 	{LANG_JAVA, "Java"},
 	{LANG_GO, "Go"},
+	{LANG_TED_CFG, "TedCfg"},
 };
 
 static_assert_if_possible(arr_count(language_names) == LANG_COUNT)

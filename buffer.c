@@ -253,8 +253,12 @@ Language buffer_language(TextBuffer *buffer) {
 		return LANG_NONE;
 	size_t filename_len = strlen(filename);
 
+	int match_score = 0;
+	Language match = LANG_NONE;
+	
 	for (u16 l = 0; l < LANG_COUNT; ++l) {
 		char const *extensions = settings->language_extensions[l];
+		
 		if (extensions) {
 			// extensions is a string with commas separating each extension.
 			size_t len = 0;
@@ -262,14 +266,18 @@ Language buffer_language(TextBuffer *buffer) {
 				if (*p == ',') ++p; // move past comma
 				len = strcspn(p, ",");
 				if (filename_len >= len && strncmp(&filename[filename_len - len], p, len) == 0) {
-					// found a match!
-					return (Language)l;
+					int score = (int)len;
+					if (score > match_score) {
+						// found a better match!
+						match_score = score;
+						match = l;
+					}
 				}
 			}
 		}
 	}
-	// no extensions matched
-	return LANG_NONE;
+	
+	return match;
 }
 
 // score is higher if context is closer match.
