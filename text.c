@@ -90,8 +90,7 @@ static GLuint text_v_pos, text_v_color, text_v_tex_coord;
 static GLint  text_u_sampler;
 
 static bool text_init(void) {
-	char const *vshader_code = "#version 110\n\
-attribute vec4 v_color;\n\
+	char const *vshader_code = "attribute vec4 v_color;\n\
 attribute vec2 v_pos;\n\
 attribute vec2 v_tex_coord;\n\
 varying vec4 color;\n\
@@ -102,8 +101,7 @@ void main() {\n\
 	gl_Position = vec4(v_pos, 0.0, 1.0);\n\
 }\n\
 ";
-	char const *fshader_code = "#version 110\n\
-varying vec4 color;\n\
+	char const *fshader_code = "varying vec4 color;\n\
 varying vec2 tex_coord;\n\
 uniform sampler2D sampler;\n\
 void main() {\n\

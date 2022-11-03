@@ -77,10 +77,26 @@ static void gl_get_procs(void) {
 	#undef gl_get_proc
 }
 
+static GLuint glsl_version(void) {
+	int v = gl_version_major * 100 + gl_version_minor * 10;
+	switch (v) {
+	case 200: return 110;
+	case 210: return 120;
+	}
+	// don't go above 130. i don't want to write two different shaders one using varying and one using whatever new stuff GLSL has these days
+	return 130;
+}
+
 // compile a GLSL shader
 static GLuint gl_compile_shader(char error_buf[256], char const *code, GLenum shader_type) {
 	GLuint shader = glCreateShader(shader_type);
-	glShaderSource(shader, 1, &code, NULL);
+	char header[32];
+	strbuf_printf(header, "#version %u\n#line 1\n", glsl_version());
+	const char *sources[2] = {
+		header,
+		code
+	};
+	glShaderSource(shader, 2, sources, NULL);
 	glCompileShader(shader);
 	GLint status = 0;
 	glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
@@ -171,8 +187,7 @@ static GLuint gl_geometry_v_color;
 static GLuint gl_geometry_vbo, gl_geometry_vao;
 
 static void gl_geometry_init(void) {
-	char const *vshader_code = "#version 110\n\
-	attribute vec2 v_pos;\n\
+	char const *vshader_code = "attribute vec2 v_pos;\n\
 	attribute vec4 v_color;\n\
 	varying vec4 color;\n\
 	void main() {\n\
@@ -180,8 +195,7 @@ static void gl_geometry_init(void) {
 		color = v_color;\n\
 	}\n\
 	";
-	char const *fshader_code = "#version 110\n\
-	varying vec4 color;\n\
+	char const *fshader_code = "varying vec4 color;\n\
 	void main() {\n\
 		gl_FragColor = color;\n\
 	}\n\

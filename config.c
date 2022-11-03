@@ -877,21 +877,21 @@ void config_parse(Ted *ted, ConfigPart **pparts) {
 	arr_foreach_ptr(ted->all_settings, Settings, s) {
 		if (*s->bg_shader_text) {
 			// load bg shader
-			char vshader[] = "#version 110\n\
-	attribute vec2 v_pos;\n\
+			char vshader[8192] ;
+			strbuf_printf(vshader, "attribute vec2 v_pos;\n\
 	varying vec2 t_pos;\n\
 	void main() { \n\
 		gl_Position = vec4(v_pos * 2.0 - 1.0, 0.0, 1.0);\n\
 		t_pos = v_pos;\n\
-	}";
+	}");
 			char fshader[8192];
-			strbuf_printf(fshader, "#version 110\n\
-	varying vec2 t_pos;\n\
+			strbuf_printf(fshader, "varying vec2 t_pos;\n\
 	uniform float t_time;\n\
 	uniform float t_save_time;\n\
 	uniform vec2 t_aspect;\n\
 	#line 1\n\
 	%s", settings->bg_shader_text);
+			
 			s->bg_shader = gl_compile_and_link_shaders(ted->error, vshader, fshader);
 			if (s->bg_shader) {
 				GLuint bg_buffer = 0, bg_array = 0;
