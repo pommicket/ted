@@ -166,6 +166,10 @@ typedef struct {
 	u8 padding;
 	u8 scrolloff;
 	u8 tags_max_depth;
+	u32 bg_shader;
+	u32 bg_buffer;
+	u32 bg_array;
+	char bg_shader_text[4096];
 	char build_default_command[256];
 	// [i] = comma-separated string of file extensions for language i, or NULL for none
 	char *language_extensions[LANG_COUNT];
@@ -407,6 +411,8 @@ typedef struct Ted {
 	
 	float build_output_height; // what % of the screen the build output takes up
 	bool resizing_build_output;
+	
+	double last_save_time; // last time a save command was executed. used for bg-shaders.
 
 	Process build_process;
 	// When we read the stdout from the build process, the tail end of the read could be an

@@ -1,9 +1,7 @@
 /* 
 FUTURE FEATURES:
-- custom shaders
-    - texture, time, time since last save
+- custom shaders texture
 - config variables
-- config multi-line strings
 - plugins?
 */
 
@@ -326,6 +324,7 @@ int main(int argc, char **argv) {
 	if (!ted) {
 		die("Not enough memory available to run ted.");
 	}
+	ted->last_save_time = -1e50;
 	
 	// make sure signal handler has access to ted.
 	error_signal_handler_ted = ted;
@@ -411,13 +410,6 @@ int main(int argc, char **argv) {
 	char config_err[sizeof ted->error] = {0};
 	
 	PROFILE_TIME(misc_end)
-	PROFILE_TIME(configs_start)
-	ted_load_configs(ted, false);
-	if (ted_haserr(ted)) {
-		strcpy(config_err, ted->error);
-		ted_clearerr(ted); // clear the error so later things (e.g. loading font) don't detect an error
-	}
-	PROFILE_TIME(configs_end)
 	
 	PROFILE_TIME(window_start)
 	SDL_Window *window = SDL_CreateWindow("ted", SDL_WINDOWPOS_UNDEFINED, 
@@ -456,11 +448,11 @@ int main(int argc, char **argv) {
 			SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
 		#endif
 			glctx = SDL_GL_CreateContext(window);
-			if (!glctx) {
+			if (glctx) {
+				break;
+			} else {
 				debug_println("Couldn't get GL %d.%d context. Falling back to %d.%d.",
 					gl_versions[i][0], gl_versions[i][1], gl_versions[i+1][0], gl_versions[i+1][1]);
-				gl_version_major = 3;
-				gl_version_minor = 0;
 			}
 		}
 		
@@ -487,6 +479,14 @@ int main(int argc, char **argv) {
 	text_init();
 	PROFILE_TIME(gl_end)
 	
+	
+	PROFILE_TIME(configs_start)
+	ted_load_configs(ted, false);
+	if (ted_haserr(ted)) {
+		strcpy(config_err, ted->error);
+		ted_clearerr(ted); // clear the error so later things (e.g. loading font) don't detect an error
+	}
+	PROFILE_TIME(configs_end)
 	
 	PROFILE_TIME(fonts_start)
 	ted_load_fonts(ted);
@@ -570,6 +570,8 @@ int main(int argc, char **argv) {
 		SDL_Event event;
 		while (SDL_PollEvent(&event));
 	}
+	
+	double start_time = time_get_seconds();
 	
 	while (!ted->quit) {
 		double frame_start = time_get_seconds();
@@ -785,6 +787,27 @@ int main(int argc, char **argv) {
 			glClearColor(bg_color[0], bg_color[1], bg_color[2], bg_color[3]);
 		}
 		glClear(GL_COLOR_BUFFER_BIT);
+		
+		{
+			// background shader
+			Settings *s = ted_active_settings(ted);
+			if (s->bg_shader) {
+				glUseProgram(s->bg_shader);
+				if (s->bg_array)
+					glBindVertexArray(s->bg_array);
+				double t = time_get_seconds();
+				glUniform1f(glGetUniformLocation(s->bg_shader, "t_time"), (float)fmod(t - start_time, 3600));
+				glUniform2f(glGetUniformLocation(s->bg_shader, "t_aspect"), (float)window_width / (float)window_height, 1);
+				glUniform1f(glGetUniformLocation(s->bg_shader, "t_save_time"), (float)(t - ted->last_save_time));
+				glBindBuffer(GL_ARRAY_BUFFER, s->bg_buffer);
+				if (!s->bg_array) {
+					GLuint v_pos = (GLuint)glGetAttribLocation(s->bg_shader, "v_pos");
+					glVertexAttribPointer(v_pos, 2, GL_FLOAT, 0, 2 * sizeof(float), 0);
+					glEnableVertexAttribArray(v_pos);
+				}
+				glDrawArrays(GL_TRIANGLES, 0, 6);
+			}
+		}
 		
 		Font *font = ted->font;
 

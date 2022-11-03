@@ -49,7 +49,21 @@ static void *ted_realloc(Ted *ted, void *p, size_t new_size) {
 }
 
 Settings *ted_active_settings(Ted *ted) {
-	return ted->active_buffer ? buffer_settings(ted->active_buffer) : ted->default_settings;
+	if (ted->active_buffer)
+		return buffer_settings(ted->active_buffer);
+	Settings *settings = ted->default_settings;
+	int settings_score = 0;
+	arr_foreach_ptr(ted->all_settings, Settings, s) {
+		const SettingsContext *c = &s->context;
+		if (c->language != 0) continue;
+		if (!c->path || !str_has_prefix(ted->cwd, c->path)) continue;
+		int score = (int)strlen(c->path);
+		if (score > settings_score) {
+			settings = s;
+			settings_score = score;
+		}
+	}
+	return settings;
 }
 
 u32 ted_color(Ted *ted, ColorSetting color) {
