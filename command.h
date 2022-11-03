@@ -30,6 +30,7 @@ ENUM_U16 {
 	CMD_SELECT_PAGE_DOWN,
 	
 	// insertion
+	CMD_INSERT_TEXT, // insert text
 	CMD_TAB, // insert '\t'
 	CMD_BACKTAB,
 	CMD_NEWLINE, // insert '\n' + autoindent -- also used to submit line buffers
@@ -134,6 +135,7 @@ static CommandName const command_names[] = {
 	{"page-down", CMD_PAGE_DOWN},
 	{"tab", CMD_TAB},
 	{"backtab", CMD_BACKTAB},
+	{"insert-text", CMD_INSERT_TEXT},
 	{"newline", CMD_NEWLINE},
 	{"newline-back", CMD_NEWLINE_BACK},
 	{"comment-selection", CMD_COMMENT_SELECTION},

@@ -111,7 +111,14 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 	case CMD_SELECT_ALL:
 		if (buffer) buffer_select_all(buffer);
 		break;
-
+	
+	case CMD_INSERT_TEXT: {
+		const char *str = arg_get_string(ted, argument);
+		if (str) {
+			buffer_insert_utf8_at_cursor(buffer, str);
+		}
+		}
+		break;
 	case CMD_TAB:
 		if (ted->replace && buffer == &ted->find_buffer) {
 			ted_switch_to_buffer(ted, &ted->replace_buffer);

@@ -276,15 +276,21 @@ Language buffer_language(TextBuffer *buffer) {
 static long context_score(const char *path, Language lang, const SettingsContext *context) {
 	long score = 0;
 	
-	if (lang == context->language) {
-		score += 10000;
+	if (context->language) {
+		if (lang == context->language) {
+			score += 10000;
+		} else {
+			// dont use this. it's language-specific and for the wrong language.
+			return INT_MIN;
+		}
 	}
 	
 	if (context->path) {
 		if (path && str_has_prefix(path, context->path)) {
 			score += (long)strlen(context->path);
 		} else {
-			score -= 100000;
+			// dont use this. it's path-specific and for the wrong path.
+			return INT_MIN;
 		}
 	}
 	

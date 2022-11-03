@@ -787,7 +787,9 @@ void config_free(Ted *ted) {
 	}
 	for (u32 i = 0; i < ted->nstrings; ++i) {
 		free(ted->strings[i]);
+		ted->strings[i] = NULL;
 	}
+	ted->nstrings = 0;
 	arr_clear(ted->all_settings);
 	ted->default_settings = NULL;
 }
