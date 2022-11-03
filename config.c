@@ -425,7 +425,7 @@ void config_read(Ted *ted, ConfigPart **parts, char const *filename) {
 			part = arr_addp(*parts);
 			part->index = (int)arr_len(*parts);
 			part->file = str_dup(filename);
-			part->line = cfg_reader.line_number + 1;
+			part->line = cfg->line_number + 1;
 			parse_section_header(&cfg_reader, line, part);
 		} else if (part) {
 			for (int i = 0; line[i]; ++i) {
@@ -441,6 +441,7 @@ void config_read(Ted *ted, ConfigPart **parts, char const *filename) {
 				config_err(cfg, "Config has text before first section header.");
 			}
 		}
+		++cfg->line_number;
 	}
 	
 	if (ferror(fp))
@@ -493,34 +494,60 @@ static i64 config_read_string(Ted *ted, ConfigReader *cfg, char **ptext) {
 	int backslashes = 0;
 	u32 start_line = cfg->line_number;
 	char *start = *ptext + 1;
+	char *str = NULL;
 	for (p = start; ; ++p) {
 		bool done = false;
 		switch (*p) {
 		case '\\':
 			++backslashes;
+			++p;
+			switch (*p) {
+			case '\\':
+			case '"':
+				break;
+			case 'n':
+				arr_add(str, '\n');
+				continue;
+			case 't':
+				arr_add(str, '\t');
+				continue;
+			case '[':
+				arr_add(str, '[');
+				continue;
+			case '\0':
+				goto null;
+			default:
+				config_err(cfg, "Unrecognized escape sequence: '\\%c'.", *p);
+				*ptext += strlen(*ptext);
+				arr_clear(str);
+				return -1;
+			}
 			break;
 		case '"':
-			if (backslashes % 2 == 0)
-				done = true;
+			done = true;
 			break;
 		case '\n':
 			++cfg->line_number;
 			break;
 		case '\0':
+		null:
 			cfg->line_number = start_line;
 			config_err(cfg, "String doesn't end.");
 			*ptext += strlen(*ptext);
+			arr_clear(str);
 			return -1;
 		}
 		if (done) break;
+		arr_add(str, *p);
 	}
 	
 	i64 str_idx = -1;
 	if (ted->nstrings < TED_MAX_STRINGS) {
-		char *str = strn_dup(start, (size_t)(p - start));
+		char *s = strn_dup(str, arr_len(str));
 		str_idx = ted->nstrings;
-		ted->strings[ted->nstrings++] = str;
+		ted->strings[ted->nstrings++] = s;
 	}
+	arr_clear(str);
 	*ptext = p + 1;
 	return str_idx;
 }
