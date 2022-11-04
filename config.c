@@ -564,13 +564,13 @@ static i64 config_read_string(Ted *ted, ConfigReader *cfg, char **ptext) {
 static void settings_load_bg_shader(Ted *ted, Settings *s) {
 	char vshader[8192] ;
 	strbuf_printf(vshader, "attribute vec2 v_pos;\n\
-varying vec2 t_pos;\n\
+OUT vec2 t_pos;\n\
 void main() { \n\
 	gl_Position = vec4(v_pos * 2.0 - 1.0, 0.0, 1.0);\n\
 	t_pos = v_pos;\n\
 }");
 	char fshader[8192];
-	strbuf_printf(fshader, "varying vec2 t_pos;\n\
+	strbuf_printf(fshader, "IN vec2 t_pos;\n\
 uniform float t_time;\n\
 uniform float t_save_time;\n\
 uniform vec2 t_aspect;\n\

@@ -92,16 +92,16 @@ static bool text_init(void) {
 	char const *vshader_code = "attribute vec4 v_color;\n\
 attribute vec2 v_pos;\n\
 attribute vec2 v_tex_coord;\n\
-varying vec4 color;\n\
-varying vec2 tex_coord;\n\
+OUT vec4 color;\n\
+OUT vec2 tex_coord;\n\
 void main() {\n\
 	color = v_color;\n\
 	tex_coord = v_tex_coord;\n\
 	gl_Position = vec4(v_pos, 0.0, 1.0);\n\
 }\n\
 ";
-	char const *fshader_code = "varying vec4 color;\n\
-varying vec2 tex_coord;\n\
+	char const *fshader_code = "IN vec4 color;\n\
+IN vec2 tex_coord;\n\
 uniform sampler2D sampler;\n\
 void main() {\n\
 	vec4 tex_color = texture2D(sampler, tex_coord);\n\
@@ -125,6 +125,9 @@ static Status text_load_char_page(Font *font, int page) {
 		// already loaded
 		return true;
 	}
+	
+	glGetError(); // clear error
+	
 	font->char_pages[page] = calloc(CHAR_PAGE_SIZE, sizeof *font->char_pages[page]);
 	for (int bitmap_width = 128, bitmap_height = 128; bitmap_width <= 4096; bitmap_width *= 2, bitmap_height *= 2) {
 		u8 *bitmap = calloc((size_t)bitmap_width, (size_t)bitmap_height);

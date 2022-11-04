@@ -133,16 +133,22 @@ static GLuint glsl_version(void) {
 	switch (v) {
 	case 200: return 110;
 	case 210: return 120;
+	case 300: return 130;
+	case 310: return 140;
+	case 320: return 150;
 	}
-	// don't go above 130. i don't want to write two different shaders one using varying and one using whatever new stuff GLSL has these days
-	return 130;
+	return v;
 }
 
 // compile a GLSL shader
 static GLuint gl_compile_shader(char error_buf[256], char const *code, GLenum shader_type) {
 	GLuint shader = glCreateShader(shader_type);
-	char header[32];
-	strbuf_printf(header, "#version %u\n#line 1\n", glsl_version());
+	char header[128];
+	int glsl = glsl_version();
+	strbuf_printf(header, "#version %u\n\
+#define IN %s\n\
+#define OUT %s\n\
+#line 1\n", glsl, glsl >= 130 ? "in" : "varying", glsl >= 130 ? "out" : "varying");
 	const char *sources[2] = {
 		header,
 		code
@@ -240,13 +246,13 @@ static GLuint gl_geometry_vbo, gl_geometry_vao;
 static void gl_geometry_init(void) {
 	char const *vshader_code = "attribute vec2 v_pos;\n\
 	attribute vec4 v_color;\n\
-	varying vec4 color;\n\
+	OUT vec4 color;\n\
 	void main() {\n\
 		gl_Position = vec4(v_pos, 0.0, 1.0);\n\
 		color = v_color;\n\
 	}\n\
 	";
-	char const *fshader_code = "varying vec4 color;\n\
+	char const *fshader_code = "IN vec4 color;\n\
 	void main() {\n\
 		gl_FragColor = color;\n\
 	}\n\

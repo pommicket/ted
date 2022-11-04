@@ -132,10 +132,11 @@ typedef unsigned long long ullong;
 
 #if _WIN32
 static void print(char const *fmt, ...) {
-	char buf[256];
+	char buf[2048];
+	buf[2047] = '\0';
 	va_list args;
 	va_start(args, fmt);
-	vsprintf_s(buf, sizeof buf, fmt, args);
+	vsnprintf(buf, sizeof buf - 1, fmt, args);
 	va_end(args);
 	OutputDebugStringA(buf);
 }
