@@ -128,7 +128,7 @@ static void gl_get_procs(void) {
 	#undef gl_get_proc
 }
 
-static GLuint glsl_version(void) {
+static int glsl_version(void) {
 	int v = gl_version_major * 100 + gl_version_minor * 10;
 	switch (v) {
 	case 200: return 110;
