@@ -164,6 +164,7 @@ Then, open windows\_installer\\ted\\ted.sln, and build.
 <tr><td>1.2</td> <td>Bug fixes, per-language settings</td> <td>2022 Jul 29</td></tr>
 <tr><td>1.2r1</td> <td>Mouse X1/X2 bug fix, support for X1/X2 commands.</td> <td>2022 Aug 19</td></tr>
 <tr><td>1.2r2</td> <td>Shift+PgUp/PgDown, many rust-related fixes.</td> <td>2022 Sep 30</td></tr>
+<tr><td>1.3</td> <td>Custom background shader, some bugfixes.</td> <td>2022 Nov 3</td></tr>
 </table>
 
 ## License

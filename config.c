@@ -27,6 +27,7 @@ static void context_copy(SettingsContext *dest, const SettingsContext *src) {
 		dest->path = str_dup(src->path);
 }
 
+/* does being in the context of `parent` imply you are in the context of `child`? */
 static bool context_is_parent(const SettingsContext *parent, const SettingsContext *child) {
 	if (child->language == 0 && parent->language != 0)
 		return false;

@@ -138,6 +138,8 @@ typedef struct KeyAction {
 	i64 argument;
 } KeyAction;
 
+// a SettingsContext is a context where a specific set of settings are applied.
+// this corresponds to [PATH//LANGUAGE.(section)] in config files
 typedef struct {
 	Language language; // these settings apply to this language.
 	char *path; // these settings apply to all paths which start with this string, or all paths if path=NULL
@@ -470,6 +472,20 @@ void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer);
 Settings *ted_active_settings(Ted *ted);
 void ted_load_configs(Ted *ted, bool reloading);
 static TextBuffer *find_search_buffer(Ted *ted);
+// first, we read all config files, then we parse them.
+// this is because we want less specific settings (e.g. settings applied
+// to all languages instead of one particular language) to be applied first,
+// then more specific settings are based off of those.
+// EXAMPLE:
+//   ---config file 1---
+//     [Javascript.core]
+//     syntax-highlighting = off
+//     (inherits tab-width = 4)
+//     [CSS.core]
+//     tab-width = 2 (overrides tab-width = 4)
+//   ---config file 2---
+//     [core]
+//     tab-width = 4
 void config_read(Ted *ted, ConfigPart **parts, const char *filename);
 void config_parse(Ted *ted, ConfigPart **parts);
 void config_free(Ted *ted);
