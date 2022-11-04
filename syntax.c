@@ -380,7 +380,7 @@ static void syntax_highlight_rust(SyntaxState *state, char32_t const *line, u32 
 					dealt_with = true;
 				}
 			}
-			break;
+			goto keyword_check;
 		case 'b':
 			if (char_types && !comment_depth) {
 				if ((has_1_char && line[i+1] == '"')
@@ -395,7 +395,7 @@ static void syntax_highlight_rust(SyntaxState *state, char32_t const *line, u32 
 					dealt_with = true;
 				}
 			}
-			break;
+			goto keyword_check;
 		case '"':
 			if (!comment_depth) {
 				if (in_string) {
@@ -502,7 +502,8 @@ static void syntax_highlight_rust(SyntaxState *state, char32_t const *line, u32 
 				}
 			}
 			break;
-		default: {
+		default:
+		keyword_check: {
 			if ((i && is32_ident(line[i - 1])) || !is32_ident(c))
 				break; // can't be a keyword on its own.
 			if (i >= 2 && line[i-2] == 'r' && line[i-1] == '#') {
@@ -587,7 +588,7 @@ static void syntax_highlight_python(SyntaxState *state, char32_t const *line, u3
 				char_types[i] = SYNTAX_STRING;
 				dealt_with = true;
 			}
-			break;
+			goto keyword_check;
 		case '\'':
 		case '"': {
 			bool dbl_quoted = c == '"';
@@ -634,6 +635,7 @@ static void syntax_highlight_python(SyntaxState *state, char32_t const *line, u3
 			++backslashes;
 			break;
 		default:
+		keyword_check:
 			if ((i && is32_ident(line[i - 1])) || !is32_ident(c))
 				break; // can't be a keyword on its own.
 			
