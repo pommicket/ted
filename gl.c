@@ -135,9 +135,10 @@ static int glsl_version(void) {
 	case 210: return 120;
 	case 300: return 130;
 	case 310: return 140;
-	case 320: return 150;
 	}
-	return v;
+	// not going any later than GLSL 150 since
+	// then we don't have gl_FragColor
+	return 150;
 }
 
 // compile a GLSL shader
