@@ -4,11 +4,25 @@
 
 typedef struct Process Process;
 
+// zero everything except what you're using
+typedef struct {
+	bool stdin_blocking;
+	bool stdout_blocking;
+} ProcessSettings;
+
 // execute the given command (like if it was passed to system()).
 // returns false on failure
+bool process_run_ex(Process *proc, const char *command, const ProcessSettings *props);
+// like process_run_ex, but with the default settings
 bool process_run(Process *process, char const *command);
 // returns the error last error produced, or NULL if there was no error.
 char const *process_geterr(Process *process);
+// write to stdin
+// returns:
+// -2 on error
+// or a non-negative number indicating the number of bytes written.
+long long process_write(Process *process, const char *data, size_t size);
+// read from stdout+stderr
 // returns:
 // -2 on error
 // -1 if no data is available right now
