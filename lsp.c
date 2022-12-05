@@ -11,13 +11,17 @@ typedef struct JSONValue JSONValue;
 
 typedef struct {
 	u32 len;
-	u32 properties;
-	u32 values;
+	// this is an index into the values array
+	//   values[items..items+len] store the names
+	//   values[items+len..items+2*len] store the values
+	u32 items;
 } JSONObject;
 
 typedef struct {
 	u32 len;
-	u32 values;
+	// this is an index into the values array
+	//    values[elements..elements+len] are the elements
+	u32 elements;
 } JSONArray;
 
 enum {
@@ -42,10 +46,121 @@ struct JSONValue {
 
 
 typedef struct {
+	char error[64];
 	const char *text;
 	// root = values[0]
 	JSONValue *values;
 } JSON;
+
+static bool json_parse_value(JSON *json, u32 *p_index, JSONValue *val);
+
+// count number of comma-separated values until
+// closing ] or }
+static u32 json_count(JSON *json, u32 index) {
+	int bracket_depth = 0;
+	int brace_depth = 0;
+	u32 count = 0;
+	const char *text = json->text;
+	for (; ; ++index) {
+		switch (text[index]) {
+		case '\0': return 0; // bad no closing bracket
+		case '[':
+			++bracket_depth;
+			break;
+		case '{':
+			++brace_depth;
+			break;
+		case '}':
+			--brace_depth;
+			if (brace_depth < 0)
+				return count;
+			break;
+		case ']':
+			--bracket_depth;
+			if (bracket_depth < 0)
+				return count;
+			break;
+		case ',':
+			if (bracket_depth == 0 && brace_depth == 0)
+				++count;
+			break;
+		case '"': {
+			int escaped = 0;
+			for (; ; ++index) {
+				switch (text[index]) {
+				case '\0': return 0; // bad no closing quote
+				case '\\': escaped = !escaped; break;
+				case '"':
+					if (!escaped)
+						goto done;
+					escaped = false;
+					break;
+				default:
+					escaped = false;
+					break;
+				}
+			}
+			done:;
+			} break;
+		}
+	}
+}
+
+static bool json_parse_object(JSON *json, u32 *p_index, JSONObject *object) {
+	u32 index = *p_index;
+	const char *text = json->text;
+	++index; // go past {
+	u32 count = json_count(json, index);
+	object->len = count;
+	object->items = arr_len(json->values);
+	arr_set_len(json->values, arr_len(json->values) + 2 * count);
+	
+	for (u32 i = 0; i < count; ++i) {
+		if (i > 0) {
+			if (text[index] != ',') {
+				strbuf_printf(json->error, "stuff after value in object");
+				return false;
+			}
+			++index;
+		}
+		JSONValue name = {0}, value = {0};
+		if (!json_parse_value(json, &index, &name))
+			return false;
+		while (isspace(text[index])) ++index;
+		if (text[index] != ':') {
+			strbuf_printf(json->error, "stuff after name in object");
+			return false;
+		}
+		while (isspace(text[index])) ++index;
+		if (!json_parse_value(json, &index, &value))
+			return false;
+		while (isspace(text[index])) ++index;
+		json->values[object->items + i] = name;
+		json->values[object->items + count + i] = value;
+	}
+	
+	if (text[index] != '}') {
+		strbuf_printf(json->error, "mismatched brackets or quotes.");
+		return false;
+	}
+	*p_index = index;
+	return true;
+}
+
+static bool json_parse_array(JSON *json, u32 *p_index, JSONArray *array) {
+	(void)json;(void)p_index;(void)array;
+	abort();
+}
+
+static bool json_parse_string(JSON *json, u32 *p_index, JSONString *string) {
+	(void)json;(void)p_index;(void)string;
+	abort();
+}
+
+static bool json_parse_number(JSON *json, u32 *p_index, double *number) {
+	(void)json;(void)p_index;(void)number;
+	abort();
+}
 
 static bool json_parse_value(JSON *json, u32 *p_index, JSONValue *val) {
 	const char *text = json->text;
@@ -54,24 +169,47 @@ static bool json_parse_value(JSON *json, u32 *p_index, JSONValue *val) {
 	switch (text[index]) {
 	case '{':
 		val->type = JSON_OBJECT;
-		json_parse_object(json, &index, &val->val.object);
+		if (!json_parse_object(json, &index, &val->val.object))
+			return false;
 		break;
 	case '[':
 		val->type = JSON_ARRAY;
-		json_parse_array(json, &index, &val->val.array);
+		if (!json_parse_array(json, &index, &val->val.array))
+			return false;
 		break;
 	case '"':
 		val->type = JSON_STRING;
-		json_parse_string(json, &index, &val->val.string);
+		if (!json_parse_string(json, &index, &val->val.string))
+			return false;
 		break;
 	case ANY_DIGIT:
-		json_parse_number(json, &index, &val->val.number);
+		val->type = JSON_NUMBER;
+		if (!json_parse_number(json, &index, &val->val.number))
+			return false;
 		break;
 	case 'f':
-		if (!str_is_prefix(&text[index], "false", 5) != 0) {
-			
-		}
+		val->type = JSON_FALSE;
+		if (!str_has_prefix(&text[index], "false"))
+			return false;
+		index += 5;
+		break;
+	case 't':
+		val->type = JSON_TRUE;
+		if (!str_has_prefix(&text[index], "true"))
+			return false;
+		index += 4;
+		break;
+	case 'n':
+		val->type = JSON_NULL;
+		if (!str_has_prefix(&text[index], "null"))
+			return false;
+		index += 4;
+		break;
+	default:
+		strbuf_printf(json->error, "bad value");
 	}
+	*p_index = index;
+	return true;
 }
 
 // NOTE: text must live as long as json!!!
@@ -88,14 +226,55 @@ static bool json_parse(JSON *json, const char *text) {
 	
 	while (isspace(text[index])) ++index;
 	if (text[index]) {
-		// more text after end of object
-		// @TODO error message
+		strbuf_printf(json->error, "extra text after end of object");
 		return false;
 	}
 	json->values[0] = val;
+	return true;
 }
 
-static void send_message(LSP *lsp, const char *content) {
+
+static void json_debug_print_value(const JSON *json, u32 idx) {
+	JSONValue *value = &json->values[idx];
+	switch (value->type) {
+	case JSON_NULL: printf("null"); break;
+	case JSON_FALSE: printf("false"); break;
+	case JSON_TRUE: printf("true"); break;
+	case JSON_NUMBER: printf("%f", value->val.number); break;
+	case JSON_STRING: {
+		JSONString *string = &value->val.string;
+		printf("\"%.*s\"",
+			(int)string->len,
+			json->text + string->pos);
+		} break;
+	case JSON_ARRAY: {
+		JSONArray *array = &value->val.array;
+		printf("[");
+		for (u32 i = 0; i < array->len; ++i) {
+			json_debug_print_value(json, array->elements + i);
+			printf(",");
+		}
+		printf("]");
+	} break;
+	case JSON_OBJECT: {
+		JSONObject *obj = &value->val.object;
+		printf("{");
+		for (u32 i = 0; i < obj->len; ++i) {
+			json_debug_print_value(json, obj->items + i);
+			printf(": ");
+			json_debug_print_value(json, obj->items + obj->len + i);
+			printf(",");
+		}
+		printf("}");
+		} break;
+	}
+}
+
+static void json_debug_print(const JSON *json) {
+	json_debug_print_value(json, 0);
+}
+
+static void send_request(LSP *lsp, const char *content) {
 	char header[128];
 	size_t content_size = strlen(content);
 	strbuf_printf(header, "Content-Length: %zu\r\n\r\n", content_size); 
@@ -116,8 +295,14 @@ void lsp_create(LSP *lsp, const char *analyzer_command) {
 			"\"capabilities\":{}"
 		"}}",
 		process_get_id());
-	send_message(lsp, init_request);
-	char init_response[4096] = {0};
-	process_read(&lsp->process, init_response, sizeof init_response);
-	printf("%s\n",init_response);
+	send_request(lsp, init_request);
+	// @TODO: recv_response
+	char response_text[4096] = {0};
+	process_read(&lsp->process, response_text, sizeof response_text);
+	
+	JSON  json = {0};
+	if (!json_parse(&json, strstr(response_text, "\r\n\r\n") + 4))
+		printf("fail : %s\n",json.error);
+	json_debug_print(&json);
+	
 }
