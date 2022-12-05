@@ -59,34 +59,57 @@ static bool json_parse_value(JSON *json, u32 *p_index, JSONValue *val);
 static u32 json_count(JSON *json, u32 index) {
 	int bracket_depth = 0;
 	int brace_depth = 0;
-	u32 count = 0;
+	u32 count = 1;
 	const char *text = json->text;
+	while (isspace(text[index])) ++index;
+	// special case: empty object/array
+	if (text[index] == '}' || text[index] == ']')
+		return 0;
+	
+	int mark[5000] = {0};
 	for (; ; ++index) {
 		switch (text[index]) {
-		case '\0': return 0; // bad no closing bracket
+		case '\0':
+			return 0; // bad no closing bracket
 		case '[':
 			++bracket_depth;
-			break;
-		case '{':
-			++brace_depth;
-			break;
-		case '}':
-			--brace_depth;
-			if (brace_depth < 0)
-				return count;
 			break;
 		case ']':
 			--bracket_depth;
 			if (bracket_depth < 0)
 				return count;
 			break;
+		case '{':
+			++brace_depth;
+			mark[index] = true;
+			break;
+		case '}':
+			--brace_depth;
+			mark[index] = true;
+			if (brace_depth < 0){
+			
+			for (int i = 0; text[i]; ++i ){
+				switch (mark[i]){
+				case 1: printf("\x1b[91m"); break;
+				case 2: printf("\x1b[92m"); break;
+				}
+				printf("%c",text[i]);
+				if (mark[i]) printf("\x1b[0m");
+			}
+			printf("\n");
+			
+				return count;
+			}
+			break;
 		case ',':
 			if (bracket_depth == 0 && brace_depth == 0)
 				++count;
 			break;
 		case '"': {
+			++index; // skip opening "
 			int escaped = 0;
 			for (; ; ++index) {
+				mark[index] = 2;
 				switch (text[index]) {
 				case '\0': return 0; // bad no closing quote
 				case '\\': escaped = !escaped; break;
@@ -111,9 +134,12 @@ static bool json_parse_object(JSON *json, u32 *p_index, JSONObject *object) {
 	const char *text = json->text;
 	++index; // go past {
 	u32 count = json_count(json, index);
+	printf("%u\n",count);
+	exit(0);
 	object->len = count;
 	object->items = arr_len(json->values);
 	arr_set_len(json->values, arr_len(json->values) + 2 * count);
+	
 	
 	for (u32 i = 0; i < count; ++i) {
 		if (i > 0) {
@@ -143,6 +169,7 @@ static bool json_parse_object(JSON *json, u32 *p_index, JSONObject *object) {
 		strbuf_printf(json->error, "mismatched brackets or quotes.");
 		return false;
 	}
+	++index; // skip }
 	*p_index = index;
 	return true;
 }
@@ -226,7 +253,7 @@ static bool json_parse(JSON *json, const char *text) {
 	
 	while (isspace(text[index])) ++index;
 	if (text[index]) {
-		strbuf_printf(json->error, "extra text after end of object");
+		strbuf_printf(json->error, "extra text after end of root object");
 		return false;
 	}
 	json->values[0] = val;
@@ -299,9 +326,15 @@ void lsp_create(LSP *lsp, const char *analyzer_command) {
 	// @TODO: recv_response
 	char response_text[4096] = {0};
 	process_read(&lsp->process, response_text, sizeof response_text);
-	
+	char *rnrn = strstr(response_text, "\r\n\r\n");
+	if (!rnrn) {
+		//@TODO delete me
+		printf("no analyzer ):\n");
+		exit(0);
+	}
 	JSON  json = {0};
-	if (!json_parse(&json, strstr(response_text, "\r\n\r\n") + 4))
+	printf("%s\n",rnrn+4);
+	if (!json_parse(&json, rnrn + 4))
 		printf("fail : %s\n",json.error);
 	json_debug_print(&json);
 	
