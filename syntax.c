@@ -17,7 +17,6 @@ Language language_from_str(char const *str) {
 char const *language_comment_start(Language l) {
 	switch (l) {
 	case LANG_C:
-		return "/* ";
 	case LANG_RUST:
 	case LANG_CPP:
 	case LANG_JAVASCRIPT:
@@ -43,8 +42,6 @@ char const *language_comment_start(Language l) {
 // end of single line comment for language l
 char const *language_comment_end(Language l) {
 	switch (l) {
-	case LANG_C:
-		return " */";
 	case LANG_HTML:
 		return " -->";
 	default:
