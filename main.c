@@ -101,6 +101,7 @@ bool tag_goto(Ted *ted, char const *tag);
 #include "command.c"
 #include "config.c"
 #include "session.c"
+#include "lsp.c"
 
 #if PROFILE
 #define PROFILE_TIME(var) double var = time_get_seconds();
@@ -278,6 +279,13 @@ int main(int argc, char **argv) {
 #endif
 	PROFILE_TIME(init_start)
 	PROFILE_TIME(basic_init_start)
+	
+	// @TODO TEMPORARY
+	{
+		LSP lsp={0};
+		lsp_create(&lsp, "rust-analyzer");
+		exit(0);
+	}
 	
 #if __unix__
 	{

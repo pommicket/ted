@@ -10,6 +10,8 @@ typedef struct {
 	bool stdout_blocking;
 } ProcessSettings;
 
+// get process ID of this process
+int process_get_id(void);
 // execute the given command (like if it was passed to system()).
 // returns false on failure
 bool process_run_ex(Process *proc, const char *command, const ProcessSettings *props);

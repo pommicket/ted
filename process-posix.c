@@ -11,6 +11,10 @@ struct Process {
 	char error[64];
 };
 
+int process_get_id(void) {
+	return getpid();
+}
+
 bool process_run_ex(Process *proc, const char *command, const ProcessSettings *settings) {
 	memset(proc, 0, sizeof *proc);
 
