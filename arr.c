@@ -151,7 +151,7 @@ static void arr_set_len_(void **arr, size_t member_size, size_t n) {
 		ArrHeader *hdr = arr_hdr_(*arr);
 		if (n > hdr->len) {
 			// zero new elements
-			memset((char *)hdr->data + hdr->len, 0, (n - hdr->len) * member_size);
+			memset((char *)hdr->data + hdr->len * member_size, 0, (n - hdr->len) * member_size);
 		}
 		hdr->len = (u32)n;
 	}
