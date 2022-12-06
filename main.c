@@ -1,7 +1,11 @@
 /* 
 FUTURE FEATURES:
+- regenerate tags for completion too if there are no results
 - config variables
+- bind key to multiple commands
 - plugins?
+- keyboard macros
+    -  ctrl+9/0 to inc/dec number would be useful here
 */
 
 #include "base.h"
