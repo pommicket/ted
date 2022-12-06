@@ -101,6 +101,7 @@ bool tag_goto(Ted *ted, char const *tag);
 #include "command.c"
 #include "config.c"
 #include "session.c"
+#include "json.c"
 #include "lsp.c"
 
 #if PROFILE

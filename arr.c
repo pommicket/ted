@@ -60,6 +60,10 @@ static inline u32 arr_len(void *arr) {
 	return arr ? arr_hdr_(arr)->len : 0;
 }
 
+static inline u32 arr_cap(void *arr) {
+	return arr ? arr_hdr_(arr)->cap : 0;
+}
+
 static inline unsigned arr_lenu(void *arr) {
 	return (unsigned)arr_len(arr);
 }
@@ -114,6 +118,7 @@ static void arr_reserve_(void **arr, size_t member_size, size_t n) {
 
 	if (!*arr) {
 		// create a new array with capacity n+1
+		// why n+1? i dont know i wrote this a while ago
 		ArrHeader *hdr = calloc(1, sizeof(ArrHeader) + (n+1) * member_size);
 		if (hdr) {
 			hdr->cap = (u32)n+1;
@@ -151,7 +156,7 @@ static void arr_set_len_(void **arr, size_t member_size, size_t n) {
 		ArrHeader *hdr = arr_hdr_(*arr);
 		if (n > hdr->len) {
 			// zero new elements
-			memset((char *)hdr->data + hdr->len, 0, (n - hdr->len) * member_size);
+			memset((char *)hdr->data + hdr->len * member_size, 0, (n - hdr->len) * member_size);
 		}
 		hdr->len = (u32)n;
 	}

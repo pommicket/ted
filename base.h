@@ -115,6 +115,14 @@ typedef unsigned long long ullong;
 
 #define arr_count(a) (sizeof (a) / sizeof *(a))
 
+
+// usage: if UNLIKELY (x > 2) ...
+#if __GNUC__
+#define UNLIKELY(x) (__builtin_expect(x,0))
+#else
+#define UNLIKELY(x) (x)
+#endif
+
 #ifdef __GNUC__
 #define no_warn_start _Pragma("GCC diagnostic push") \
 	_Pragma("GCC diagnostic ignored \"-Wpedantic\"") \
