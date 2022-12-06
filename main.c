@@ -284,7 +284,8 @@ int main(int argc, char **argv) {
 	// @TODO TEMPORARY
 	{
 		LSP lsp={0};
-		lsp_create(&lsp, "rust-analyzer");
+		if (!lsp_create(&lsp, "rust-analyzer"))
+			printf("%s\n",lsp.error);
 		exit(0);
 	}
 	

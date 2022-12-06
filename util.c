@@ -134,9 +134,14 @@ static void str_cat(char *dst, size_t dst_sz, char const *src) {
 }
 
 // safer version of strncpy. dst_sz includes a null terminator.
-static void str_cpy(char *dst, size_t dst_sz, char const *src) {
-	size_t srclen = strlen(src);
-	size_t n = srclen; // number of bytes to copy
+static void strn_cpy(char *dst, size_t dst_sz, char const *src, size_t src_len) {
+	size_t n = src_len; // number of bytes to copy
+	for (size_t i = 0; i < n; ++i) {
+		if (src[i] == '\0') {
+			n = i;
+			break;
+		}
+	}
 	
 	if (dst_sz == 0) {
 		assert(0);
@@ -147,6 +152,11 @@ static void str_cpy(char *dst, size_t dst_sz, char const *src) {
 		n = dst_sz-1;
 	memcpy(dst, src, n);
 	dst[n] = 0;
+}
+
+// safer version of strcpy. dst_sz includes a null terminator.
+static void str_cpy(char *dst, size_t dst_sz, char const *src) {
+	strn_cpy(dst, dst_sz, src, SIZE_MAX);
 }
 
 #define strbuf_cpy(dst, src) str_cpy(dst, sizeof dst, src)

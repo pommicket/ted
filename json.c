@@ -63,35 +63,34 @@ static inline bool json_is_space(char c) {
 	return c == ' ' || c == '\n' || c == '\r' || c == '\t';
 }
 
-static void json_debug_print_value(const JSON *json, u32 idx) {
-	JSONValue *value = &json->values[idx];
+static void json_debug_print_value(const JSON *json, const JSONValue *value) {
 	switch (value->type) {
 	case JSON_NULL: printf("null"); break;
 	case JSON_FALSE: printf("false"); break;
 	case JSON_TRUE: printf("true"); break;
-	case JSON_NUMBER: printf("%f", value->val.number); break;
+	case JSON_NUMBER: printf("%g", value->val.number); break;
 	case JSON_STRING: {
-		JSONString *string = &value->val.string;
+		const JSONString *string = &value->val.string;
 		printf("\"%.*s\"",
 			(int)string->len,
 			json->text + string->pos);
 		} break;
 	case JSON_ARRAY: {
-		JSONArray *array = &value->val.array;
+		const JSONArray *array = &value->val.array;
 		printf("[");
 		for (u32 i = 0; i < array->len; ++i) {
-			json_debug_print_value(json, array->elements + i);
+			json_debug_print_value(json, &json->values[array->elements + i]);
 			printf(", ");
 		}
 		printf("]");
 	} break;
 	case JSON_OBJECT: {
-		JSONObject *obj = &value->val.object;
+		const JSONObject *obj = &value->val.object;
 		printf("{");
 		for (u32 i = 0; i < obj->len; ++i) {
-			json_debug_print_value(json, obj->items + i);
+			json_debug_print_value(json, &json->values[obj->items + i]);
 			printf(": ");
-			json_debug_print_value(json, obj->items + obj->len + i);
+			json_debug_print_value(json, &json->values[obj->items + obj->len + i]);
 			printf(", ");
 		}
 		printf("}");
@@ -355,7 +354,6 @@ static bool json_parse_value(JSON *json, u32 *p_index, JSONValue *val) {
 static bool json_parse(JSON *json, const char *text) {
 	memset(json, 0, sizeof *json);
 	json->text = text;
-	// @TODO: is this a good capacity?
 	arr_reserve(json->values, strlen(text) / 8);
 	arr_addp(json->values); // add root
 	JSONValue val = {0};
@@ -376,6 +374,101 @@ static void json_free(JSON *json) {
 	arr_free(json->values);
 	memset(json, 0, sizeof *json);
 }
+
+static bool json_streq(const JSON *json, const JSONString *string, const char *name) {
+	const char *p = &json->text[string->pos];
+	const char *end = p + string->len;
+	for (; p < end; ++p, ++name) {
+		if (*name != *p)
+			return false;
+	}
+	return *name == '\0';
+}
+
+// returns null if the property `name` does not exist.
+static JSONValue json_object_get(const JSON *json, const JSONObject *object, const char *name) {
+	const JSONValue *items = &json->values[object->items];
+	for (u32 i = 0; i < object->len; ++i) {
+		const JSONValue *this_name = items++;
+		if (this_name->type == JSON_STRING && json_streq(json, &this_name->val.string, name)) {
+			return json->values[object->items + object->len + i];
+		}
+	}
+	return (JSONValue){0};
+}
+
+// e.g. if json is  { "a" : { "b": 3 }}, then json_get(json, "a.b") = 3.
+// returns null if there is no such property
+static JSONValue json_get(const JSON *json, const char *path) {
+	char segment[128];
+	const char *p = path;
+	if (!json->values) {
+		return (JSONValue){0};
+	}
+	JSONValue curr_value = json->values[0];
+	while (*p) {
+		size_t segment_len = strcspn(p, ".");
+		strn_cpy(segment, sizeof segment, p, segment_len);
+		if (curr_value.type != JSON_OBJECT) {
+			return (JSONValue){0};
+		}
+		curr_value = json_object_get(json, &curr_value.val.object, segment);
+		p += segment_len;
+		if (*p == '.') ++p;
+	}
+	return curr_value;
+}
+
+// turn a json string into a null terminated string.
+// this won't be nice if the json string includes \u0000 but that's rare.
+// if buf_sz > string->len, the string will fit.
+static void json_string_get(const JSON *json, const JSONString *string, char *buf, size_t buf_sz) {
+	const char *text = json->text;
+	if (buf_sz == 0) {
+		assert(0);
+		return;
+	}
+	char *buf_end = buf + buf_sz - 1;
+	for (u32 i = string->pos, end = string->pos + string->len; i < end && buf < buf_end; ++i) {
+		if (text[i] != '\\') {
+			*buf++ = text[i];
+		} else {
+			++i;
+			if (i >= end) break;
+			// escape sequence
+			switch (text[i]) {
+			case 'n': *buf++ = '\n'; break;
+			case 'r': *buf++ = '\r'; break;
+			case 'b': *buf++ = '\b'; break;
+			case 't': *buf++ = '\t'; break;
+			case 'f': *buf++ = '\f'; break;
+			case '\\': *buf++ = '\\'; break;
+			case '/': *buf++ = '/'; break;
+			case '"': *buf++ = '"'; break;
+			case 'u': {
+				if ((buf_end - buf) < 4 || i + 5 > end)
+					goto brk;
+				++i;
+				
+				char hex[5] = {0};
+				hex[0] = text[i++];
+				hex[1] = text[i++];
+				hex[2] = text[i++];
+				hex[3] = text[i++];
+				unsigned code_point=0;
+				sscanf(hex, "%04x", &code_point);
+				// technically this won't deal with people writing out UTF-16 surrogate halves
+				// using \u. i dont care.
+				size_t n = unicode_utf32_to_utf8(buf, code_point);
+				if (n <= 4) buf += n;
+				} break;
+			}
+		}
+	}
+	brk:
+	*buf = '\0';
+}
+
 
 #if __unix__
 static void json_test_time_large(const char *filename) {
