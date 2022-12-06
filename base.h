@@ -111,6 +111,12 @@ typedef unsigned long long ullong;
 #define WarnUnusedResult
 #endif
 
+#if __GNUC__
+#define ATTRIBUTE_PRINTF(fmt_idx, arg_idx) __attribute__ ((format(printf, fmt_idx, arg_idx)))
+#else
+#define ATTRIBUTE_PRINTF(fmt_idx, arg_idx)
+#endif
+
 #define Status bool WarnUnusedResult // false = error, true = success
 
 #define arr_count(a) (sizeof (a) / sizeof *(a))

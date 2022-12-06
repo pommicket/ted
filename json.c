@@ -25,6 +25,9 @@ typedef struct {
 } JSONArray;
 
 enum {
+	// note: json doesn't actually include undefined.
+	// this is only for returning things from json_get etc.
+	JSON_UNDEFINED,
 	JSON_NULL,
 	JSON_FALSE,
 	JSON_TRUE,
@@ -65,6 +68,7 @@ static inline bool json_is_space(char c) {
 
 static void json_debug_print_value(const JSON *json, const JSONValue *value) {
 	switch (value->type) {
+	case JSON_UNDEFINED: printf("undefined"); break;
 	case JSON_NULL: printf("null"); break;
 	case JSON_FALSE: printf("false"); break;
 	case JSON_TRUE: printf("true"); break;
@@ -385,7 +389,7 @@ static bool json_streq(const JSON *json, const JSONString *string, const char *n
 	return *name == '\0';
 }
 
-// returns null if the property `name` does not exist.
+// returns undefined if the property `name` does not exist.
 static JSONValue json_object_get(const JSON *json, const JSONObject *object, const char *name) {
 	const JSONValue *items = &json->values[object->items];
 	for (u32 i = 0; i < object->len; ++i) {
@@ -398,7 +402,7 @@ static JSONValue json_object_get(const JSON *json, const JSONObject *object, con
 }
 
 // e.g. if json is  { "a" : { "b": 3 }}, then json_get(json, "a.b") = 3.
-// returns null if there is no such property
+// returns undefined if there is no such property
 static JSONValue json_get(const JSON *json, const char *path) {
 	char segment[128];
 	const char *p = path;
@@ -531,7 +535,24 @@ static void json_test_time_small(void) {
 static void json_debug_print(const JSON *json) {
 	printf("%u values (capacity %u, text length %zu)\n",
 		arr_len(json->values), arr_cap(json->values), strlen(json->text));
-	json_debug_print_value(json, 0);
+	json_debug_print_value(json, &json->values[0]);
+}
+
+// e.g. converts "Hello\nworld" to "Hello\\nworld"
+// the return value is the # of bytes in the escaped string.
+static size_t json_escape_to(char *out, size_t out_sz, const char *in) {
+	(void)out;(void)out_sz;(void)in;
+	// @TODO
+	abort();
+}
+
+// e.g. converts "Hello\nworld" to "Hello\\nworld"
+// the resulting string should be free'd.
+static char *json_escape(const char *str) {
+	size_t out_sz = 2 * strlen(str) + 1;
+	char *out = calloc(1, out_sz);
+	json_escape_to(out, out_sz, str);
+	return out;
 }
 
 #undef SKIP_WHITESPACE

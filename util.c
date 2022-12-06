@@ -97,6 +97,19 @@ static char *str_dup(char const *src) {
 #define strbuf_catf(str, ...) assert(sizeof str != 4 && sizeof str != 8), \
 	str_catf(str, sizeof str, __VA_ARGS__)
 
+#if __unix__
+static char *a_sprintf(const char *fmt, ...) ATTRIBUTE_PRINTF(1, 2);
+static char *a_sprintf(const char *fmt, ...) {
+	va_list args;
+	va_start(args, fmt);
+	char *str = NULL;
+	vasprintf(&str, fmt, args);
+	return str;
+}
+#else
+#error "@TODO"
+#endif
+
 // on 16-bit systems, this is 16383. on 32/64-bit systems, this is 1073741823
 // it is unusual to have a string that long.
 #define STRLEN_SAFE_MAX (UINT_MAX >> 2)
