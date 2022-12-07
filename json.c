@@ -50,6 +50,7 @@ struct JSONValue {
 
 typedef struct {
 	char error[64];
+	bool is_text_copied; // if this is true, then json_free will call free on text
 	const char *text;
 	// root = values[0]
 	JSONValue *values;
@@ -362,11 +363,13 @@ static bool json_parse(JSON *json, const char *text) {
 	arr_addp(json->values); // add root
 	JSONValue val = {0};
 	u32 index = 0;
-	if (!json_parse_value(json, &index, &val))
+	if (!json_parse_value(json, &index, &val)) {
+		arr_free(json->values);
 		return false;
-	
+	}
 	SKIP_WHITESPACE;
 	if (text[index]) {
+		arr_free(json->values);
 		strbuf_printf(json->error, "extra text after end of root object");
 		return false;
 	}
@@ -374,9 +377,25 @@ static bool json_parse(JSON *json, const char *text) {
 	return true;
 }
 
+// like json_parse, but a copy of text is made, so you can free/overwrite it immediately.
+static bool json_parse_copy(JSON *json, const char *text) {
+	bool success = json_parse(json, str_dup(text));
+	if (success) {
+		json->is_text_copied = true;
+		return true;
+	} else {
+		free((void*)json->text);
+		json->text = NULL;
+		return false;
+	}
+}
+
 static void json_free(JSON *json) {
 	arr_free(json->values);
 	memset(json, 0, sizeof *json);
+	if (json->is_text_copied) {
+		free((void*)json->text);
+	}
 }
 
 static bool json_streq(const JSON *json, const JSONString *string, const char *name) {

@@ -288,8 +288,19 @@ int main(int argc, char **argv) {
 	// @TODO TEMPORARY
 	{
 		LSP lsp={0};
-		if (!lsp_create(&lsp, "rust-analyzer"))
-			printf("%s\n",lsp.error);
+		if (!lsp_create(&lsp, "rust-analyzer")) {
+			printf("lsp_create: %s\n",lsp.error);
+			exit(1);
+		}
+		while (1) {
+			JSON response = {0};
+			if (lsp_next_response(&lsp, &response)) {
+				json_debug_print(&response);
+				break;
+			}
+			usleep(100000);
+		}
+		lsp_free(&lsp);
 		exit(0);
 	}
 	
