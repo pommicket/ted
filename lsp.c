@@ -1,8 +1,11 @@
 // @TODO:  maximum queue size for requests/responses just in case?
 
 typedef enum {
+	LSP_NONE,
 	LSP_INITIALIZE,
+	LSP_INITIALIZED,
 	LSP_OPEN,
+	LSP_COMPLETION,
 } LSPRequestType;
 
 typedef struct {
@@ -22,11 +25,12 @@ typedef struct {
 
 typedef struct {
 	Process process;
+	u64 request_id;
 	JSON *responses;
 	SDL_mutex *responses_mutex;
 	LSPRequest *requests;
 	SDL_mutex *requests_mutex;
-	
+	bool initialized; // has the response to the initialize request been sent?
 	SDL_Thread *communication_thread;
 	SDL_sem *quit_sem;
 	char *received_data; // dynamic array
@@ -38,6 +42,9 @@ static void write_request_content(LSP *lsp, const char *content) {
 	char header[128];
 	size_t content_size = strlen(content);
 	strbuf_printf(header, "Content-Length: %zu\r\n\r\n", content_size); 
+	#if 0
+		printf("\x1b[1m%s%s\x1b[0m\n", header, content);
+	#endif
 	process_write(&lsp->process, header, strlen(header));
 	process_write(&lsp->process, content, content_size);
 }
@@ -75,10 +82,13 @@ static const char *lsp_language_id(Language lang) {
 }
 
 static void write_request(LSP *lsp, const LSPRequest *request) {
-	static unsigned long long id;
-	++id;
+	unsigned long long id = lsp->request_id++;
+	
 	
 	switch (request->type) {
+	case LSP_NONE:
+		assert(0);
+		break;
 	case LSP_INITIALIZE: {
 		char content[1024];
 		strbuf_printf(content,
@@ -86,6 +96,13 @@ static void write_request(LSP *lsp, const LSPRequest *request) {
 				"\"processId\":%d,"
 				"\"capabilities\":{}"
 		"}}", id, process_get_id());
+		write_request_content(lsp, content);
+	} break;
+	case LSP_INITIALIZED: {
+		char content[1024];
+		strbuf_printf(content,
+			"{\"jsonrpc\":\"2.0\",\"id\":%llu,\"method\":\"initialized\",\"params\":{"
+		"}}", id);
 		write_request_content(lsp, content);
 	} break;
 	case LSP_OPEN: {
@@ -114,9 +131,14 @@ static void write_request(LSP *lsp, const LSPRequest *request) {
 		
 		write_request_content(lsp, did_open);
 	} break;
-	default:
-		// @TODO
-		abort();
+	case LSP_COMPLETION: {
+		char content[1024];
+		// no params needed
+		strbuf_printf(content,
+			"{\"jsonrpc\":\"2.0\",\"id\":%llu,\"method\":\"initialize\",\"params\":{"
+		"}}", id);
+		write_request_content(lsp, content);
+	} break;
 	}
 }
 
@@ -145,6 +167,22 @@ void lsp_send_request(LSP *lsp, const LSPRequest *request) {
 
 // receive responses from LSP, up to max_size bytes.
 static void lsp_receive(LSP *lsp, size_t max_size) {
+
+	{
+		// read stderr. if all goes well, we shouldn't get anything over stderr.
+		char stderr_buf[1024] = {0};
+		for (size_t i = 0; i < (max_size + sizeof stderr_buf) / sizeof stderr_buf; ++i) {
+			ssize_t nstderr = process_read_stderr(&lsp->process, stderr_buf, sizeof stderr_buf - 1);
+			if (nstderr > 0) {
+				// uh oh
+				stderr_buf[nstderr] = '\0';
+				fprintf(stderr, "\x1b[1m\x1b[93m%s\x1b[0m", stderr_buf);
+			} else {
+				break;
+			}
+		}
+	}
+
 	size_t received_so_far = arr_len(lsp->received_data);
 	arr_reserve(lsp->received_data, received_so_far + max_size + 1);
 	long long bytes_read = process_read(&lsp->process, lsp->received_data + received_so_far, max_size);
@@ -156,6 +194,9 @@ static void lsp_receive(LSP *lsp, size_t max_size) {
 	// kind of a hack. this is needed because arr_set_len zeroes the data.
 	arr_hdr_(lsp->received_data)->len = (u32)received_so_far;
 	lsp->received_data[received_so_far] = '\0';// null terminate
+	#if 0
+	printf("\x1b[3m%s\x1b[0m\n",lsp->received_data);
+	#endif
 	
 	u64 response_offset=0, response_size=0;
 	while (has_response(lsp->received_data, received_so_far, &response_offset, &response_size)) {
@@ -191,7 +232,12 @@ static void lsp_receive(LSP *lsp, size_t max_size) {
 
 static void free_request(LSPRequest *r) {
 	switch (r->type) {
+	case LSP_NONE:
+		assert(0);
+		break;
 	case LSP_INITIALIZE:
+	case LSP_INITIALIZED:
+	case LSP_COMPLETION:
 		break;
 	case LSP_OPEN: {
 		LSPRequestOpen *open = &r->data.open;
@@ -201,38 +247,51 @@ static void free_request(LSPRequest *r) {
 	}
 }
 
+// send requests.
+static bool lsp_send(LSP *lsp) {
+	if (!lsp->initialized) {
+		// don't send anything before the server is initialized.
+		return false;
+	}
+	
+	LSPRequest *requests = NULL;
+	SDL_LockMutex(lsp->requests_mutex);
+	size_t n_requests = arr_len(lsp->requests);
+	requests = calloc(n_requests, sizeof *requests);
+	memcpy(requests, lsp->requests, n_requests * sizeof *requests);
+	SDL_UnlockMutex(lsp->requests_mutex);
+
+	bool quit = false;
+	for (size_t i = 0; i < n_requests; ++i) {
+		LSPRequest *r = &requests[i];
+		if (!quit) {
+			// this could slow down lsp_free if there's a gigantic request.
+			// whatever.
+			write_request(lsp, r);
+		}
+		free_request(r);
+		
+		if (SDL_SemTryWait(lsp->quit_sem) == 0) {
+			quit = true;
+			// important that we don't break here so all the requests get freed.
+		}
+	}
+
+	free(requests);
+	return quit;
+}
+
+
 // Do any necessary communication with the LSP.
 // This writes requests and reads (and parses) responses.
 static int lsp_communication_thread(void *data) {
 	LSP *lsp = data;
 	while (1) {
-		LSPRequest *requests = NULL;
-		SDL_LockMutex(lsp->requests_mutex);
-		while (arr_len(lsp->requests)) {
-			arr_add(requests, lsp->requests[0]);
-			arr_remove(lsp->requests, 0);
-		}
-		SDL_UnlockMutex(lsp->requests_mutex);
-		
-		bool quit = false;
-		arr_foreach_ptr(requests, LSPRequest, r) {
-			if (!quit) {
-				// this could slow down lsp_free if there's a gigantic request.
-				// whatever.
-				write_request(lsp, r);
-			}
-			free_request(r);
-			
-			if (SDL_SemTryWait(lsp->quit_sem) == 0) {
-				quit = true;
-				// important that we don't break here so all the requests get freed.
-			}
-		}
-		
-		arr_free(requests);
+		bool quit = lsp_send(lsp);
+		if (quit) break;
 		
 		lsp_receive(lsp, (size_t)10<<20);
-		if (quit || SDL_SemWaitTimeout(lsp->quit_sem, 5) == 0)
+		if (SDL_SemWaitTimeout(lsp->quit_sem, 5) == 0)
 			break;	
 	}
 	return 0;
@@ -241,13 +300,17 @@ static int lsp_communication_thread(void *data) {
 bool lsp_create(LSP *lsp, const char *analyzer_command) {
 	ProcessSettings settings = {
 		.stdin_blocking = true,
-		.stdout_blocking = false
+		.stdout_blocking = false,
+		.stderr_blocking = false,
+		.separate_stderr = true,
 	};
 	process_run_ex(&lsp->process, analyzer_command, &settings);
 	LSPRequest initialize = {
 		.type = LSP_INITIALIZE
 	};
-	lsp_send_request(lsp, &initialize);
+	// immediately send the request rather than queueing it.
+	// this is a small request, so it shouldn't be a problem.
+	write_request(lsp, &initialize);
 	
 	lsp->quit_sem = SDL_CreateSemaphore(0);	
 	lsp->responses_mutex = SDL_CreateMutex();

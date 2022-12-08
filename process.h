@@ -8,6 +8,8 @@ typedef struct Process Process;
 typedef struct {
 	bool stdin_blocking;
 	bool stdout_blocking;
+	bool separate_stderr;
+	bool stderr_blocking; // not applicable if separate_stderr is false.
 } ProcessSettings;
 
 // get process ID of this process
@@ -31,6 +33,10 @@ long long process_write(Process *process, const char *data, size_t size);
 // 0 on end of file
 // or a positive number indicating the number of bytes read to data (at most size)
 long long process_read(Process *process, char *data, size_t size);
+// like process_read, but reads stderr.
+// this function ALWAYS RETURNS -2 if separate_stderr is not specified in the ProcessSettings.
+//   if separate_stderr is false, then both stdout and stderr will be sent via process_read.
+long long process_read_stderr(Process *process, char *data, size_t size);
 // Checks if the process has exited. Returns:
 // -1 if the process returned a non-zero exit code, or got a signal.
 // 1  if the process exited successfully

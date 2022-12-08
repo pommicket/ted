@@ -292,13 +292,15 @@ int main(int argc, char **argv) {
 			printf("lsp_create: %s\n",lsp.error);
 			exit(1);
 		}
+//		LSPRequest test_req = {LSP_COMPLETION};
+//		lsp_send_request(&lsp, &test_req);
 		while (1) {
 			JSON response = {0};
 			if (lsp_next_response(&lsp, &response)) {
 				json_debug_print(&response);
-				break;
+				printf("\n");
 			}
-			usleep(100000);
+			usleep(10000);
 		}
 		lsp_free(&lsp);
 		exit(0);
