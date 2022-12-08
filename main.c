@@ -993,8 +993,6 @@ int main(int argc, char **argv) {
 		buffer_check_valid(&ted->line_buffer);
 	#endif
 	
-		glFinish();
-		
 		double frame_end_noswap = time_get_seconds();
 	#if PROFILE
 		{
