@@ -56,7 +56,7 @@ static double time_get_seconds(void) {
 }
 
 // sleep for a certain number of nanoseconds
-static void sleep_ns(u64 ns) {
+static void time_sleep_ns(u64 ns) {
 #if __unix__
 	struct timespec rem = {0}, req = {
 		(time_t)(ns / 1000000000),
@@ -73,15 +73,15 @@ static void sleep_ns(u64 ns) {
 
 // sleep for microseconds
 static void time_sleep_us(u64 us) {
-	sleep_ns(us * 1000);
+	time_sleep_ns(us * 1000);
 }
 
 // sleep for milliseconds
 static void time_sleep_ms(u64 ms) {
-	sleep_ns(ms * 1000000);
+	time_sleep_ns(ms * 1000000);
 }
 
 // sleep for seconds
 static void time_sleep_s(u64 s) {
-	sleep_ns(s * 1000000000);
+	time_sleep_ns(s * 1000000000);
 }
