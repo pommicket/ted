@@ -1,6 +1,7 @@
 // JSON parser for LSP
 // provides FAST(ish) parsing but SLOW lookup
 // this is especially fast for small objects
+// this actually supports "extended json", where objects can have arbitrary values as keys.
 
 typedef struct {
 	u32 pos;
@@ -325,6 +326,8 @@ static bool json_parse_value(JSON *json, u32 *p_index, JSONValue *val) {
 			return false;
 		break;
 	case ANY_DIGIT:
+	case '-':
+	case '+':
 		val->type = JSON_NUMBER;
 		if (!json_parse_number(json, &index, &val->val.number))
 			return false;
@@ -355,8 +358,17 @@ static bool json_parse_value(JSON *json, u32 *p_index, JSONValue *val) {
 	return true;
 }
 
+void json_free(JSON *json) {
+	arr_free(json->values);
+	// important we don't zero json here because we want to preserve json->error.
+	if (json->is_text_copied) {
+		free((void*)json->text);
+	}
+	json->text = NULL;
+}
+
 // NOTE: text must live as long as json!!!
-static bool json_parse(JSON *json, const char *text) {
+bool json_parse(JSON *json, const char *text) {
 	memset(json, 0, sizeof *json);
 	json->text = text;
 	arr_reserve(json->values, strlen(text) / 8);
@@ -364,12 +376,12 @@ static bool json_parse(JSON *json, const char *text) {
 	JSONValue val = {0};
 	u32 index = 0;
 	if (!json_parse_value(json, &index, &val)) {
-		arr_free(json->values);
+		json_free(json);
 		return false;
 	}
 	SKIP_WHITESPACE;
 	if (text[index]) {
-		arr_free(json->values);
+		json_free(json);
 		strbuf_printf(json->error, "extra text after end of root object");
 		return false;
 	}
@@ -378,7 +390,7 @@ static bool json_parse(JSON *json, const char *text) {
 }
 
 // like json_parse, but a copy of text is made, so you can free/overwrite it immediately.
-static bool json_parse_copy(JSON *json, const char *text) {
+bool json_parse_copy(JSON *json, const char *text) {
 	bool success = json_parse(json, str_dup(text));
 	if (success) {
 		json->is_text_copied = true;
@@ -387,14 +399,6 @@ static bool json_parse_copy(JSON *json, const char *text) {
 		free((void*)json->text);
 		json->text = NULL;
 		return false;
-	}
-}
-
-static void json_free(JSON *json) {
-	arr_free(json->values);
-	memset(json, 0, sizeof *json);
-	if (json->is_text_copied) {
-		free((void*)json->text);
 	}
 }
 
@@ -409,7 +413,7 @@ static bool json_streq(const JSON *json, const JSONString *string, const char *n
 }
 
 // returns undefined if the property `name` does not exist.
-static JSONValue json_object_get(const JSON *json, const JSONObject *object, const char *name) {
+JSONValue json_object_get(const JSON *json, const JSONObject *object, const char *name) {
 	const JSONValue *items = &json->values[object->items];
 	for (u32 i = 0; i < object->len; ++i) {
 		const JSONValue *this_name = items++;
@@ -422,7 +426,7 @@ static JSONValue json_object_get(const JSON *json, const JSONObject *object, con
 
 // e.g. if json is  { "a" : { "b": 3 }}, then json_get(json, "a.b") = 3.
 // returns undefined if there is no such property
-static JSONValue json_get(const JSON *json, const char *path) {
+JSONValue json_get(const JSON *json, const char *path) {
 	char segment[128];
 	const char *p = path;
 	if (!json->values) {

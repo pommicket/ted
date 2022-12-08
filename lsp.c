@@ -36,9 +36,31 @@ typedef struct {
 	SDL_Thread *communication_thread;
 	SDL_sem *quit_sem;
 	char *received_data; // dynamic array
+	SDL_mutex *error_mutex;
 	char error[256];
 } LSP;
 
+// returns true if there's an error.
+// returns false and sets error to "" if there's no error.
+// if clear = true, the error will be cleared.
+// you may set error = NULL, error_size = 0, clear = true to just clear the error
+bool lsp_get_error(LSP *lsp, char *error, size_t error_size, bool clear) {
+	bool has_err = false;
+	SDL_LockMutex(lsp->error_mutex);
+	has_err = *lsp->error != '\0';
+	if (error_size)
+		str_cpy(error, error_size, lsp->error);
+	if (clear)
+		*lsp->error = '\0';
+	SDL_UnlockMutex(lsp->error_mutex);
+	return has_err;
+}
+
+#define lsp_set_error(lsp, ...) do {\
+		SDL_LockMutex(lsp->error_mutex);\
+		strbuf_printf(lsp->error, __VA_ARGS__);\
+		SDL_UnlockMutex(lsp->error_mutex);\
+	} while (0)
 
 static void write_request_content(LSP *lsp, const char *content) {
 	char header[128];
@@ -136,7 +158,7 @@ static u64 write_request(LSP *lsp, const LSPRequest *request) {
 		char content[1024];
 		// no params needed
 		strbuf_printf(content,
-			"{\"jsonrpc\":\"2.0\",\"id\":%llu,\"method\":\"initialize\",\"params\":{"
+			"{\"jsonrpc\":\"2.0\",\"id\":%llu,\"method\":\"textDocument/completion\",\"params\":{"
 		"}}", id);
 		write_request_content(lsp, content);
 	} break;
@@ -177,6 +199,50 @@ void lsp_send_request(LSP *lsp, const LSPRequest *request) {
 	SDL_UnlockMutex(lsp->requests_mutex);
 }
 
+static void process_response(LSP *lsp, const JSON *json) {
+		
+	#if 1
+	printf("\x1b[3m");
+	json_debug_print(json);
+	printf("\x1b[0m\n");
+	#endif
+	
+	
+	JSONValue result = json_get(json, "result");
+	JSONValue id = json_get(json, "id");
+	
+	if (result.type == JSON_UNDEFINED || id.type != JSON_NUMBER) {
+		// uh oh
+		JSONValue error = json_get(json, "error.message");
+		if (error.type == JSON_STRING) {
+			char err[256] = {0};
+			json_string_get(json, &error.val.string, err, sizeof err);;
+			lsp_set_error(lsp, "%s", err);
+		} else {
+			lsp_set_error(lsp, "Server error (no message)");
+		}
+	} else if (id.val.number == 0) {
+		// it's the response to our initialize request!
+		// let's send back an "initialized" request (notification) because apparently
+		// that's something we need to do.
+		LSPRequest initialized = {
+			.type = LSP_INITIALIZED,
+			.data = {0},
+		};
+		u64 initialized_id = write_request(lsp, &initialized);
+		// this should be the second request.
+		(void)initialized_id;
+		assert(initialized_id == 1);
+		// we can now send requests which have nothing to do with initialization
+		lsp->initialized = true;
+	} else {
+		SDL_LockMutex(lsp->responses_mutex);
+		arr_add(lsp->responses, *json);
+		SDL_UnlockMutex(lsp->responses_mutex);
+	}
+	
+}
+
 // receive responses from LSP, up to max_size bytes.
 static void lsp_receive(LSP *lsp, size_t max_size) {
 
@@ -214,41 +280,15 @@ static void lsp_receive(LSP *lsp, size_t max_size) {
 	while (has_response(lsp->received_data, received_so_far, &response_offset, &response_size)) {
 		char *copy = strn_dup(lsp->received_data + response_offset, response_size);
 		JSON json = {0};
-		json_parse(&json, copy);
-		assert(json.text == copy);
-		json.is_text_copied = true;
-		
-		JSONValue result = json_get(&json, "result");
-		JSONValue id = json_get(&json, "id");
-		
-		if (result.type == JSON_UNDEFINED || id.type != JSON_NUMBER) {
-			// uh oh
-			JSONValue error = json_get(&json, "error.message");
-			if (error.type == JSON_STRING) {
-				json_string_get(&json, &error.val.string, lsp->error, sizeof lsp->error);
-			} else {
-				strbuf_printf(lsp->error, "Server error (no message)");
-			}
-		} else if (id.val.number == 0) {
-			// it's the response to our initialize request!
-			// let's send back an "initialized" request (notification) because apparently
-			// that's something we need to do.
-			LSPRequest initialized = {
-				.type = LSP_INITIALIZED,
-				.data = {0},
-			};
-			u64 initialized_id = write_request(lsp, &initialized);
-			// this should be the second request.
-			(void)initialized_id;
-			assert(initialized_id == 1);
-			// we can now send requests which have nothing to do with initialization
-			lsp->initialized = true;
+		if (json_parse(&json, copy)) {
+			assert(json.text == copy);
+			json.is_text_copied = true;
+			process_response(lsp, &json);
 		} else {
-			SDL_LockMutex(lsp->responses_mutex);
-			arr_add(lsp->responses, json);
-			SDL_UnlockMutex(lsp->responses_mutex);
+			
+			lsp_set_error(lsp, "couldn't parse response JSON: %s", json.error);
+			json_free(&json);
 		}
-		
 		size_t leftover_data_len = arr_len(lsp->received_data) - (response_offset + response_size);
 		memmove(lsp->received_data, lsp->received_data + response_offset + response_size,
 			leftover_data_len);
@@ -289,6 +329,7 @@ static bool lsp_send(LSP *lsp) {
 	size_t n_requests = arr_len(lsp->requests);
 	requests = calloc(n_requests, sizeof *requests);
 	memcpy(requests, lsp->requests, n_requests * sizeof *requests);
+	arr_clear(lsp->requests);
 	SDL_UnlockMutex(lsp->requests_mutex);
 
 	bool quit = false;

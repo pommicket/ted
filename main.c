@@ -292,14 +292,19 @@ int main(int argc, char **argv) {
 			printf("lsp_create: %s\n",lsp.error);
 			exit(1);
 		}
-//		LSPRequest test_req = {LSP_COMPLETION};
-//		lsp_send_request(&lsp, &test_req);
+		usleep(500000);//if we don't do this we get "waiting for cargo metadata or cargo check"
+		LSPRequest test_req = {.type = LSP_COMPLETION};
+		lsp_send_request(&lsp, &test_req);
 		while (1) {
 			JSON response = {0};
 			if (lsp_next_response(&lsp, &response)) {
 				json_debug_print(&response);
 				printf("\n");
 				break;
+			}
+			char error[256];
+			if (lsp_get_error(&lsp, error, sizeof error, true)) {
+				printf("lsp error: %s\n", error);
 			}
 			usleep(10000);
 		}
