@@ -6,6 +6,8 @@ typedef enum {
 	LSP_INITIALIZED,
 	LSP_OPEN,
 	LSP_COMPLETION,
+	LSP_SHUTDOWN,
+	LSP_EXIT
 } LSPRequestType;
 
 typedef struct {
@@ -81,9 +83,12 @@ static const char *lsp_language_id(Language lang) {
 	return "text";
 }
 
-static void write_request(LSP *lsp, const LSPRequest *request) {
+// technically there are "requests" and "notifications"
+// notifications are different in that they don't have IDs and don't return responses.
+// the distinction isn't super important to us though.
+// returns the ID of the request
+static u64 write_request(LSP *lsp, const LSPRequest *request) {
 	unsigned long long id = lsp->request_id++;
-	
 	
 	switch (request->type) {
 	case LSP_NONE:
@@ -99,11 +104,7 @@ static void write_request(LSP *lsp, const LSPRequest *request) {
 		write_request_content(lsp, content);
 	} break;
 	case LSP_INITIALIZED: {
-		char content[1024];
-		strbuf_printf(content,
-			"{\"jsonrpc\":\"2.0\",\"id\":%llu,\"method\":\"initialized\",\"params\":{"
-		"}}", id);
-		write_request_content(lsp, content);
+		write_request_content(lsp, "{\"jsonrpc\":\"2.0\",\"method\":\"initialized\"}");
 	} break;
 	case LSP_OPEN: {
 		const LSPRequestOpen *open = &request->data.open;
@@ -139,7 +140,18 @@ static void write_request(LSP *lsp, const LSPRequest *request) {
 		"}}", id);
 		write_request_content(lsp, content);
 	} break;
+	case LSP_SHUTDOWN: {
+		char content[1024];
+		strbuf_printf(content,
+			"{\"jsonrpc\":\"2.0\",\"id\":%llu,\"method\":\"shutdown\"}", id);
+		write_request_content(lsp, content);
+	} break;
+	case LSP_EXIT: {
+		write_request_content(lsp, "{\"jsonrpc\":\"2.0\",\"method\":\"exit\"}");
+	} break;
 	}
+	
+	return (u64)id;
 }
 
 // figure out if data begins with a complete LSP response.
@@ -207,7 +219,9 @@ static void lsp_receive(LSP *lsp, size_t max_size) {
 		json.is_text_copied = true;
 		
 		JSONValue result = json_get(&json, "result");
-		if (result.type == JSON_UNDEFINED) {
+		JSONValue id = json_get(&json, "id");
+		
+		if (result.type == JSON_UNDEFINED || id.type != JSON_NUMBER) {
 			// uh oh
 			JSONValue error = json_get(&json, "error.message");
 			if (error.type == JSON_STRING) {
@@ -215,6 +229,20 @@ static void lsp_receive(LSP *lsp, size_t max_size) {
 			} else {
 				strbuf_printf(lsp->error, "Server error (no message)");
 			}
+		} else if (id.val.number == 0) {
+			// it's the response to our initialize request!
+			// let's send back an "initialized" request (notification) because apparently
+			// that's something we need to do.
+			LSPRequest initialized = {
+				.type = LSP_INITIALIZED,
+				.data = {0},
+			};
+			u64 initialized_id = write_request(lsp, &initialized);
+			// this should be the second request.
+			(void)initialized_id;
+			assert(initialized_id == 1);
+			// we can now send requests which have nothing to do with initialization
+			lsp->initialized = true;
 		} else {
 			SDL_LockMutex(lsp->responses_mutex);
 			arr_add(lsp->responses, json);
@@ -238,6 +266,8 @@ static void free_request(LSPRequest *r) {
 	case LSP_INITIALIZE:
 	case LSP_INITIALIZED:
 	case LSP_COMPLETION:
+	case LSP_SHUTDOWN:
+	case LSP_EXIT:
 		break;
 	case LSP_OPEN: {
 		LSPRequestOpen *open = &r->data.open;
@@ -293,6 +323,38 @@ static int lsp_communication_thread(void *data) {
 		lsp_receive(lsp, (size_t)10<<20);
 		if (SDL_SemWaitTimeout(lsp->quit_sem, 5) == 0)
 			break;	
+	}
+	
+	if (lsp->initialized) {
+		LSPRequest shutdown = {
+			.type = LSP_SHUTDOWN,
+			.data = {0}
+		};
+		LSPRequest exit = {
+			.type = LSP_EXIT,
+			.data = {0}
+		};
+		write_request(lsp, &shutdown);
+		// i give you ONE MILLISECOND to send your fucking shutdown response
+		time_sleep_ms(1);
+		write_request(lsp, &exit);
+		// i give you ONE MILLISECOND to terminate
+		// I WILL KILL YOU IF IT TAKES ANY LONGER
+		time_sleep_ms(1);
+		
+		#if 1
+		char buf[1024]={0};
+		long long n = process_read(&lsp->process, buf, sizeof buf);
+		if (n>0) {
+			buf[n]=0;
+			printf("%s\n",buf);
+		}
+		n = process_read_stderr(&lsp->process, buf, sizeof buf);
+		if (n>0) {
+			buf[n]=0;
+			printf("\x1b[1m%s\x1b[0m\n",buf);
+		}
+		#endif
 	}
 	return 0;
 }

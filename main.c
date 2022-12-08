@@ -299,6 +299,7 @@ int main(int argc, char **argv) {
 			if (lsp_next_response(&lsp, &response)) {
 				json_debug_print(&response);
 				printf("\n");
+				break;
 			}
 			usleep(10000);
 		}
