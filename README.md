@@ -166,6 +166,7 @@ Then, open windows\_installer\\ted\\ted.sln, and build.
 <tr><td>1.2r2</td> <td>Shift+PgUp/PgDown, many rust-related fixes.</td> <td>2022 Sep 30</td></tr>
 <tr><td>1.3</td> <td>Custom background shader, some bugfixes.</td> <td>2022 Nov 3</td></tr>
 <tr><td>1.3r1</td> <td>Fixed rust, python syntax highlighting.</td> <td>2022 Nov 4</td></tr>
+<tr><td>1.3r2</td> <td>Fixed high CPU usage on some devices.</td> <td>2022 Dec 7</td></tr>
 </table>
 
 ## License
