@@ -19,6 +19,7 @@ fn main() -> Result<()> {
 		line.pop();
 		lines.push(line);
 	}
+let x = lines.
 	for line in lines {
 		println!("{}", line);
 	}

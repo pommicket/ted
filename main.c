@@ -45,7 +45,9 @@ no_warn_end
 #endif
 
 #include "unicode.h"
+#include "arr.c"
 #include "util.c"
+
 #if _WIN32
 #include "filesystem-win.c"
 #elif __unix__
@@ -53,7 +55,6 @@ no_warn_end
 #else
 #error "Unrecognized operating system."
 #endif
-#include "arr.c"
 
 #include "math.c"
 #if _WIN32
@@ -294,13 +295,37 @@ int main(int argc, char **argv) {
 		}
 		usleep(500000);//if we don't do this we get "waiting for cargo metadata or cargo check"
 		LSPRequest test_req = {.type = LSP_COMPLETION};
+		test_req.data.completion = (LSPRequestCompletion){
+			.position = {
+				.path = str_dup("/p/ted/test.rs"),
+				.line = 21,
+				.character = 14,
+			}
+		};
 		lsp_send_request(&lsp, &test_req);
 		while (1) {
-			JSON response = {0};
-			if (lsp_next_response(&lsp, &response)) {
-				json_debug_print(&response);
-				printf("\n");
-				break;
+			LSPMessage message = {0};
+			if (lsp_next_message(&lsp, &message)) {
+				if (message.type == LSP_RESPONSE) {
+					json_debug_print(&message.u.response);
+					printf("\n");
+				} else if (message.type == LSP_REQUEST) {
+					const LSPRequest *request = &message.u.request;
+					switch (request->type) {
+					case LSP_SHOW_MESSAGE: {
+						const LSPRequestMessage *m = &request->data.message;
+						// @TODO  actually show
+						printf("Show (%d): %s\n", m->type, m->message);
+					} break;
+					case LSP_LOG_MESSAGE: {
+						const LSPRequestMessage *m = &request->data.message;
+						// @TODO  actually log
+						printf("Log (%d): %s\n", m->type, m->message);
+					} break;
+					default: break;
+					}
+				}
+				lsp_message_free(&message);
 			}
 			char error[256];
 			if (lsp_get_error(&lsp, error, sizeof error, true)) {

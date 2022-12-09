@@ -116,6 +116,11 @@ typedef unsigned long long ullong;
 #else
 #define ATTRIBUTE_PRINTF(fmt_idx, arg_idx)
 #endif
+#if _MSC_VER > 1400
+#define PRINTF_FORMAT_STRING _Printf_format_string_
+#else
+#define PRINTF_FORMAT_STRING
+#endif
 
 #define Status bool WarnUnusedResult // false = error, true = success
 

@@ -25,7 +25,7 @@ typedef struct {
 	u32 elements;
 } JSONArray;
 
-enum {
+typedef enum {
 	// note: json doesn't actually include undefined.
 	// this is only for returning things from json_get etc.
 	JSON_UNDEFINED,
@@ -36,10 +36,10 @@ enum {
 	JSON_STRING,
 	JSON_OBJECT,
 	JSON_ARRAY
-};
+} JSONValueType;
 
 struct JSONValue {
-	u8 type;
+	JSONValueType type;
 	union {
 		double number;
 		JSONString string;
@@ -59,6 +59,26 @@ typedef struct {
 
 #define SKIP_WHITESPACE while (json_is_space(text[index])) ++index;
 
+const char *json_type_to_str(JSONValueType type) {
+	switch (type) {
+	case JSON_UNDEFINED:
+		return "undefined";
+	case JSON_NULL:
+		return "null";
+	case JSON_STRING:
+		return "string";
+	case JSON_NUMBER:
+		return "number";
+	case JSON_FALSE:
+		return "false";
+	case JSON_TRUE:
+		return "true";
+	case JSON_ARRAY:
+		return "array";
+	case JSON_OBJECT:
+		return "object";
+	}
+}
 
 static bool json_parse_value(JSON *json, u32 *p_index, JSONValue *val);
 
@@ -446,10 +466,16 @@ JSONValue json_get(const JSON *json, const char *path) {
 	return curr_value;
 }
 
+// equivalent to json_get(json, path).type != JSON_UNDEFINED, but more readable
+bool json_has(const JSON *json, const char *path) {
+	JSONValue value = json_get(json, path);
+	return value.type != JSON_UNDEFINED;
+}
+
 // turn a json string into a null terminated string.
 // this won't be nice if the json string includes \u0000 but that's rare.
 // if buf_sz > string->len, the string will fit.
-static void json_string_get(const JSON *json, const JSONString *string, char *buf, size_t buf_sz) {
+void json_string_get(const JSON *json, const JSONString *string, char *buf, size_t buf_sz) {
 	const char *text = json->text;
 	if (buf_sz == 0) {
 		assert(0);
@@ -494,6 +520,15 @@ static void json_string_get(const JSON *json, const JSONString *string, char *bu
 	}
 	brk:
 	*buf = '\0';
+}
+
+// returns a malloc'd null-terminated string.
+static char *json_string_get_alloc(const JSON *json, const JSONString *string) {
+	u32 n = string->len + 1;
+	if (n == 0) --n; // extreme edge case
+	char *buf = calloc(1, n);
+	json_string_get(json, string, buf, n);
+	return buf;
 }
 
 
@@ -555,23 +590,67 @@ static void json_test_time_small(void) {
 }
 #endif
 
-static void json_debug_print(const JSON *json) {
+void json_debug_print(const JSON *json) {
 	printf("%u values (capacity %u, text length %zu)\n",
 		arr_len(json->values), arr_cap(json->values), strlen(json->text));
 	json_debug_print_value(json, &json->values[0]);
 }
 
 // e.g. converts "Hello\nworld" to "Hello\\nworld"
-// the return value is the # of bytes in the escaped string.
-static size_t json_escape_to(char *out, size_t out_sz, const char *in) {
-	(void)out;(void)out_sz;(void)in;
-	// @TODO
-	abort();
+// if out_sz is at least 2 * strlen(str) + 1, the string will fit.
+void json_escape_to(char *out, size_t out_sz, const char *in) {
+	char *end = out + out_sz;
+	assert(out_sz);
+	
+	--end; // leave room for null terminator
+	
+	for (; *in; ++in) {
+		if (out + 1 > end) {
+			break;
+		}
+		char esc = '\0';
+		switch (*in) {
+		case '\0': goto brk;
+		case '\n':
+			esc = 'n';
+			goto escape;
+		case '\\':
+			esc = '\\';
+			goto escape;
+		case '"':
+			esc = '"';
+			goto escape;
+		case '\t':
+			esc = 't';
+			goto escape;
+		case '\r':
+			esc = 'r';
+			goto escape;
+		case '\f':
+			esc = 'f';
+			goto escape;
+		case '\b':
+			esc = 'b';
+			goto escape;
+		escape:
+			if (out + 2 > end)
+				goto brk;
+			*out++ = '\\';
+			*out++ = esc;
+			break;
+		default:
+			*out = *in;
+			++out;
+			break;
+		}
+	}
+	brk:
+	*out = '\0';
 }
 
 // e.g. converts "Hello\nworld" to "Hello\\nworld"
 // the resulting string should be free'd.
-static char *json_escape(const char *str) {
+char *json_escape(const char *str) {
 	size_t out_sz = 2 * strlen(str) + 1;
 	char *out = calloc(1, out_sz);
 	json_escape_to(out, out_sz, str);

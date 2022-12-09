@@ -97,19 +97,6 @@ static char *str_dup(char const *src) {
 #define strbuf_catf(str, ...) assert(sizeof str != 4 && sizeof str != 8), \
 	str_catf(str, sizeof str, __VA_ARGS__)
 
-#if __unix__
-static char *a_sprintf(const char *fmt, ...) ATTRIBUTE_PRINTF(1, 2);
-static char *a_sprintf(const char *fmt, ...) {
-	va_list args;
-	va_start(args, fmt);
-	char *str = NULL;
-	vasprintf(&str, fmt, args);
-	return str;
-}
-#else
-#error "@TODO"
-#endif
-
 // on 16-bit systems, this is 16383. on 32/64-bit systems, this is 1073741823
 // it is unusual to have a string that long.
 #define STRLEN_SAFE_MAX (UINT_MAX >> 2)
@@ -372,3 +359,71 @@ static bool copy_file(char const *src, char const *dst) {
 	}
 	return success;
 }
+
+typedef struct {
+	// dynamic array, including a null byte.
+	char *str;
+} StrBuilder;
+
+void str_builder_create(StrBuilder *builder) {
+	memset(builder, 0, sizeof *builder);
+	arr_add(builder->str, 0);
+}
+
+StrBuilder str_builder_new(void) {
+	StrBuilder ret = {0};
+	str_builder_create(&ret);
+	return ret;
+}
+
+void str_builder_free(StrBuilder *builder) {
+	arr_free(builder->str);
+}
+
+void str_builder_clear(StrBuilder *builder) {
+	str_builder_free(builder);
+	str_builder_create(builder);
+}
+
+void str_builder_append(StrBuilder *builder, const char *s) {
+	assert(builder->str);
+	
+	size_t s_len = strlen(s);
+	size_t prev_size = arr_len(builder->str);
+	size_t prev_len = prev_size - 1; // null terminator
+	// note: this zeroes the newly created elements, so we have a new null terminator
+	arr_set_len(builder->str, prev_size + s_len);
+	// -1 for null terminator
+	memcpy(builder->str + prev_len, s, s_len);
+}
+
+void str_builder_appendf(StrBuilder *builder, PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRINTF(2, 3);
+void str_builder_appendf(StrBuilder *builder, const char *fmt, ...) {
+	// idk if you can always just pass NULL to vsnprintf
+	va_list args;
+	char fakebuf[2] = {0};
+	va_start(args, fmt);
+	int ret = vsnprintf(fakebuf, 1, fmt, args);
+	va_end(args);
+	
+	if (ret < 0) return; // bad format or something
+	u32 n = (u32)ret;
+	
+	size_t prev_size = arr_len(builder->str);
+	size_t prev_len = prev_size - 1; // null terminator
+	arr_set_len(builder->str, prev_size + n);
+	va_start(args, fmt);
+	vsnprintf(builder->str + prev_len, n + 1, fmt, args);
+	va_end(args);
+}
+
+// append n null bytes.
+void str_builder_append_null(StrBuilder *builder, size_t n) {
+	arr_set_len(builder->str, arr_len(builder->str) + n);
+}
+
+u32 str_builder_len(StrBuilder *builder) {
+	assert(builder->str);
+	return arr_len(builder->str) - 1;
+}
+
