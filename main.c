@@ -1,5 +1,7 @@
 /* 
 FUTURE FEATURES:
+- configurable max buffer size
+- better undo chaining (dechain on backspace?)
 - regenerate tags for completion too if there are no results
 - config variables
 - bind key to multiple commands
