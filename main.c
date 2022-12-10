@@ -289,26 +289,26 @@ int main(int argc, char **argv) {
 	// @TODO TEMPORARY
 	{
 		LSP lsp={0};
+		chdir("/p/test-lsp");
 		if (!lsp_create(&lsp, "rust-analyzer")) {
 			printf("lsp_create: %s\n",lsp.error);
 			exit(1);
 		}
-		usleep(500000);//if we don't do this we get "waiting for cargo metadata or cargo check"
+		usleep(1000000);//if we don't do this we get "waiting for cargo metadata or cargo check"
 		LSPRequest test_req = {.type = LSP_COMPLETION};
 		test_req.data.completion = (LSPRequestCompletion){
 			.position = {
-				.path = str_dup("/p/ted/test.rs"),
-				.line = 21,
-				.character = 14,
+				.path = str_dup("/p/test-lsp/src/main.rs"),
+				.line = 2,
+				.character = 2,
 			}
 		};
 		lsp_send_request(&lsp, &test_req);
 		while (1) {
 			LSPMessage message = {0};
-			if (lsp_next_message(&lsp, &message)) {
+			while (lsp_next_message(&lsp, &message)) {
 				if (message.type == LSP_RESPONSE) {
-					json_debug_print(&message.u.response);
-					printf("\n");
+					printf("response type %u\n",message.u.response.type);
 				} else if (message.type == LSP_REQUEST) {
 					const LSPRequest *request = &message.u.request;
 					switch (request->type) {

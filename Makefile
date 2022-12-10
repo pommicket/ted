@@ -2,7 +2,7 @@ ALL_CFLAGS=$(CFLAGS) -Wall -Wextra -Wshadow -Wconversion -Wpedantic -pedantic -s
 	-Wno-unused-function -Wno-fixed-enum-extension -Wimplicit-fallthrough -Wno-format-truncation -Wno-unknown-warning-option \
 	-Ipcre2
 LIBS=-lSDL2 -lGL -lm libpcre2-32.a
-DEBUG_CFLAGS=$(ALL_CFLAGS) -DDEBUG -O0 -g
+DEBUG_CFLAGS=$(ALL_CFLAGS) -Wno-unused-parameter -DDEBUG -O0 -g
 RELEASE_CFLAGS=$(ALL_CFLAGS) -O3
 PROFILE_CFLAGS=$(ALL_CFLAGS) -O3 -g -DPROFILE=1
 # if you change the directories below, ted won't work.

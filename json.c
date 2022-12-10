@@ -444,6 +444,13 @@ JSONValue json_object_get(const JSON *json, const JSONObject *object, const char
 	return (JSONValue){0};
 }
 
+JSONValue json_array_get(const JSON *json, const JSONArray *array, u64 i) {
+	if (i < array->len) {
+		return json->values[array->elements + i];
+	}
+	return (JSONValue){0};
+}
+
 // e.g. if json is  { "a" : { "b": 3 }}, then json_get(json, "a.b") = 3.
 // returns undefined if there is no such property
 JSONValue json_get(const JSON *json, const char *path) {
@@ -475,14 +482,14 @@ bool json_has(const JSON *json, const char *path) {
 // turn a json string into a null terminated string.
 // this won't be nice if the json string includes \u0000 but that's rare.
 // if buf_sz > string->len, the string will fit.
-void json_string_get(const JSON *json, const JSONString *string, char *buf, size_t buf_sz) {
+void json_string_get(const JSON *json, JSONString string, char *buf, size_t buf_sz) {
 	const char *text = json->text;
 	if (buf_sz == 0) {
 		assert(0);
 		return;
 	}
 	char *buf_end = buf + buf_sz - 1;
-	for (u32 i = string->pos, end = string->pos + string->len; i < end && buf < buf_end; ++i) {
+	for (u32 i = string.pos, end = string.pos + string.len; i < end && buf < buf_end; ++i) {
 		if (text[i] != '\\') {
 			*buf++ = text[i];
 		} else {
@@ -523,8 +530,8 @@ void json_string_get(const JSON *json, const JSONString *string, char *buf, size
 }
 
 // returns a malloc'd null-terminated string.
-static char *json_string_get_alloc(const JSON *json, const JSONString *string) {
-	u32 n = string->len + 1;
+static char *json_string_get_alloc(const JSON *json, JSONString string) {
+	u32 n = string.len + 1;
 	if (n == 0) --n; // extreme edge case
 	char *buf = calloc(1, n);
 	json_string_get(json, string, buf, n);
