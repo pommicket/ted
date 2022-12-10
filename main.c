@@ -1,4 +1,8 @@
 /* 
+@TODO:
+- rust-analyzer bug reports:
+    - bad json can give "Unexpected error: client exited without proper shutdown sequence"
+    - rust-analyzer should wait until cargo metadata/check is done before sending initialize response
 FUTURE FEATURES:
 - configurable max buffer size
 - better undo chaining (dechain on backspace?)
@@ -92,6 +96,7 @@ static void die(char const *fmt, ...) {
 #include "ted.h"
 #include "gl.c"
 #include "text.c"
+#include "lsp.h"
 
 #include "string32.c"
 #include "syntax.c"
@@ -288,10 +293,11 @@ int main(int argc, char **argv) {
 	PROFILE_TIME(init_start)
 	PROFILE_TIME(basic_init_start)
 	
+	
+	if (0) {
 	// @TODO TEMPORARY
-	{
 		LSP lsp={0};
-		chdir("/p/test-lsp");
+//		chdir("/p/test-lsp");
 		if (!lsp_create(&lsp, "rust-analyzer")) {
 			printf("lsp_create: %s\n",lsp.error);
 			exit(1);
@@ -407,6 +413,14 @@ int main(int argc, char **argv) {
 		die("Not enough memory available to run ted.");
 	}
 	ted->last_save_time = -1e50;
+	
+	
+	// @TODO TEMPORARY
+	ted->test_lsp = calloc(1, sizeof(LSP));
+	if (!lsp_create(ted->test_lsp, "rust-analyzer")) {
+		printf("lsp_create: %s\n",ted->test_lsp->error);
+		exit(1);
+	}
 	
 	// make sure signal handler has access to ted.
 	error_signal_handler_ted = ted;

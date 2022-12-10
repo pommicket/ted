@@ -66,6 +66,11 @@ Settings *ted_active_settings(Ted *ted) {
 	return settings;
 }
 
+LSP *ted_get_lsp(Ted *ted, Language lang) {
+	// @TODO
+	return ted->test_lsp;
+}
+
 u32 ted_color(Ted *ted, ColorSetting color) {
 	return ted_active_settings(ted)->colors[color];
 }

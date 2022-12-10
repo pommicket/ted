@@ -13,7 +13,7 @@ static bool unicode_is_start_of_code_point(u8 byte) {
 // *c will be filled with the next UTF-8 code point in `str`. `bytes` refers to the maximum
 // number of bytes that can be read from `str`.
 // Returns:
-// 0 - if a NULL character was encountered
+// 0 - if a null character was encountered
 // (size_t)-1 - on invalid UTF-8
 // (size_t)-2 - on incomplete code point (str should be longer)
 // other - the number of bytes read from `str`.

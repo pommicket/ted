@@ -353,6 +353,8 @@ typedef struct {
 } BuildError;
 
 typedef struct Ted {
+	struct LSP *test_lsp; // @TODO: something better
+	
 	SDL_Window *window;
 	Font *font_bold;
 	Font *font;
@@ -471,6 +473,7 @@ void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer);
 // the settings of the active buffer, or the default settings if there is no active buffer
 Settings *ted_active_settings(Ted *ted);
 void ted_load_configs(Ted *ted, bool reloading);
+struct LSP *ted_get_lsp(Ted *ted, Language lang);
 static TextBuffer *find_search_buffer(Ted *ted);
 // first, we read all config files, then we parse them.
 // this is because we want less specific settings (e.g. settings applied

@@ -1,174 +1,3 @@
-// @TODO:
-// - document this file. maybe make lsp.h
-// - maximum queue size for requests/responses just in case?
-// - delete old LSPRequestTrackedInfos
-//    (if the server never sends a response)
-// - TESTING: make rust-analyzer-slow (waits 10s before sending response)
-
-typedef enum {
-	LSP_REQUEST,
-	LSP_RESPONSE
-} LSPMessageType;
-
-typedef enum {
-	LSP_NONE,
-	
-	// client-to-server
-	LSP_INITIALIZE,
-	LSP_INITIALIZED,
-	LSP_OPEN,
-	LSP_COMPLETION,
-	LSP_SHUTDOWN,
-	LSP_EXIT,
-	
-	// server-to-client
-	LSP_SHOW_MESSAGE,
-	LSP_LOG_MESSAGE
-} LSPRequestType;
-
-typedef struct {
-	// buffer language
-	Language language;
-	// freed by lsp_request_free
-	char *filename;
-	// freed by lsp_request_free
-	char *file_contents;
-} LSPRequestOpen;
-
-typedef enum {
-	ERROR = 1,
-	WARNING = 2,
-	INFO = 3,
-	LOG = 4
-} LSPWindowMessageType;
-
-typedef struct {
-	LSPWindowMessageType type;
-	// freed by lsp_request_free
-	char *message;
-} LSPRequestMessage;
-
-typedef struct {
-	// freed by lsp_request_free
-	char *path;
-	u32 line;
-	// the **UTF-16** "character" offset within the line
-	u32 character;
-} LSPDocumentPosition;
-
-typedef struct {
-	LSPDocumentPosition position;
-} LSPRequestCompletion;
-
-typedef struct {
-	LSPRequestType type;
-	union {
-		LSPRequestOpen open;
-		LSPRequestCompletion completion;
-		// for LSP_SHOW_MESSAGE and LSP_LOG_MESSAGE
-		LSPRequestMessage message;
-	} data;
-} LSPRequest;
-
-// info we want to keep track of about a request,
-// so we can deal with the response appropriately.
-typedef struct {
-	u64 id;
-	LSPRequestType type;
-} LSPRequestTrackedInfo;
-
-typedef struct {
-	u32 offset;
-} LSPString;
-
-typedef struct {
-	u32 line;
-	u32 character;
-} LSPPosition;
-
-typedef struct {
-	LSPPosition start;
-	LSPPosition end;
-} LSPRange;
-
-// see InsertTextFormat in the LSP spec.
-typedef enum {
-	// plain text
-	LSP_TEXT_EDIT_PLAIN = 1,
-	// snippet   e.g. "some_method($1, $2)$0"
-	LSP_TEXT_EDIT_SNIPPET = 2
-} LSPTextEditType;
-
-typedef struct {
-	LSPTextEditType type;
-
-	// if set to true, `range` should be ignored
-	//  -- this is a completion which uses insertText.
-	// how to handle this:
-	// "VS Code when code complete is requested in this example
-	// `con<cursor position>` and a completion item with an `insertText` of
-	// `console` is provided it will only insert `sole`"
-	bool at_cursor;
-	
-	LSPRange range;
-	LSPString new_text;
-} LSPTextEdit;
-
-typedef struct {
-	LSPString label;
-	LSPTextEdit text_edit;
-	// note: the items are sorted here in this file,
-	// so you probably don't need to access this.
-	LSPString sort_text;
-} LSPCompletionItem;
-
-typedef struct {
-	// dynamic array
-	LSPCompletionItem *items;
-} LSPResponseCompletion;
-
-typedef LSPRequestType LSPResponseType;
-typedef struct {
-	LSPResponseType type;
-	// LSP responses tend to have a lot of strings.
-	// to avoid doing a ton of allocations+frees,
-	// they're all stored here.
-	char *string_data;
-	union {
-		LSPResponseCompletion completion;
-	} data;
-} LSPResponse;
-
-typedef struct {
-	LSPMessageType type;
-	union {
-		LSPRequest request;
-		LSPResponse response;
-	} u;
-} LSPMessage;
-
-typedef struct {
-	Process process;
-	u64 request_id;
-	LSPMessage *messages;
-	SDL_mutex *messages_mutex;
-	LSPRequest *requests_client2server;
-	LSPRequest *requests_server2client;
-	// only applicable for client-to-server requests
-	LSPRequestTrackedInfo *requests_tracked_info;
-	SDL_mutex *requests_mutex;
-	bool initialized; // has the response to the initialize request been sent?
-	SDL_Thread *communication_thread;
-	SDL_sem *quit_sem;
-	char *received_data; // dynamic array
-	SDL_mutex *error_mutex;
-	char error[256];
-} LSP;
-
-// returns true if there's an error.
-// returns false and sets error to "" if there's no error.
-// if clear = true, the error will be cleared.
-// you may set error = NULL, error_size = 0, clear = true to just clear the error
 bool lsp_get_error(LSP *lsp, char *error, size_t error_size, bool clear) {
 	bool has_err = false;
 	SDL_LockMutex(lsp->error_mutex);
@@ -227,8 +56,6 @@ static void lsp_position_free(LSPDocumentPosition *position) {
 static void lsp_request_free(LSPRequest *r) {
 	switch (r->type) {
 	case LSP_NONE:
-		assert(0);
-		break;
 	case LSP_INITIALIZE:
 	case LSP_INITIALIZED:
 	case LSP_SHUTDOWN:
@@ -240,7 +67,7 @@ static void lsp_request_free(LSPRequest *r) {
 		} break;
 	case LSP_OPEN: {
 		LSPRequestOpen *open = &r->data.open;
-		free(open->filename);
+		free(open->path);
 		free(open->file_contents);
 		} break;
 	case LSP_SHOW_MESSAGE:
@@ -303,8 +130,9 @@ static WarnUnusedResult bool lsp_expect_number(LSP *lsp, JSONValue value, const 
 // technically there are "requests" and "notifications"
 // notifications are different in that they don't have IDs and don't return responses.
 // this function handles both.
+// NOTE: do not call lsp_request_free on request. freeing the request will be handled.
 // returns the ID of the request
-static void write_request(LSP *lsp, const LSPRequest *request) {
+static void write_request(LSP *lsp, LSPRequest *request) {
 	
 	StrBuilder builder = str_builder_new();
 	
@@ -317,15 +145,9 @@ static void write_request(LSP *lsp, const LSPRequest *request) {
 	bool is_notification = request->type == LSP_INITIALIZED
 		|| request->type == LSP_EXIT;
 	if (!is_notification) {
-		unsigned long long id = lsp->request_id++;
-		str_builder_appendf(&builder, "\"id\":%llu,", id);
-		LSPRequestTrackedInfo info = {
-			.id = id,
-			.type = request->type
-		};
-		SDL_LockMutex(lsp->requests_mutex);
-		arr_add(lsp->requests_tracked_info, info);
-		SDL_UnlockMutex(lsp->requests_mutex);
+		u32 id = lsp->request_id++;
+		request->id = id;
+		str_builder_appendf(&builder, "\"id\":%lu,", (unsigned long)id);
 	}
 	
 	switch (request->type) {
@@ -339,7 +161,9 @@ static void write_request(LSP *lsp, const LSPRequest *request) {
 		str_builder_appendf(&builder,
 			"\"method\":\"initialize\",\"params\":{"
 				"\"processId\":%d,"
-				"\"capabilities\":{}"
+				"\"capabilities\":{},"
+				"\"rootUri\":null,"
+				"\"workspaceFolders\":null"
 		"}", process_get_id());
 	} break;
 	case LSP_INITIALIZED:
@@ -347,21 +171,22 @@ static void write_request(LSP *lsp, const LSPRequest *request) {
 		break;
 	case LSP_OPEN: {
 		const LSPRequestOpen *open = &request->data.open;
-		char *escaped_filename = json_escape(open->filename);
+		printf("text=%p\n",open->file_contents);
+		char *escaped_path = json_escape(open->path);
 		char *escaped_text = json_escape(open->file_contents);
-		
+		// @TODO: escape directly into builder
 		str_builder_appendf(&builder,
-			"\"method\":\"textDocument/open\",\"params\":{"
-				"textDocument:{"
-					"uri:\"file://%s\","
-					"languageId:\"%s\","
-					"version:1,"
-					"text:\"%s\"}}",
-			escaped_filename,
+			"\"method\":\"textDocument/didOpen\",\"params\":{"
+				"\"textDocument\":{"
+					"\"uri\":\"file://%s\","
+					"\"languageId\":\"%s\","
+					"\"version\":1,"
+					"\"text\":\"%s\"}}",
+			escaped_path,
 			lsp_language_id(open->language),
 			escaped_text);
 		free(escaped_text);
-		free(escaped_filename);
+		free(escaped_path);
 	} break;
 	case LSP_COMPLETION: {
 		const LSPRequestCompletion *completion = &request->data.completion;
@@ -409,6 +234,14 @@ static void write_request(LSP *lsp, const LSPRequest *request) {
 	process_write(&lsp->process, content, strlen(content));
 
 	str_builder_free(&builder);
+	
+	if (is_notification) {
+		lsp_request_free(request);
+	} else {
+		SDL_LockMutex(lsp->requests_mutex);
+		arr_add(lsp->requests_sent, *request);
+		SDL_UnlockMutex(lsp->requests_mutex);
+	}
 }
 
 // figure out if data begins with a complete LSP response.
@@ -647,25 +480,41 @@ static void process_message(LSP *lsp, JSON *json) {
 	json_debug_print(json);
 	printf("\x1b[0m\n");
 	#endif
-		
+	JSONValue id_value = json_get(json, "id");
+	
+	// get the request associated with this (if any)
+	LSPRequest response_to = {0};
+	if (id_value.type == JSON_NUMBER) {
+		u64 id = (u64)id_value.val.number;
+		arr_foreach_ptr(lsp->requests_sent, LSPRequest, req) {
+			if (req->id == id) {
+				response_to = *req;
+				arr_remove(lsp->requests_sent, (u32)(req - lsp->requests_sent));
+				break;
+			}
+		}
+	}
+	
 	JSONValue error = json_get(json, "error.message");
 	if (error.type == JSON_STRING) {
 		char err[256] = {0};
 		json_string_get(json, error.val.string, err, sizeof err);;
-		lsp_set_error(lsp, "%s", err);
+		
+		if (streq(err, "waiting for cargo metadata or cargo check")) {
+			// fine. be that way. i'll resend the goddamn request.
+			// i'll keep bombarding you with requests.
+			// maybe next time you should abide by the standard and only send an initialize response when youre actually ready to handle my requests. fuck you.
+			if (response_to.type)
+				lsp_send_request(lsp, &response_to);
+		} else {
+			lsp_set_error(lsp, "%s", err);
+		}
 		goto ret;
 	}
 	
 	JSONValue result = json_get(json, "result");
 	if (result.type != JSON_UNDEFINED) {
-		JSONValue id = json_get(json, "id");
-	
-		if (id.type != JSON_NUMBER) {
-			// what
-			lsp_set_error(lsp, "Response with no ID.");
-			goto ret;
-		}
-		if (id.val.number == 0) {
+		if (response_to.type == LSP_INITIALIZE) {
 			// it's the response to our initialize request!
 			// let's send back an "initialized" request (notification) because apparently
 			// that's something we need to do.
@@ -677,22 +526,9 @@ static void process_message(LSP *lsp, JSON *json) {
 			// we can now send requests which have nothing to do with initialization
 			lsp->initialized = true;
 		} else {
-			u64 id_no = (u64)id.val.number;
-			LSPRequestTrackedInfo tracked_info = {0};
-			SDL_LockMutex(lsp->requests_mutex);
-			arr_foreach_ptr(lsp->requests_tracked_info, LSPRequestTrackedInfo, info) {
-				if (info->id == id_no) {
-					// hey its the thing
-					tracked_info = *info;
-					arr_remove(lsp->requests_tracked_info, (u32)(info - lsp->requests_tracked_info));
-					break;
-				}
-			}
-			SDL_UnlockMutex(lsp->requests_mutex);
-			
 			LSPResponse response = {0};
 			bool success = false;
-			switch (tracked_info.type) {
+			switch (response_to.type) {
 			case LSP_COMPLETION:
 				success = parse_completion(lsp, json, &response);
 				break;
@@ -723,6 +559,7 @@ static void process_message(LSP *lsp, JSON *json) {
 		lsp_set_error(lsp, "Bad message from server (no result, no method).");
 	}
 	ret:
+	lsp_request_free(&response_to);
 	json_free(json);
 	
 }
@@ -804,7 +641,6 @@ static bool lsp_send(LSP *lsp) {
 			// whatever.
 			write_request(lsp, r);
 		}
-		lsp_request_free(r);
 		
 		if (SDL_SemTryWait(lsp->quit_sem) == 0) {
 			quit = true;
@@ -902,6 +738,7 @@ void lsp_free(LSP *lsp) {
 	SDL_SemPost(lsp->quit_sem);
 	SDL_WaitThread(lsp->communication_thread, NULL);
 	SDL_DestroyMutex(lsp->messages_mutex);
+	SDL_DestroyMutex(lsp->requests_mutex);
 	SDL_DestroySemaphore(lsp->quit_sem);
 	process_kill(&lsp->process);
 	arr_free(lsp->received_data);

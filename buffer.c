@@ -2040,6 +2040,9 @@ void buffer_paste(TextBuffer *buffer) {
 	}
 }
 
+LSP *buffer_lsp(TextBuffer *buffer) {
+	return ted_get_lsp(buffer->ted, buffer_language(buffer));
+}
 
 // if an error occurs, buffer is left untouched (except for the error field) and the function returns false.
 Status buffer_load_file(TextBuffer *buffer, char const *filename) {
@@ -2060,86 +2063,91 @@ Status buffer_load_file(TextBuffer *buffer, char const *filename) {
 			success = false;
 		} else {
 			u8 *file_contents = buffer_calloc(buffer, 1, file_size);
-			if (file_contents) {
-				lines_capacity = 4;
-				lines = buffer_calloc(buffer, lines_capacity, sizeof *buffer->lines); // initial lines
-				if (lines) {
-					nlines = 1;
-					size_t bytes_read = fread(file_contents, 1, file_size, fp);
-					if (bytes_read == file_size) {
-						char32_t c = 0;
-						for (u8 *p = file_contents, *end = p + file_size; p != end; ) {
-							if (*p == '\r' && p != end-1 && p[1] == '\n') {
-								// CRLF line endings
-								p += 2;
-								c = '\n';
-							} else {
-								size_t n = unicode_utf8_to_utf32(&c, (char *)p, (size_t)(end - p));
-								if (n == 0) {
-									// null character
-									c = 0;
-									++p;
-								} else if (n >= (size_t)(-2)) {
-									// invalid UTF-8
-									success = false;
-									buffer_seterr(buffer, "Invalid UTF-8 (position: %td).", p - file_contents);
-									break;
-								} else {
-									p += n;
-								}
-							}
-							if (c == '\n') {
-								if (buffer_lines_set_min_capacity(buffer, &lines, &lines_capacity, nlines + 1))
-									++nlines;
-							} else {
-								u32 line_idx = nlines - 1;
-								Line *line = &lines[line_idx];
-								buffer_line_append_char(buffer, line, c);
-							}
-						}
+			lines_capacity = 4;
+			lines = buffer_calloc(buffer, lines_capacity, sizeof *buffer->lines); // initial lines
+			nlines = 1;
+			size_t bytes_read = fread(file_contents, 1, file_size, fp);
+			if (bytes_read == file_size) {
+				char32_t c = 0;
+				for (u8 *p = file_contents, *end = p + file_size; p != end; ) {
+					if (*p == '\r' && p != end-1 && p[1] == '\n') {
+						// CRLF line endings
+						p += 2;
+						c = '\n';
 					} else {
-						success = false;
+						size_t n = unicode_utf8_to_utf32(&c, (char *)p, (size_t)(end - p));
+						if (n == 0) {
+							// null character
+							c = 0;
+							++p;
+						} else if (n >= (size_t)(-2)) {
+							// invalid UTF-8
+							success = false;
+							buffer_seterr(buffer, "Invalid UTF-8 (position: %td).", p - file_contents);
+							break;
+						} else {
+							p += n;
+						}
 					}
-					if (!success) {
-						// something went wrong; we need to free all the memory we used
-						for (u32 i = 0; i < nlines; ++i)
-							buffer_line_free(&lines[i]);
-						free(lines);
+					if (c == '\n') {
+						if (buffer_lines_set_min_capacity(buffer, &lines, &lines_capacity, nlines + 1))
+							++nlines;
+					} else {
+						u32 line_idx = nlines - 1;
+						Line *line = &lines[line_idx];
+						buffer_line_append_char(buffer, line, c);
 					}
 				}
-				free(file_contents);
 			}
-			if (ferror(fp)) {	
+			if (ferror(fp)) {
 				buffer_seterr(buffer, "Error reading from file.");
 				success = false;
 			}
+			if (!success) {
+				// something went wrong; we need to free all the memory we used
+				for (u32 i = 0; i < nlines; ++i)
+					buffer_line_free(&lines[i]);
+				free(lines);
+			}
+				
+			if (success) {
+				char *filename_copy = buffer_strdup(buffer, filename);
+				if (!filename_copy) success = false;
+				if (success) {
+					// everything is good
+					buffer_clear(buffer);
+					buffer->lines = lines;
+					buffer->nlines = nlines;
+					buffer->frame_earliest_line_modified = 0;
+					buffer->frame_latest_line_modified = nlines - 1;
+					buffer->lines_capacity = lines_capacity;
+					buffer->filename = filename_copy;
+					buffer->last_write_time = time_last_modified(buffer->filename);
+					if (!(fs_path_permission(filename) & FS_PERMISSION_WRITE)) {
+						// can't write to this file; make the buffer view only.
+						buffer->view_only = true;
+					}
+				}
+				
+				LSP *lsp = buffer_lsp(buffer);
+				if (lsp) {
+					// send didOpen
+					LSPRequest request = {.type = LSP_OPEN};
+					LSPRequestOpen *open = &request.data.open;
+					open->file_contents = (char *)file_contents;
+					open->path = str_dup(filename);
+					open->language = buffer_language(buffer);
+					lsp_send_request(lsp, &request);
+					file_contents = NULL; // don't free
+				}
+			}
+			
+			free(file_contents);
 		}
-		if (fclose(fp) != 0) {
-			buffer_seterr(buffer, "Error closing file.");
-			success = false;
-		}
+		fclose(fp);
 	} else {
 		buffer_seterr(buffer, "Couldn't open file %s: %s.", filename, strerror(errno));
 		success = false;
-	}
-	if (success) {
-		char *filename_copy = buffer_strdup(buffer, filename);
-		if (!filename_copy) success = false;
-		if (success) {
-			// everything is good
-			buffer_clear(buffer);
-			buffer->lines = lines;
-			buffer->nlines = nlines;
-			buffer->frame_earliest_line_modified = 0;
-			buffer->frame_latest_line_modified = nlines - 1;
-			buffer->lines_capacity = lines_capacity;
-			buffer->filename = filename_copy;
-			buffer->last_write_time = time_last_modified(buffer->filename);
-			if (!(fs_path_permission(filename) & FS_PERMISSION_WRITE)) {
-				// can't write to this file; make the buffer view only.
-				buffer->view_only = true;
-			}
-		}
 	}
 	return success;
 }
