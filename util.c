@@ -251,7 +251,7 @@ typedef struct {
 } QSortWithContext;
 static int qsort_with_context_cmp(const void *a, const void *b, void *context) {
 	QSortWithContext *c = context;
-	return c->compar(context, a, b);
+	return c->compar(c->context, a, b);
 }
 static void qsort_with_context(void *base, size_t nmemb, size_t size,
 	int (*compar)(void *, const void *, const void *),

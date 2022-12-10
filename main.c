@@ -2,7 +2,7 @@
 FUTURE FEATURES:
 - configurable max buffer size
 - better undo chaining (dechain on backspace?)
-- regenerate tags for completion too if there are no results
+- option to regenerate tags for completion too if there are no results
 - config variables
 - bind key to multiple commands
 - plugins?
@@ -315,9 +315,11 @@ int main(int argc, char **argv) {
 					case LSP_COMPLETION: {
 						const LSPResponseCompletion *completion = &response->data.completion;
 						arr_foreach_ptr(completion->items, LSPCompletionItem, item) {
-							printf("%s:%s\n",
-								lsp_response_string(response, item->sort_text),
+							printf("(%d)%s => ",
+								item->text_edit.type,
 								lsp_response_string(response, item->label));
+							printf("%s\n",
+								lsp_response_string(response, item->text_edit.new_text));
 						}
 					} break;
 					default:

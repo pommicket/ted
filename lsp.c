@@ -1,7 +1,9 @@
 // @TODO:
-// - documentation
-// - make sure offsets are utf-16!
+// - document this file. maybe make lsp.h
 // - maximum queue size for requests/responses just in case?
+// - delete old LSPRequestTrackedInfos
+//    (if the server never sends a response)
+// - TESTING: make rust-analyzer-slow (waits 10s before sending response)
 
 typedef enum {
 	LSP_REQUEST,
@@ -50,6 +52,7 @@ typedef struct {
 	// freed by lsp_request_free
 	char *path;
 	u32 line;
+	// the **UTF-16** "character" offset within the line
 	u32 character;
 } LSPDocumentPosition;
 
@@ -76,13 +79,47 @@ typedef struct {
 
 typedef struct {
 	u32 offset;
-} LSPResponseString;
+} LSPString;
 
 typedef struct {
-	LSPResponseString label;
+	u32 line;
+	u32 character;
+} LSPPosition;
+
+typedef struct {
+	LSPPosition start;
+	LSPPosition end;
+} LSPRange;
+
+// see InsertTextFormat in the LSP spec.
+typedef enum {
+	// plain text
+	LSP_TEXT_EDIT_PLAIN = 1,
+	// snippet   e.g. "some_method($1, $2)$0"
+	LSP_TEXT_EDIT_SNIPPET = 2
+} LSPTextEditType;
+
+typedef struct {
+	LSPTextEditType type;
+
+	// if set to true, `range` should be ignored
+	//  -- this is a completion which uses insertText.
+	// how to handle this:
+	// "VS Code when code complete is requested in this example
+	// `con<cursor position>` and a completion item with an `insertText` of
+	// `console` is provided it will only insert `sole`"
+	bool at_cursor;
+	
+	LSPRange range;
+	LSPString new_text;
+} LSPTextEdit;
+
+typedef struct {
+	LSPString label;
+	LSPTextEdit text_edit;
 	// note: the items are sorted here in this file,
 	// so you probably don't need to access this.
-	LSPResponseString sort_text;
+	LSPString sort_text;
 } LSPCompletionItem;
 
 typedef struct {
@@ -436,16 +473,16 @@ static bool parse_server2client_request(LSP *lsp, JSON *json, LSPRequest *reques
 	return false;
 }
 
-const char *lsp_response_string(const LSPResponse *response, LSPResponseString string) {
+const char *lsp_response_string(const LSPResponse *response, LSPString string) {
 	assert(string.offset < arr_len(response->string_data));
 	return &response->string_data[string.offset];
 }
 
-static LSPResponseString lsp_response_add_json_string(LSPResponse *response, const JSON *json, JSONString string) {
+static LSPString lsp_response_add_json_string(LSPResponse *response, const JSON *json, JSONString string) {
 	u32 offset = arr_len(response->string_data);
 	arr_set_len(response->string_data, offset + string.len + 1);
 	json_string_get(json, string, response->string_data + offset, string.len + 1);
-	return (LSPResponseString){
+	return (LSPString){
 		.offset = offset
 	};
 }
@@ -462,9 +499,35 @@ static int completion_qsort_cmp(void *context, const void *av, const void *bv) {
 	// i have no clue what that means.
 	// the LSP "specification" is not very specific.
 	// we'll sort by label in this case.
+	// this is what VSCode seems to do.
+	// i hate microsofot.
 	const char *a_label = lsp_response_string(response, a->label);
 	const char *b_label = lsp_response_string(response, b->label);
 	return strcmp(a_label, b_label);
+}
+
+static bool parse_position(LSP *lsp, const JSON *json, JSONValue pos_value, LSPPosition *pos) {
+	if (!lsp_expect_object(lsp, pos_value, "document position"))
+		return false;
+	JSONObject pos_object = pos_value.val.object;
+	JSONValue line = json_object_get(json, pos_object, "line");
+	JSONValue character = json_object_get(json, pos_object, "character");
+	if (!lsp_expect_number(lsp, line, "document line number")
+		|| !lsp_expect_number(lsp, character, "document column number"))
+		return false;
+	pos->line = (u32)line.val.number;
+	pos->character = (u32)line.val.number;
+	return true;
+}
+
+static bool parse_range(LSP *lsp, const JSON *json, JSONValue range_value, LSPRange *range) {
+	if (!lsp_expect_object(lsp, range_value, "document range"))
+		return false;
+	JSONObject range_object = range_value.val.object;
+	JSONValue start = json_object_get(json, range_object, "start");
+	JSONValue end = json_object_get(json, range_object, "end");
+	return parse_position(lsp, json, start, &range->start)
+		&& parse_position(lsp, json, end, &range->end);
 }
 
 static bool parse_completion(LSP *lsp, const JSON *json, LSPResponse *response) {
@@ -509,16 +572,65 @@ static bool parse_completion(LSP *lsp, const JSON *json, LSPResponse *response) 
 		if (!lsp_expect_string(lsp, label_value, "completion label"))
 			return false;
 		JSONString label = label_value.val.string;
+		item->label = lsp_response_add_json_string(response, json, label);
 		
-		JSONString sort_text = label;
+		// defaults
+		item->sort_text = item->label;
+		item->text_edit = (LSPTextEdit) {
+			.type = LSP_TEXT_EDIT_PLAIN,
+			.at_cursor = true,
+			.range = {0},
+			.new_text = item->label
+		};
+		
 		JSONValue sort_text_value = json_object_get(json, item_object, "sortText");
 		if (sort_text_value.type == JSON_STRING) {
 			// LSP allows using a different string for sorting.
-			sort_text = sort_text_value.val.string;
+			item->sort_text = lsp_response_add_json_string(response,
+				json, sort_text_value.val.string);
 		}
 		
-		item->label = lsp_response_add_json_string(response, json, label);
-		item->sort_text = lsp_response_add_json_string(response, json, sort_text);
+		JSONValue text_type_value = json_object_get(json, item_object, "insertTextFormat");
+		if (text_type_value.type == JSON_NUMBER) {
+			double type = text_type_value.val.number;
+			if (type != LSP_TEXT_EDIT_PLAIN && type != LSP_TEXT_EDIT_SNIPPET) {
+				lsp_set_error(lsp, "Bad InsertTextFormat: %g", type);
+				return false;
+			}
+			item->text_edit.type = (LSPTextEditType)type;
+		}
+		
+		// @TODO: detail
+		
+		// @TODO(eventually): additionalTextEdits
+		//  (try to find a case where this comes up)
+		
+		// what should happen when this completion is selected?
+		JSONValue text_edit_value = json_object_get(json, item_object, "textEdit");
+		if (text_edit_value.type == JSON_OBJECT) {
+			JSONObject text_edit = text_edit_value.val.object;
+			item->text_edit.at_cursor = false;
+			
+			JSONValue range = json_object_get(json, text_edit, "range");
+			if (!parse_range(lsp, json, range, &item->text_edit.range))
+				return false;
+				
+			JSONValue new_text_value = json_object_get(json, text_edit, "newText");
+			if (!lsp_expect_string(lsp, new_text_value, "completion newText"))
+				return false;
+			item->text_edit.new_text = lsp_response_add_json_string(response,
+				json, new_text_value.val.string);
+		} else {
+			// not using textEdit. check insertText.
+			JSONValue insert_text_value = json_object_get(json, item_object, "insertText");
+			if (insert_text_value.type == JSON_STRING) {
+				// string which will be inserted if this completion is selected
+				item->text_edit.new_text = lsp_response_add_json_string(response,
+					json, insert_text_value.val.string);
+			}
+		}
+		
+		
 	}
 	
 	qsort_with_context(completion->items, items.len, sizeof *completion->items,
