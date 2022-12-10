@@ -1,5 +1,5 @@
 // @TODO:
-// - make json_object_get take value not pointer
+// - make json_object/array_get take value not pointer
 // - documentation
 // - make sure offsets are utf-16!
 // - maximum queue size for requests/responses just in case?
@@ -236,6 +236,33 @@ void lsp_message_free(LSPMessage *message) {
 	memset(message, 0, sizeof *message);
 }
 
+static WarnUnusedResult bool lsp_expect_type(LSP *lsp, JSONValue value, JSONValueType type, const char *what) {
+	if (value.type != type) {
+		lsp_set_error(lsp, "Expected %s for %s, got %s",
+			json_type_to_str(type),
+			what,
+			json_type_to_str(value.type));
+		return false;
+	}
+	return true;
+}
+
+static WarnUnusedResult bool lsp_expect_object(LSP *lsp, JSONValue value, const char *what) {
+	return lsp_expect_type(lsp, value, JSON_OBJECT, what);
+}
+
+static WarnUnusedResult bool lsp_expect_array(LSP *lsp, JSONValue value, const char *what) {
+	return lsp_expect_type(lsp, value, JSON_ARRAY, what);
+}
+
+static WarnUnusedResult bool lsp_expect_string(LSP *lsp, JSONValue value, const char *what) {
+	return lsp_expect_type(lsp, value, JSON_STRING, what);
+}
+
+static WarnUnusedResult bool lsp_expect_number(LSP *lsp, JSONValue value, const char *what) {
+	return lsp_expect_type(lsp, value, JSON_NUMBER, what);
+}
+
 // technically there are "requests" and "notifications"
 // notifications are different in that they don't have IDs and don't return responses.
 // this function handles both.
@@ -371,30 +398,25 @@ void lsp_send_request(LSP *lsp, const LSPRequest *request) {
 }
 
 static bool parse_server2client_request(LSP *lsp, JSON *json, LSPRequest *request) {
-	JSONValue method = json_get(json, "method");
-	if (method.type != JSON_STRING) {
-		lsp_set_error(lsp, "Bad type for request method: %s", json_type_to_str(method.type));
-	}
+	JSONValue method_value = json_get(json, "method");
+	if (!lsp_expect_string(lsp, method_value, "request method"))
+		return false;
 	
-	char str[64] = {0};
-	json_string_get(json, method.val.string, str, sizeof str);
+	char method[64] = {0};
+	json_string_get(json, method_value.val.string, method, sizeof method);
 	
-	if (streq(str, "window/showMessage")) {
+	if (streq(method, "window/showMessage")) {
 		request->type = LSP_SHOW_MESSAGE;
 		goto window_message;
-	} else if (streq(str, "window/logMessage")) {
+	} else if (streq(method, "window/logMessage")) {
 		request->type = LSP_LOG_MESSAGE;
 		window_message:;
 		JSONValue type = json_get(json, "params.type");
 		JSONValue message = json_get(json, "params.message");
-		if (type.type != JSON_NUMBER) {
-			lsp_set_error(lsp, "Expected MessageType, got %s", json_type_to_str(type.type));
+		if (!lsp_expect_number(lsp, type, "MessageType"))
 			return false;
-		}
-		if (message.type != JSON_STRING) {
-			lsp_set_error(lsp, "Expected message string, got %s", json_type_to_str(message.type));
+		if (!lsp_expect_string(lsp, message, "message string"))
 			return false;
-		}
 		
 		int mtype = (int)type.val.number;
 		if (mtype < 1 || mtype > 4) {
@@ -406,10 +428,10 @@ static bool parse_server2client_request(LSP *lsp, JSON *json, LSPRequest *reques
 		m->type = (LSPWindowMessageType)mtype;
 		m->message = json_string_get_alloc(json, message.val.string);
 		return true;
-	} else if (str_has_prefix(str, "$/")) {
+	} else if (str_has_prefix(method, "$/")) {
 		// we can safely ignore this
 	} else {
-		lsp_set_error(lsp, "Unrecognized request method: %s", str);
+		lsp_set_error(lsp, "Unrecognized request method: %s", method);
 	}
 	return false;
 }
@@ -427,6 +449,7 @@ static LSPResponseString lsp_response_add_json_string(LSPResponse *response, con
 		.offset = offset
 	};
 }
+
 
 static bool parse_completion(LSP *lsp, const JSON *json, LSPResponse *response) {
 	// deal with textDocument/completion response.
@@ -451,10 +474,8 @@ static bool parse_completion(LSP *lsp, const JSON *json, LSPResponse *response) 
 		break;		
 	}
 		
-	if (items_value.type != JSON_ARRAY) {
-		lsp_set_error(lsp, "Expected array for completion list, got %s", json_type_to_str(items_value.type));
+	if (!lsp_expect_array(lsp, items_value, "completion list"))
 		return false;
-	}
 	
 	JSONArray items = items_value.val.array;
 	
@@ -464,16 +485,14 @@ static bool parse_completion(LSP *lsp, const JSON *json, LSPResponse *response) 
 		LSPCompletionItem *item = &completion->items[i];
 		
 		JSONValue item_value = json_array_get(json, &items, i);
-		if (item_value.type != JSON_OBJECT) {
-			lsp_set_error(lsp, "Expected array for completion list, got %s", json_type_to_str(items_value.type));
+		if (!lsp_expect_object(lsp, item_value, "completion list"))
 			return false;
-		}
 		JSONObject item_object = item_value.val.object;
+		
 		JSONValue label_value = json_object_get(json, &item_object, "label");
-		if (label_value.type != JSON_STRING) {
-			lsp_set_error(lsp, "Expected string for completion label, got %s", json_type_to_str(label_value.type));
+		if (!lsp_expect_string(lsp, label_value, "completion label"))
 			return false;
-		}
+		
 		JSONString label = label_value.val.string;
 		item->label = lsp_response_add_json_string(response, json, label);
 		printf("%s\n",lsp_response_string(response,item->label));//@TODO
