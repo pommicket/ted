@@ -69,9 +69,17 @@ static bool streq(char const *a, char const *b) {
 	return strcmp(a, b) == 0;
 }
 
+static size_t strn_len(const char *src, size_t n) {
+	const char *p = memchr(src, '\0', n);
+	if (p)
+		return (size_t)(p - src);
+	else
+		return n;
+}
+
 // duplicates at most n characters from src
 static char *strn_dup(char const *src, size_t n) {
-	size_t len = strlen(src);
+	size_t len = strn_len(src, n);
 	if (n > len)
 		n = len;
 	char *ret = malloc(n + 1);
