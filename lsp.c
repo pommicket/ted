@@ -1,5 +1,4 @@
 // @TODO:
-// - make json_object/array_get take value not pointer
 // - documentation
 // - make sure offsets are utf-16!
 // - maximum queue size for requests/responses just in case?
@@ -484,7 +483,7 @@ static bool parse_completion(LSP *lsp, const JSON *json, LSPResponse *response) 
 		items_value = result;
 		break;
 	case JSON_OBJECT:
-		items_value = json_object_get(json, &result.val.object, "items");
+		items_value = json_object_get(json, result.val.object, "items");
 		break;
 	default:
 		lsp_set_error(lsp, "Weird result type for textDocument/completion response: %s.", json_type_to_str(result.type));
@@ -501,18 +500,18 @@ static bool parse_completion(LSP *lsp, const JSON *json, LSPResponse *response) 
 	for (u32 i = 0; i < items.len; ++i) {
 		LSPCompletionItem *item = &completion->items[i];
 		
-		JSONValue item_value = json_array_get(json, &items, i);
+		JSONValue item_value = json_array_get(json, items, i);
 		if (!lsp_expect_object(lsp, item_value, "completion list"))
 			return false;
 		JSONObject item_object = item_value.val.object;
 		
-		JSONValue label_value = json_object_get(json, &item_object, "label");
+		JSONValue label_value = json_object_get(json, item_object, "label");
 		if (!lsp_expect_string(lsp, label_value, "completion label"))
 			return false;
 		JSONString label = label_value.val.string;
 		
 		JSONString sort_text = label;
-		JSONValue sort_text_value = json_object_get(json, &item_object, "sortText");
+		JSONValue sort_text_value = json_object_get(json, item_object, "sortText");
 		if (sort_text_value.type == JSON_STRING) {
 			// LSP allows using a different string for sorting.
 			sort_text = sort_text_value.val.string;

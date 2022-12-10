@@ -88,35 +88,35 @@ static inline bool json_is_space(char c) {
 	return c == ' ' || c == '\n' || c == '\r' || c == '\t';
 }
 
-static void json_debug_print_value(const JSON *json, const JSONValue *value) {
-	switch (value->type) {
+static void json_debug_print_value(const JSON *json, JSONValue value) {
+	switch (value.type) {
 	case JSON_UNDEFINED: printf("undefined"); break;
 	case JSON_NULL: printf("null"); break;
 	case JSON_FALSE: printf("false"); break;
 	case JSON_TRUE: printf("true"); break;
-	case JSON_NUMBER: printf("%g", value->val.number); break;
+	case JSON_NUMBER: printf("%g", value.val.number); break;
 	case JSON_STRING: {
-		const JSONString *string = &value->val.string;
+		JSONString string = value.val.string;
 		printf("\"%.*s\"",
-			(int)string->len,
-			json->text + string->pos);
+			(int)string.len,
+			json->text + string.pos);
 		} break;
 	case JSON_ARRAY: {
-		const JSONArray *array = &value->val.array;
+		JSONArray array = value.val.array;
 		printf("[");
-		for (u32 i = 0; i < array->len; ++i) {
-			json_debug_print_value(json, &json->values[array->elements + i]);
+		for (u32 i = 0; i < array.len; ++i) {
+			json_debug_print_value(json, json->values[array.elements + i]);
 			printf(", ");
 		}
 		printf("]");
 	} break;
 	case JSON_OBJECT: {
-		const JSONObject *obj = &value->val.object;
+		JSONObject obj = value.val.object;
 		printf("{");
-		for (u32 i = 0; i < obj->len; ++i) {
-			json_debug_print_value(json, &json->values[obj->items + i]);
+		for (u32 i = 0; i < obj.len; ++i) {
+			json_debug_print_value(json, json->values[obj.items + i]);
 			printf(": ");
-			json_debug_print_value(json, &json->values[obj->items + obj->len + i]);
+			json_debug_print_value(json, json->values[obj.items + obj.len + i]);
 			printf(", ");
 		}
 		printf("}");
@@ -433,20 +433,20 @@ static bool json_streq(const JSON *json, const JSONString *string, const char *n
 }
 
 // returns undefined if the property `name` does not exist.
-JSONValue json_object_get(const JSON *json, const JSONObject *object, const char *name) {
-	const JSONValue *items = &json->values[object->items];
-	for (u32 i = 0; i < object->len; ++i) {
+JSONValue json_object_get(const JSON *json, JSONObject object, const char *name) {
+	const JSONValue *items = &json->values[object.items];
+	for (u32 i = 0; i < object.len; ++i) {
 		const JSONValue *this_name = items++;
 		if (this_name->type == JSON_STRING && json_streq(json, &this_name->val.string, name)) {
-			return json->values[object->items + object->len + i];
+			return json->values[object.items + object.len + i];
 		}
 	}
 	return (JSONValue){0};
 }
 
-JSONValue json_array_get(const JSON *json, const JSONArray *array, u64 i) {
-	if (i < array->len) {
-		return json->values[array->elements + i];
+JSONValue json_array_get(const JSON *json, JSONArray array, u64 i) {
+	if (i < array.len) {
+		return json->values[array.elements + i];
 	}
 	return (JSONValue){0};
 }
@@ -466,7 +466,7 @@ JSONValue json_get(const JSON *json, const char *path) {
 		if (curr_value.type != JSON_OBJECT) {
 			return (JSONValue){0};
 		}
-		curr_value = json_object_get(json, &curr_value.val.object, segment);
+		curr_value = json_object_get(json, curr_value.val.object, segment);
 		p += segment_len;
 		if (*p == '.') ++p;
 	}
@@ -600,7 +600,7 @@ static void json_test_time_small(void) {
 void json_debug_print(const JSON *json) {
 	printf("%u values (capacity %u, text length %zu)\n",
 		arr_len(json->values), arr_cap(json->values), strlen(json->text));
-	json_debug_print_value(json, &json->values[0]);
+	json_debug_print_value(json, json->values[0]);
 }
 
 // e.g. converts "Hello\nworld" to "Hello\\nworld"
