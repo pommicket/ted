@@ -308,7 +308,19 @@ int main(int argc, char **argv) {
 			LSPMessage message = {0};
 			while (lsp_next_message(&lsp, &message)) {
 				if (message.type == LSP_RESPONSE) {
-					printf("response type %u\n",message.u.response.type);
+					const LSPResponse *response = &message.u.response;
+					switch (response->type) {
+					case LSP_COMPLETION: {
+						const LSPResponseCompletion *completion = &response->data.completion;
+						arr_foreach_ptr(completion->items, LSPCompletionItem, item) {
+							printf("%s:%s\n",
+								lsp_response_string(response, item->sort_text),
+								lsp_response_string(response, item->label));
+						}
+					} break;
+					default:
+						break;
+					}
 				} else if (message.type == LSP_REQUEST) {
 					const LSPRequest *request = &message.u.request;
 					switch (request->type) {

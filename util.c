@@ -241,18 +241,28 @@ static int str_qsort_case_insensitive_cmp(const void *av, const void *bv) {
 	return strcmp_case_insensitive(*a, *b);
 }
 
-static void *qsort_ctx_arg;
-static int (*qsort_ctx_cmp)(void *, const void *, const void *);
-static int qsort_with_context_cmp(const void *a, const void *b) {
-	return qsort_ctx_cmp(qsort_ctx_arg, a, b);
+// imo windows has the argument order right here
+#if _WIN32
+#define qsort_with_context qsort_s
+#else
+typedef struct {
+	int (*compar)(void *, const void *, const void *);
+	void *context;
+} QSortWithContext;
+static int qsort_with_context_cmp(const void *a, const void *b, void *context) {
+	QSortWithContext *c = context;
+	return c->compar(context, a, b);
 }
-
-static void qsort_with_context(void *base, size_t nmemb, size_t size, int (*compar)(void *, const void *, const void *), void *arg) {
-	// just use global variables. hopefully we don't try to run this in something multithreaded!
-	qsort_ctx_arg = arg;
-	qsort_ctx_cmp = compar;
-	qsort(base, nmemb, size, qsort_with_context_cmp);
+static void qsort_with_context(void *base, size_t nmemb, size_t size,
+	int (*compar)(void *, const void *, const void *),
+	void *arg) {
+	QSortWithContext ctx = {
+		.compar = compar,
+		.context = arg
+	};
+	qsort_r(base, nmemb, size, qsort_with_context_cmp, &ctx);
 }
+#endif
 
 // the actual file name part of the path; get rid of the containing directory.
 // NOTE: the returned string is part of path, so you don't need to free it or anything.

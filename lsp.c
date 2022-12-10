@@ -81,8 +81,9 @@ typedef struct {
 
 typedef struct {
 	LSPResponseString label;
-	// note: the items are sorted here in this file.
-	LSPResponseString sort_by;
+	// note: the items are sorted here in this file,
+	// so you probably don't need to access this.
+	LSPResponseString sort_text;
 } LSPCompletionItem;
 
 typedef struct {
@@ -450,6 +451,22 @@ static LSPResponseString lsp_response_add_json_string(LSPResponse *response, con
 	};
 }
 
+static int completion_qsort_cmp(void *context, const void *av, const void *bv) {
+	const LSPResponse *response = context;
+	const LSPCompletionItem *a = av, *b = bv;
+	const char *a_sort_text = lsp_response_string(response, a->sort_text);
+	const char *b_sort_text = lsp_response_string(response, b->sort_text);
+	int sort_text_cmp = strcmp(a_sort_text, b_sort_text);
+	if (sort_text_cmp != 0)
+		return sort_text_cmp;
+	// for some reason, rust-analyzer outputs identical sortTexts
+	// i have no clue what that means.
+	// the LSP "specification" is not very specific.
+	// we'll sort by label in this case.
+	const char *a_label = lsp_response_string(response, a->label);
+	const char *b_label = lsp_response_string(response, b->label);
+	return strcmp(a_label, b_label);
+}
 
 static bool parse_completion(LSP *lsp, const JSON *json, LSPResponse *response) {
 	// deal with textDocument/completion response.
@@ -492,11 +509,21 @@ static bool parse_completion(LSP *lsp, const JSON *json, LSPResponse *response) 
 		JSONValue label_value = json_object_get(json, &item_object, "label");
 		if (!lsp_expect_string(lsp, label_value, "completion label"))
 			return false;
-		
 		JSONString label = label_value.val.string;
+		
+		JSONString sort_text = label;
+		JSONValue sort_text_value = json_object_get(json, &item_object, "sortText");
+		if (sort_text_value.type == JSON_STRING) {
+			// LSP allows using a different string for sorting.
+			sort_text = sort_text_value.val.string;
+		}
+		
 		item->label = lsp_response_add_json_string(response, json, label);
-		printf("%s\n",lsp_response_string(response,item->label));//@TODO
+		item->sort_text = lsp_response_add_json_string(response, json, sort_text);
 	}
+	
+	qsort_with_context(completion->items, items.len, sizeof *completion->items,
+		completion_qsort_cmp, response);
 	
 	return true;
 }
