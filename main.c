@@ -1,7 +1,8 @@
 /* 
 FUTURE FEATURES:
-- configurable max buffer size
+- configurable max buffer size + max view-only buffer size
 - better undo chaining (dechain on backspace?)
+- allow multiple fonts (fonts directory?)
 - regenerate tags for completion too if there are no results
 - config variables
 - bind key to multiple commands
