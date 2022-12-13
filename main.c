@@ -4,9 +4,10 @@
     - bad json can give "Unexpected error: client exited without proper shutdown sequence"
     - rust-analyzer should wait until cargo metadata/check is done before sending initialize response
 FUTURE FEATURES:
-- configurable max buffer size
+- configurable max buffer size + max view-only buffer size
 - better undo chaining (dechain on backspace?)
-- option to regenerate tags for completion too if there are no results
+- allow multiple fonts (fonts directory?)
+- regenerate tags for completion too if there are no results
 - config variables
 - bind key to multiple commands
 - plugins?
