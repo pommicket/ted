@@ -143,7 +143,8 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 	str_builder_append(&builder, "{\"jsonrpc\":\"2.0\",");
 	
 	bool is_notification = request->type == LSP_INITIALIZED
-		|| request->type == LSP_EXIT;
+		|| request->type == LSP_EXIT
+		|| request->type == LSP_OPEN;
 	if (!is_notification) {
 		u32 id = lsp->request_id++;
 		request->id = id;
@@ -171,7 +172,6 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 		break;
 	case LSP_OPEN: {
 		const LSPRequestOpen *open = &request->data.open;
-		printf("text=%p\n",open->file_contents);
 		char *escaped_path = json_escape(open->path);
 		char *escaped_text = json_escape(open->file_contents);
 		// @TODO: escape directly into builder
@@ -504,8 +504,11 @@ static void process_message(LSP *lsp, JSON *json) {
 			// fine. be that way. i'll resend the goddamn request.
 			// i'll keep bombarding you with requests.
 			// maybe next time you should abide by the standard and only send an initialize response when youre actually ready to handle my requests. fuck you.
-			if (response_to.type)
+			if (response_to.type) {
 				lsp_send_request(lsp, &response_to);
+				// don't free
+				memset(&response_to, 0, sizeof response_to);
+			}
 		} else {
 			lsp_set_error(lsp, "%s", err);
 		}
