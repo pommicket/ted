@@ -1,3 +1,6 @@
+static void lsp_request_free(LSPRequest *r);
+#include "lsp-write-request.c"
+
 bool lsp_get_error(LSP *lsp, char *error, size_t error_size, bool clear) {
 	bool has_err = false;
 	SDL_LockMutex(lsp->error_mutex);
@@ -16,40 +19,8 @@ bool lsp_get_error(LSP *lsp, char *error, size_t error_size, bool clear) {
 		SDL_UnlockMutex(lsp->error_mutex);\
 	} while (0)
 
-static const char *lsp_language_id(Language lang) {
-	switch (lang) {
-	case LANG_CONFIG:
-	case LANG_TED_CFG:
-	case LANG_NONE:
-		return "text";
-	case LANG_C:
-		return "c";
-	case LANG_CPP:
-		return "cpp";
-	case LANG_JAVA:
-		return "java";
-	case LANG_JAVASCRIPT:
-		return "javascript";
-	case LANG_MARKDOWN:
-		return "markdown";
-	case LANG_GO:
-		return "go";
-	case LANG_RUST:
-		return "rust";
-	case LANG_PYTHON:
-		return "python";
-	case LANG_HTML:
-		return "html";
-	case LANG_TEX:
-		return "latex";
-	case LANG_COUNT: break;
-	}
-	assert(0);
-	return "text";
-}
 
-
-static void lsp_position_free(LSPDocumentPosition *position) {
+static void lsp_document_position_free(LSPDocumentPosition *position) {
 	free(position->path);
 }
 
@@ -67,7 +38,7 @@ static void lsp_request_free(LSPRequest *r) {
 		break;
 	case LSP_REQUEST_COMPLETION: {
 		LSPRequestCompletion *completion = &r->data.completion;
-		lsp_position_free(&completion->position);
+		lsp_document_position_free(&completion->position);
 		} break;
 	case LSP_REQUEST_DID_OPEN: {
 		LSPRequestDidOpen *open = &r->data.open;
@@ -136,149 +107,6 @@ static WarnUnusedResult bool lsp_expect_string(LSP *lsp, JSONValue value, const 
 
 static WarnUnusedResult bool lsp_expect_number(LSP *lsp, JSONValue value, const char *what) {
 	return lsp_expect_type(lsp, value, JSON_NUMBER, what);
-}
-
-static void write_string(StrBuilder *builder, const char* string) {
-	abort();
-}
-
-static void write_range(StrBuilder *builder, LSPRange range) {
-}
-
-// technically there are "requests" and "notifications"
-// notifications are different in that they don't have IDs and don't return responses.
-// this function handles both.
-// NOTE: do not call lsp_request_free on request. freeing the request will be handled.
-// returns the ID of the request
-static void write_request(LSP *lsp, LSPRequest *request) {
-	
-	StrBuilder builder = str_builder_new();
-	
-	u32 max_header_size = 64;
-	// this is where our header will go
-	str_builder_append_null(&builder, max_header_size);
-	
-	str_builder_append(&builder, "{\"jsonrpc\":\"2.0\",");
-	
-	bool is_notification = request->type == LSP_REQUEST_INITIALIZED
-		|| request->type == LSP_REQUEST_EXIT
-		|| request->type == LSP_REQUEST_DID_OPEN;
-	if (!is_notification) {
-		u32 id = lsp->request_id++;
-		request->id = id;
-		str_builder_appendf(&builder, "\"id\":%lu,", (unsigned long)id);
-	}
-	
-	switch (request->type) {
-	case LSP_REQUEST_NONE:
-	// these are server-to-client-only requests
-	case LSP_REQUEST_SHOW_MESSAGE:
-	case LSP_REQUEST_LOG_MESSAGE:
-		assert(0);
-		break;
-	case LSP_REQUEST_INITIALIZE: {
-		str_builder_appendf(&builder,
-			"\"method\":\"initialize\",\"params\":{"
-				"\"processId\":%d,"
-				"\"capabilities\":{},"
-				"\"rootUri\":null,"
-				"\"workspaceFolders\":null"
-		"}", process_get_id());
-	} break;
-	case LSP_REQUEST_INITIALIZED:
-		str_builder_append(&builder, "\"method\":\"initialized\"");
-		break;
-	case LSP_REQUEST_DID_OPEN: {
-		const LSPRequestDidOpen *open = &request->data.open;
-		char *escaped_path = json_escape(open->path);
-		// @TODO: escape directly into builder
-		str_builder_appendf(&builder,
-			"\"method\":\"textDocument/didOpen\",\"params\":{"
-				"\"textDocument\":{"
-					"\"uri\":\"file://%s\","
-					"\"languageId\":\"%s\","
-					"\"version\":1,"
-					"\"text\":",
-			escaped_path,
-			lsp_language_id(open->language));
-		write_string(&builder, open->file_contents);
-		str_builder_appendf(&builder, "}}");
-		free(escaped_path);
-	} break;
-	case LSP_REQUEST_DID_CHANGE: {
-		LSPRequestDidChange *change = &request->data.change;
-		static unsigned long long version_number = 0; // @TODO @TEMPORARY
-		++version_number;
-		str_builder_appendf(&builder,
-			"\"method\":\"textDocument/didChange\",\"params\":{"
-				"\"textDocument\":{\"version\":%llu,\"uri\":\"file://%s\"},"
-				"\"contentChanges\":[",
-			version_number, change->document);
-		arr_foreach_ptr(change->changes, LSPDocumentChangeEvent, event) {
-			if (event != change->changes) str_builder_append(&builder, ",");
-			str_builder_appendf(&builder, "{\"range\":");
-			write_range(&builder, event->range);
-			str_builder_appendf(&builder, "\"text\":");
-			write_string(&builder, event->text);
-			str_builder_append(&builder, "}");
-		}
-		str_builder_appendf(&builder,
-			"]}");
-	} break;
-	case LSP_REQUEST_COMPLETION: {
-		const LSPRequestCompletion *completion = &request->data.completion;
-		char *escaped_path = json_escape(completion->position.path);
-		str_builder_appendf(&builder,"\"method\":\"textDocument/completion\",\"params\":{"
-				"\"textDocument\":{\"uri\":\"file://%s\"},"
-				"\"position\":{"
-					"\"line\":%lu,"
-					"\"character\":%lu"
-				"}"
-		"}",
-			escaped_path,
-			(ulong)completion->position.line,
-			(ulong)completion->position.character);
-		free(escaped_path);
-	} break;
-	case LSP_REQUEST_SHUTDOWN:
-		str_builder_append(&builder, "\"method\":\"shutdown\"");
-		break;
-	case LSP_REQUEST_EXIT:
-		str_builder_append(&builder, "\"method\":\"exit\"");
-		break;
-	}
-	
-	str_builder_append(&builder, "}");
-	
-	// this is kind of hacky but it lets us send the whole request with one write call.
-	// probably not *actually* needed. i thought it would help fix an error but it didn't.
-	size_t content_length = str_builder_len(&builder) - max_header_size;
-	char content_length_str[32];
-	sprintf(content_length_str, "%zu", content_length);
-	size_t header_size = strlen("Content-Length: \r\n\r\n") + strlen(content_length_str);
-	char *header = &builder.str[max_header_size - header_size];
-	strcpy(header, "Content-Length: ");
-	strcat(header, content_length_str);
-	// we specifically DON'T want a null byte
-	memcpy(header + strlen(header), "\r\n\r\n", 4);
-	
-	char *content = header;
-	#if 1
-		printf("\x1b[1m%s\x1b[0m\n",content);
-	#endif
-	
-	// @TODO: does write always write the full amount? probably not. this should be fixed.
-	process_write(&lsp->process, content, strlen(content));
-
-	str_builder_free(&builder);
-	
-	if (is_notification) {
-		lsp_request_free(request);
-	} else {
-		SDL_LockMutex(lsp->requests_mutex);
-		arr_add(lsp->requests_sent, *request);
-		SDL_UnlockMutex(lsp->requests_mutex);
-	}
 }
 
 // figure out if data begins with a complete LSP response.

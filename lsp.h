@@ -18,6 +18,7 @@ typedef struct {
 
 typedef struct {
 	u32 line;
+	// NOTE: this is the UTF-16 character index!
 	u32 character;
 } LSPPosition;
 
@@ -79,9 +80,7 @@ typedef struct {
 typedef struct {
 	// freed by lsp_request_free
 	char *path;
-	u32 line;
-	// the **UTF-16** "character" offset within the line
-	u32 character;
+	LSPPosition pos;
 } LSPDocumentPosition;
 
 typedef struct {

@@ -311,8 +311,10 @@ int main(int argc, char **argv) {
 		test_req.data.completion = (LSPRequestCompletion){
 			.position = {
 				.path = str_dup("/p/test-lsp/src/main.rs"),
-				.line = 2,
-				.character = 2,
+				.pos = {
+					.line = 2,
+					.character = 2,
+				},
 			}
 		};
 		lsp_send_request(&lsp, &test_req);
