@@ -1,10 +1,13 @@
 /* 
 @TODO:
+- rename buffer->filename to buffer->path
 - rust-analyzer bug reports:
     - bad json can give "Unexpected error: client exited without proper shutdown sequence"
     - rust-analyzer should wait until cargo metadata/check is done before sending initialize response
 FUTURE FEATURES:
 - configurable max buffer size + max view-only buffer size
+- :set-build-command, don't let ../Cargo.toml override ./Makefile
+- add numlock as a key modifier
 - better undo chaining (dechain on backspace?)
 - allow multiple fonts (fonts directory?)
 - regenerate tags for completion too if there are no results
