@@ -1,4 +1,4 @@
-/* 
+/* o
 @TODO:
 - rename buffer->filename to buffer->path
 - rust-analyzer bug reports:
@@ -307,7 +307,7 @@ int main(int argc, char **argv) {
 			exit(1);
 		}
 		usleep(1000000);//if we don't do this we get "waiting for cargo metadata or cargo check"
-		LSPRequest test_req = {.type = LSP_COMPLETION};
+		LSPRequest test_req = {.type = LSP_REQUEST_COMPLETION};
 		test_req.data.completion = (LSPRequestCompletion){
 			.position = {
 				.path = str_dup("/p/test-lsp/src/main.rs"),
@@ -322,7 +322,7 @@ int main(int argc, char **argv) {
 				if (message.type == LSP_RESPONSE) {
 					const LSPResponse *response = &message.u.response;
 					switch (response->type) {
-					case LSP_COMPLETION: {
+					case LSP_REQUEST_COMPLETION: {
 						const LSPResponseCompletion *completion = &response->data.completion;
 						arr_foreach_ptr(completion->items, LSPCompletionItem, item) {
 							printf("(%d)%s => ",
@@ -338,12 +338,12 @@ int main(int argc, char **argv) {
 				} else if (message.type == LSP_REQUEST) {
 					const LSPRequest *request = &message.u.request;
 					switch (request->type) {
-					case LSP_SHOW_MESSAGE: {
+					case LSP_REQUEST_SHOW_MESSAGE: {
 						const LSPRequestMessage *m = &request->data.message;
 						// @TODO  actually show
 						printf("Show (%d): %s\n", m->type, m->message);
 					} break;
-					case LSP_LOG_MESSAGE: {
+					case LSP_REQUEST_LOG_MESSAGE: {
 						const LSPRequestMessage *m = &request->data.message;
 						// @TODO  actually log
 						printf("Log (%d): %s\n", m->type, m->message);

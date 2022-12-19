@@ -53,34 +53,45 @@ static void lsp_position_free(LSPDocumentPosition *position) {
 	free(position->path);
 }
 
+static void lsp_document_change_event_free(LSPDocumentChangeEvent *event) {
+	free(event->text);
+}
+
 static void lsp_request_free(LSPRequest *r) {
 	switch (r->type) {
-	case LSP_NONE:
-	case LSP_INITIALIZE:
-	case LSP_INITIALIZED:
-	case LSP_SHUTDOWN:
-	case LSP_EXIT:
+	case LSP_REQUEST_NONE:
+	case LSP_REQUEST_INITIALIZE:
+	case LSP_REQUEST_INITIALIZED:
+	case LSP_REQUEST_SHUTDOWN:
+	case LSP_REQUEST_EXIT:
 		break;
-	case LSP_COMPLETION: {
+	case LSP_REQUEST_COMPLETION: {
 		LSPRequestCompletion *completion = &r->data.completion;
 		lsp_position_free(&completion->position);
 		} break;
-	case LSP_OPEN: {
-		LSPRequestOpen *open = &r->data.open;
+	case LSP_REQUEST_DID_OPEN: {
+		LSPRequestDidOpen *open = &r->data.open;
 		free(open->path);
 		free(open->file_contents);
 		} break;
-	case LSP_SHOW_MESSAGE:
-	case LSP_LOG_MESSAGE:
+	case LSP_REQUEST_SHOW_MESSAGE:
+	case LSP_REQUEST_LOG_MESSAGE:
 		free(r->data.message.message);
 		break;
+	case LSP_REQUEST_DID_CHANGE: {
+		LSPRequestDidChange *c = &r->data.change;
+		arr_foreach_ptr(c->changes, LSPDocumentChangeEvent, event)
+			lsp_document_change_event_free(event);
+		free(c->document);
+		arr_free(c->changes);
+		} break;
 	}
 }
 
 static void lsp_response_free(LSPResponse *r) {
 	arr_free(r->string_data);
 	switch (r->type) {
-	case LSP_COMPLETION:
+	case LSP_REQUEST_COMPLETION:
 		arr_free(r->data.completion.items);
 		break;
 	default:
@@ -127,6 +138,13 @@ static WarnUnusedResult bool lsp_expect_number(LSP *lsp, JSONValue value, const 
 	return lsp_expect_type(lsp, value, JSON_NUMBER, what);
 }
 
+static void write_string(StrBuilder *builder, const char* string) {
+	abort();
+}
+
+static void write_range(StrBuilder *builder, LSPRange range) {
+}
+
 // technically there are "requests" and "notifications"
 // notifications are different in that they don't have IDs and don't return responses.
 // this function handles both.
@@ -142,9 +160,9 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 	
 	str_builder_append(&builder, "{\"jsonrpc\":\"2.0\",");
 	
-	bool is_notification = request->type == LSP_INITIALIZED
-		|| request->type == LSP_EXIT
-		|| request->type == LSP_OPEN;
+	bool is_notification = request->type == LSP_REQUEST_INITIALIZED
+		|| request->type == LSP_REQUEST_EXIT
+		|| request->type == LSP_REQUEST_DID_OPEN;
 	if (!is_notification) {
 		u32 id = lsp->request_id++;
 		request->id = id;
@@ -152,13 +170,13 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 	}
 	
 	switch (request->type) {
-	case LSP_NONE:
+	case LSP_REQUEST_NONE:
 	// these are server-to-client-only requests
-	case LSP_SHOW_MESSAGE:
-	case LSP_LOG_MESSAGE:
+	case LSP_REQUEST_SHOW_MESSAGE:
+	case LSP_REQUEST_LOG_MESSAGE:
 		assert(0);
 		break;
-	case LSP_INITIALIZE: {
+	case LSP_REQUEST_INITIALIZE: {
 		str_builder_appendf(&builder,
 			"\"method\":\"initialize\",\"params\":{"
 				"\"processId\":%d,"
@@ -167,13 +185,12 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 				"\"workspaceFolders\":null"
 		"}", process_get_id());
 	} break;
-	case LSP_INITIALIZED:
+	case LSP_REQUEST_INITIALIZED:
 		str_builder_append(&builder, "\"method\":\"initialized\"");
 		break;
-	case LSP_OPEN: {
-		const LSPRequestOpen *open = &request->data.open;
+	case LSP_REQUEST_DID_OPEN: {
+		const LSPRequestDidOpen *open = &request->data.open;
 		char *escaped_path = json_escape(open->path);
-		char *escaped_text = json_escape(open->file_contents);
 		// @TODO: escape directly into builder
 		str_builder_appendf(&builder,
 			"\"method\":\"textDocument/didOpen\",\"params\":{"
@@ -181,14 +198,34 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 					"\"uri\":\"file://%s\","
 					"\"languageId\":\"%s\","
 					"\"version\":1,"
-					"\"text\":\"%s\"}}",
+					"\"text\":",
 			escaped_path,
-			lsp_language_id(open->language),
-			escaped_text);
-		free(escaped_text);
+			lsp_language_id(open->language));
+		write_string(&builder, open->file_contents);
+		str_builder_appendf(&builder, "}}");
 		free(escaped_path);
 	} break;
-	case LSP_COMPLETION: {
+	case LSP_REQUEST_DID_CHANGE: {
+		LSPRequestDidChange *change = &request->data.change;
+		static unsigned long long version_number = 0; // @TODO @TEMPORARY
+		++version_number;
+		str_builder_appendf(&builder,
+			"\"method\":\"textDocument/didChange\",\"params\":{"
+				"\"textDocument\":{\"version\":%llu,\"uri\":\"file://%s\"},"
+				"\"contentChanges\":[",
+			version_number, change->document);
+		arr_foreach_ptr(change->changes, LSPDocumentChangeEvent, event) {
+			if (event != change->changes) str_builder_append(&builder, ",");
+			str_builder_appendf(&builder, "{\"range\":");
+			write_range(&builder, event->range);
+			str_builder_appendf(&builder, "\"text\":");
+			write_string(&builder, event->text);
+			str_builder_append(&builder, "}");
+		}
+		str_builder_appendf(&builder,
+			"]}");
+	} break;
+	case LSP_REQUEST_COMPLETION: {
 		const LSPRequestCompletion *completion = &request->data.completion;
 		char *escaped_path = json_escape(completion->position.path);
 		str_builder_appendf(&builder,"\"method\":\"textDocument/completion\",\"params\":{"
@@ -203,10 +240,10 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 			(ulong)completion->position.character);
 		free(escaped_path);
 	} break;
-	case LSP_SHUTDOWN:
+	case LSP_REQUEST_SHUTDOWN:
 		str_builder_append(&builder, "\"method\":\"shutdown\"");
 		break;
-	case LSP_EXIT:
+	case LSP_REQUEST_EXIT:
 		str_builder_append(&builder, "\"method\":\"exit\"");
 		break;
 	}
@@ -276,10 +313,10 @@ static bool parse_server2client_request(LSP *lsp, JSON *json, LSPRequest *reques
 	json_string_get(json, method_value.val.string, method, sizeof method);
 	
 	if (streq(method, "window/showMessage")) {
-		request->type = LSP_SHOW_MESSAGE;
+		request->type = LSP_REQUEST_SHOW_MESSAGE;
 		goto window_message;
 	} else if (streq(method, "window/logMessage")) {
-		request->type = LSP_LOG_MESSAGE;
+		request->type = LSP_REQUEST_LOG_MESSAGE;
 		window_message:;
 		JSONValue type = json_get(json, "params.type");
 		JSONValue message = json_get(json, "params.message");
@@ -366,7 +403,7 @@ static bool parse_range(LSP *lsp, const JSON *json, JSONValue range_value, LSPRa
 static bool parse_completion(LSP *lsp, const JSON *json, LSPResponse *response) {
 	// deal with textDocument/completion response.
 	// result: CompletionItem[] | CompletionList | null
-	response->type = LSP_COMPLETION;
+	response->type = LSP_REQUEST_COMPLETION;
 	LSPResponseCompletion *completion = &response->data.completion;
 	
 	JSONValue result = json_get(json, "result");
@@ -517,12 +554,12 @@ static void process_message(LSP *lsp, JSON *json) {
 	
 	JSONValue result = json_get(json, "result");
 	if (result.type != JSON_UNDEFINED) {
-		if (response_to.type == LSP_INITIALIZE) {
+		if (response_to.type == LSP_REQUEST_INITIALIZE) {
 			// it's the response to our initialize request!
 			// let's send back an "initialized" request (notification) because apparently
 			// that's something we need to do.
 			LSPRequest initialized = {
-				.type = LSP_INITIALIZED,
+				.type = LSP_REQUEST_INITIALIZED,
 				.data = {0},
 			};
 			write_request(lsp, &initialized);
@@ -532,7 +569,7 @@ static void process_message(LSP *lsp, JSON *json) {
 			LSPResponse response = {0};
 			bool success = false;
 			switch (response_to.type) {
-			case LSP_COMPLETION:
+			case LSP_REQUEST_COMPLETION:
 				success = parse_completion(lsp, json, &response);
 				break;
 			default:
@@ -671,11 +708,11 @@ static int lsp_communication_thread(void *data) {
 	
 	if (lsp->initialized) {
 		LSPRequest shutdown = {
-			.type = LSP_SHUTDOWN,
+			.type = LSP_REQUEST_SHUTDOWN,
 			.data = {0}
 		};
 		LSPRequest exit = {
-			.type = LSP_EXIT,
+			.type = LSP_REQUEST_EXIT,
 			.data = {0}
 		};
 		write_request(lsp, &shutdown);
@@ -712,7 +749,7 @@ bool lsp_create(LSP *lsp, const char *analyzer_command) {
 	};
 	process_run_ex(&lsp->process, analyzer_command, &settings);
 	LSPRequest initialize = {
-		.type = LSP_INITIALIZE
+		.type = LSP_REQUEST_INITIALIZE
 	};
 	// immediately send the request rather than queueing it.
 	// this is a small request, so it shouldn't be a problem.
@@ -749,4 +786,11 @@ void lsp_free(LSP *lsp) {
 		lsp_message_free(message);
 	}
 	arr_free(lsp->messages);
+}
+
+void lsp_document_changed(LSP *lsp, const char *document, LSPDocumentChangeEvent change) {
+	// @TODO(optimization, eventually): batch changes (using the contentChanges array)
+	//LSPRequest request = {.type = LSP_REQUEST_DID_CHANGE};
+	//LSPRequestDidChange *change = &request.change;
+	abort(); // @TODO
 }

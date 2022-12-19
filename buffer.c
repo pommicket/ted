@@ -2132,8 +2132,8 @@ Status buffer_load_file(TextBuffer *buffer, char const *filename) {
 				LSP *lsp = buffer_lsp(buffer);
 				if (lsp) {
 					// send didOpen
-					LSPRequest request = {.type = LSP_OPEN};
-					LSPRequestOpen *open = &request.data.open;
+					LSPRequest request = {.type = LSP_REQUEST_DID_OPEN};
+					LSPRequestDidOpen *open = &request.data.open;
 					open->file_contents = (char *)file_contents;
 					open->path = str_dup(filename);
 					open->language = buffer_language(buffer);

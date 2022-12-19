@@ -1,4 +1,6 @@
 // @TODO:
+// - make a real JSON output library
+// - use document IDs instead of strings (also lets us use real document version numbers)
 // - document this and lsp.c.
 // - maximum queue size for requests/responses just in case?
 // - delete old sent requests
@@ -10,20 +12,35 @@ typedef enum {
 	LSP_RESPONSE
 } LSPMessageType;
 
+typedef struct {
+	u32 offset;
+} LSPString;
+
+typedef struct {
+	u32 line;
+	u32 character;
+} LSPPosition;
+
+typedef struct {
+	LSPPosition start;
+	LSPPosition end;
+} LSPRange;
+
 typedef enum {
-	LSP_NONE,
+	LSP_REQUEST_NONE,
 	
 	// client-to-server
-	LSP_INITIALIZE,
-	LSP_INITIALIZED,
-	LSP_OPEN,
-	LSP_COMPLETION,
-	LSP_SHUTDOWN,
-	LSP_EXIT,
+	LSP_REQUEST_INITIALIZE,
+	LSP_REQUEST_INITIALIZED,
+	LSP_REQUEST_DID_OPEN,
+	LSP_REQUEST_DID_CHANGE,
+	LSP_REQUEST_COMPLETION,
+	LSP_REQUEST_SHUTDOWN,
+	LSP_REQUEST_EXIT,
 	
 	// server-to-client
-	LSP_SHOW_MESSAGE,
-	LSP_LOG_MESSAGE
+	LSP_REQUEST_SHOW_MESSAGE,
+	LSP_REQUEST_LOG_MESSAGE
 } LSPRequestType;
 
 typedef struct {
@@ -33,7 +50,18 @@ typedef struct {
 	char *path;
 	// freed by lsp_request_free
 	char *file_contents;
-} LSPRequestOpen;
+} LSPRequestDidOpen;
+
+// see TextDocumentContentChangeEvent in the LSP spec
+typedef struct {
+	LSPRange range;
+	char *text;
+} LSPDocumentChangeEvent;
+
+typedef struct {
+	char *document;
+	LSPDocumentChangeEvent *changes; // dynamic array
+} LSPRequestDidChange;
 
 typedef enum {
 	ERROR = 1,
@@ -65,26 +93,15 @@ typedef struct {
 	u32 id;
 	LSPRequestType type;
 	union {
-		LSPRequestOpen open;
+		LSPRequestDidOpen open;
+		LSPRequestDidChange change;
 		LSPRequestCompletion completion;
 		// for LSP_SHOW_MESSAGE and LSP_LOG_MESSAGE
 		LSPRequestMessage message;
 	} data;
 } LSPRequest;
 
-typedef struct {
-	u32 offset;
-} LSPString;
 
-typedef struct {
-	u32 line;
-	u32 character;
-} LSPPosition;
-
-typedef struct {
-	LSPPosition start;
-	LSPPosition end;
-} LSPRange;
 
 // see InsertTextFormat in the LSP spec.
 typedef enum {
@@ -177,4 +194,5 @@ void lsp_send_request(LSP *lsp, const LSPRequest *request);
 const char *lsp_response_string(const LSPResponse *response, LSPString string);
 bool lsp_create(LSP *lsp, const char *analyzer_command);
 bool lsp_next_message(LSP *lsp, LSPMessage *message);
+void lsp_document_changed(LSP *lsp, const char *document, LSPDocumentChangeEvent change);
 void lsp_free(LSP *lsp);
