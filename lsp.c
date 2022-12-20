@@ -21,7 +21,7 @@ bool lsp_get_error(LSP *lsp, char *error, size_t error_size, bool clear) {
 
 
 static void lsp_document_position_free(LSPDocumentPosition *position) {
-	free(position->path);
+	free(position->document);
 }
 
 static void lsp_document_change_event_free(LSPDocumentChangeEvent *event) {

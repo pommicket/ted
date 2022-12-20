@@ -310,7 +310,7 @@ int main(int argc, char **argv) {
 		LSPRequest test_req = {.type = LSP_REQUEST_COMPLETION};
 		test_req.data.completion = (LSPRequestCompletion){
 			.position = {
-				.path = str_dup("/p/test-lsp/src/main.rs"),
+				.document = str_dup("/p/test-lsp/src/main.rs"),
 				.pos = {
 					.line = 2,
 					.character = 2,

@@ -1,6 +1,7 @@
 // @TODO:
 // - use document IDs instead of strings (also lets us use real document version numbers)
 // - document this and lsp.c.
+// - deal with "Save as" (generate didOpen)
 // - maximum queue size for requests/responses just in case?
 // - delete old sent requests
 //    (if the server never sends a response)
@@ -55,6 +56,7 @@ typedef struct {
 // see TextDocumentContentChangeEvent in the LSP spec
 typedef struct {
 	LSPRange range;
+	// new text. will be freed. you can use NULL for the empty string.
 	char *text;
 } LSPDocumentChangeEvent;
 
@@ -78,7 +80,7 @@ typedef struct {
 
 typedef struct {
 	// freed by lsp_request_free
-	char *path;
+	char *document;
 	LSPPosition pos;
 } LSPDocumentPosition;
 

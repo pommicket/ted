@@ -66,8 +66,9 @@ static void write_arr_end(JSONWriter *o) {
 
 static void write_arr_elem(JSONWriter *o) {
 	if (o->is_first) {
-		str_builder_append(&o->builder, ",");
 		o->is_first = false;
+	} else {
+		str_builder_append(&o->builder, ",");
 	}
 }
 
@@ -178,11 +179,25 @@ static const char *lsp_request_method(LSPRequest *request) {
 	return "$/ignore";
 }
 
-// technically there are "requests" and "notifications"
-// notifications are different in that they don't have IDs and don't return responses.
-// this function handles both.
-// NOTE: do not call lsp_request_free on request. freeing the request will be handled.
-// returns the ID of the request
+static bool request_type_is_notification(LSPRequestType type) {
+	switch (type) {
+	case LSP_REQUEST_NONE: break;
+	case LSP_REQUEST_INITIALIZED:
+	case LSP_REQUEST_EXIT:
+	case LSP_REQUEST_DID_OPEN:
+	case LSP_REQUEST_DID_CHANGE:
+		return true;
+	case LSP_REQUEST_INITIALIZE:
+	case LSP_REQUEST_SHUTDOWN:
+	case LSP_REQUEST_SHOW_MESSAGE:
+	case LSP_REQUEST_LOG_MESSAGE:
+	case LSP_REQUEST_COMPLETION:
+		return false;
+	}
+	assert(0);
+	return false;
+}
+
 static void write_request(LSP *lsp, LSPRequest *request) {
 	JSONWriter writer = json_writer_new();
 	JSONWriter *o = &writer;
@@ -194,9 +209,7 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 	write_obj_start(o);
 	write_key_string(o, "jsonrpc", "2.0");
 	
-	bool is_notification = request->type == LSP_REQUEST_INITIALIZED
-		|| request->type == LSP_REQUEST_EXIT
-		|| request->type == LSP_REQUEST_DID_OPEN;
+	bool is_notification = request_type_is_notification(request->type);
 	if (!is_notification) {
 		u32 id = lsp->request_id++;
 		request->id = id;
@@ -244,23 +257,23 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 			write_key_obj_start(o, "textDocument");
 				write_key_number(o, "version", (double)version_number);
 				write_key_file_uri(o, "uri", change->document);
-				write_key_arr_start(o, "contentChanges");
-					arr_foreach_ptr(change->changes, LSPDocumentChangeEvent, event) {
-						write_arr_elem(o);
-						write_obj_start(o);
-							write_key_range(o, "range", event->range);
-							write_key_string(o, "text", event->text);
-						write_obj_end(o);
-					}
-				write_arr_end(o);
 			write_obj_end(o);
+			write_key_arr_start(o, "contentChanges");
+				arr_foreach_ptr(change->changes, LSPDocumentChangeEvent, event) {
+					write_arr_elem(o);
+					write_obj_start(o);
+						write_key_range(o, "range", event->range);
+						write_key_string(o, "text", event->text ? event->text : "");
+					write_obj_end(o);
+				}
+			write_arr_end(o);
 		write_obj_end(o);
 	} break;
 	case LSP_REQUEST_COMPLETION: {
 		const LSPRequestCompletion *completion = &request->data.completion;
 		write_key_obj_start(o, "params");
 			write_key_obj_start(o, "textDocument");
-				write_key_file_uri(o, "uri", completion->position.path);
+				write_key_file_uri(o, "uri", completion->position.document);
 			write_obj_end(o);
 			write_key_position(o, "position", completion->position.pos);
 		write_obj_end(o);

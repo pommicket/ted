@@ -67,6 +67,10 @@ bool buffer_is_untitled(TextBuffer *buffer) {
 		return false;
 }
 
+bool buffer_is_named_file(TextBuffer *buffer) {
+	return buffer->filename && !buffer_is_untitled(buffer);
+}
+
 // add this edit to the undo history
 static void buffer_append_edit(TextBuffer *buffer, BufferEdit const *edit) {
 	// whenever an edit is made, clear the redo history
@@ -245,6 +249,8 @@ static inline Font *buffer_font(TextBuffer *buffer) {
 
 // what programming language is this?
 Language buffer_language(TextBuffer *buffer) {
+	// @TODO: cache this?
+	//         (we're calling buffer_lsp on every edit and that calls this)
 	if (buffer->manual_language >= 1 && buffer->manual_language <= LANG_COUNT)
 		return (Language)(buffer->manual_language - 1);
 	Settings const *settings = buffer->ted->default_settings; // important we don't use buffer_settings here since that would cause a loop!
@@ -279,6 +285,11 @@ Language buffer_language(TextBuffer *buffer) {
 	
 	return match;
 }
+
+LSP *buffer_lsp(TextBuffer *buffer) {
+	return ted_get_lsp(buffer->ted, buffer_language(buffer));
+}
+
 
 // score is higher if context is closer match.
 static long context_score(const char *path, Language lang, const SettingsContext *context) {
@@ -545,6 +556,10 @@ void buffer_check_valid(TextBuffer *buffer) {
 	}
 }
 #else
+static void buffer_pos_check_valid(TextBuffer *buffer, BufferPos p) {
+	(void)buffer; (void)p;
+}
+
 void buffer_check_valid(TextBuffer *buffer) {
 	(void)buffer;
 }
@@ -1370,10 +1385,34 @@ static Status buffer_insert_lines(TextBuffer *buffer, u32 where, u32 number) {
 	return false;
 }
 
+// LSP uses UTF-16 indices because Microsoft fucking loves UTF-16 and won't let it die
+static LSPPosition buffer_pos_to_lsp(TextBuffer *buffer, BufferPos pos) {
+	LSPPosition lsp_pos = {
+		.line = pos.line
+	};
+	buffer_pos_validate(buffer, &pos);
+	const Line *line = &buffer->lines[pos.line];
+	const char32_t *str = line->str;
+	for (uint32_t i = 0; i < pos.index; ++i) {
+		if (str[i] < 0x10000)
+			lsp_pos.character += 1; // this codepoint needs 1 UTF-16 word
+		else
+			lsp_pos.character += 2; // this codepoint needs 2 UTF-16 words
+	}
+	return lsp_pos;
+}
+
 static void buffer_send_lsp_did_change_request(LSP *lsp, TextBuffer *buffer, BufferPos pos,
 	u32 nchars_deleted, String32 new_text) {
-	// @TODO
-	abort();
+	if (!buffer_is_named_file(buffer))
+		return; // this isn't a named buffer so we can't send a didChange request.
+	LSPDocumentChangeEvent event = {0};
+	if (new_text.len > 0)
+		event.text = str32_to_utf8_cstr(new_text);
+	event.range.start = buffer_pos_to_lsp(buffer, pos);
+	BufferPos pos_end = buffer_pos_advance(buffer, pos, nchars_deleted);
+	event.range.end = buffer_pos_to_lsp(buffer, pos_end);
+	lsp_document_changed(lsp, buffer->filename, event);
 }
 
 // inserts the given text, returning the position of the end of the text
@@ -2052,10 +2091,6 @@ void buffer_paste(TextBuffer *buffer) {
 			SDL_free(text);
 		}
 	}
-}
-
-LSP *buffer_lsp(TextBuffer *buffer) {
-	return ted_get_lsp(buffer->ted, buffer_language(buffer));
 }
 
 // if an error occurs, buffer is left untouched (except for the error field) and the function returns false.
