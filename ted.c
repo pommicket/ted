@@ -139,7 +139,7 @@ static void ted_load_fonts(Ted *ted) {
 void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer) {
 	TextBuffer *search_buffer = find_search_buffer(ted);
 	ted->active_buffer = buffer;
-	ted->autocomplete = false;
+	autocomplete_close(ted);
 	if (buffer != search_buffer) {
 		if (ted->find)
 			find_update(ted, true); // make sure find results are for this file

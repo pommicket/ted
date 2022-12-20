@@ -377,7 +377,7 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 			// dismiss error box
 			*ted->error_shown = '\0';
 		} else if (ted->autocomplete) {
-			ted->autocomplete = false;
+			autocomplete_close(ted);
 		} else if (ted->menu) {
 			menu_escape(ted);
 		} else {

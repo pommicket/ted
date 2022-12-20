@@ -50,7 +50,7 @@ void menu_open(Ted *ted, Menu menu) {
 	if (ted->menu)
 		menu_close_with_next(ted, menu);
 	if (ted->find) find_close(ted);
-	ted->autocomplete = false;
+	autocomplete_close(ted);
 	ted->menu = menu;
 	TextBuffer *prev_buf = ted->prev_active_buffer = ted->active_buffer;
 	if (prev_buf)

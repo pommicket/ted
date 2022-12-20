@@ -1,10 +1,14 @@
-/* o
+/*
 @TODO:
+- make sure autocomplete is closed when you switch buffers
+- scroll through completions
+- figure out under which circumstances backspace should close completions
 - rename buffer->filename to buffer->path
 - rust-analyzer bug reports:
     - bad json can give "Unexpected error: client exited without proper shutdown sequence"
     - rust-analyzer should wait until cargo metadata/check is done before sending initialize response
 FUTURE FEATURES:
+- robust find (results shouldn't move around when you type things)
 - configurable max buffer size + max view-only buffer size
 - :set-build-command, don't let ../Cargo.toml override ./Makefile
 - add numlock as a key modifier
@@ -977,7 +981,7 @@ int main(int argc, char **argv) {
 					autocomplete_frame(ted);
 				}
 			} else {
-				ted->autocomplete = false;
+				autocomplete_close(ted);
 				text_utf8_anchored(font, "Press Ctrl+O to open a file or Ctrl+N to create a new one.",
 					window_width * 0.5f, window_height * 0.5f, ted_color(ted, COLOR_TEXT_SECONDARY), ANCHOR_MIDDLE);
 				text_render(font);

@@ -352,6 +352,11 @@ typedef struct {
 	u32 build_output_line; // which line in the build output corresponds to this error
 } BuildError;
 
+typedef struct {
+	char *label;
+	char *text;
+} Autocompletion;
+
 typedef struct Ted {
 	struct LSP *test_lsp; // @TODO: something better
 	
@@ -405,6 +410,8 @@ typedef struct Ted {
 	bool building; // is the build process running?
 	bool autocomplete; // is the autocomplete window open?
 	
+	Autocompletion *autocompletions; // dynamic array of suggestions
+	BufferPos autocomplete_pos; // position of cursor last time completions were generated. if this changes, we need to recompute completions.
 	i32 autocomplete_cursor; // which completion is currently selected
 	Rect autocomplete_rect; // rectangle where the autocomplete menu is (needed to avoid interpreting autocomplete clicks as other clicks)
 	
@@ -468,6 +475,7 @@ typedef struct Ted {
 	char error_shown[512]; // error display in box on screen
 } Ted;
 
+void autocomplete_close(Ted *ted);
 void command_execute(Ted *ted, Command c, i64 argument);
 void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer);
 // the settings of the active buffer, or the default settings if there is no active buffer

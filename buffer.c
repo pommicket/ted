@@ -287,6 +287,8 @@ Language buffer_language(TextBuffer *buffer) {
 }
 
 LSP *buffer_lsp(TextBuffer *buffer) {
+	if (!buffer_is_named_file(buffer))
+		return NULL;
 	return ted_get_lsp(buffer->ted, buffer_language(buffer));
 }
 
@@ -1386,7 +1388,7 @@ static Status buffer_insert_lines(TextBuffer *buffer, u32 where, u32 number) {
 }
 
 // LSP uses UTF-16 indices because Microsoft fucking loves UTF-16 and won't let it die
-static LSPPosition buffer_pos_to_lsp(TextBuffer *buffer, BufferPos pos) {
+LSPPosition buffer_pos_to_lsp(TextBuffer *buffer, BufferPos pos) {
 	LSPPosition lsp_pos = {
 		.line = pos.line
 	};
@@ -2111,7 +2113,7 @@ Status buffer_load_file(TextBuffer *buffer, char const *filename) {
 			buffer_seterr(buffer, "File too big (size: %zu).", file_size);
 			success = false;
 		} else {
-			u8 *file_contents = buffer_calloc(buffer, 1, file_size);
+			u8 *file_contents = buffer_calloc(buffer, 1, file_size + 1);
 			lines_capacity = 4;
 			lines = buffer_calloc(buffer, lines_capacity, sizeof *buffer->lines); // initial lines
 			nlines = 1;
@@ -2345,7 +2347,7 @@ bool buffer_handle_click(Ted *ted, TextBuffer *buffer, v2 click, u8 times) {
 		if (rect_contains_point(ted->autocomplete_rect, click))
 			return false; // don't look at clicks in the autocomplete menu
 		else
-			ted->autocomplete = false; // close autocomplete menu if user clicks outside of it
+			autocomplete_close(ted); // close autocomplete menu if user clicks outside of it
 	}
 	if (buffer_pixels_to_pos(buffer, click, &buffer_pos)) {
 		// user clicked on buffer
