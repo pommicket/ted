@@ -1370,6 +1370,12 @@ static Status buffer_insert_lines(TextBuffer *buffer, u32 where, u32 number) {
 	return false;
 }
 
+static void buffer_send_lsp_did_change_request(LSP *lsp, TextBuffer *buffer, BufferPos pos,
+	u32 nchars_deleted, String32 new_text) {
+	// @TODO
+	abort();
+}
+
 // inserts the given text, returning the position of the end of the text
 BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 str) {
 	buffer_pos_validate(buffer, &pos);
@@ -1403,6 +1409,10 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 	}
 	str32_remove_all_instances_of_char(&str, '\r');
 
+
+	LSP *lsp = buffer_lsp(buffer);
+	if (lsp)
+		buffer_send_lsp_did_change_request(lsp, buffer, pos, 0, str);
 
 	if (buffer->store_undo_events) {
 		BufferEdit *last_edit = arr_lastp(buffer->undo_history);
@@ -1649,6 +1659,10 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 	// When generating undo events, we allocate nchars characters of memory (see buffer_edit below).
 	// Not doing this might also cause other bugs, best to keep it here just in case.
 	nchars = (u32)buffer_get_text_at_pos(buffer, pos, NULL, nchars);
+
+	LSP *lsp = buffer_lsp(buffer);
+	if (lsp)
+		buffer_send_lsp_did_change_request(lsp, buffer, pos, nchars, (String32){0});
 
 	if (buffer->store_undo_events) {
 		// we need to make sure the undo history keeps track of the edit.
@@ -2135,7 +2149,7 @@ Status buffer_load_file(TextBuffer *buffer, char const *filename) {
 					LSPRequest request = {.type = LSP_REQUEST_DID_OPEN};
 					LSPRequestDidOpen *open = &request.data.open;
 					open->file_contents = (char *)file_contents;
-					open->path = str_dup(filename);
+					open->document = str_dup(filename);
 					open->language = buffer_language(buffer);
 					lsp_send_request(lsp, &request);
 					file_contents = NULL; // don't free

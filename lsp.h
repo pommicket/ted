@@ -1,5 +1,4 @@
 // @TODO:
-// - make a real JSON output library
 // - use document IDs instead of strings (also lets us use real document version numbers)
 // - document this and lsp.c.
 // - maximum queue size for requests/responses just in case?
@@ -48,7 +47,7 @@ typedef struct {
 	// buffer language
 	Language language;
 	// freed by lsp_request_free
-	char *path;
+	char *document;
 	// freed by lsp_request_free
 	char *file_contents;
 } LSPRequestDidOpen;

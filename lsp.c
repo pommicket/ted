@@ -42,7 +42,7 @@ static void lsp_request_free(LSPRequest *r) {
 		} break;
 	case LSP_REQUEST_DID_OPEN: {
 		LSPRequestDidOpen *open = &r->data.open;
-		free(open->path);
+		free(open->document);
 		free(open->file_contents);
 		} break;
 	case LSP_REQUEST_SHOW_MESSAGE:
@@ -618,7 +618,9 @@ void lsp_free(LSP *lsp) {
 
 void lsp_document_changed(LSP *lsp, const char *document, LSPDocumentChangeEvent change) {
 	// @TODO(optimization, eventually): batch changes (using the contentChanges array)
-	//LSPRequest request = {.type = LSP_REQUEST_DID_CHANGE};
-	//LSPRequestDidChange *change = &request.change;
-	abort(); // @TODO
+	LSPRequest request = {.type = LSP_REQUEST_DID_CHANGE};
+	LSPRequestDidChange *c = &request.data.change;
+	c->document = str_dup(document);
+	arr_add(c->changes, change);
+	lsp_send_request(lsp, &request);
 }

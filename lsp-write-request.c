@@ -229,7 +229,7 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 		const LSPRequestDidOpen *open = &request->data.open;
 		write_key_obj_start(o, "params");
 			write_key_obj_start(o, "textDocument");
-				write_key_file_uri(o, "uri", open->path);
+				write_key_file_uri(o, "uri", open->document);
 				write_key_string(o, "languageId", lsp_language_id(open->language));
 				write_key_number(o, "version", 1);
 				write_key_string(o, "text", open->file_contents);
