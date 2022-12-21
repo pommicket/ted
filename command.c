@@ -127,7 +127,7 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 			buffer = &ted->line_buffer;
 			ted_switch_to_buffer(ted, buffer);
 			buffer_select_all(buffer);
-		} else if (ted->autocomplete) {
+		} else if (ted->autocomplete.open) {
 			autocomplete_select_cursor_completion(ted);
 		} else if (buffer) {
 			if (buffer->selection)
@@ -263,13 +263,13 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		}
 		break;
 	case CMD_AUTOCOMPLETE:
-		if (ted->autocomplete)
+		if (ted->autocomplete.open)
 			autocomplete_next(ted);
 		else
 			autocomplete_open(ted);
 		break;
 	case CMD_AUTOCOMPLETE_BACK:
-		if (ted->autocomplete)
+		if (ted->autocomplete.open)
 			autocomplete_prev(ted);
 		break;
 		
@@ -376,7 +376,7 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		if (*ted->error_shown) {
 			// dismiss error box
 			*ted->error_shown = '\0';
-		} else if (ted->autocomplete) {
+		} else if (ted->autocomplete.open) {
 			autocomplete_close(ted);
 		} else if (ted->menu) {
 			menu_escape(ted);

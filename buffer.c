@@ -2343,8 +2343,8 @@ u32 buffer_last_rendered_line(TextBuffer *buffer) {
 // returns true if the buffer "used" this event
 bool buffer_handle_click(Ted *ted, TextBuffer *buffer, v2 click, u8 times) {
 	BufferPos buffer_pos;
-	if (ted->autocomplete) {
-		if (rect_contains_point(ted->autocomplete_rect, click))
+	if (ted->autocomplete.open) {
+		if (rect_contains_point(ted->autocomplete.rect, click))
 			return false; // don't look at clicks in the autocomplete menu
 		else
 			autocomplete_close(ted); // close autocomplete menu if user clicks outside of it

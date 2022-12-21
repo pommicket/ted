@@ -2,31 +2,34 @@
 #define AUTOCOMPLETE_NCOMPLETIONS_VISIBLE 10 // max # of completions to show at once
 
 static void autocomplete_clear_completions(Ted *ted) {
-	arr_foreach_ptr(ted->autocompletions, Autocompletion, completion) {
+	Autocomplete *ac = &ted->autocomplete;
+	arr_foreach_ptr(ac->completions, Autocompletion, completion) {
 		free(completion->label);
 		free(completion->text);
 		free(completion->filter);
 	}
-	arr_clear(ted->autocompletions);
+	arr_clear(ac->completions);
+	arr_clear(ac->suggested);
 }
 
 // do the actual completion
-static void autocomplete_complete(Ted *ted, Autocompletion *completion) {
+static void autocomplete_complete(Ted *ted, Autocompletion completion) {
 	TextBuffer *buffer = ted->active_buffer;
 	buffer_start_edit_chain(buffer); // don't merge with other edits
 	if (is_word(buffer_char_before_cursor(buffer)))
 		buffer_backspace_words_at_cursor(buffer, 1); // delete whatever text was already typed
-	buffer_insert_utf8_at_cursor(buffer, completion->text);
+	buffer_insert_utf8_at_cursor(buffer, completion.text);
 	buffer_end_edit_chain(buffer);
 	autocomplete_close(ted);
 }
 
 static void autocomplete_select_cursor_completion(Ted *ted) {
-	if (ted->autocomplete) {
-		size_t ncompletions = arr_len(ted->autocompletions);
-		if (ncompletions) {
-			i64 cursor = mod_i64(ted->autocomplete_cursor, (i64)ncompletions);
-			autocomplete_complete(ted, &ted->autocompletions[cursor]);
+	Autocomplete *ac = &ted->autocomplete;
+	if (ac->open) {
+		size_t nsuggestions = arr_len(ac->suggested);
+		if (nsuggestions) {
+			i64 cursor = mod_i64(ac->cursor, (i64)nsuggestions);
+			autocomplete_complete(ted, ac->completions[ac->suggested[cursor]]);
 			autocomplete_close(ted);
 		}
 	}
@@ -34,64 +37,41 @@ static void autocomplete_select_cursor_completion(Ted *ted) {
 
 
 static void autocomplete_next(Ted *ted) {
-	const Autocompletion *const completions = ted->autocompletions;
-	i64 ncompletions = arr_len(completions);
-	if (ncompletions == 0) return;
-	i64 cursor = mod_i64(ted->autocomplete_cursor + 1, (i64)ncompletions);
-	for (; cursor < ncompletions; ++cursor) {
-		if (completions[cursor].visible)
-			break;
-	}
-	if (cursor == ncompletions) {
-		for (cursor = 0; cursor < ncompletions; ++cursor) {
-			if (completions[cursor].visible)
-				break;
-		}
-	}
-	ted->autocomplete_cursor = (i32)cursor;
+	++ted->autocomplete.cursor;
 }
 
 static void autocomplete_prev(Ted *ted) {
-	const Autocompletion *const completions = ted->autocompletions;
-	i64 ncompletions = arr_len(completions);
-	if (ncompletions == 0) return;
-	i64 cursor = mod_i64(ted->autocomplete_cursor - 1, (i64)ncompletions);
-	for (; cursor >= 0; --cursor) {
-		if (completions[cursor].visible)
-			break;
-	}
-	if (cursor < 0) {
-		for (cursor = ncompletions - 1; cursor >= 0; --cursor) {
-			if (completions[cursor].visible)
-				break;
-		}
-	}
-	ted->autocomplete_cursor = (i32)cursor;
+	--ted->autocomplete.cursor;
 }
 
 void autocomplete_close(Ted *ted) {
-	if (ted->autocomplete) {
-		ted->autocomplete = false;
+	if (ted->autocomplete.open) {
+		ted->autocomplete.open = false;
 		autocomplete_clear_completions(ted);
 	}
 }
 
-static void autocomplete_update_visibility(Ted *ted) {
+void autocomplete_update_suggested(Ted *ted) {
+	Autocomplete *ac = &ted->autocomplete;
+	arr_clear(ac->suggested);
 	char *word = str32_to_utf8_cstr(
 		buffer_word_at_cursor(ted->active_buffer)
 	);
-	arr_foreach_ptr(ted->autocompletions, Autocompletion, completion) {
-		completion->visible = str_has_prefix(completion->filter, word);
+	for (u32 i = 0; i < arr_len(ac->completions); ++i) {
+		Autocompletion *completion = &ac->completions[i];
+		if (str_has_prefix(completion->filter, word))
+			arr_add(ac->suggested, i); // suggest this one
 	}
 	free(word);
 }
 
 static void autocomplete_find_completions(Ted *ted) {
+	Autocomplete *ac = &ted->autocomplete;
 	TextBuffer *buffer = ted->active_buffer;
 	BufferPos pos = buffer->cursor_pos;
-	if (buffer_pos_eq(pos, ted->autocomplete_pos))
+	if (buffer_pos_eq(pos, ac->last_pos))
 		return; // no need to update completions.
-	ted->autocomplete_pos = pos;
+	ac->last_pos = pos;
 
 	LSP *lsp = buffer_lsp(buffer);
 	if (lsp) {
@@ -111,69 +91,77 @@ static void autocomplete_find_completions(Ted *ted) {
 		
 		char *word_at_cursor = str32_to_utf8_cstr(buffer_word_at_cursor(buffer));
 		char **completions = calloc(TAGS_MAX_COMPLETIONS, sizeof *completions);
-		size_t ncompletions = tags_beginning_with(ted, word_at_cursor, completions, TAGS_MAX_COMPLETIONS);
+		u32 ncompletions = (u32)tags_beginning_with(ted, word_at_cursor, completions, TAGS_MAX_COMPLETIONS);
 		free(word_at_cursor);
 		
-		arr_set_len(ted->autocompletions, ncompletions);
+		arr_set_len(ac->completions, ncompletions);
 		
 		for (size_t i = 0; i < ncompletions; ++i) {
-			ted->autocompletions[i].label = completions[i];
-			ted->autocompletions[i].text = str_dup(completions[i]);
-			ted->autocompletions[i].filter = str_dup(completions[i]);
+			ac->completions[i].label = completions[i];
+			ac->completions[i].text = str_dup(completions[i]);
+			ac->completions[i].filter = str_dup(completions[i]);
+			arr_add(ac->suggested, (u32)i);
 		}
 		free(completions);
 	}
+	
+	autocomplete_update_suggested(ted);
 }
 
 static void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *response) {
+	Autocomplete *ac = &ted->autocomplete;
 	// @TODO: check if same buffer is open and if cursor has moved
 	const LSPRequest *request = &response->request;
 	if (request->type == LSP_REQUEST_COMPLETION) {
 		const LSPResponseCompletion *completion = &response->data.completion;
 		size_t ncompletions = arr_len(completion->items);
-		arr_set_len(ted->autocompletions, ncompletions);
+		arr_set_len(ac->completions, ncompletions);
 		for (size_t i = 0; i < ncompletions; ++i) {
 			const LSPCompletionItem *lsp_completion = &completion->items[i];
-			Autocompletion *ted_completion = &ted->autocompletions[i];
+			Autocompletion *ted_completion = &ac->completions[i];
 			// @TODO: deal with fancier textEdits
 			ted_completion->label = str_dup(lsp_response_string(response, lsp_completion->label));
 			ted_completion->filter = str_dup(lsp_response_string(response, lsp_completion->filter_text));
 			ted_completion->text = str_dup(lsp_response_string(response, lsp_completion->text_edit.new_text));
 		}
 		if (ncompletions)
-			ted->autocomplete = true; // open menu
+			ac->open = true; // open menu
 	}
+	autocomplete_update_suggested(ted);
 }
 
 // open autocomplete, or just do the completion if there's only one suggestion
 static void autocomplete_open(Ted *ted) {
+	Autocomplete *ac = &ted->autocomplete;
+	
 	if (!ted->active_buffer) return;
 	TextBuffer *buffer = ted->active_buffer;
 	if (!buffer->filename) return;
 	if (buffer->view_only) return;
 	
 	ted->cursor_error_time = 0;
-	ted->autocomplete_pos = (BufferPos){0,0};
-	ted->autocomplete_cursor = 0;
-	ted->autocompletions = NULL;
+	ac->last_pos = (BufferPos){0,0};
+	ac->cursor = 0;
 	autocomplete_find_completions(ted);
-	switch (arr_len(ted->autocompletions)) {
+	
+	switch (arr_len(ac->completions)) {
 	case 0:
 		ted->cursor_error_time = time_get_seconds();
 		autocomplete_close(ted);
 		break;
 	case 1:
-		autocomplete_complete(ted, &ted->autocompletions[0]);
+		autocomplete_complete(ted, ac->completions[0]);
 		// (^ this calls autocomplete_close)
 		break;
 	default:
 		// open autocomplete menu
-		ted->autocomplete = true;
+		ac->open = true;
 		break;
 	}
 }
 
 static void autocomplete_frame(Ted *ted) {
+	Autocomplete *ac = &ted->autocomplete;
 	TextBuffer *buffer = ted->active_buffer;
 	Font *font = ted->font;
 	float char_height = text_font_char_height(font);
@@ -182,16 +170,14 @@ static void autocomplete_frame(Ted *ted) {
 	float const padding = settings->padding;
 
 	autocomplete_find_completions(ted);
-	autocomplete_update_visibility(ted);
 
 	char *completions[AUTOCOMPLETE_NCOMPLETIONS_VISIBLE] = {0};
 	size_t ncompletions = 0;
-	arr_foreach_ptr(ted->autocompletions, Autocompletion, completion) {
-		if (completion->visible) {
-			completions[ncompletions++] = completion->label;
-			if (ncompletions == AUTOCOMPLETE_NCOMPLETIONS_VISIBLE)
-				break;
-		}
+	arr_foreach_ptr(ac->suggested, u32, suggestion) {
+		Autocompletion *completion = &ac->completions[*suggestion];
+		completions[ncompletions++] = completion->label;
+		if (ncompletions == AUTOCOMPLETE_NCOMPLETIONS_VISIBLE)
+			break;
 	}
 	
 	float menu_width = 400, menu_height = (float)ncompletions * char_height + 2 * padding;
@@ -202,7 +188,7 @@ static void autocomplete_frame(Ted *ted) {
 		return;
 	}
 	
-	ted->autocomplete_cursor = (i32)mod_i64(ted->autocomplete_cursor, (i64)ncompletions);
+	ac->cursor = (i32)mod_i64(ac->cursor, (i64)ncompletions);
 	
 	v2 cursor_pos = buffer_pos_to_pixels(buffer, buffer->cursor_pos);
 	bool open_up = cursor_pos.y > 0.5f * (buffer->y1 + buffer->y2); // should the completion menu open upwards?
@@ -217,7 +203,7 @@ static void autocomplete_frame(Ted *ted) {
 		Rect menu_rect = rect(V2(x, start_y), V2(menu_width, menu_height));
 		gl_geometry_rect(menu_rect, colors[COLOR_MENU_BG]);
 		//gl_geometry_rect_border(menu_rect, 1, colors[COLOR_BORDER]);
-		ted->autocomplete_rect = menu_rect;
+		ac->rect = menu_rect;
 	}
 	
 	// vertical padding
@@ -232,18 +218,17 @@ static void autocomplete_frame(Ted *ted) {
 		ted->cursor = ted->cursor_hand;	
 	}
 	{ // highlight cursor entry
-		Rect r = rect(V2(x, start_y + (float)ted->autocomplete_cursor * char_height), V2(menu_width, char_height));
+		Rect r = rect(V2(x, start_y + (float)ac->cursor * char_height), V2(menu_width, char_height));
 		gl_geometry_rect(r, colors[COLOR_MENU_HL]);
 	}
 	
 	for (uint i = 0; i < ted->nmouse_clicks[SDL_BUTTON_LEFT]; ++i) {
 		v2 click = ted->mouse_clicks[SDL_BUTTON_LEFT][i];
-		if (rect_contains_point(ted->autocomplete_rect, click)) {
-			// @TODO : fix me
+		if (rect_contains_point(ac->rect, click)) {
 			u16 entry = (u16)((click.y - start_y) / char_height);
 			if (entry < ncompletions) {
 				// entry was clicked on! use this completion.
-				autocomplete_complete(ted, &ted->autocompletions[entry]);
+				autocomplete_complete(ted, ac->completions[ac->suggested[entry]]);
 			}
 		}
 	}

@@ -353,11 +353,20 @@ typedef struct {
 } BuildError;
 
 typedef struct {
-	bool visible; // updated every frame depending on word at cursor + filter
 	char *label;
 	char *filter;
 	char *text;
 } Autocompletion;
+
+typedef struct {
+	bool open; // is the autocomplete window open?
+	
+	Autocompletion *completions; // dynamic array of all completions
+	u32 *suggested; // dynamic array of completions to be suggested (indices into completions)
+	BufferPos last_pos; // position of cursor last time completions were generated. if this changes, we need to recompute completions.
+	i32 cursor; // which completion is currently selected (index into suggested)
+	Rect rect; // rectangle where the autocomplete menu is (needed to avoid interpreting autocomplete clicks as other clicks)
+} Autocomplete;
 
 typedef struct Ted {
 	struct LSP *test_lsp; // @TODO: something better
@@ -410,12 +419,7 @@ typedef struct Ted {
 	Command warn_unsaved; // if non-zero, the user is trying to execute this command, but there are unsaved changes
 	bool build_shown; // are we showing the build output?
 	bool building; // is the build process running?
-	bool autocomplete; // is the autocomplete window open?
-	
-	Autocompletion *autocompletions; // dynamic array of suggestions
-	BufferPos autocomplete_pos; // position of cursor last time completions were generated. if this changes, we need to recompute completions.
-	i32 autocomplete_cursor; // which completion is currently selected
-	Rect autocomplete_rect; // rectangle where the autocomplete menu is (needed to avoid interpreting autocomplete clicks as other clicks)
+	Autocomplete autocomplete;
 	
 	FILE *log;
 	

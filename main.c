@@ -9,6 +9,7 @@
     - rust-analyzer should wait until cargo metadata/check is done before sending initialize response
 FUTURE FEATURES:
 - robust find (results shouldn't move around when you type things)
+- multiple files with command line arguments
 - configurable max buffer size + max view-only buffer size
 - :set-build-command, don't let ../Cargo.toml override ./Makefile
 - add numlock as a key modifier
@@ -1009,7 +1010,7 @@ int main(int argc, char **argv) {
 			if (ted->nodes_used[0]) {
 				float y1 = padding;
 				node_frame(ted, node, rect4(x1, y1, x2, y));
-				if (ted->autocomplete) {
+				if (ted->autocomplete.open) {
 					autocomplete_frame(ted);
 				}
 			} else {
