@@ -1,10 +1,11 @@
 #define TAGS_MAX_COMPLETIONS 200 // max # of tag completions to scroll through
-#define AUTOCOMPLETE_NCOMPLETIONS 10 // max # of completions to show at once
+#define AUTOCOMPLETE_NCOMPLETIONS_VISIBLE 10 // max # of completions to show at once
 
 static void autocomplete_clear_completions(Ted *ted) {
 	arr_foreach_ptr(ted->autocompletions, Autocompletion, completion) {
 		free(completion->label);
 		free(completion->text);
+		free(completion->filter);
 	}
 	arr_clear(ted->autocompletions);
 }
@@ -32,11 +33,57 @@ static void autocomplete_select_cursor_completion(Ted *ted) {
 }
 
 
+static void autocomplete_next(Ted *ted) {
+	const Autocompletion *const completions = ted->autocompletions;
+	i64 ncompletions = arr_len(completions);
+	if (ncompletions == 0) return;
+	i64 cursor = mod_i64(ted->autocomplete_cursor + 1, (i64)ncompletions);
+	for (; cursor < ncompletions; ++cursor) {
+		if (completions[cursor].visible)
+			break;
+	}
+	if (cursor == ncompletions) {
+		for (cursor = 0; cursor < ncompletions; ++cursor) {
+			if (completions[cursor].visible)
+				break;
+		}
+	}
+	ted->autocomplete_cursor = (i32)cursor;
+}
+
+static void autocomplete_prev(Ted *ted) {
+	const Autocompletion *const completions = ted->autocompletions;
+	i64 ncompletions = arr_len(completions);
+	if (ncompletions == 0) return;
+	i64 cursor = mod_i64(ted->autocomplete_cursor - 1, (i64)ncompletions);
+	for (; cursor >= 0; --cursor) {
+		if (completions[cursor].visible)
+			break;
+	}
+	if (cursor < 0) {
+		for (cursor = ncompletions - 1; cursor >= 0; --cursor) {
+			if (completions[cursor].visible)
+				break;
+		}
+	}
+	ted->autocomplete_cursor = (i32)cursor;
+}
+
 void autocomplete_close(Ted *ted) {
 	if (ted->autocomplete) {
 		ted->autocomplete = false;
 		autocomplete_clear_completions(ted);
 	}
+}
+
+static void autocomplete_update_visibility(Ted *ted) {
+	char *word = str32_to_utf8_cstr(
+		buffer_word_at_cursor(ted->active_buffer)
+	);
+	arr_foreach_ptr(ted->autocompletions, Autocompletion, completion) {
+		completion->visible = str_has_prefix(completion->filter, word);
+	}
+	free(word);
 }
 
 static void autocomplete_find_completions(Ted *ted) {
@@ -72,8 +119,29 @@ static void autocomplete_find_completions(Ted *ted) {
 		for (size_t i = 0; i < ncompletions; ++i) {
 			ted->autocompletions[i].label = completions[i];
 			ted->autocompletions[i].text = str_dup(completions[i]);
+			ted->autocompletions[i].filter = str_dup(completions[i]);
 		}
 		free(completions);
+	}
+}
+
+static void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *response) {
+	// @TODO: check if same buffer is open and if cursor has moved
+	const LSPRequest *request = &response->request;
+	if (request->type == LSP_REQUEST_COMPLETION) {
+		const LSPResponseCompletion *completion = &response->data.completion;
+		size_t ncompletions = arr_len(completion->items);
+		arr_set_len(ted->autocompletions, ncompletions);
+		for (size_t i = 0; i < ncompletions; ++i) {
+			const LSPCompletionItem *lsp_completion = &completion->items[i];
+			Autocompletion *ted_completion = &ted->autocompletions[i];
+			// @TODO: deal with fancier textEdits
+			ted_completion->label = str_dup(lsp_response_string(response, lsp_completion->label));
+			ted_completion->filter = str_dup(lsp_response_string(response, lsp_completion->filter_text));
+			ted_completion->text = str_dup(lsp_response_string(response, lsp_completion->text_edit.new_text));
+		}
+		if (ncompletions)
+			ted->autocomplete = true; // open menu
 	}
 }
 
@@ -114,10 +182,18 @@ static void autocomplete_frame(Ted *ted) {
 	float const padding = settings->padding;
 
 	autocomplete_find_completions(ted);
+	autocomplete_update_visibility(ted);
 
-	size_t ncompletions = arr_len(ted->autocompletions);
-	if (ncompletions > AUTOCOMPLETE_NCOMPLETIONS)
-		ncompletions = AUTOCOMPLETE_NCOMPLETIONS;
+	char *completions[AUTOCOMPLETE_NCOMPLETIONS_VISIBLE] = {0};
+	size_t ncompletions = 0;
+	arr_foreach_ptr(ted->autocompletions, Autocompletion, completion) {
+		if (completion->visible) {
+			completions[ncompletions++] = completion->label;
+			if (ncompletions == AUTOCOMPLETE_NCOMPLETIONS_VISIBLE)
+				break;
+		}
+	}
+	
 	float menu_width = 400, menu_height = (float)ncompletions * char_height + 2 * padding;
 	
 	if (ncompletions == 0) {
@@ -163,6 +239,7 @@ static void autocomplete_frame(Ted *ted) {
 	for (uint i = 0; i < ted->nmouse_clicks[SDL_BUTTON_LEFT]; ++i) {
 		v2 click = ted->mouse_clicks[SDL_BUTTON_LEFT][i];
 		if (rect_contains_point(ted->autocomplete_rect, click)) {
+			// @TODO : fix me
 			u16 entry = (u16)((click.y - start_y) / char_height);
 			if (entry < ncompletions) {
 				// entry was clicked on! use this completion.
@@ -177,7 +254,7 @@ static void autocomplete_frame(Ted *ted) {
 	rgba_u32_to_floats(colors[COLOR_TEXT], state.color);
 	for (size_t i = 0; i < ncompletions; ++i) {
 		state.x = x + padding; state.y = y;
-		text_utf8_with_state(font, &state, ted->autocompletions[i].label);
+		text_utf8_with_state(font, &state, completions[i]);
 		y += char_height;
 	}
 	

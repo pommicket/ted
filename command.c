@@ -264,13 +264,13 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		break;
 	case CMD_AUTOCOMPLETE:
 		if (ted->autocomplete)
-			++ted->autocomplete_cursor;
+			autocomplete_next(ted);
 		else
 			autocomplete_open(ted);
 		break;
 	case CMD_AUTOCOMPLETE_BACK:
 		if (ted->autocomplete)
-			--ted->autocomplete_cursor;
+			autocomplete_prev(ted);
 		break;
 		
 	case CMD_UNDO:

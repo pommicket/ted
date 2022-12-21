@@ -71,6 +71,12 @@ LSP *ted_get_lsp(Ted *ted, Language lang) {
 	return ted->test_lsp;
 }
 
+LSP *ted_get_active_lsp(Ted *ted) {
+	if (!ted->active_buffer)
+		return NULL;
+	return buffer_lsp(ted->active_buffer);
+}
+
 u32 ted_color(Ted *ted, ColorSetting color) {
 	return ted_active_settings(ted)->colors[color];
 }

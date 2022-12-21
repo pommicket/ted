@@ -61,13 +61,14 @@ static void lsp_request_free(LSPRequest *r) {
 
 static void lsp_response_free(LSPResponse *r) {
 	arr_free(r->string_data);
-	switch (r->type) {
+	switch (r->request.type) {
 	case LSP_REQUEST_COMPLETION:
 		arr_free(r->data.completion.items);
 		break;
 	default:
 		break;
 	}
+	lsp_request_free(&r->request);
 }
 
 void lsp_message_free(LSPMessage *message) {
@@ -231,7 +232,6 @@ static bool parse_range(LSP *lsp, const JSON *json, JSONValue range_value, LSPRa
 static bool parse_completion(LSP *lsp, const JSON *json, LSPResponse *response) {
 	// deal with textDocument/completion response.
 	// result: CompletionItem[] | CompletionList | null
-	response->type = LSP_REQUEST_COMPLETION;
 	LSPResponseCompletion *completion = &response->data.completion;
 	
 	JSONValue result = json_get(json, "result");
@@ -274,6 +274,7 @@ static bool parse_completion(LSP *lsp, const JSON *json, LSPResponse *response) 
 		
 		// defaults
 		item->sort_text = item->label;
+		item->filter_text = item->label;
 		item->text_edit = (LSPTextEdit) {
 			.type = LSP_TEXT_EDIT_PLAIN,
 			.at_cursor = true,
@@ -286,6 +287,13 @@ static bool parse_completion(LSP *lsp, const JSON *json, LSPResponse *response) 
 			// LSP allows using a different string for sorting.
 			item->sort_text = lsp_response_add_json_string(response,
 				json, sort_text_value.val.string);
+		}
+		
+		JSONValue filter_text_value = json_object_get(json, item_object, "filterText");
+		if (filter_text_value.type == JSON_STRING) {
+			// LSP allows using a different string for filtering.
+			item->filter_text = lsp_response_add_json_string(response,
+				json, filter_text_value.val.string);
 		}
 		
 		JSONValue text_type_value = json_object_get(json, item_object, "insertTextFormat");
@@ -327,7 +335,6 @@ static bool parse_completion(LSP *lsp, const JSON *json, LSPResponse *response) 
 					json, insert_text_value.val.string);
 			}
 		}
-		
 		
 	}
 	
@@ -396,6 +403,7 @@ static void process_message(LSP *lsp, JSON *json) {
 		} else {
 			LSPResponse response = {0};
 			bool success = false;
+			response.request = response_to;
 			switch (response_to.type) {
 			case LSP_REQUEST_COMPLETION:
 				success = parse_completion(lsp, json, &response);
@@ -410,6 +418,7 @@ static void process_message(LSP *lsp, JSON *json) {
 				message->type = LSP_RESPONSE;
 				message->u.response = response;
 				SDL_UnlockMutex(lsp->messages_mutex);
+				response_to.type = 0; // don't free
 			} else {
 				lsp_response_free(&response);
 			}
@@ -461,12 +470,17 @@ static void lsp_receive(LSP *lsp, size_t max_size) {
 	// kind of a hack. this is needed because arr_set_len zeroes the data.
 	arr_hdr_(lsp->received_data)->len = (u32)received_so_far;
 	lsp->received_data[received_so_far] = '\0';// null terminate
-	#if 1
+	#if 0
 	printf("\x1b[3m%s\x1b[0m\n",lsp->received_data);
 	#endif
 	
 	u64 response_offset=0, response_size=0;
 	while (has_response(lsp->received_data, received_so_far, &response_offset, &response_size)) {
+		if (response_offset + response_size > arr_len(lsp->received_data)) {
+			// we haven't received this whole response yet.
+			break;
+		}
+		
 		char *copy = strn_dup(lsp->received_data + response_offset, response_size);
 		JSON json = {0};
 		if (json_parse(&json, copy)) {
@@ -478,6 +492,10 @@ static void lsp_receive(LSP *lsp, size_t max_size) {
 			json_free(&json);
 		}
 		size_t leftover_data_len = arr_len(lsp->received_data) - (response_offset + response_size);
+		
+		//printf("arr_cap = %u response_offset = %u, response_size = %zu, leftover len = %u\n",
+		//	arr_hdr_(lsp->received_data)->cap,
+		//	response_offset, response_size, leftover_data_len);
 		memmove(lsp->received_data, lsp->received_data + response_offset + response_size,
 			leftover_data_len);
 		arr_set_len(lsp->received_data, leftover_data_len);
@@ -551,7 +569,7 @@ static int lsp_communication_thread(void *data) {
 		// I WILL KILL YOU IF IT TAKES ANY LONGER
 		time_sleep_ms(1);
 		
-		#if 1
+		#if 0
 		char buf[1024]={0};
 		long long n = process_read(&lsp->process, buf, sizeof buf);
 		if (n>0) {

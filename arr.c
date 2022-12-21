@@ -37,8 +37,8 @@ static inline ArrHeader *arr_hdr_(void *arr) {
 	return (ArrHeader *)((char *)arr - offsetof(ArrHeader, data));
 }
 
-static inline u32 arr_len(void *arr) {
-	return arr ? arr_hdr_(arr)->len : 0;
+static inline u32 arr_len(const void *arr) {
+	return arr ? arr_hdr_((void*)arr)->len : 0;
 }
 
 static inline u32 arr_cap(void *arr) {

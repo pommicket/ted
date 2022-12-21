@@ -327,7 +327,7 @@ int main(int argc, char **argv) {
 			while (lsp_next_message(&lsp, &message)) {
 				if (message.type == LSP_RESPONSE) {
 					const LSPResponse *response = &message.u.response;
-					switch (response->type) {
+					switch (response->request.type) {
 					case LSP_REQUEST_COMPLETION: {
 						const LSPResponseCompletion *completion = &response->data.completion;
 						arr_foreach_ptr(completion->items, LSPCompletionItem, item) {
@@ -878,6 +878,38 @@ int main(int argc, char **argv) {
 		
 		if (ted->menu) {
 			menu_update(ted);
+		}
+		
+		{
+			LSP *lsp = ted_get_active_lsp(ted);
+			if (lsp) {
+				LSPMessage message = {0};
+				while (lsp_next_message(lsp, &message)) {
+					switch (message.type) {
+					case LSP_REQUEST: {
+						LSPRequest *r = &message.u.request;
+						switch (r->type) {
+						case LSP_REQUEST_SHOW_MESSAGE: {
+							LSPRequestMessage *m = &r->data.message;
+							// @TODO: multiple messages
+							ted_seterr(ted, "%s", m->message);
+							} break;
+						case LSP_REQUEST_LOG_MESSAGE: {
+							LSPRequestMessage *m = &r->data.message;
+							// @TODO: actual logging
+							printf("%s\n", m->message);
+							} break;
+						default: break;
+						}
+						} break;
+					case LSP_RESPONSE: {
+						LSPResponse *r = &message.u.response;
+						autocomplete_process_lsp_response(ted, r);
+						} break;
+					}
+					lsp_message_free(&message);
+				}
+			}
 		}
 		
 		ted_update_window_dimensions(ted);

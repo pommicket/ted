@@ -353,7 +353,9 @@ typedef struct {
 } BuildError;
 
 typedef struct {
+	bool visible; // updated every frame depending on word at cursor + filter
 	char *label;
+	char *filter;
 	char *text;
 } Autocompletion;
 

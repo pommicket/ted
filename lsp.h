@@ -127,7 +127,11 @@ typedef struct {
 } LSPTextEdit;
 
 typedef struct {
+	// display text for this completion
 	LSPString label;
+	// text used to filter completions
+	LSPString filter_text;
+	// the edit to be applied when this completion is selected.
 	LSPTextEdit text_edit;
 	// note: the items are sorted here in this file,
 	// so you probably don't need to access this.
@@ -141,7 +145,7 @@ typedef struct {
 
 typedef LSPRequestType LSPResponseType;
 typedef struct {
-	LSPResponseType type;
+	LSPRequest request; // the request which this is a response to
 	// LSP responses tend to have a lot of strings.
 	// to avoid doing a ton of allocations+frees,
 	// they're all stored here.
