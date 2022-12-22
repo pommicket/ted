@@ -45,8 +45,10 @@ static void autocomplete_prev(Ted *ted) {
 }
 
 void autocomplete_close(Ted *ted) {
-	if (ted->autocomplete.open) {
-		ted->autocomplete.open = false;
+	Autocomplete *ac = &ted->autocomplete;
+	if (ac->open) {
+		ac->open = false;
+		ac->waiting_for_lsp = false;
 		autocomplete_clear_completions(ted);
 	}
 }
@@ -63,6 +65,15 @@ void autocomplete_update_suggested(Ted *ted) {
 			arr_add(ac->suggested, i); // suggest this one
 	}
 	free(word);
+}
+
+static bool autocomplete_using_lsp(Ted *ted) {
+	return ted->active_buffer && buffer_lsp(ted->active_buffer) != NULL;
+}
+
+static void autocomplete_no_suggestions(Ted *ted) {
+	ted->cursor_error_time = time_get_seconds();
+	autocomplete_close(ted);
 }
 
 static void autocomplete_find_completions(Ted *ted) {
@@ -85,6 +96,8 @@ static void autocomplete_find_completions(Ted *ted) {
 			}
 		};
 		lsp_send_request(lsp, &request);
+		if (!ac->completions)
+			ac->waiting_for_lsp = true;
 	} else {
 		// tag completion
 		autocomplete_clear_completions(ted);
@@ -110,6 +123,11 @@ static void autocomplete_find_completions(Ted *ted) {
 
 static void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *response) {
 	Autocomplete *ac = &ted->autocomplete;
+	ac->waiting_for_lsp = false;
+	if (!ac->open) {
+		// user hit escape before completions arrived.
+		return;
+	}
 	// @TODO: check if same buffer is open and if cursor has moved
 	const LSPRequest *request = &response->request;
 	if (request->type == LSP_REQUEST_COMPLETION) {
@@ -124,10 +142,16 @@ static void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *respo
 			ted_completion->filter = str_dup(lsp_response_string(response, lsp_completion->filter_text));
 			ted_completion->text = str_dup(lsp_response_string(response, lsp_completion->text_edit.new_text));
 		}
-		if (ncompletions)
-			ac->open = true; // open menu
 	}
 	autocomplete_update_suggested(ted);
+	switch (arr_len(ac->suggested)) {
+	case 0:
+		autocomplete_no_suggestions(ted);
+		return;
+	case 1:
+		autocomplete_complete(ted, ac->completions[ac->suggested[0]]);
+		return;	
+	}
 }
 
 // open autocomplete, or just do the completion if there's only one suggestion
@@ -146,8 +170,11 @@ static void autocomplete_open(Ted *ted) {
 	
 	switch (arr_len(ac->completions)) {
 	case 0:
-		ted->cursor_error_time = time_get_seconds();
-		autocomplete_close(ted);
+		if (autocomplete_using_lsp(ted)) {
+			ac->open = true;
+		} else {
+			autocomplete_no_suggestions(ted);
+		}
 		break;
 	case 1:
 		autocomplete_complete(ted, ac->completions[0]);
@@ -182,13 +209,17 @@ static void autocomplete_frame(Ted *ted) {
 	
 	float menu_width = 400, menu_height = (float)ncompletions * char_height + 2 * padding;
 	
-	if (ncompletions == 0) {
+	if (ac->waiting_for_lsp) {
+		menu_height = 200.f;
+	}
+	
+	if (!ac->waiting_for_lsp && ncompletions == 0) {
 		// no completions. close menu.
 		autocomplete_close(ted);
 		return;
 	}
 	
-	ac->cursor = (i32)mod_i64(ac->cursor, (i64)ncompletions);
+	ac->cursor = ncompletions ? (i32)mod_i64(ac->cursor, (i64)ncompletions) : 0;
 	
 	v2 cursor_pos = buffer_pos_to_pixels(buffer, buffer->cursor_pos);
 	bool open_up = cursor_pos.y > 0.5f * (buffer->y1 + buffer->y2); // should the completion menu open upwards?
@@ -217,7 +248,9 @@ static void autocomplete_frame(Ted *ted) {
 		gl_geometry_rect(r, colors[COLOR_MENU_HL]);
 		ted->cursor = ted->cursor_hand;	
 	}
-	{ // highlight cursor entry
+	
+	if (!ac->waiting_for_lsp) {
+		// highlight cursor entry
 		Rect r = rect(V2(x, start_y + (float)ac->cursor * char_height), V2(menu_width, char_height));
 		gl_geometry_rect(r, colors[COLOR_MENU_HL]);
 	}
@@ -237,10 +270,16 @@ static void autocomplete_frame(Ted *ted) {
 	TextRenderState state = text_render_state_default;
 	state.min_x = x + padding; state.min_y = y; state.max_x = x + menu_width - padding; state.max_y = y + menu_height;
 	rgba_u32_to_floats(colors[COLOR_TEXT], state.color);
-	for (size_t i = 0; i < ncompletions; ++i) {
+	
+	if (ac->waiting_for_lsp) {
 		state.x = x + padding; state.y = y;
-		text_utf8_with_state(font, &state, completions[i]);
-		y += char_height;
+		text_utf8_with_state(font, &state, "Loading...");
+	} else {
+		for (size_t i = 0; i < ncompletions; ++i) {
+			state.x = x + padding; state.y = y;
+			text_utf8_with_state(font, &state, completions[i]);
+			y += char_height;
+		}
 	}
 	
 	gl_geometry_draw();

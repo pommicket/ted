@@ -360,6 +360,7 @@ typedef struct {
 
 typedef struct {
 	bool open; // is the autocomplete window open?
+	bool waiting_for_lsp;
 	
 	Autocompletion *completions; // dynamic array of all completions
 	u32 *suggested; // dynamic array of completions to be suggested (indices into completions)
