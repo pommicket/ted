@@ -130,31 +130,32 @@ static bool parse_completion(LSP *lsp, const JSON *json, LSPResponse *response) 
 			.new_text = item->label
 		};
 		
-		JSONValue sort_text_value = json_object_get(json, item_object, "sortText");
-		if (sort_text_value.type == JSON_STRING) {
+		JSONString sort_text = json_object_get_string(json, item_object, "sortText");
+		if (sort_text.pos) {
 			// LSP allows using a different string for sorting.
-			item->sort_text = lsp_response_add_json_string(response,
-				json, sort_text_value.val.string);
+			item->sort_text = lsp_response_add_json_string(response, json, sort_text);
 		}
 		
-		JSONValue filter_text_value = json_object_get(json, item_object, "filterText");
-		if (filter_text_value.type == JSON_STRING) {
+		JSONString filter_text = json_object_get_string(json, item_object, "filterText");
+		if (filter_text.pos) {
 			// LSP allows using a different string for filtering.
-			item->filter_text = lsp_response_add_json_string(response,
-				json, filter_text_value.val.string);
+			item->filter_text = lsp_response_add_json_string(response, json, filter_text);
 		}
 		
-		JSONValue text_type_value = json_object_get(json, item_object, "insertTextFormat");
-		if (text_type_value.type == JSON_NUMBER) {
-			double type = text_type_value.val.number;
-			if (type != LSP_TEXT_EDIT_PLAIN && type != LSP_TEXT_EDIT_SNIPPET) {
-				lsp_set_error(lsp, "Bad InsertTextFormat: %g", type);
+		double edit_type = json_object_get_number(json, item_object, "insertTextFormat");
+		if (!isnan(edit_type)) {
+			if (edit_type != LSP_TEXT_EDIT_PLAIN && edit_type != LSP_TEXT_EDIT_SNIPPET) {
+				lsp_set_error(lsp, "Bad InsertTextFormat: %g", edit_type);
 				return false;
 			}
-			item->text_edit.type = (LSPTextEditType)type;
+			item->text_edit.type = (LSPTextEditType)edit_type;
 		}
 		
-		// @TODO: detail
+		
+		JSONString detail_text = json_object_get_string(json, item_object, "detail");
+		if (detail_text.pos) {
+			item->detail = lsp_response_add_json_string(response, json, detail_text);
+		}
 		
 		// @TODO(eventually): additionalTextEdits
 		//  (try to find a case where this comes up)

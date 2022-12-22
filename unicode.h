@@ -8,6 +8,9 @@ static bool unicode_is_start_of_code_point(u8 byte) {
 	// continuation bytes are of the form 10xxxxxx
 	return (byte & 0xC0) != 0x80;
 }
+static bool unicode_is_continuation_byte(u8 byte) {
+	return (byte & 0xC0) == 0x80;
+}
 
 // A lot like mbrtoc32. Doesn't depend on the locale though, for one thing.
 // *c will be filled with the next UTF-8 code point in `str`. `bytes` refers to the maximum

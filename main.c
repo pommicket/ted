@@ -1,6 +1,6 @@
 /*
 @TODO:
-- show detail and type
+- only show "Loading..." if it's taking some time (prevent flash)
 - LSP setting
 - scroll through completions
 - figure out under which circumstances backspace should close completions

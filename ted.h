@@ -356,6 +356,7 @@ typedef struct {
 	char *label;
 	char *filter;
 	char *text;
+	char *detail; // this can be NULL!
 } Autocompletion;
 
 typedef struct {

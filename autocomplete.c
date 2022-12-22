@@ -142,6 +142,8 @@ static void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *respo
 			ted_completion->label = str_dup(lsp_response_string(response, lsp_completion->label));
 			ted_completion->filter = str_dup(lsp_response_string(response, lsp_completion->filter_text));
 			ted_completion->text = str_dup(lsp_response_string(response, lsp_completion->text_edit.new_text));
+			const char *detail = lsp_response_string(response, lsp_completion->detail);
+			ted_completion->detail = *detail ? str_dup(detail) : NULL;
 		}
 	}
 	autocomplete_update_suggested(ted);
@@ -201,11 +203,11 @@ static void autocomplete_frame(Ted *ted) {
 
 	autocomplete_find_completions(ted);
 
-	char *completions[AUTOCOMPLETE_NCOMPLETIONS_VISIBLE] = {0};
+	Autocompletion completions[AUTOCOMPLETE_NCOMPLETIONS_VISIBLE] = {0};
 	size_t ncompletions = 0;
 	arr_foreach_ptr(ac->suggested, u32, suggestion) {
 		Autocompletion *completion = &ac->completions[*suggestion];
-		completions[ncompletions++] = completion->label;
+		completions[ncompletions++] = *completion;
 		if (ncompletions == AUTOCOMPLETE_NCOMPLETIONS_VISIBLE)
 			break;
 	}
@@ -280,7 +282,36 @@ static void autocomplete_frame(Ted *ted) {
 	} else {
 		for (size_t i = 0; i < ncompletions; ++i) {
 			state.x = x + padding; state.y = y;
-			text_utf8_with_state(font, &state, completions[i]);
+			text_utf8_with_state(font, &state, completions[i].label);
+			const char *detail = completions[i].detail;
+			if (detail) {
+				double label_end_x = state.x;
+				
+				char show_text[128] = {0};
+				
+				int amount_detail = 0;
+				for (; ; ++amount_detail) {
+					if (unicode_is_continuation_byte((u8)detail[amount_detail]))
+						continue; // don't cut off text in the middle of a code point.
+					
+					char text[128] = {0};
+					strbuf_printf(text, "%.*s%s", amount_detail, detail,
+						(size_t)amount_detail == strlen(detail) ? "" : "...");
+					double width = text_get_size_v2(font, text).x;
+					if (label_end_x + width + 2 * padding < state.max_x) {
+						strbuf_cpy(show_text, text);
+					}
+					// don't break if not, since we want to use "blabla"
+					//  even if "blabl..." is too long
+					
+					if (!detail[amount_detail]) break;
+				}
+				if (amount_detail >= 3) {
+					//rgba_u32_to_floats(colors[COLOR_COMMENT], state.color);
+					text_utf8_anchored(font, show_text, state.max_x, state.y,
+						colors[COLOR_COMMENT], ANCHOR_TOP_RIGHT);
+				}
+			}
 			y += char_height;
 		}
 	}
