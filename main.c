@@ -4,6 +4,7 @@
 - LSP setting
 - scroll through completions
 - figure out under which circumstances backspace should close completions
+   - close completions when a non-word character is typed
 - rename buffer->filename to buffer->path
     - make buffer->path NULL for untitled buffers & fix resulting mess
 - rust-analyzer bug reports:
