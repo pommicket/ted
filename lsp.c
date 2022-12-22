@@ -20,10 +20,6 @@ bool lsp_get_error(LSP *lsp, char *error, size_t error_size, bool clear) {
 	} while (0)
 
 
-static void lsp_document_position_free(LSPDocumentPosition *position) {
-	free(position->document);
-}
-
 static void lsp_document_change_event_free(LSPDocumentChangeEvent *event) {
 	free(event->text);
 }
@@ -35,14 +31,10 @@ static void lsp_request_free(LSPRequest *r) {
 	case LSP_REQUEST_INITIALIZED:
 	case LSP_REQUEST_SHUTDOWN:
 	case LSP_REQUEST_EXIT:
+	case LSP_REQUEST_COMPLETION:
 		break;
-	case LSP_REQUEST_COMPLETION: {
-		LSPRequestCompletion *completion = &r->data.completion;
-		lsp_document_position_free(&completion->position);
-		} break;
 	case LSP_REQUEST_DID_OPEN: {
 		LSPRequestDidOpen *open = &r->data.open;
-		free(open->document);
 		free(open->file_contents);
 		} break;
 	case LSP_REQUEST_SHOW_MESSAGE:
@@ -53,7 +45,6 @@ static void lsp_request_free(LSPRequest *r) {
 		LSPRequestDidChange *c = &r->data.change;
 		arr_foreach_ptr(c->changes, LSPDocumentChangeEvent, event)
 			lsp_document_change_event_free(event);
-		free(c->document);
 		arr_free(c->changes);
 		} break;
 	}
@@ -586,6 +577,17 @@ static int lsp_communication_thread(void *data) {
 	return 0;
 }
 
+u32 lsp_document_id(LSP *lsp, const char *path) {
+	u32 *value = str_hash_table_get(&lsp->document_ids, path);
+	if (!value) {
+		u32 id = arr_len(lsp->document_paths);
+		value = str_hash_table_insert(&lsp->document_ids, path);
+		*value = id;
+		arr_add(lsp->document_paths, str_dup(path));
+	}
+	return *value;
+}
+
 bool lsp_create(LSP *lsp, const char *analyzer_command) {
 	ProcessSettings settings = {
 		.stdin_blocking = true,
@@ -601,6 +603,7 @@ bool lsp_create(LSP *lsp, const char *analyzer_command) {
 	// this is a small request, so it shouldn't be a problem.
 	write_request(lsp, &initialize);
 	
+	str_hash_table_create(&lsp->document_ids, sizeof(u32));
 	lsp->quit_sem = SDL_CreateSemaphore(0);	
 	lsp->messages_mutex = SDL_CreateMutex();
 	lsp->requests_mutex = SDL_CreateMutex();
@@ -628,6 +631,10 @@ void lsp_free(LSP *lsp) {
 	SDL_DestroySemaphore(lsp->quit_sem);
 	process_kill(&lsp->process);
 	arr_free(lsp->received_data);
+	str_hash_table_clear(&lsp->document_ids);
+	for (size_t i = 0; i < arr_len(lsp->document_paths); ++i)
+		free(lsp->document_paths[i]);
+	arr_clear(lsp->document_paths);
 	arr_foreach_ptr(lsp->messages, LSPMessage, message) {
 		lsp_message_free(message);
 	}
@@ -638,7 +645,7 @@ void lsp_document_changed(LSP *lsp, const char *document, LSPDocumentChangeEvent
 	// @TODO(optimization, eventually): batch changes (using the contentChanges array)
 	LSPRequest request = {.type = LSP_REQUEST_DID_CHANGE};
 	LSPRequestDidChange *c = &request.data.change;
-	c->document = str_dup(document);
+	c->document = lsp_document_id(lsp, document);
 	arr_add(c->changes, change);
 	lsp_send_request(lsp, &request);
 }

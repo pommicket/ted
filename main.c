@@ -1,6 +1,7 @@
 /*
 @TODO:
 - send didClose
+- LSP setting
 - scroll through completions
 - figure out under which circumstances backspace should close completions
 - rename buffer->filename to buffer->path
@@ -60,7 +61,7 @@ no_warn_end
 #endif
 
 #include "unicode.h"
-#include "arr.c"
+#include "ds.c"
 #include "util.c"
 
 #if _WIN32
@@ -315,7 +316,7 @@ int main(int argc, char **argv) {
 		LSPRequest test_req = {.type = LSP_REQUEST_COMPLETION};
 		test_req.data.completion = (LSPRequestCompletion){
 			.position = {
-				.document = str_dup("/p/test-lsp/src/main.rs"),
+				.document = lsp_document_id(&lsp, "/p/test-lsp/src/main.rs"),
 				.pos = {
 					.line = 2,
 					.character = 2,

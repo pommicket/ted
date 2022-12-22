@@ -91,7 +91,7 @@ static void autocomplete_find_completions(Ted *ted) {
 		};
 		request.data.completion = (LSPRequestCompletion) {
 			.position = {
-				.document = str_dup(buffer->filename),
+				.document = lsp_document_id(lsp, buffer->filename),
 				.pos = buffer_pos_to_lsp(buffer, pos)
 			}
 		};

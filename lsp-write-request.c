@@ -33,12 +33,14 @@ static const char *lsp_language_id(Language lang) {
 
 
 typedef struct {
+	LSP *lsp;
 	StrBuilder builder;
 	bool is_first;
 } JSONWriter;
 
-static JSONWriter json_writer_new(void) {
+static JSONWriter json_writer_new(LSP *lsp) {
 	return (JSONWriter){
+		.lsp = lsp,
 		.builder = str_builder_new(),
 		.is_first = true
 	};
@@ -118,15 +120,16 @@ static void write_key_string(JSONWriter *o, const char *key, const char *s) {
 	write_string(o, s);
 }
 
-static void write_file_uri(JSONWriter *o, const char *path) {
-	char *escaped_path = json_escape(path);
+static void write_file_uri(JSONWriter *o, DocumentID document) {
+	// @OPTIM : could store escaped document paths instead of document paths
+	char *escaped_path = json_escape(o->lsp->document_paths[document]);
 	str_builder_appendf(&o->builder, "\"file:///%s\"", escaped_path);
 	free(escaped_path);
 }
 
-static void write_key_file_uri(JSONWriter *o, const char *key, const char *path) {
+static void write_key_file_uri(JSONWriter *o, const char *key, DocumentID document) {
 	write_key(o, key);
-	write_file_uri(o, path);
+	write_file_uri(o, document);
 }
 
 static void write_position(JSONWriter *o, LSPPosition position) {
@@ -199,7 +202,7 @@ static bool request_type_is_notification(LSPRequestType type) {
 }
 
 static void write_request(LSP *lsp, LSPRequest *request) {
-	JSONWriter writer = json_writer_new();
+	JSONWriter writer = json_writer_new(lsp);
 	JSONWriter *o = &writer;
 	
 	u32 max_header_size = 64;

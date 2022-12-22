@@ -378,70 +378,126 @@ static bool copy_file(char const *src, char const *dst) {
 	return success;
 }
 
+
+static uint64_t str_hash(char const *str, size_t len) {
+	uint64_t hash = 0;
+	char const *p = str, *end = str + len;
+	for (; p < end; ++p) {
+		hash = ((hash * 1664737020647550361 + 123843) << 8) + 2918635993572506131*(uint64_t)*p;
+	}
+	return hash;
+}
+
 typedef struct {
-	// dynamic array, including a null byte.
 	char *str;
-} StrBuilder;
+	size_t len;
+	uint64_t data[];
+} StrHashTableSlot;
 
-void str_builder_create(StrBuilder *builder) {
-	memset(builder, 0, sizeof *builder);
-	arr_add(builder->str, 0);
+typedef StrHashTableSlot *StrHashTableSlotPtr;
+
+typedef struct {
+	StrHashTableSlot **slots;
+	size_t data_size;
+	size_t nentries; /* # of filled slots */
+} StrHashTable;
+
+static inline void str_hash_table_create(StrHashTable *t, size_t data_size) {
+	t->slots = NULL;
+	t->data_size = data_size;
+	t->nentries = 0;
 }
 
-StrBuilder str_builder_new(void) {
-	StrBuilder ret = {0};
-	str_builder_create(&ret);
-	return ret;
+static StrHashTableSlot **str_hash_table_slot_get(StrHashTableSlot **slots, char const *s, size_t s_len, size_t i) {
+	StrHashTableSlot **slot;
+	size_t slots_cap = arr_len(slots);
+	while (1) {
+		assert(i < slots_cap);
+		slot = &slots[i];
+		if (!*slot) break;
+		if (s && (*slot)->str &&
+			s_len == (*slot)->len && memcmp(s, (*slot)->str, s_len) == 0)
+			break;
+		i = (i+1) % slots_cap;
+	}
+	return slot;
 }
 
-void str_builder_free(StrBuilder *builder) {
-	arr_free(builder->str);
+static void str_hash_table_grow(StrHashTable *t) {
+	size_t slots_cap = arr_len(t->slots);
+	if (slots_cap <= 2 * t->nentries) {
+		StrHashTableSlot **new_slots = NULL;
+		size_t new_slots_cap = slots_cap * 2 + 10;
+		arr_set_len(new_slots, new_slots_cap);
+		memset(new_slots, 0, new_slots_cap * sizeof *new_slots);
+		arr_foreach_ptr(t->slots, StrHashTableSlotPtr, slotp) {
+			StrHashTableSlot *slot = *slotp;
+			if (slot) {
+				uint64_t new_hash = str_hash(slot->str, slot->len);
+				StrHashTableSlot **new_slot = str_hash_table_slot_get(new_slots, slot->str, slot->len, new_hash % new_slots_cap);
+				*new_slot = slot;
+			}
+		}
+		arr_clear(t->slots);
+		t->slots = new_slots;
+	}
 }
 
-void str_builder_clear(StrBuilder *builder) {
-	str_builder_free(builder);
-	str_builder_create(builder);
+static inline size_t str_hash_table_slot_size(StrHashTable *t) {
+	return sizeof(StrHashTableSlot) + ((t->data_size + sizeof(uint64_t) - 1) / sizeof(uint64_t)) * sizeof(uint64_t);
 }
 
-void str_builder_append(StrBuilder *builder, const char *s) {
-	assert(builder->str);
-	
-	size_t s_len = strlen(s);
-	size_t prev_size = arr_len(builder->str);
-	size_t prev_len = prev_size - 1; // null terminator
-	// note: this zeroes the newly created elements, so we have a new null terminator
-	arr_set_len(builder->str, prev_size + s_len);
-	// -1 for null terminator
-	memcpy(builder->str + prev_len, s, s_len);
+static StrHashTableSlot *str_hash_table_insert_(StrHashTable *t, char const *str, size_t len) {
+	size_t slots_cap;
+	uint64_t hash;
+	StrHashTableSlot **slot;
+	str_hash_table_grow(t);
+	slots_cap = arr_len(t->slots);
+	hash = str_hash(str, len);
+	slot = str_hash_table_slot_get(t->slots, str, len, hash % slots_cap);
+	if (!*slot) {
+		*slot = calloc(1, str_hash_table_slot_size(t));
+		char *s = (*slot)->str = calloc(1, len + 1);
+		memcpy(s, str, len);
+		(*slot)->len = len;
+		++t->nentries;
+	}
+	return *slot;
 }
 
-void str_builder_appendf(StrBuilder *builder, PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRINTF(2, 3);
-void str_builder_appendf(StrBuilder *builder, const char *fmt, ...) {
-	// idk if you can always just pass NULL to vsnprintf
-	va_list args;
-	char fakebuf[2] = {0};
-	va_start(args, fmt);
-	int ret = vsnprintf(fakebuf, 1, fmt, args);
-	va_end(args);
-	
-	if (ret < 0) return; // bad format or something
-	u32 n = (u32)ret;
-	
-	size_t prev_size = arr_len(builder->str);
-	size_t prev_len = prev_size - 1; // null terminator
-	arr_set_len(builder->str, prev_size + n);
-	va_start(args, fmt);
-	vsnprintf(builder->str + prev_len, n + 1, fmt, args);
-	va_end(args);
+// does NOT check for a null byte.
+static inline void *str_hash_table_insert_with_len(StrHashTable *t, char const *str, size_t len) {
+	return str_hash_table_insert_(t, str, len)->data;
 }
 
-// append n null bytes.
-void str_builder_append_null(StrBuilder *builder, size_t n) {
-	arr_set_len(builder->str, arr_len(builder->str) + n);
+static inline void *str_hash_table_insert(StrHashTable *t, char const *str) {
+	return str_hash_table_insert_(t, str, strlen(str))->data;
 }
 
-u32 str_builder_len(StrBuilder *builder) {
-	assert(builder->str);
-	return arr_len(builder->str) - 1;
+static void str_hash_table_clear(StrHashTable *t) {
+	arr_foreach_ptr(t->slots, StrHashTableSlotPtr, slotp) {
+		if (*slotp) {
+			free((*slotp)->str);
+		}
+		free(*slotp);
+	}
+	arr_clear(t->slots);
+	t->nentries = 0;
 }
 
+static StrHashTableSlot *str_hash_table_get_(StrHashTable *t, char const *str, size_t len) {
+	size_t nslots = arr_len(t->slots), slot_index;
+	if (!nslots) return NULL;
+	slot_index = str_hash(str, len) % arr_len(t->slots);
+	return *str_hash_table_slot_get(t->slots, str, len, slot_index);
+}
+
+static inline void *str_hash_table_get_with_len(StrHashTable *t, char const *str, size_t len) {
+	StrHashTableSlot *slot = str_hash_table_get_(t, str, len);
+	if (!slot) return NULL;
+	return slot->data;
+}
+
+static inline void *str_hash_table_get(StrHashTable *t, char const *str) {
+	return str_hash_table_get_with_len(t, str, strlen(str));
+}
