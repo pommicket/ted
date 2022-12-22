@@ -184,7 +184,7 @@ static void ted_reset_active_buffer(Ted *ted) {
 		ted_switch_to_buffer(ted, &ted->buffers[node->tabs[node->active_tab]]);
 	} else {
 		// there's nothing to set it to
-		ted->active_buffer = NULL;
+		ted_switch_to_buffer(ted, NULL);
 	}
 }
 

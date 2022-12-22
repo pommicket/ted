@@ -1,6 +1,5 @@
 /*
 @TODO:
-- make sure autocomplete is closed when you switch buffers
 - scroll through completions
 - figure out under which circumstances backspace should close completions
 - rename buffer->filename to buffer->path

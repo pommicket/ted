@@ -13,7 +13,7 @@ static void build_stop(Ted *ted) {
 	}
 	arr_clear(ted->build_queue);
 	if (ted->active_buffer == &ted->build_buffer) {
-		ted->active_buffer = NULL;
+		ted_switch_to_buffer(ted, NULL);
 		ted_reset_active_buffer(ted);
 	}
 }
