@@ -74,11 +74,23 @@ static void write_arr_elem(JSONWriter *o) {
 	}
 }
 
-static void write_string(JSONWriter *o, const char* string) {
-	// @TODO: escape in-place
-	char *escaped = json_escape(string);
-	str_builder_appendf(&o->builder, "\"%s\"", escaped);
-	free(escaped);
+static void write_escaped(JSONWriter *o, const char *string) {
+	StrBuilder *b = &o->builder;
+	size_t output_index = str_builder_len(b);
+	size_t capacity =  2 * strlen(string) + 1;
+	// append a bunch of null bytes which will hold the escaped string
+	str_builder_append_null(b, capacity);
+	char *out = str_builder_get_ptr(b, output_index);
+	// do the escaping
+	size_t length = json_escape_to(out, capacity, string);
+	// shrink down to just the escaped text
+	str_builder_shrink(&o->builder, output_index + length);
+}
+
+static void write_string(JSONWriter *o, const char *string) {
+	str_builder_append(&o->builder, "\"");
+	write_escaped(o, string);
+	str_builder_append(&o->builder, "\"");
 }
 
 static void write_key(JSONWriter *o, const char *key) {
@@ -121,10 +133,10 @@ static void write_key_string(JSONWriter *o, const char *key, const char *s) {
 }
 
 static void write_file_uri(JSONWriter *o, DocumentID document) {
-	// @OPTIM : could store escaped document paths instead of document paths
-	char *escaped_path = json_escape(o->lsp->document_paths[document]);
-	str_builder_appendf(&o->builder, "\"file:///%s\"", escaped_path);
-	free(escaped_path);
+	const char *path = o->lsp->document_paths[document];
+	str_builder_append(&o->builder, "\"file:///");
+	write_escaped(o, path);
+	str_builder_append(&o->builder, "\"");
 }
 
 static void write_key_file_uri(JSONWriter *o, const char *key, DocumentID document) {

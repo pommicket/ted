@@ -605,7 +605,9 @@ void json_debug_print(const JSON *json) {
 
 // e.g. converts "Hello\nworld" to "Hello\\nworld"
 // if out_sz is at least 2 * strlen(str) + 1, the string will fit.
-void json_escape_to(char *out, size_t out_sz, const char *in) {
+// returns the number of bytes actually written, not including the null terminator.
+size_t json_escape_to(char *out, size_t out_sz, const char *in) {
+	char *start = out;
 	char *end = out + out_sz;
 	assert(out_sz);
 	
@@ -653,6 +655,7 @@ void json_escape_to(char *out, size_t out_sz, const char *in) {
 	}
 	brk:
 	*out = '\0';
+	return (size_t)(out - start);
 }
 
 // e.g. converts "Hello\nworld" to "Hello\\nworld"

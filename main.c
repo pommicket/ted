@@ -1,6 +1,7 @@
 /*
 @TODO:
 - send didClose
+- don't select the one and only completion when user types stuff
 - LSP setting
 - scroll through completions
 - figure out under which circumstances backspace should close completions

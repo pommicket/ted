@@ -297,7 +297,6 @@ void str_builder_append(StrBuilder *builder, const char *s) {
 	size_t prev_len = prev_size - 1; // null terminator
 	// note: this zeroes the newly created elements, so we have a new null terminator
 	arr_set_len(builder->str, prev_size + s_len);
-	// -1 for null terminator
 	memcpy(builder->str + prev_len, s, s_len);
 }
 
@@ -329,5 +328,18 @@ void str_builder_append_null(StrBuilder *builder, size_t n) {
 u32 str_builder_len(StrBuilder *builder) {
 	assert(builder->str);
 	return arr_len(builder->str) - 1;
+}
+
+char *str_builder_get_ptr(StrBuilder *builder, size_t index) {
+	assert(index <= str_builder_len(builder));
+	return &builder->str[index];
+}
+
+void str_builder_shrink(StrBuilder *builder, size_t new_len) {
+	if (new_len > str_builder_len(builder)) {
+		assert(0);
+		return;
+	}
+	arr_set_len(builder->str, new_len + 1);
 }
 
