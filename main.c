@@ -1,11 +1,11 @@
 /*
 @TODO:
-- send didClose
-- don't select the one and only completion when user types stuff
+- show detail and type
 - LSP setting
 - scroll through completions
 - figure out under which circumstances backspace should close completions
 - rename buffer->filename to buffer->path
+    - make buffer->path NULL for untitled buffers & fix resulting mess
 - rust-analyzer bug reports:
     - bad json can give "Unexpected error: client exited without proper shutdown sequence"
     - rust-analyzer should wait until cargo metadata/check is done before sending initialize response

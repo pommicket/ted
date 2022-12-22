@@ -32,6 +32,7 @@ static void lsp_request_free(LSPRequest *r) {
 	case LSP_REQUEST_SHUTDOWN:
 	case LSP_REQUEST_EXIT:
 	case LSP_REQUEST_COMPLETION:
+	case LSP_REQUEST_DID_CLOSE:
 		break;
 	case LSP_REQUEST_DID_OPEN: {
 		LSPRequestDidOpen *open = &r->data.open;

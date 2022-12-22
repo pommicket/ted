@@ -123,6 +123,7 @@ static void autocomplete_find_completions(Ted *ted) {
 
 static void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *response) {
 	Autocomplete *ac = &ted->autocomplete;
+	bool was_waiting = ac->waiting_for_lsp;
 	ac->waiting_for_lsp = false;
 	if (!ac->open) {
 		// user hit escape before completions arrived.
@@ -149,7 +150,9 @@ static void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *respo
 		autocomplete_no_suggestions(ted);
 		return;
 	case 1:
-		autocomplete_complete(ted, ac->completions[ac->suggested[0]]);
+		// if we just finished loading suggestions, and there's only one suggestion, use it
+		if (was_waiting)
+			autocomplete_complete(ted, ac->completions[ac->suggested[0]]);
 		return;	
 	}
 }

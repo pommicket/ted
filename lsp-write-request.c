@@ -77,7 +77,7 @@ static void write_arr_elem(JSONWriter *o) {
 static void write_escaped(JSONWriter *o, const char *string) {
 	StrBuilder *b = &o->builder;
 	size_t output_index = str_builder_len(b);
-	size_t capacity =  2 * strlen(string) + 1;
+	size_t capacity = 2 * strlen(string) + 1;
 	// append a bunch of null bytes which will hold the escaped string
 	str_builder_append_null(b, capacity);
 	char *out = str_builder_get_ptr(b, output_index);
@@ -181,6 +181,8 @@ static const char *lsp_request_method(LSPRequest *request) {
 		return "initialized";
 	case LSP_REQUEST_DID_OPEN:
 		return "textDocument/didOpen";
+	case LSP_REQUEST_DID_CLOSE:
+		return "textDocument/didClose";
 	case LSP_REQUEST_DID_CHANGE:
 		return "textDocument/didChange";
 	case LSP_REQUEST_COMPLETION:
@@ -200,6 +202,7 @@ static bool request_type_is_notification(LSPRequestType type) {
 	case LSP_REQUEST_INITIALIZED:
 	case LSP_REQUEST_EXIT:
 	case LSP_REQUEST_DID_OPEN:
+	case LSP_REQUEST_DID_CLOSE:
 	case LSP_REQUEST_DID_CHANGE:
 		return true;
 	case LSP_REQUEST_INITIALIZE:
@@ -261,6 +264,14 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 				write_key_string(o, "languageId", lsp_language_id(open->language));
 				write_key_number(o, "version", 1);
 				write_key_string(o, "text", open->file_contents);
+			write_obj_end(o);
+		write_obj_end(o);
+	} break;
+	case LSP_REQUEST_DID_CLOSE: {
+		const LSPRequestDidClose *close = &request->data.close;
+		write_key_obj_start(o, "params");
+			write_key_obj_start(o, "textDocument");
+				write_key_file_uri(o, "uri", close->document);
 			write_obj_end(o);
 		write_obj_end(o);
 	} break;

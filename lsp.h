@@ -36,6 +36,7 @@ typedef enum {
 	LSP_REQUEST_INITIALIZE,
 	LSP_REQUEST_INITIALIZED,
 	LSP_REQUEST_DID_OPEN,
+	LSP_REQUEST_DID_CLOSE,
 	LSP_REQUEST_DID_CHANGE,
 	LSP_REQUEST_COMPLETION,
 	LSP_REQUEST_SHUTDOWN,
@@ -52,6 +53,10 @@ typedef struct {
 	// freed by lsp_request_free
 	char *file_contents;
 } LSPRequestDidOpen;
+
+typedef struct {
+	DocumentID document;
+} LSPRequestDidClose;
 
 // see TextDocumentContentChangeEvent in the LSP spec
 typedef struct {
@@ -93,6 +98,7 @@ typedef struct {
 	LSPRequestType type;
 	union {
 		LSPRequestDidOpen open;
+		LSPRequestDidClose close;
 		LSPRequestDidChange change;
 		LSPRequestCompletion completion;
 		// for LSP_SHOW_MESSAGE and LSP_LOG_MESSAGE
