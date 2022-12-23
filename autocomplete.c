@@ -171,7 +171,7 @@ static void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *respo
 // open autocomplete, or just do the completion if there's only one suggestion
 static void autocomplete_open(Ted *ted) {
 	Autocomplete *ac = &ted->autocomplete;
-	
+	if (ac->open) return;
 	if (!ted->active_buffer) return;
 	TextBuffer *buffer = ted->active_buffer;
 	if (!buffer->filename) return;

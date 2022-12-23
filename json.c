@@ -81,6 +81,7 @@ const char *json_type_to_str(JSONValueType type) {
 }
 
 static bool json_parse_value(JSON *json, u32 *p_index, JSONValue *val);
+void json_debug_print_value(const JSON *json, JSONValue value);
 
 // defining this instead of using isspace seems to be faster
 // probably because isspace depends on the locale.
@@ -88,7 +89,33 @@ static inline bool json_is_space(char c) {
 	return c == ' ' || c == '\n' || c == '\r' || c == '\t';
 }
 
-static void json_debug_print_value(const JSON *json, JSONValue value) {
+void json_debug_print_array(const JSON *json, JSONArray array) {
+	printf("[");
+	for (u32 i = 0; i < array.len; ++i) {
+		json_debug_print_value(json, json->values[array.elements + i]);
+		printf(", ");
+	}
+	printf("]");
+}
+
+void json_debug_print_object(const JSON *json, JSONObject obj) {
+	printf("{");
+	for (u32 i = 0; i < obj.len; ++i) {
+		json_debug_print_value(json, json->values[obj.items + i]);
+		printf(": ");
+		json_debug_print_value(json, json->values[obj.items + obj.len + i]);
+		printf(", ");
+	}
+	printf("}");
+}
+
+void json_debug_print_string(const JSON *json, JSONString string) {
+	printf("\"%.*s\"",
+		(int)string.len,
+		json->text + string.pos);
+}
+
+void json_debug_print_value(const JSON *json, JSONValue value) {
 	switch (value.type) {
 	case JSON_UNDEFINED: printf("undefined"); break;
 	case JSON_NULL: printf("null"); break;
@@ -96,30 +123,13 @@ static void json_debug_print_value(const JSON *json, JSONValue value) {
 	case JSON_TRUE: printf("true"); break;
 	case JSON_NUMBER: printf("%g", value.val.number); break;
 	case JSON_STRING: {
-		JSONString string = value.val.string;
-		printf("\"%.*s\"",
-			(int)string.len,
-			json->text + string.pos);
+		json_debug_print_string(json, value.val.string);
 		} break;
 	case JSON_ARRAY: {
-		JSONArray array = value.val.array;
-		printf("[");
-		for (u32 i = 0; i < array.len; ++i) {
-			json_debug_print_value(json, json->values[array.elements + i]);
-			printf(", ");
-		}
-		printf("]");
-	} break;
+		json_debug_print_array(json, value.val.array);
+		} break;
 	case JSON_OBJECT: {
-		JSONObject obj = value.val.object;
-		printf("{");
-		for (u32 i = 0; i < obj.len; ++i) {
-			json_debug_print_value(json, json->values[obj.items + i]);
-			printf(": ");
-			json_debug_print_value(json, json->values[obj.items + obj.len + i]);
-			printf(", ");
-		}
-		printf("}");
+		json_debug_print_object(json, value.val.object);
 		} break;
 	}
 }

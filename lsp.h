@@ -268,6 +268,8 @@ typedef struct LSP {
 	SDL_Thread *communication_thread;
 	SDL_sem *quit_sem;
 	char *received_data; // dynamic array
+	bool provides_completion; // can this LSP server handle completion requests?
+	char32_t *trigger_chars; // dynamic array of "trigger characters"
 	SDL_mutex *error_mutex;
 	char error[256];
 } LSP;

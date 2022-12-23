@@ -1,11 +1,16 @@
 /*
 @TODO:
-- trigger characters (with setting)
+- fix unicode_utf8_to_utf32 to handle bad UTF-8 (i.e. continuation bytes which aren't actually continuation bytes)
+- provide completion context?
+- dont do completion if provides_completion = false
 - scroll through completions
 - only show "Loading..." if it's taking some time (prevent flash)
 - LSP setting
 - figure out workspace
 - make sure "save as" works
+- more LSP stuff:
+     - go to definition using LSP
+     - find usages
 - rename buffer->filename to buffer->path
     - make buffer->path NULL for untitled buffers & fix resulting mess
 - run everything through valgrind ideally with leak checking
@@ -810,8 +815,30 @@ int main(int argc, char **argv) {
 			case SDL_TEXTINPUT: {
 				char *text = event.text.text;
 				if (buffer
-					&& (key_modifier & ~KEY_MODIFIER_SHIFT) == 0) // unfortunately, some key combinations like ctrl+minus still register as a "-" text input event
+					// unfortunately, some key combinations like ctrl+minus still register as a "-" text input event
+					&& (key_modifier & ~KEY_MODIFIER_SHIFT) == 0) { 
+					// insert the text
 					buffer_insert_utf8_at_cursor(buffer, text);
+					// check for trigger character
+					LSP *lsp = buffer_lsp(buffer);
+					Settings *settings = buffer_settings(buffer);
+					if (lsp && settings->trigger_characters) {
+						u32 last_code_point = (u32)strlen(text) - 1;
+						while (last_code_point > 0 &&
+							unicode_is_continuation_byte((u8)text[last_code_point]))
+							--last_code_point;
+						char32_t last_char = 0;
+						unicode_utf8_to_utf32(&last_char, &text[last_code_point],
+							strlen(text) - last_code_point);
+						arr_foreach_ptr(lsp->trigger_chars, char32_t, c) {
+							if (*c == last_char) {
+								autocomplete_open(ted);
+								break;
+							}
+						}
+					}
+					 
+				}
 			} break;
 			}
 		}

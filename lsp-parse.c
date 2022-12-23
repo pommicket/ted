@@ -77,6 +77,35 @@ static bool parse_range(LSP *lsp, const JSON *json, JSONValue range_value, LSPRa
 		&& parse_position(lsp, json, end, &range->end);
 }
 
+
+static void parse_capabilities(LSP *lsp, const JSON *json, JSONObject capabilities) {
+	JSONValue completion_value = json_object_get(json, capabilities, "completionProvider");
+	if (completion_value.type == JSON_OBJECT) {
+		lsp->provides_completion = true;
+		JSONObject completion = completion_value.val.object;
+		
+		JSONArray trigger_chars = json_object_get_array(json, completion, "triggerCharacters");
+		for (u32 i = 0; i < trigger_chars.len; ++i) {
+			char character[8] = {0};
+			json_string_get(json,
+				json_array_get_string(json, trigger_chars, i),
+				character,
+				sizeof character);
+			if (*character) {
+				char32_t c = 0;
+				unicode_utf8_to_utf32(&c, character, strlen(character));
+				// the fact that they're called "trigger characters" makes
+				// me think multi-character triggers aren't allowed
+				// even though that would be nice in some languages,
+				// e.g. "::"
+				if (c) {
+					arr_add(lsp->trigger_chars, c);
+				}
+			}
+		}
+	}
+}
+
 static bool parse_completion(LSP *lsp, const JSON *json, LSPResponse *response) {
 	// deal with textDocument/completion response.
 	// result: CompletionItem[] | CompletionList | null
@@ -273,7 +302,6 @@ static bool parse_server2client_request(LSP *lsp, JSON *json, LSPRequest *reques
 	return false;
 }
 
-
 static void process_message(LSP *lsp, JSON *json) {
 		
 	#if 0
@@ -318,8 +346,22 @@ static void process_message(LSP *lsp, JSON *json) {
 	
 	JSONValue result = json_get(json, "result");
 	if (result.type != JSON_UNDEFINED) {
-		if (response_to.type == LSP_REQUEST_INITIALIZE) {
+		LSPResponse response = {0};
+		bool add_to_messages = false;
+		response.request = response_to;
+		switch (response_to.type) {
+		case LSP_REQUEST_COMPLETION:
+			add_to_messages = parse_completion(lsp, json, &response);
+			break;
+		case LSP_REQUEST_INITIALIZE: {
 			// it's the response to our initialize request!
+			
+			if (result.type == JSON_OBJECT) {
+				// read server capabilities
+				JSONObject capabilities = json_object_get_object(json, result.val.object, "capabilities");
+				parse_capabilities(lsp, json, capabilities);
+			}
+			
 			// let's send back an "initialized" request (notification) because apparently
 			// that's something we need to do.
 			LSPRequest initialized = {
@@ -329,28 +371,20 @@ static void process_message(LSP *lsp, JSON *json) {
 			write_request(lsp, &initialized);
 			// we can now send requests which have nothing to do with initialization
 			lsp->initialized = true;
+			} break;
+		default:
+			// it's some response we don't care about
+			break;
+		}
+		if (add_to_messages) {
+			SDL_LockMutex(lsp->messages_mutex);
+			LSPMessage *message = arr_addp(lsp->messages);
+			message->type = LSP_RESPONSE;
+			message->u.response = response;
+			SDL_UnlockMutex(lsp->messages_mutex);
+			response_to.type = 0; // don't free
 		} else {
-			LSPResponse response = {0};
-			bool success = false;
-			response.request = response_to;
-			switch (response_to.type) {
-			case LSP_REQUEST_COMPLETION:
-				success = parse_completion(lsp, json, &response);
-				break;
-			default:
-				// it's some response we don't care about
-				break;
-			}
-			if (success) {
-				SDL_LockMutex(lsp->messages_mutex);
-				LSPMessage *message = arr_addp(lsp->messages);
-				message->type = LSP_RESPONSE;
-				message->u.response = response;
-				SDL_UnlockMutex(lsp->messages_mutex);
-				response_to.type = 0; // don't free
-			} else {
-				lsp_response_free(&response);
-			}
+			lsp_response_free(&response);
 		}
 	} else if (json_has(json, "method")) {
 		LSPRequest request = {0};

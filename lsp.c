@@ -315,6 +315,7 @@ void lsp_free(LSP *lsp) {
 		lsp_message_free(message);
 	}
 	arr_free(lsp->messages);
+	arr_free(lsp->trigger_chars);
 }
 
 void lsp_document_changed(LSP *lsp, const char *document, LSPDocumentChangeEvent change) {
