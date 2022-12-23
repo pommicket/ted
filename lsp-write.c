@@ -291,6 +291,7 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 						// completion capabilities
 						write_key_obj_start(o, "completionItem");
 							write_key_bool(o, "snippetSupport", false);
+							write_key_bool(o, "deprecatedSupport", true);
 						write_obj_end(o);
 						// "completion item kinds" supported by ted
 						// (these are the little icons displayed for function/variable/etc.)

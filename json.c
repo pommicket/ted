@@ -444,54 +444,79 @@ JSONValue json_object_get(const JSON *json, JSONObject object, const char *name)
 	return (JSONValue){0};
 }
 
-// returns (JSONString){0} (which is interpreted as an empty string) if `name` does
-// not exist or is not a string.
-JSONString json_object_get_string(const JSON *json, JSONObject object, const char *name) {
-	JSONValue value = json_object_get(json, object, name);
-	if (value.type == JSON_STRING) {
-		return value.val.string;
-	} else {
-		return (JSONString){0};
-	}
-}
-
-// returns (JSONObject){0} (which is interpreted as an empty object) if `name` does
-// not exist or is not an object.
-JSONObject json_object_get_object(const JSON *json, JSONObject object, const char *name) {
-	JSONValue value = json_object_get(json, object, name);
-	if (value.type == JSON_OBJECT) {
-		return value.val.object;
-	} else {
-		return (JSONObject){0};
-	}
-}
-
-// returns (JSONArray){0} (which is interpreted as an empty array) if `name` does
-// not exist or is not an array.
-JSONArray json_object_get_array(const JSON *json, JSONObject object, const char *name) {
-	JSONValue value = json_object_get(json, object, name);
-	if (value.type == JSON_ARRAY) {
-		return value.val.array;
-	} else {
-		return (JSONArray){0};
-	}
-}
-
-// returns NaN if `name` does not exist or is not a number.
-double json_object_get_number(const JSON *json, JSONObject object, const char *name) {
-	JSONValue value = json_object_get(json, object, name);
-	if (value.type == JSON_NUMBER) {
-		return value.val.number;
-	} else {
-		return NAN;
-	}
-}
-
 JSONValue json_array_get(const JSON *json, JSONArray array, u64 i) {
 	if (i < array.len) {
 		return json->values[array.elements + i];
 	}
 	return (JSONValue){0};
+}
+
+// returns NaN if `x` is not a number (ha ha).
+double json_force_number(JSONValue x) {
+	if (x.type == JSON_NUMBER) {
+		return x.val.number;
+	} else {
+		return NAN;
+	}
+}
+
+double json_object_get_number(const JSON *json, JSONObject object, const char *name) {
+	return json_force_number(json_object_get(json, object, name));
+}
+
+double json_array_get_number(const JSON *json, JSONArray array, size_t i) {
+	return json_force_number(json_array_get(json, array, i));
+}
+
+// returns (JSONString){0} (which is interpreted as an empty string) if `x` is not a string
+JSONString json_force_string(JSONValue x) {
+	if (x.type == JSON_STRING) {
+		return x.val.string;
+	} else {
+		return (JSONString){0};
+	}
+}
+
+JSONString json_object_get_string(const JSON *json, JSONObject object, const char *name) {
+	return json_force_string(json_object_get(json, object, name));
+}
+
+JSONString json_array_get_string(const JSON *json, JSONArray array, size_t i) {
+	return json_force_string(json_array_get(json, array, i));
+}
+
+// returns (JSONObject){0} (which is interpreted as an empty object) if `x` is not an object
+JSONObject json_force_object(JSONValue x) {
+	if (x.type == JSON_OBJECT) {
+		return x.val.object;
+	} else {
+		return (JSONObject){0};
+	}
+}
+
+JSONObject json_object_get_object(const JSON *json, JSONObject object, const char *name) {
+	return json_force_object(json_object_get(json, object, name));
+}
+
+JSONObject json_array_get_object(const JSON *json, JSONArray array, size_t i) {
+	return json_force_object(json_array_get(json, array, i));
+}
+
+// returns (JSONArray){0} (which is interpreted as an empty array) if `x` is not an array
+JSONArray json_force_array(JSONValue x) {
+	if (x.type == JSON_ARRAY) {
+		return x.val.array;
+	} else {
+		return (JSONArray){0};
+	}
+}
+
+JSONArray json_object_get_array(const JSON *json, JSONObject object, const char *name) {
+	return json_force_array(json_object_get(json, object, name));
+}
+
+JSONArray json_array_get_array(const JSON *json, JSONArray array, size_t i) {
+	return json_force_array(json_array_get(json, array, i));
 }
 
 // e.g. if json is  { "a" : { "b": 3 }}, then json_get(json, "a.b") = 3.

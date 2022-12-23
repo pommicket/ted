@@ -368,6 +368,7 @@ typedef struct {
 	char *filter;
 	char *text;
 	char *detail; // this can be NULL!
+	bool deprecated;
 	SymbolKind kind;
 } Autocompletion;
 

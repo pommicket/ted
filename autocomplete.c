@@ -147,6 +147,7 @@ static void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *respo
 			const char *detail = lsp_response_string(response, lsp_completion->detail);
 			ted_completion->detail = *detail ? str_dup(detail) : NULL;
 			ted_completion->kind = lsp_completion_kind_to_ted(lsp_completion->kind);
+			ted_completion->deprecated = lsp_completion->deprecated;
 		}
 	}
 	autocomplete_update_suggested(ted);
@@ -293,13 +294,14 @@ static void autocomplete_frame(Ted *ted) {
 	state.min_x = x + padding; state.min_y = y; state.max_x = x + menu_width - padding; state.max_y = y + menu_height;
 	rgba_u32_to_floats(colors[COLOR_TEXT], state.color);
 	
-	u8 border_thickness = settings->border_thickness;
+	float border_thickness = settings->border_thickness;
 	
 	if (ac->waiting_for_lsp) {
 		state.x = x + padding; state.y = y;
 		text_utf8_with_state(font, &state, "Loading...");
 	} else {
 		for (size_t i = 0; i < ncompletions; ++i) {
+			const Autocompletion *completion = &completions[i];
 			
 			state.x = x; state.y = y;
 			if (i != ncompletions-1) {
@@ -308,14 +310,14 @@ static void autocomplete_frame(Ted *ted) {
 					colors[COLOR_AUTOCOMPLETE_BORDER]);
 			}
 			
-			ColorSetting label_color = color_for_symbol_kind(completions[i].kind);
+			ColorSetting label_color = color_for_symbol_kind(completion->kind);
 			if (!settings->syntax_highlighting)
 				label_color = COLOR_TEXT;
 			
 			rgba_u32_to_floats(colors[label_color], state.color);
 			
 			// draw icon
-			char icon_text[2] = {symbol_kind_icon(completions[i].kind), 0};
+			char icon_text[2] = {symbol_kind_icon(completion->kind), 0};
 			state.x += padding;
 			text_utf8_with_state(font, &state, icon_text);
 			state.x += padding;
@@ -323,10 +325,10 @@ static void autocomplete_frame(Ted *ted) {
 				colors[COLOR_AUTOCOMPLETE_BORDER]);
 			state.x += padding;
 			
+			float label_x = (float)state.x;
+			text_utf8_with_state(font, &state, completion->label);
 			
-			text_utf8_with_state(font, &state, completions[i].label);
-			
-			const char *detail = completions[i].detail;
+			const char *detail = completion->detail;
 			if (detail) {
 				double label_end_x = state.x;
 				
@@ -355,6 +357,13 @@ static void autocomplete_frame(Ted *ted) {
 						colors[COLOR_COMMENT], ANCHOR_TOP_RIGHT);
 				}
 			}
+			
+			if (completion->deprecated) {
+				gl_geometry_rect(rect(V2(label_x, y + (char_height - border_thickness) * 0.5f),
+					V2((float)state.x - label_x, 1)),
+					colors[COLOR_TEXT]);
+			}
+			
 			y += char_height;
 		}
 	}

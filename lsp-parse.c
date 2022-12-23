@@ -106,10 +106,10 @@ static bool parse_completion(LSP *lsp, const JSON *json, LSPResponse *response) 
 	
 	arr_set_len(completion->items, items.len);
 	
-	for (u32 i = 0; i < items.len; ++i) {
-		LSPCompletionItem *item = &completion->items[i];
+	for (u32 item_idx = 0; item_idx < items.len; ++item_idx) {
+		LSPCompletionItem *item = &completion->items[item_idx];
 		
-		JSONValue item_value = json_array_get(json, items, i);
+		JSONValue item_value = json_array_get(json, items, item_idx);
 		if (!lsp_expect_object(lsp, item_value, "completion list"))
 			return false;
 		JSONObject item_object = item_value.val.object;
@@ -139,6 +139,19 @@ static bool parse_completion(LSP *lsp, const JSON *json, LSPResponse *response) 
 		if (sort_text.pos) {
 			// LSP allows using a different string for sorting.
 			item->sort_text = lsp_response_add_json_string(response, json, sort_text);
+		}
+		
+		JSONValue deprecated = json_object_get(json, item_object, "deprecated");
+		if (deprecated.type == JSON_TRUE) {
+			item->deprecated = true;
+		}
+		
+		JSONArray tags = json_object_get_array(json, item_object, "tags");
+		for (u32 i = 0; i < tags.len; ++i) {
+			double tag = json_array_get_number(json, tags, i);
+			if (tag == 1 /* deprecated */) {
+				item->deprecated = true;
+			}
 		}
 		
 		JSONString filter_text = json_object_get_string(json, item_object, "filterText");

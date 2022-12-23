@@ -207,6 +207,8 @@ typedef struct {
 	// note: the items are sorted here in this file,
 	// so you probably don't need to access this.
 	LSPString sort_text;
+	// is this function/type/whatever deprecated?
+	bool deprecated;
 	// type of completion
 	LSPCompletionKind kind;
 } LSPCompletionItem;
