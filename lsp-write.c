@@ -167,14 +167,19 @@ static void write_arr_elem_string(JSONWriter *o, const char *s) {
 	write_string(o, s);
 }
 
-static void write_file_uri(JSONWriter *o, DocumentID document) {
-	const char *path = o->lsp->document_paths[document];
+static void write_file_uri(JSONWriter *o, LSPDocumentID document) {
+	if (document >= arr_len(o->lsp->document_data)) {
+		assert(0);
+		str_builder_append(&o->builder, "\"\"");
+		return;
+	}
+	const char *path = o->lsp->document_data[document].path;
 	str_builder_append(&o->builder, "\"file:///");
 	write_escaped(o, path);
 	str_builder_append(&o->builder, "\"");
 }
 
-static void write_key_file_uri(JSONWriter *o, const char *key, DocumentID document) {
+static void write_key_file_uri(JSONWriter *o, const char *key, LSPDocumentID document) {
 	write_key(o, key);
 	write_file_uri(o, document);
 }
@@ -251,6 +256,8 @@ static bool request_type_is_notification(LSPRequestType type) {
 	return false;
 }
 
+// NOTE: don't call lsp_request_free after calling this function.
+//  I will do it for you.
 static void write_request(LSP *lsp, LSPRequest *request) {
 	JSONWriter writer = json_writer_new(lsp);
 	JSONWriter *o = &writer;
@@ -332,7 +339,7 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 			write_key_obj_start(o, "textDocument");
 				write_key_file_uri(o, "uri", open->document);
 				write_key_string(o, "languageId", lsp_language_id(open->language));
-				write_key_number(o, "version", 1);
+				write_key_number(o, "version", 0);
 				write_key_string(o, "text", open->file_contents);
 			write_obj_end(o);
 		write_obj_end(o);
@@ -347,11 +354,15 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 	} break;
 	case LSP_REQUEST_DID_CHANGE: {
 		LSPRequestDidChange *change = &request->data.change;
-		static unsigned long long version_number = 1; // @TODO @TEMPORARY
-		++version_number;
+		if (change->document >= arr_len(lsp->document_data)) {
+			assert(0);
+			break;
+		}
+		LSPDocumentData *document = &lsp->document_data[change->document];
+		++document->version_number;
 		write_key_obj_start(o, "params");
 			write_key_obj_start(o, "textDocument");
-				write_key_number(o, "version", (double)version_number);
+				write_key_number(o, "version", (double)document->version_number);
 				write_key_file_uri(o, "uri", change->document);
 			write_obj_end(o);
 			write_key_arr_start(o, "contentChanges");

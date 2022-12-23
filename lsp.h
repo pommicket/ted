@@ -7,7 +7,7 @@
 //    (if the server never sends a response)
 // - TESTING: make rust-analyzer-slow (waits 10s before sending response)
 
-typedef u32 DocumentID;
+typedef u32 LSPDocumentID;
 
 typedef enum {
 	LSP_REQUEST,
@@ -49,13 +49,13 @@ typedef enum {
 
 typedef struct {
 	Language language;
-	DocumentID document;
+	LSPDocumentID document;
 	// freed by lsp_request_free
 	char *file_contents;
 } LSPRequestDidOpen;
 
 typedef struct {
-	DocumentID document;
+	LSPDocumentID document;
 } LSPRequestDidClose;
 
 // see TextDocumentContentChangeEvent in the LSP spec
@@ -66,7 +66,7 @@ typedef struct {
 } LSPDocumentChangeEvent;
 
 typedef struct {
-	DocumentID document;
+	LSPDocumentID document;
 	LSPDocumentChangeEvent *changes; // dynamic array
 } LSPRequestDidChange;
 
@@ -84,7 +84,7 @@ typedef struct {
 } LSPRequestMessage;
 
 typedef struct {
-	DocumentID document;
+	LSPDocumentID document;
 	LSPPosition pos;
 } LSPDocumentPosition;
 
@@ -240,13 +240,18 @@ typedef struct {
 	} u;
 } LSPMessage;
 
+typedef struct {
+	char *path;
+	u32 version_number; // for LSP
+} LSPDocumentData;
+
 typedef struct LSP {
 	Process process;
 	u32 request_id;
-	StrHashTable document_ids; // values are u32. they are indices into document_filenames.
+	StrHashTable document_ids; // values are u32. they are indices into document_data.
 	// this is a dynamic array which just keeps growing.
 	// but the user isn't gonna open millions of files so it's fine.
-	char **document_paths;
+	LSPDocumentData *document_data;
 	LSPMessage *messages;
 	SDL_mutex *messages_mutex;
 	LSPRequest *requests_client2server;

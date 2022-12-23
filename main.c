@@ -4,6 +4,7 @@
 - scroll through completions
 - only show "Loading..." if it's taking some time (prevent flash)
 - LSP setting
+- figure out workspace
 - make sure "save as" works
 - rename buffer->filename to buffer->path
     - make buffer->path NULL for untitled buffers & fix resulting mess

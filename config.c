@@ -249,6 +249,7 @@ static OptionBool const options_bool[] = {
 	{"restore-session", &options_zero.restore_session, false},
 	{"regenerate-tags-if-not-found", &options_zero.regenerate_tags_if_not_found, true},
 	{"indent-with-spaces", &options_zero.indent_with_spaces, true},
+	{"trigger-characters", &options_zero.trigger_characters, true},
 };
 static OptionU8 const options_u8[] = {
 	{"tab-width", &options_zero.tab_width, 1, 100, true},

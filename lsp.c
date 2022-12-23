@@ -189,15 +189,14 @@ static bool lsp_send(LSP *lsp) {
 	bool quit = false;
 	for (size_t i = 0; i < n_requests; ++i) {
 		LSPRequest *r = &requests[i];
-		if (!quit) {
-			// this could slow down lsp_free if there's a gigantic request.
-			// whatever.
+		if (quit) {
+			lsp_request_free(r);
+		} else {
 			write_request(lsp, r);
 		}
 		
 		if (SDL_SemTryWait(lsp->quit_sem) == 0) {
 			quit = true;
-			// important that we don't break here so all the requests get freed.
 		}
 	}
 
@@ -256,10 +255,11 @@ static int lsp_communication_thread(void *data) {
 u32 lsp_document_id(LSP *lsp, const char *path) {
 	u32 *value = str_hash_table_get(&lsp->document_ids, path);
 	if (!value) {
-		u32 id = arr_len(lsp->document_paths);
+		u32 id = arr_len(lsp->document_data);
 		value = str_hash_table_insert(&lsp->document_ids, path);
 		*value = id;
-		arr_add(lsp->document_paths, str_dup(path));
+		LSPDocumentData *data = arr_addp(lsp->document_data);
+		data->path = str_dup(path);
 	}
 	return *value;
 }
@@ -308,9 +308,9 @@ void lsp_free(LSP *lsp) {
 	process_kill(&lsp->process);
 	arr_free(lsp->received_data);
 	str_hash_table_clear(&lsp->document_ids);
-	for (size_t i = 0; i < arr_len(lsp->document_paths); ++i)
-		free(lsp->document_paths[i]);
-	arr_clear(lsp->document_paths);
+	for (size_t i = 0; i < arr_len(lsp->document_data); ++i)
+		free(lsp->document_data[i].path);
+	arr_free(lsp->document_data);
 	arr_foreach_ptr(lsp->messages, LSPMessage, message) {
 		lsp_message_free(message);
 	}
