@@ -189,6 +189,7 @@ static void autocomplete_open(Ted *ted, char32_t trigger_character) {
 	ted->cursor_error_time = 0;
 	ac->last_pos = (BufferPos){0,0};
 	ac->cursor = 0;
+	ac->open_time = ted->frame_time;
 	autocomplete_find_completions(ted, trigger_character);
 	
 	switch (arr_len(ac->completions)) {
@@ -252,6 +253,14 @@ static void autocomplete_frame(Ted *ted) {
 	
 	if (ac->waiting_for_lsp) {
 		menu_height = 200.f;
+	}
+	
+	if (ac->waiting_for_lsp && ncompletions == 0) {
+		struct timespec now = ted->frame_time;
+		if (timespec_sub(now, ac->open_time) < 0.2) {
+			// don't show "Loading..." unless we've actually been loading for a bit of time
+			return;
+		}
 	}
 	
 	if (!ac->waiting_for_lsp && ncompletions == 0) {
@@ -347,7 +356,7 @@ static void autocomplete_frame(Ted *ted) {
 	state.min_x = x + padding; state.min_y = y; state.max_x = x + menu_width - padding; state.max_y = y + menu_height;
 	rgba_u32_to_floats(colors[COLOR_TEXT], state.color);
 	
-	if (ac->waiting_for_lsp) {
+	if (ac->waiting_for_lsp && ncompletions == 0) {
 		state.x = x + padding; state.y = y;
 		text_utf8_with_state(font, &state, "Loading...");
 	} else {

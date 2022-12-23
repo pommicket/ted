@@ -1,6 +1,5 @@
 /*
 @TODO:
-- only show "Loading..." if it's taking some time (prevent flash)
 - dont do completion if provides_completion = false
 - scroll through completions
 - LSP setting
@@ -691,6 +690,7 @@ int main(int argc, char **argv) {
 	
 	while (!ted->quit) {
 		double frame_start = time_get_seconds();
+		ted->frame_time = time_get();
 
 		SDL_Event event;
 		Uint8 const *keyboard_state = SDL_GetKeyboardState(NULL);

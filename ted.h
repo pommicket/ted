@@ -382,6 +382,10 @@ typedef struct {
 	// which trigger character invoked this (0 if autocomplete was manually invoked)
 	char32_t trigger_char;
 	
+	// when autocomplete menu was opened
+	//  (this is used to figure out when we should display "Loading...")
+	struct timespec open_time;
+	
 	Autocompletion *completions; // dynamic array of all completions
 	u32 *suggested; // dynamic array of completions to be suggested (indices into completions)
 	BufferPos last_pos; // position of cursor last time completions were generated. if this changes, we need to recompute completions.
@@ -391,6 +395,8 @@ typedef struct {
 
 typedef struct Ted {
 	struct LSP *test_lsp; // @TODO: something better
+	// current time, as of the start of this frame
+	struct timespec frame_time;
 	
 	SDL_Window *window;
 	Font *font_bold;

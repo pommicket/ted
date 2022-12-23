@@ -38,7 +38,12 @@ static struct timespec timespec_max(struct timespec a, struct timespec b) {
 
 static double timespec_to_seconds(struct timespec ts) {
 	return (double)ts.tv_sec
-		+ (double)ts.tv_nsec * 0.000000001;
+		+ (double)ts.tv_nsec * 1e-9;
+}
+
+static double timespec_sub(struct timespec a, struct timespec b) {
+	return (double)(a.tv_sec - b.tv_sec)
+		+ (double)(a.tv_nsec - b.tv_nsec) * 1e-9;
 }
 
 static struct timespec time_get(void) {
