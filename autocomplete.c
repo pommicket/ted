@@ -231,7 +231,7 @@ static void autocomplete_frame(Ted *ted) {
 			break;
 	}
 	
-	float menu_width = 400, menu_height = (float)ncompletions * char_height + 2 * padding;
+	float menu_width = 400, menu_height = (float)ncompletions * char_height;
 	
 	if (ac->waiting_for_lsp) {
 		menu_height = 200.f;
@@ -256,8 +256,8 @@ static void autocomplete_frame(Ted *ted) {
 		start_y += char_height; // put menu below cursor
 	{
 		Rect menu_rect = rect(V2(x, start_y), V2(menu_width, menu_height));
-		gl_geometry_rect(menu_rect, colors[COLOR_MENU_BG]);
-		//gl_geometry_rect_border(menu_rect, 1, colors[COLOR_BORDER]);
+		gl_geometry_rect(menu_rect, colors[COLOR_AUTOCOMPLETE_BG]);
+		gl_geometry_rect_border(menu_rect, 1, colors[COLOR_AUTOCOMPLETE_BORDER]);
 		ac->rect = menu_rect;
 	}
 	
@@ -300,11 +300,16 @@ static void autocomplete_frame(Ted *ted) {
 		for (size_t i = 0; i < ncompletions; ++i) {
 			
 			state.x = x; state.y = y;
-			gl_geometry_rect(rect(V2(x, y + char_height),
-				V2(menu_width, border_thickness)),
-				colors[COLOR_AUTOCOMPLETE_BORDER]);
+			if (i != ncompletions-1) {
+				gl_geometry_rect(rect(V2(x, y + char_height),
+					V2(menu_width, border_thickness)),
+					colors[COLOR_AUTOCOMPLETE_BORDER]);
+			}
 			
 			ColorSetting label_color = color_for_symbol_kind(completions[i].kind);
+			if (!settings->syntax_highlighting)
+				label_color = COLOR_TEXT;
+			
 			rgba_u32_to_floats(colors[label_color], state.color);
 			
 			// draw icon

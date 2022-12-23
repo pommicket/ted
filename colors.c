@@ -57,10 +57,13 @@ static ColorSetting color_for_symbol_kind(SymbolKind kind) {
 	case SYMBOL_CONSTANT:
 		return COLOR_CONSTANT;
 	case SYMBOL_TYPE:
+		return COLOR_AUTOCOMPLETE_TYPE;
 	case SYMBOL_FIELD:
 	case SYMBOL_VARIABLE:
-	case SYMBOL_OTHER:
+		return COLOR_AUTOCOMPLETE_VARIABLE;
 	case SYMBOL_FUNCTION:
+		return COLOR_AUTOCOMPLETE_FUNCTION;
+	case SYMBOL_OTHER:
 		return COLOR_TEXT;
 	case SYMBOL_KEYWORD:
 		return COLOR_KEYWORD;
