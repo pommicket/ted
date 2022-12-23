@@ -44,7 +44,7 @@ typedef enum {
 	
 	// server-to-client
 	LSP_REQUEST_SHOW_MESSAGE,
-	LSP_REQUEST_LOG_MESSAGE
+	LSP_REQUEST_LOG_MESSAGE,
 } LSPRequestType;
 
 typedef struct {
@@ -106,6 +106,70 @@ typedef struct {
 	} data;
 } LSPRequest;
 
+typedef enum {
+	// LSP doesn't actually define this but this will be used for unrecognized values
+	//  (in case they add more symbol kinds in the future)
+	LSP_SYMBOL_OTHER = 0,
+	
+	#define LSP_SYMBOL_KIND_MIN 1
+	LSP_SYMBOL_FILE = 1,
+	LSP_SYMBOL_MODULE = 2,
+	LSB_SYMBOL_NAMESPACE = 3,
+	LSP_SYMBOL_PACKAGE = 4,
+	LSP_SYMBOL_CLASS = 5,
+	LSP_SYMBOL_METHOD = 6,
+	LSP_SYMBOL_PROPERTY = 7,
+	LSP_SYMBOL_FIELD = 8,
+	LSP_SYMBOL_CONSTRUCTOR = 9,
+	LSP_SYMBOL_ENUM = 10,
+	LSP_SYMBOL_INTERFACE = 11,
+	LSP_SYMBOL_FUNCTION = 12,
+	LSP_SYMBOL_VARIABLE = 13,
+	LSP_SYMBOL_CONSTANT = 14,
+	LSP_SYMBOL_STRING = 15,
+	LSP_SYMBOL_NUMBER = 16,
+	LSP_SYMBOL_BOOLEAN = 17,
+	LSP_SYMBOL_ARRAY = 18,
+	LSP_SYMBOL_OBJECT = 19,
+	LSP_SYMBOL_KEY = 20,
+	LSP_SYMBOL_NULL = 21,
+	LSP_SYMBOL_ENUMMEMBER = 22,
+	LSP_SYMBOL_STRUCT = 23,
+	LSP_SYMBOL_EVENT = 24,
+	LSP_SYMBOL_OPERATOR = 25,
+	LSP_SYMBOL_TYPEPARAMETER = 26,
+	#define LSP_SYMBOL_KIND_MAX 26
+} LSPSymbolKind;
+
+typedef enum {
+	#define LSP_COMPLETION_KIND_MIN 1
+	LSP_COMPLETION_TEXT = 1,
+	LSP_COMPLETION_METHOD = 2,
+	LSP_COMPLETION_FUNCTION = 3,
+	LSP_COMPLETION_CONSTRUCTOR = 4,
+	LSP_COMPLETION_FIELD = 5,
+	LSP_COMPLETION_VARIABLE = 6,
+	LSP_COMPLETION_CLASS = 7,
+	LSP_COMPLETION_INTERFACE = 8,
+	LSP_COMPLETION_MODULE = 9,
+	LSP_COMPLETION_PROPERTY = 10,
+	LSP_COMPLETION_UNIT = 11,
+	LSP_COMPLETION_VALUE = 12,
+	LSP_COMPLETION_ENUM = 13,
+	LSP_COMPLETION_KEYWORD = 14,
+	LSP_COMPLETION_SNIPPET = 15,
+	LSP_COMPLETION_COLOR = 16,
+	LSP_COMPLETION_FILE = 17,
+	LSP_COMPLETION_REFERENCE = 18,
+	LSP_COMPLETION_FOLDER = 19,
+	LSP_COMPLETION_ENUMMEMBER = 20,
+	LSP_COMPLETION_CONSTANT = 21,
+	LSP_COMPLETION_STRUCT = 22,
+	LSP_COMPLETION_EVENT = 23,
+	LSP_COMPLETION_OPERATOR = 24,
+	LSP_COMPLETION_TYPEPARAMETER = 25,
+	#define LSP_COMPLETION_KIND_MAX 25
+} LSPCompletionKind;
 
 
 // see InsertTextFormat in the LSP spec.
@@ -143,6 +207,8 @@ typedef struct {
 	// note: the items are sorted here in this file,
 	// so you probably don't need to access this.
 	LSPString sort_text;
+	// type of completion
+	LSPCompletionKind kind;
 } LSPCompletionItem;
 
 typedef struct {
@@ -212,3 +278,5 @@ bool lsp_create(LSP *lsp, const char *analyzer_command);
 bool lsp_next_message(LSP *lsp, LSPMessage *message);
 void lsp_document_changed(LSP *lsp, const char *document, LSPDocumentChangeEvent change);
 void lsp_free(LSP *lsp);
+SymbolKind lsp_symbol_kind_to_ted(LSPSymbolKind kind);
+SymbolKind lsp_completion_kind_to_ted(LSPCompletionKind kind);

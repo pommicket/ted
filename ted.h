@@ -352,11 +352,23 @@ typedef struct {
 	u32 build_output_line; // which line in the build output corresponds to this error
 } BuildError;
 
+// LSPSymbolKinds are translated to these. this is a much coarser categorization
+typedef enum {
+	SYMBOL_OTHER,
+	SYMBOL_FUNCTION,
+	SYMBOL_FIELD,
+	SYMBOL_TYPE,
+	SYMBOL_VARIABLE,
+	SYMBOL_CONSTANT,
+	SYMBOL_KEYWORD
+} SymbolKind;
+
 typedef struct {
 	char *label;
 	char *filter;
 	char *text;
 	char *detail; // this can be NULL!
+	SymbolKind kind;
 } Autocompletion;
 
 typedef struct {

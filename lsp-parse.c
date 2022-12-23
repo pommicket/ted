@@ -130,6 +130,11 @@ static bool parse_completion(LSP *lsp, const JSON *json, LSPResponse *response) 
 			.new_text = item->label
 		};
 		
+		double kind = json_object_get_number(json, item_object, "kind");
+		if (isnormal(kind) && kind >= LSP_COMPLETION_KIND_MIN && kind <= LSP_COMPLETION_KIND_MAX) {
+			item->kind = (LSPCompletionKind)kind;
+		}
+		
 		JSONString sort_text = json_object_get_string(json, item_object, "sortText");
 		if (sort_text.pos) {
 			// LSP allows using a different string for sorting.
@@ -145,8 +150,10 @@ static bool parse_completion(LSP *lsp, const JSON *json, LSPResponse *response) 
 		double edit_type = json_object_get_number(json, item_object, "insertTextFormat");
 		if (!isnan(edit_type)) {
 			if (edit_type != LSP_TEXT_EDIT_PLAIN && edit_type != LSP_TEXT_EDIT_SNIPPET) {
-				lsp_set_error(lsp, "Bad InsertTextFormat: %g", edit_type);
-				return false;
+				// maybe in the future more edit types will be added.
+				// probably they'll have associated capabilities, but I think it's best to just ignore unrecognized types
+				debug_println("Bad InsertTextFormat: %g", edit_type);
+				edit_type = LSP_TEXT_EDIT_PLAIN;
 			}
 			item->text_edit.type = (LSPTextEditType)edit_type;
 		}

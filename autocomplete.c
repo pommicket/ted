@@ -144,6 +144,7 @@ static void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *respo
 			ted_completion->text = str_dup(lsp_response_string(response, lsp_completion->text_edit.new_text));
 			const char *detail = lsp_response_string(response, lsp_completion->detail);
 			ted_completion->detail = *detail ? str_dup(detail) : NULL;
+			ted_completion->kind = lsp_completion_kind_to_ted(lsp_completion->kind);
 		}
 	}
 	autocomplete_update_suggested(ted);
@@ -282,7 +283,11 @@ static void autocomplete_frame(Ted *ted) {
 	} else {
 		for (size_t i = 0; i < ncompletions; ++i) {
 			state.x = x + padding; state.y = y;
+			
+			ColorSetting label_color = color_for_symbol_kind(completions[i].kind);
+			rgba_u32_to_floats(colors[label_color], state.color);
 			text_utf8_with_state(font, &state, completions[i].label);
+			
 			const char *detail = completions[i].detail;
 			if (detail) {
 				double label_end_x = state.x;

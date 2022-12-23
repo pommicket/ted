@@ -1,5 +1,8 @@
 /*
 @TODO:
+- kind (icon/color)
+   - improve color_for_symbol_kind
+- send textDocument.completion.completionItemKind capability
 - only show "Loading..." if it's taking some time (prevent flash)
 - LSP setting
 - scroll through completions
@@ -111,6 +114,7 @@ static void die(char const *fmt, ...) {
 #include "lsp.h"
 
 #include "string32.c"
+#include "colors.c"
 #include "syntax.c"
 bool tag_goto(Ted *ted, char const *tag);
 #include "buffer.c"
