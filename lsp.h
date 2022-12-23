@@ -296,7 +296,8 @@ typedef struct LSP {
 bool lsp_get_error(LSP *lsp, char *error, size_t error_size, bool clear);
 void lsp_message_free(LSPMessage *message);
 u32 lsp_document_id(LSP *lsp, const char *path);
-void lsp_send_request(LSP *lsp, const LSPRequest *request);
+// don't free the contents of this request! let me handle it!
+void lsp_send_request(LSP *lsp, LSPRequest *request);
 const char *lsp_response_string(const LSPResponse *response, LSPString string);
 bool lsp_create(LSP *lsp, const char *analyzer_command);
 bool lsp_next_message(LSP *lsp, LSPMessage *message);

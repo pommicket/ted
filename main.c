@@ -1,6 +1,5 @@
 /*
 @TODO:
-- dont do completion if provides_completion = false
 - scroll through completions
 - LSP setting
 - figure out workspace

@@ -53,6 +53,7 @@ static void lsp_request_free(LSPRequest *r) {
 		arr_free(c->changes);
 		} break;
 	}
+	memset(r, 0, sizeof *r);
 }
 
 static void lsp_response_free(LSPResponse *r) {
@@ -65,6 +66,7 @@ static void lsp_response_free(LSPResponse *r) {
 		break;
 	}
 	lsp_request_free(&r->request);
+	memset(r, 0, sizeof *r);
 }
 
 void lsp_message_free(LSPMessage *message) {
@@ -97,7 +99,32 @@ static bool has_response(const char *data, size_t data_len, u64 *p_offset, u64 *
 	return offset + size <= data_len;
 }
 
-void lsp_send_request(LSP *lsp, const LSPRequest *request) {
+static bool lsp_supports_request(LSP *lsp, const LSPRequest *request) {
+	switch (request->type) {
+	case LSP_REQUEST_NONE:
+	case LSP_REQUEST_SHOW_MESSAGE:
+	case LSP_REQUEST_LOG_MESSAGE:
+		return false;
+	case LSP_REQUEST_INITIALIZE:
+	case LSP_REQUEST_INITIALIZED:
+	case LSP_REQUEST_DID_OPEN:
+	case LSP_REQUEST_DID_CLOSE:
+	case LSP_REQUEST_DID_CHANGE:
+	case LSP_REQUEST_SHUTDOWN:
+	case LSP_REQUEST_EXIT:
+		return true;
+	case LSP_REQUEST_COMPLETION:
+		return lsp->provides_completion;
+	}
+	assert(0);
+	return false;
+}
+
+void lsp_send_request(LSP *lsp, LSPRequest *request) {
+	if (!lsp_supports_request(lsp, request)) {
+		lsp_request_free(request);
+		return;
+	}
 	SDL_LockMutex(lsp->requests_mutex);
 	arr_add(lsp->requests_client2server, *request);
 	SDL_UnlockMutex(lsp->requests_mutex);
