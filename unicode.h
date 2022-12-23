@@ -14,19 +14,20 @@ static bool unicode_is_continuation_byte(u8 byte) {
 
 // A lot like mbrtoc32. Doesn't depend on the locale though, for one thing.
 // *c will be filled with the next UTF-8 code point in `str`. `bytes` refers to the maximum
-// number of bytes that can be read from `str`.
+// number of bytes that can be read from `str` (note: this function will never read past a null
+// byte, even if `bytes` indicates that it could).
 // Returns:
-// 0 - if a null character was encountered
+// 0 - if a null character was encountered or if `bytes == 0`
 // (size_t)-1 - on invalid UTF-8
 // (size_t)-2 - on incomplete code point (str should be longer)
 // other - the number of bytes read from `str`.
-static size_t unicode_utf8_to_utf32(char32_t *c, char const *str, size_t bytes) {
+static size_t unicode_utf8_to_utf32(char32_t *c, const char *str, size_t bytes) {
+	*c = 0;
 	if (bytes == 0) {
-		*c = 0;
 		return 0;
 	}
 	// it's easier to do things with unsigned integers
-	u8 const *p = (u8 const *)str;
+	const u8 *p = (const u8 *)str;
 
 	u8 first_byte = *p;
 	
@@ -36,13 +37,13 @@ static size_t unicode_utf8_to_utf32(char32_t *c, char const *str, size_t bytes) 
 			if (bytes >= 2) {
 				++p;
 				u32 second_byte = *p;
+				if ((second_byte & 0xC0) != 0x80) return (size_t)-1;
 				u32 value = ((u32)first_byte & 0x1F) << 6
 					| (second_byte & 0x3F);
 				*c = (char32_t)value;
 				return 2;
 			} else {
 				// incomplete code point
-				*c = 0;
 				return (size_t)-2;
 			}
 		}
@@ -51,8 +52,10 @@ static size_t unicode_utf8_to_utf32(char32_t *c, char const *str, size_t bytes) 
 			if (bytes >= 3) {
 				++p;
 				u32 second_byte = *p;
+				if ((second_byte & 0xC0) != 0x80) return (size_t)-1;
 				++p;
 				u32 third_byte = *p;
+				if ((third_byte & 0xC0) != 0x80) return (size_t)-1;
 				u32 value = ((u32)first_byte & 0x0F) << 12
 					| (second_byte & 0x3F) << 6
 					| (third_byte & 0x3F);
@@ -61,12 +64,10 @@ static size_t unicode_utf8_to_utf32(char32_t *c, char const *str, size_t bytes) 
 					return 3;
 				} else {
 					// reserved for UTF-16 surrogate halves
-					*c = 0;
 					return (size_t)-1;
 				}
 			} else {
 				// incomplete
-				*c = 0;
 				return (size_t)-2;
 			}
 		}
@@ -75,35 +76,37 @@ static size_t unicode_utf8_to_utf32(char32_t *c, char const *str, size_t bytes) 
 			if (bytes >= 4) {
 				++p;
 				u32 second_byte = *p;
+				if ((second_byte & 0xC0) != 0x80) return (size_t)-1;
 				++p;
 				u32 third_byte = *p;
+				if ((third_byte & 0xC0) != 0x80) return (size_t)-1;
 				++p;
 				u32 fourth_byte = *p;
+				if ((fourth_byte & 0xC0) != 0x80) return (size_t)-1;
 				u32 value = ((u32)first_byte & 0x07) << 18
 					| (second_byte & 0x3F) << 12
 					| (third_byte  & 0x3F) << 6
 					| (fourth_byte & 0x3F);
-				if (value <= 0x10FFFF) {
+				if (value >= 0xD800 && value <= 0xDFFF) {
+					// reserved for UTF-16 surrogate halves
+					return (size_t)-1;
+				} else if (value <= 0x10FFFF) {
 					*c = (char32_t)value;
 					return 4;
 				} else {
-					// Code points this big can't be encoded by UTF-16 and so are invalid UTF-8.
-					*c = 0;
+					// Code points this big can't be encoded by UTF-16 so are invalid UTF-8.
 					return (size_t)-1;
 				}
 			} else {
 				// incomplete
-				*c = 0;
 				return (size_t)-2;
 			}
 		}
 		// invalid UTF-8
-		*c = 0;
 		return (size_t)-1;
 	} else {
 		// ASCII character
 		if (first_byte == 0) {
-			*c = 0;
 			return 0;
 		}
 		*c = first_byte;
