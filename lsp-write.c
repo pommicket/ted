@@ -291,7 +291,20 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 						// completion capabilities
 						write_key_obj_start(o, "completionItem");
 							write_key_bool(o, "snippetSupport", false);
+							write_key_bool(o, "commitCharactersSupport", false);
+							write_key_arr_start(o, "documentationFormat");
+								// we dont really support markdown
+								write_arr_elem_string(o, "plaintext");
+							write_arr_end(o);
 							write_key_bool(o, "deprecatedSupport", true);
+							write_key_bool(o, "preselectSupport", false);
+							write_key_obj_start(o, "tagSupport");
+								write_key_arr_start(o, "valueSet");
+									// currently the only tag in the spec
+									write_arr_elem_number(o, 1);
+								write_arr_end(o);
+							write_obj_end(o);
+							write_key_bool(o, "insertReplaceSupport", false);
 						write_obj_end(o);
 						// "completion item kinds" supported by ted
 						// (these are the little icons displayed for function/variable/etc.)

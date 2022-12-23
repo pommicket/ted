@@ -1,5 +1,7 @@
 /*
 @TODO:
+- show documentation
+- finish up capabilities
 - trigger characters (with setting)
 - only show "Loading..." if it's taking some time (prevent flash)
 - LSP setting
@@ -8,6 +10,7 @@
    - close completions when a non-word character is typed
 - rename buffer->filename to buffer->path
     - make buffer->path NULL for untitled buffers & fix resulting mess
+- run everything through valgrind ideally with leak checking
 - rust-analyzer bug reports:
     - bad json can give "Unexpected error: client exited without proper shutdown sequence"
     - rust-analyzer should wait until cargo metadata/check is done before sending initialize response

@@ -171,6 +171,17 @@ static bool parse_completion(LSP *lsp, const JSON *json, LSPResponse *response) 
 			item->text_edit.type = (LSPTextEditType)edit_type;
 		}
 		
+		JSONString documentation = {0};
+		JSONValue documentation_value = json_object_get(json, item_object, "documentation");
+		// the "documentation" field is either just a string or an object containing
+		// a type ("markdown" or "plaintext") and a string.
+		if (documentation_value.type == JSON_STRING) {
+			documentation = documentation_value.val.string;
+		} else if (documentation_value.type == JSON_OBJECT) {
+			documentation = json_object_get_string(json, documentation_value.val.object,
+				"value");
+		}
+		
 		
 		JSONString detail_text = json_object_get_string(json, item_object, "detail");
 		if (detail_text.pos) {

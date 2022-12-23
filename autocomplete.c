@@ -361,7 +361,7 @@ static void autocomplete_frame(Ted *ted) {
 			if (completion->deprecated) {
 				gl_geometry_rect(rect(V2(label_x, y + (char_height - border_thickness) * 0.5f),
 					V2((float)state.x - label_x, 1)),
-					colors[COLOR_TEXT]);
+					colors[label_color]);
 			}
 			
 			y += char_height;
