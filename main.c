@@ -1,7 +1,7 @@
 /*
 @TODO:
 - fix unicode_utf8_to_utf32 to handle bad UTF-8 (i.e. continuation bytes which aren't actually continuation bytes)
-- provide completion context?
+- provide completion context + don't flash cursor for triggers with no completions
 - dont do completion if provides_completion = false
 - scroll through completions
 - only show "Loading..." if it's taking some time (prevent flash)
@@ -836,6 +836,10 @@ int main(int argc, char **argv) {
 								break;
 							}
 						}
+						
+						if (settings->identifier_trigger_characters && is_word(last_char)
+							&& !is_digit(last_char))
+							autocomplete_open(ted);
 					}
 					 
 				}

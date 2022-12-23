@@ -1206,16 +1206,6 @@ i64 buffer_cursor_move_down(TextBuffer *buffer, i64 by) {
 	return ret;
 }
 
-// Is this character a "word" character?
-// This determines how buffer_pos_move_words (i.e. ctrl+left/right) works
-static bool is_word(char32_t c) {
-	return c > WCHAR_MAX || c == '_' || iswalnum((wint_t)c);
-}
-
-static bool is_space(char32_t c) {
-	return c > WCHAR_MAX || iswspace((wint_t)c);
-}
-
 // move left / right by the specified number of words
 // returns the number of words successfully moved forward
 i64 buffer_pos_move_words(TextBuffer *buffer, BufferPos *pos, i64 nwords) {

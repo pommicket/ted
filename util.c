@@ -7,6 +7,21 @@
 #error "Unrecognized operating system."
 #endif
 
+
+// Is this character a "word" character?
+static bool is_word(char32_t c) {
+	return c > WCHAR_MAX || c == '_' || iswalnum((wint_t)c);
+}
+
+static bool is_digit(char32_t c) {
+	return c < WCHAR_MAX && iswdigit((wint_t)c);
+}
+
+static bool is_space(char32_t c) {
+	return c < WCHAR_MAX && iswspace((wint_t)c);
+}
+
+
 static u8 util_popcount(u64 x) {
 #ifdef __GNUC__
 	return (u8)__builtin_popcountll(x);

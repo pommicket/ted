@@ -184,6 +184,7 @@ typedef struct {
 	bool regenerate_tags_if_not_found;
 	bool indent_with_spaces;
 	bool trigger_characters;
+	bool identifier_trigger_characters;
 	u8 tab_width;
 	u8 cursor_width;
 	u8 undo_save_time;

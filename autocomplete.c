@@ -128,10 +128,10 @@ static void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *respo
 	bool was_waiting = ac->waiting_for_lsp;
 	ac->waiting_for_lsp = false;
 	if (!ac->open) {
-		// user hit escape before completions arrived.
+		// user hit escape or down or something before completions arrived.
 		return;
 	}
-	// @TODO: check if same buffer is open and if cursor has moved
+	
 	const LSPRequest *request = &response->request;
 	if (request->type == LSP_REQUEST_COMPLETION) {
 		const LSPResponseCompletion *completion = &response->data.completion;
