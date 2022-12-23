@@ -1388,12 +1388,13 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 	
 	// create a copy of str. we need to do this to remove carriage returns and newlines in the case of line buffers
 	char32_t str_copy[256];
-	bool str_is_allocated = str.len > arr_count(str_copy);
-	if (str_is_allocated) {
-		char32_t *new_str = buffer_calloc(buffer, str.len, sizeof *new_str);
-		memcpy(new_str, str.str, str.len * sizeof *str.str);
-		str.str = new_str;
+	char32_t *str_alloc = NULL;
+	if (str.len > arr_count(str_copy)) {
+		str_alloc = buffer_calloc(buffer, str.len, sizeof *str_alloc);
+		memcpy(str_alloc, str.str, str.len * sizeof *str.str);
+		str.str = str_alloc;
 	} else {
+		// most insertions are small, so it's better to do this
 		memcpy(str_copy, str.str, str.len * sizeof *str.str);
 		str.str = str_copy;
 	}
@@ -1485,8 +1486,7 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 	buffer_lines_modified(buffer, pos.line, line_idx);
 
 	BufferPos b = {.line = line_idx, .index = index};
-	if (str_is_allocated)
-		free(str.str);
+	free(str_alloc);
 	return b;
 }
 
