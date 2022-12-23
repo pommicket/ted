@@ -24,6 +24,8 @@ typedef enum {
 	COLOR_ACTIVE_TAB_HL,
 	COLOR_SELECTED_TAB_HL,
 	COLOR_FIND_HL,
+	
+	COLOR_AUTOCOMPLETE_BORDER,
 
 	COLOR_YES,
 	COLOR_NO,
@@ -82,6 +84,7 @@ static ColorName const color_names[] = {
 	{COLOR_STRING, "string"},
 	{COLOR_CHARACTER, "character"},
 	{COLOR_CONSTANT, "constant"},
+	{COLOR_AUTOCOMPLETE_BORDER, "autocomplete-border"},
 	{COLOR_YES, "yes"},
 	{COLOR_NO, "no"},
 	{COLOR_CANCEL, "cancel"},

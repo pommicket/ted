@@ -193,6 +193,24 @@ static void autocomplete_open(Ted *ted) {
 	}
 }
 
+static char symbol_kind_icon(SymbolKind k) {
+	switch (k) {
+	case SYMBOL_FUNCTION:
+		return 'f';
+	case SYMBOL_FIELD:
+		return 'm';
+	case SYMBOL_TYPE:
+		return 't';
+	case SYMBOL_CONSTANT:
+		return 'c';
+	case SYMBOL_VARIABLE:
+		return 'v';
+	case SYMBOL_KEYWORD:
+	case SYMBOL_OTHER:
+		return ' ';
+	}
+}
+
 static void autocomplete_frame(Ted *ted) {
 	Autocomplete *ac = &ted->autocomplete;
 	TextBuffer *buffer = ted->active_buffer;
@@ -243,10 +261,6 @@ static void autocomplete_frame(Ted *ted) {
 		ac->rect = menu_rect;
 	}
 	
-	// vertical padding
-	start_y += padding;
-	menu_height -= 2 * padding;
-	
 	u16 cursor_entry = (u16)((ted->mouse_pos.y - start_y) / char_height);
 	if (cursor_entry < ncompletions) {
 		// highlight moused over entry
@@ -277,15 +291,32 @@ static void autocomplete_frame(Ted *ted) {
 	state.min_x = x + padding; state.min_y = y; state.max_x = x + menu_width - padding; state.max_y = y + menu_height;
 	rgba_u32_to_floats(colors[COLOR_TEXT], state.color);
 	
+	u8 border_thickness = settings->border_thickness;
+	
 	if (ac->waiting_for_lsp) {
 		state.x = x + padding; state.y = y;
 		text_utf8_with_state(font, &state, "Loading...");
 	} else {
 		for (size_t i = 0; i < ncompletions; ++i) {
-			state.x = x + padding; state.y = y;
+			
+			state.x = x; state.y = y;
+			gl_geometry_rect(rect(V2(x, y + char_height),
+				V2(menu_width, border_thickness)),
+				colors[COLOR_AUTOCOMPLETE_BORDER]);
 			
 			ColorSetting label_color = color_for_symbol_kind(completions[i].kind);
 			rgba_u32_to_floats(colors[label_color], state.color);
+			
+			// draw icon
+			char icon_text[2] = {symbol_kind_icon(completions[i].kind), 0};
+			state.x += padding;
+			text_utf8_with_state(font, &state, icon_text);
+			state.x += padding;
+			gl_geometry_rect(rect(V2((float)state.x, (float)state.y), V2(border_thickness, char_height)),
+				colors[COLOR_AUTOCOMPLETE_BORDER]);
+			state.x += padding;
+			
+			
 			text_utf8_with_state(font, &state, completions[i].label);
 			
 			const char *detail = completions[i].detail;
