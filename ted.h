@@ -390,6 +390,8 @@ typedef struct {
 	u32 *suggested; // dynamic array of completions to be suggested (indices into completions)
 	BufferPos last_pos; // position of cursor last time completions were generated. if this changes, we need to recompute completions.
 	i32 cursor; // which completion is currently selected (index into suggested)
+	i32 scroll;
+	
 	Rect rect; // rectangle where the autocomplete menu is (needed to avoid interpreting autocomplete clicks as other clicks)
 } Autocomplete;
 

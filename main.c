@@ -1,6 +1,5 @@
 /*
 @TODO:
-- scroll through completions
 - LSP setting
 - figure out workspace
 - make sure "save as" works
@@ -723,8 +722,13 @@ int main(int argc, char **argv) {
 			case SDL_MOUSEWHEEL: {
 				// scroll with mouse wheel
 				Sint32 dx = event.wheel.x, dy = -event.wheel.y;
-				ted->scroll_total_x += dx;
-				ted->scroll_total_y += dy;
+				Autocomplete *ac = &ted->autocomplete;
+				if (ac->open && rect_contains_point(ac->rect, ted->mouse_pos)) {
+					autocomplete_scroll(ted, dy);
+				} else {
+					ted->scroll_total_x += dx;
+					ted->scroll_total_y += dy;
+				}
 			} break;
 			case SDL_MOUSEBUTTONDOWN: {
 				Uint32 button = event.button.button;

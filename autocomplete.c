@@ -37,13 +37,37 @@ static void autocomplete_select_cursor_completion(Ted *ted) {
 	}
 }
 
+static void autocomplete_correct_scroll(Ted *ted) {
+	Autocomplete *ac = &ted->autocomplete;
+	i32 scroll = ac->scroll;
+	scroll = min_i32(scroll, (i32)arr_len(ac->suggested) - AUTOCOMPLETE_NCOMPLETIONS_VISIBLE);
+	scroll = max_i32(scroll, 0);
+	ac->scroll = scroll;
+}
+
+void autocomplete_scroll(Ted *ted, i32 by) {
+	Autocomplete *ac = &ted->autocomplete;
+	ac->scroll += by;
+	autocomplete_correct_scroll(ted);
+}
+
+static void autocomplete_move_cursor(Ted *ted, i32 by) {
+	Autocomplete *ac = &ted->autocomplete;
+	u32 ncompletions = arr_len(ac->suggested);
+	i32 cursor = ac->cursor;
+	cursor += by;
+	cursor = (i32)mod_i32(cursor, (i32)ncompletions);
+	ac->cursor = cursor;
+	ac->scroll = ac->cursor - AUTOCOMPLETE_NCOMPLETIONS_VISIBLE / 2;
+	autocomplete_correct_scroll(ted);
+}
 
 static void autocomplete_next(Ted *ted) {
-	++ted->autocomplete.cursor;
+	autocomplete_move_cursor(ted, 1);
 }
 
 static void autocomplete_prev(Ted *ted) {
-	--ted->autocomplete.cursor;
+	autocomplete_move_cursor(ted, -1);
 }
 
 void autocomplete_close(Ted *ted) {
@@ -240,20 +264,7 @@ static void autocomplete_frame(Ted *ted) {
 
 	autocomplete_find_completions(ted, 0);
 
-	Autocompletion completions[AUTOCOMPLETE_NCOMPLETIONS_VISIBLE] = {0};
-	size_t ncompletions = 0;
-	arr_foreach_ptr(ac->suggested, u32, suggestion) {
-		Autocompletion *completion = &ac->completions[*suggestion];
-		completions[ncompletions++] = *completion;
-		if (ncompletions == AUTOCOMPLETE_NCOMPLETIONS_VISIBLE)
-			break;
-	}
-	
-	float menu_width = 400, menu_height = (float)ncompletions * char_height;
-	
-	if (ac->waiting_for_lsp) {
-		menu_height = 200.f;
-	}
+	size_t ncompletions = arr_len(ac->suggested);
 	
 	if (ac->waiting_for_lsp && ncompletions == 0) {
 		struct timespec now = ted->frame_time;
@@ -271,6 +282,16 @@ static void autocomplete_frame(Ted *ted) {
 	
 	ac->cursor = ncompletions ? (i32)mod_i64(ac->cursor, (i64)ncompletions) : 0;
 	
+	autocomplete_correct_scroll(ted);
+	i32 scroll = ac->scroll;
+	u32 ncompletions_visible = min_u32((u32)ncompletions, AUTOCOMPLETE_NCOMPLETIONS_VISIBLE);
+	
+	float menu_width = 400, menu_height = (float)ncompletions_visible * char_height;
+	
+	if (ac->waiting_for_lsp) {
+		menu_height = 200.f;
+	}
+	
 	v2 cursor_pos = buffer_pos_to_pixels(buffer, buffer->cursor_pos);
 	bool open_up = cursor_pos.y > 0.5f * (buffer->y1 + buffer->y2); // should the completion menu open upwards?
 	bool open_left = cursor_pos.x > 0.5f * (buffer->x1 + buffer->x2);
@@ -287,20 +308,25 @@ static void autocomplete_frame(Ted *ted) {
 		ac->rect = menu_rect;
 	}
 	
-	u16 cursor_entry = (u16)((ted->mouse_pos.y - start_y) / char_height);
+	i32 mouse_entry = scroll + (i32)((ted->mouse_pos.y - start_y) / char_height);
 	
 	Autocompletion *document = NULL;
-	if (cursor_entry < ncompletions) {
+	if (ncompletions) {
+		assert(ac->cursor >= 0 && ac->cursor < (i32)ncompletions);
+		// highlight cursor entry
+		Rect r = rect(V2(x, start_y + (float)(ac->cursor - scroll) * char_height), V2(menu_width, char_height));
+		if (rect_contains_point(ac->rect, rect_center(r))) {
+			gl_geometry_rect(r, colors[COLOR_AUTOCOMPLETE_HL]);
+			document = &ac->completions[ac->suggested[ac->cursor]];
+		}
+	}
+	if (mouse_entry >= 0 && mouse_entry < (i32)ncompletions
+		&& rect_contains_point(ac->rect, ted->mouse_pos)) {
 		// highlight moused over entry
-		Rect r = rect(V2(x, start_y + cursor_entry * char_height), V2(menu_width, char_height));
+		Rect r = rect(V2(x, start_y + (float)(mouse_entry - scroll) * char_height), V2(menu_width, char_height));
 		gl_geometry_rect(r, colors[COLOR_AUTOCOMPLETE_HL]);
 		ted->cursor = ted->cursor_hand;
-		document = &completions[cursor_entry];
-	} else if (ncompletions) {
-		// highlight cursor entry
-		Rect r = rect(V2(x, start_y + (float)ac->cursor * char_height), V2(menu_width, char_height));
-		gl_geometry_rect(r, colors[COLOR_AUTOCOMPLETE_HL]);
-		document = &completions[ac->cursor];
+		document = &ac->completions[ac->suggested[mouse_entry]];
 	}
 	
 	float border_thickness = settings->border_thickness;
@@ -309,7 +335,7 @@ static void autocomplete_frame(Ted *ted) {
 	if (document) {
 		// document that entry!!
 		
-		// we've go tsome wacky calculations to figure out the
+		// we've got some wacky calculations to figure out the
 		// bounding rect for the documentation
 		float doc_width = open_left ? ac->rect.pos.x - 2*padding
 			: buffer->x2 - (ac->rect.pos.x + ac->rect.size.x + 2*padding);
@@ -343,10 +369,11 @@ static void autocomplete_frame(Ted *ted) {
 	for (uint i = 0; i < ted->nmouse_clicks[SDL_BUTTON_LEFT]; ++i) {
 		v2 click = ted->mouse_clicks[SDL_BUTTON_LEFT][i];
 		if (rect_contains_point(ac->rect, click)) {
-			u16 entry = (u16)((click.y - start_y) / char_height);
-			if (entry < ncompletions) {
+			i32 entry = scroll + (i32)((click.y - start_y) / char_height);
+			if (entry >= 0 && entry < (i32)ncompletions) {
 				// entry was clicked on! use this completion.
 				autocomplete_complete(ted, ac->completions[ac->suggested[entry]]);
+				return;
 			}
 		}
 	}
@@ -360,11 +387,11 @@ static void autocomplete_frame(Ted *ted) {
 		state.x = x + padding; state.y = y;
 		text_utf8_with_state(font, &state, "Loading...");
 	} else {
-		for (size_t i = 0; i < ncompletions; ++i) {
-			const Autocompletion *completion = &completions[i];
+		for (size_t i = 0; i < ncompletions_visible; ++i) {
+			const Autocompletion *completion = &ac->completions[ac->suggested[(i32)i + scroll]];
 			
 			state.x = x; state.y = y;
-			if (i != ncompletions-1) {
+			if (i != ncompletions_visible-1) {
 				gl_geometry_rect(rect(V2(x, y + char_height),
 					V2(menu_width, border_thickness)),
 					colors[COLOR_AUTOCOMPLETE_BORDER]);

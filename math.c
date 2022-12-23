@@ -147,6 +147,11 @@ static inline i64 mod_i64(i64 a, i64 b) {
 	if (ret < 0) ret += b;
 	return ret;
 }
+static inline i32 mod_i32(i32 a, i32 b) {
+	i32 ret = a % b;
+	if (ret < 0) ret += b;
+	return ret;
+}
 
 static inline i64 abs_i64(i64 x) {
 	return x < 0 ? -x : +x;
