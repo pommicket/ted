@@ -698,7 +698,9 @@ static void config_parse_line(ConfigReader *cfg, Settings *settings, const Confi
 				config_err(cfg, "'%s' is not a valid color. Colors should look like #rgb, #rgba, #rrggbb, or #rrggbbaa.", value);
 			}
 		} else {
+		#if DEBUG
 			config_err(cfg, "No such color option: %s", key);
+		#endif
 		}
 	} break;
 	case SECTION_KEYBOARD: {
