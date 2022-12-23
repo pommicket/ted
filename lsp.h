@@ -88,8 +88,21 @@ typedef struct {
 	LSPPosition pos;
 } LSPDocumentPosition;
 
+typedef enum {
+	LSP_TRIGGER_NONE = 0, // not actually defined in LSP spec
+	LSP_TRIGGER_INVOKED = 1,
+	LSP_TRIGGER_CHARACTER = 2,
+	LSP_TRIGGER_INCOMPLETE = 3
+} LSPCompletionTriggerKind;
+
+typedef struct {
+	LSPCompletionTriggerKind trigger_kind;
+	char trigger_character[5];
+} LSPCompletionContext;
+
 typedef struct {
 	LSPDocumentPosition position;
+	LSPCompletionContext context;
 } LSPRequestCompletion;
 
 typedef struct {

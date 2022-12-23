@@ -323,6 +323,7 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 								}
 							write_arr_end(o);
 						write_obj_end(o);
+						write_key_bool(o, "contextSupport", true);
 					write_obj_end(o);
 				write_obj_end(o);
 			write_obj_end(o);
@@ -383,6 +384,15 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 				write_key_file_uri(o, "uri", completion->position.document);
 			write_obj_end(o);
 			write_key_position(o, "position", completion->position.pos);
+			const LSPCompletionContext *context = &completion->context;
+			LSPCompletionTriggerKind trigger_kind = context->trigger_kind;
+			if (trigger_kind != LSP_TRIGGER_NONE) {
+				write_key_obj_start(o, "context");
+					write_key_number(o, "triggerKind", trigger_kind);
+					if (trigger_kind == LSP_TRIGGER_CHARACTER)
+						write_key_string(o, "triggerCharacter", context->trigger_character);
+				write_obj_end(o);
+			}
 		write_obj_end(o);
 	} break;
 	}

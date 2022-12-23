@@ -287,7 +287,7 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		if (ted->autocomplete.open)
 			autocomplete_next(ted);
 		else
-			autocomplete_open(ted);
+			autocomplete_open(ted, 0);
 		break;
 	case CMD_AUTOCOMPLETE_BACK:
 		if (ted->autocomplete.open)

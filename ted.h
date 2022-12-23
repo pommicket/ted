@@ -379,6 +379,9 @@ typedef struct {
 	bool open; // is the autocomplete window open?
 	bool waiting_for_lsp;
 	
+	// which trigger character invoked this (0 if autocomplete was manually invoked)
+	char32_t trigger_char;
+	
 	Autocompletion *completions; // dynamic array of all completions
 	u32 *suggested; // dynamic array of completions to be suggested (indices into completions)
 	BufferPos last_pos; // position of cursor last time completions were generated. if this changes, we need to recompute completions.

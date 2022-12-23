@@ -74,16 +74,19 @@ static bool autocomplete_using_lsp(Ted *ted) {
 }
 
 static void autocomplete_no_suggestions(Ted *ted) {
-	ted->cursor_error_time = time_get_seconds();
+	Autocomplete *ac = &ted->autocomplete;
+	if (ac->trigger_char == 0)
+		ted->cursor_error_time = time_get_seconds();
 	autocomplete_close(ted);
 }
 
-static void autocomplete_find_completions(Ted *ted) {
+static void autocomplete_find_completions(Ted *ted, char32_t trigger_char) {
 	Autocomplete *ac = &ted->autocomplete;
 	TextBuffer *buffer = ted->active_buffer;
 	BufferPos pos = buffer->cursor_pos;
 	if (buffer_pos_eq(pos, ac->last_pos))
 		return; // no need to update completions.
+	ac->trigger_char = trigger_char;
 	ac->last_pos = pos;
 
 	LSP *lsp = buffer_lsp(buffer);
@@ -91,12 +94,18 @@ static void autocomplete_find_completions(Ted *ted) {
 		LSPRequest request = {
 			.type = LSP_REQUEST_COMPLETION
 		};
+		bool invoked = ac->trigger_char == 0 || is_word(ac->trigger_char);
 		request.data.completion = (LSPRequestCompletion) {
 			.position = {
 				.document = lsp_document_id(lsp, buffer->filename),
 				.pos = buffer_pos_to_lsp(buffer, pos)
+			},
+			.context = {
+				.trigger_kind = invoked ? LSP_TRIGGER_INVOKED : LSP_TRIGGER_CHARACTER,
+				.trigger_character = {0},
 			}
 		};
+		unicode_utf32_to_utf8(request.data.completion.context.trigger_character, ac->trigger_char);
 		lsp_send_request(lsp, &request);
 		if (!ac->completions)
 			ac->waiting_for_lsp = true;
@@ -169,7 +178,7 @@ static void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *respo
 }
 
 // open autocomplete, or just do the completion if there's only one suggestion
-static void autocomplete_open(Ted *ted) {
+static void autocomplete_open(Ted *ted, char32_t trigger_character) {
 	Autocomplete *ac = &ted->autocomplete;
 	if (ac->open) return;
 	if (!ted->active_buffer) return;
@@ -180,7 +189,7 @@ static void autocomplete_open(Ted *ted) {
 	ted->cursor_error_time = 0;
 	ac->last_pos = (BufferPos){0,0};
 	ac->cursor = 0;
-	autocomplete_find_completions(ted);
+	autocomplete_find_completions(ted, trigger_character);
 	
 	switch (arr_len(ac->completions)) {
 	case 0:
@@ -228,7 +237,7 @@ static void autocomplete_frame(Ted *ted) {
 	u32 const *colors = settings->colors;
 	float const padding = settings->padding;
 
-	autocomplete_find_completions(ted);
+	autocomplete_find_completions(ted, 0);
 
 	Autocompletion completions[AUTOCOMPLETE_NCOMPLETIONS_VISIBLE] = {0};
 	size_t ncompletions = 0;

@@ -1,10 +1,8 @@
 /*
 @TODO:
-- fix unicode_utf8_to_utf32 to handle bad UTF-8 (i.e. continuation bytes which aren't actually continuation bytes)
-- provide completion context + don't flash cursor for triggers with no completions
+- only show "Loading..." if it's taking some time (prevent flash)
 - dont do completion if provides_completion = false
 - scroll through completions
-- only show "Loading..." if it's taking some time (prevent flash)
 - LSP setting
 - figure out workspace
 - make sure "save as" works
@@ -832,14 +830,14 @@ int main(int argc, char **argv) {
 							strlen(text) - last_code_point);
 						arr_foreach_ptr(lsp->trigger_chars, char32_t, c) {
 							if (*c == last_char) {
-								autocomplete_open(ted);
+								autocomplete_open(ted, last_char);
 								break;
 							}
 						}
 						
 						if (settings->identifier_trigger_characters && is_word(last_char)
 							&& !is_digit(last_char))
-							autocomplete_open(ted);
+							autocomplete_open(ted, last_char);
 					}
 					 
 				}
