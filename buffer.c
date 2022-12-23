@@ -1455,11 +1455,25 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 		str.str = str_copy;
 	}
 	
+	
 	if (buffer->is_line_buffer) {
 		// remove all the newlines from str.
 		str32_remove_all_instances_of_char(&str, '\n');
 	}
 	str32_remove_all_instances_of_char(&str, '\r');
+	
+	if (buffer->ted->autocomplete.open) {
+		// close completions if a non-word character is typed
+		bool close_completions = false;
+		for (u32 i = 0; i < str.len; ++i) {
+			if (!is_word(str.str[i])) {
+				close_completions = true;
+				break;
+			}
+		}
+		if (close_completions)
+			autocomplete_close(buffer->ted);
+	}
 
 
 	LSP *lsp = buffer_lsp(buffer);
@@ -1709,6 +1723,30 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 	// When generating undo events, we allocate nchars characters of memory (see buffer_edit below).
 	// Not doing this might also cause other bugs, best to keep it here just in case.
 	nchars = (u32)buffer_get_text_at_pos(buffer, pos, NULL, nchars);
+	
+	if (buffer->ted->autocomplete.open) {
+		// close completions if a non-word character is deleted
+		bool close_completions = false;
+		if (nchars > 256) {
+			// this is a massive deletion
+			// even if it's all word characters, let's close the completion menu anyways
+			close_completions = true;
+		} else {
+			char32_t text[256];
+			size_t n = buffer_get_text_at_pos(buffer, pos, text, nchars);
+			(void)n;
+			assert(n == nchars);
+			for (u32 i = 0; i < nchars; ++i) {
+				if (!is_word(text[i])) {
+					close_completions = true;
+					break;
+				}
+			}
+		}
+		if (close_completions)
+			autocomplete_close(buffer->ted);
+	}
+
 
 	LSP *lsp = buffer_lsp(buffer);
 	if (lsp)

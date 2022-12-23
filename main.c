@@ -1,11 +1,10 @@
 /*
 @TODO:
 - trigger characters (with setting)
+- scroll through completions
 - only show "Loading..." if it's taking some time (prevent flash)
 - LSP setting
-- scroll through completions
-- figure out under which circumstances backspace should close completions
-   - close completions when a non-word character is typed
+- make sure "save as" works
 - rename buffer->filename to buffer->path
     - make buffer->path NULL for untitled buffers & fix resulting mess
 - run everything through valgrind ideally with leak checking
@@ -17,7 +16,7 @@ FUTURE FEATURES:
 - multiple files with command line arguments
 - configurable max buffer size + max view-only buffer size
 - :set-build-command, don't let ../Cargo.toml override ./Makefile
-- add numlock as a key modifier
+- add numlock as a key modifier? (but make sure "Ctrl+S" handles both "No NumLock+Ctrl+S" and "NumLock+Ctrl+S"
 - better undo chaining (dechain on backspace?)
 - allow multiple fonts (fonts directory?)
 - regenerate tags for completion too if there are no results

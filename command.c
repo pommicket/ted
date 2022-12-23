@@ -44,72 +44,93 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 	
 	case CMD_LEFT:
 		if (buffer) buffer_cursor_move_left(buffer, argument);
+		autocomplete_close(ted);
 		break;
 	case CMD_RIGHT:
 		if (buffer) buffer_cursor_move_right(buffer, argument);
+		autocomplete_close(ted);
 		break;
 	case CMD_UP:
 		if (ted->selector_open) selector_up(ted, ted->selector_open, argument);
 		else if (ted->menu == MENU_SHELL && buffer == &ted->line_buffer)
 			menu_shell_up(ted);
 		else if (buffer) buffer_cursor_move_up(buffer, argument);
+		autocomplete_close(ted);
 		break;
 	case CMD_DOWN:
 		if (ted->selector_open) selector_down(ted, ted->selector_open, argument);
 		else if (ted->menu == MENU_SHELL && buffer == &ted->line_buffer)
 			menu_shell_down(ted);
 		else if (buffer) buffer_cursor_move_down(buffer, argument);
+		autocomplete_close(ted);
 		break;
 	case CMD_SELECT_LEFT:
 		if (buffer) buffer_select_left(buffer, argument);
+		autocomplete_close(ted);
 		break;
 	case CMD_SELECT_RIGHT:
 		if (buffer) buffer_select_right(buffer, argument);
+		autocomplete_close(ted);
 		break;
 	case CMD_SELECT_UP:
 		if (buffer) buffer_select_up(buffer, argument);
+		autocomplete_close(ted);
 		break;
 	case CMD_SELECT_DOWN:
 		if (buffer) buffer_select_down(buffer, argument);
+		autocomplete_close(ted);
 		break;
 	case CMD_LEFT_WORD:
 		if (buffer) buffer_cursor_move_left_words(buffer, argument);
+		autocomplete_close(ted);
 		break;
 	case CMD_RIGHT_WORD:
 		if (buffer) buffer_cursor_move_right_words(buffer, argument);
+		autocomplete_close(ted);
 		break;
 	case CMD_SELECT_LEFT_WORD:
 		if (buffer) buffer_select_left_words(buffer, argument);
+		autocomplete_close(ted);
 		break;
 	case CMD_SELECT_RIGHT_WORD:
 		if (buffer) buffer_select_right_words(buffer, argument);
+		autocomplete_close(ted);
 		break;
 	case CMD_START_OF_LINE:
 		if (buffer) buffer_cursor_move_to_start_of_line(buffer);
+		autocomplete_close(ted);
 		break;
 	case CMD_END_OF_LINE:
 		if (buffer) buffer_cursor_move_to_end_of_line(buffer);
+		autocomplete_close(ted);
 		break;
 	case CMD_SELECT_START_OF_LINE:
 		if (buffer) buffer_select_to_start_of_line(buffer);
+		autocomplete_close(ted);
 		break;
 	case CMD_SELECT_END_OF_LINE:
 		if (buffer) buffer_select_to_end_of_line(buffer);
+		autocomplete_close(ted);
 		break;
 	case CMD_START_OF_FILE:
 		if (buffer) buffer_cursor_move_to_start_of_file(buffer);
+		autocomplete_close(ted);
 		break;
 	case CMD_END_OF_FILE:
 		if (buffer) buffer_cursor_move_to_end_of_file(buffer);
+		autocomplete_close(ted);
 		break;
 	case CMD_SELECT_START_OF_FILE:
 		if (buffer) buffer_select_to_start_of_file(buffer);
+		autocomplete_close(ted);
 		break;
 	case CMD_SELECT_END_OF_FILE:
 		if (buffer) buffer_select_to_end_of_file(buffer);
+		autocomplete_close(ted);
 		break;
 	case CMD_SELECT_ALL:
 		if (buffer) buffer_select_all(buffer);
+		autocomplete_close(ted);
 		break;
 	
 	case CMD_INSERT_TEXT: {
