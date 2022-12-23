@@ -181,6 +181,16 @@ static bool parse_completion(LSP *lsp, const JSON *json, LSPResponse *response) 
 			documentation = json_object_get_string(json, documentation_value.val.object,
 				"value");
 		}
+		if (documentation.len) {
+			if (documentation.len > 1000) {
+				// rust has some docs which are *20,000* bytes long
+				// that's more than i'm ever gonna show on-screen!
+				documentation.len = 1000;
+				// okay this could break mid-code-point but whatever it would probably
+				// just display ⌷.
+			}
+			item->documentation = lsp_response_add_json_string(response, json, documentation);
+		}
 		
 		
 		JSONString detail_text = json_object_get_string(json, item_object, "detail");

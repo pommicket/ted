@@ -1,7 +1,5 @@
 /*
 @TODO:
-- show documentation
-- finish up capabilities
 - trigger characters (with setting)
 - only show "Loading..." if it's taking some time (prevent flash)
 - LSP setting

@@ -276,6 +276,8 @@ top:
 		c = UNICODE_BOX_CHARACTER;
 	}
 	if (c >= UNICODE_CODE_POINTS) c = UNICODE_BOX_CHARACTER; // code points this big should never appear in valid Unicode
+	
+	
 	uint page = c / CHAR_PAGE_SIZE;
 	uint index = c % CHAR_PAGE_SIZE;
 	if (state->render) {
@@ -286,8 +288,15 @@ top:
 	stbtt_bakedchar *char_data = font->char_pages[page];
 	float const char_height = font->char_height;
 	float const char_width = font->char_width;
+	
 	if (char_data) { // if page was successfully loaded
 		stbtt_aligned_quad q = {0};
+		
+		if (state->wrap && c == '\n') {
+			state->x = state->min_x;
+			state->y += char_height;
+			return;
+		}
 		
 		{
 			float x, y;

@@ -202,6 +202,8 @@ typedef struct {
 	LSPString filter_text;
 	// more detail for this item, e.g. the signature of a function
 	LSPString detail;
+	// documentation for this item (typically from a doc comment)
+	LSPString documentation;
 	// the edit to be applied when this completion is selected.
 	LSPTextEdit text_edit;
 	// note: the items are sorted here in this file,

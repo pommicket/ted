@@ -7,6 +7,8 @@ static void autocomplete_clear_completions(Ted *ted) {
 		free(completion->label);
 		free(completion->text);
 		free(completion->filter);
+		free(completion->detail);
+		free(completion->documentation);
 	}
 	arr_clear(ac->completions);
 	arr_clear(ac->suggested);
@@ -148,6 +150,9 @@ static void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *respo
 			ted_completion->detail = *detail ? str_dup(detail) : NULL;
 			ted_completion->kind = lsp_completion_kind_to_ted(lsp_completion->kind);
 			ted_completion->deprecated = lsp_completion->deprecated;
+			const char *documentation = lsp_response_string(response, lsp_completion->documentation);
+			ted_completion->documentation = documentation ? str_dup(documentation) : NULL;
+			
 		}
 	}
 	autocomplete_update_suggested(ted);
@@ -265,18 +270,57 @@ static void autocomplete_frame(Ted *ted) {
 	}
 	
 	u16 cursor_entry = (u16)((ted->mouse_pos.y - start_y) / char_height);
+	
+	Autocompletion *document = NULL;
 	if (cursor_entry < ncompletions) {
 		// highlight moused over entry
 		Rect r = rect(V2(x, start_y + cursor_entry * char_height), V2(menu_width, char_height));
 		gl_geometry_rect(r, colors[COLOR_AUTOCOMPLETE_HL]);
-		ted->cursor = ted->cursor_hand;	
-	}
-	
-	if (!ac->waiting_for_lsp) {
+		ted->cursor = ted->cursor_hand;
+		document = &completions[cursor_entry];
+	} else if (ncompletions) {
 		// highlight cursor entry
 		Rect r = rect(V2(x, start_y + (float)ac->cursor * char_height), V2(menu_width, char_height));
 		gl_geometry_rect(r, colors[COLOR_AUTOCOMPLETE_HL]);
+		document = &completions[ac->cursor];
 	}
+	
+	float border_thickness = settings->border_thickness;
+	
+	
+	if (document) {
+		// document that entry!!
+		
+		// we've go tsome wacky calculations to figure out the
+		// bounding rect for the documentation
+		float doc_width = open_left ? ac->rect.pos.x - 2*padding
+			: buffer->x2 - (ac->rect.pos.x + ac->rect.size.x + 2*padding);
+		if (doc_width > 800) doc_width = 800;
+		float doc_height = buffer->y2 - (ac->rect.pos.y + 2*padding);
+		if (doc_height > char_height * 20) doc_height = char_height * 20;
+		
+		// if the rect is too small, there's no point in showing it
+		if (doc_width >= 200) {
+			float doc_x = open_left ? ac->rect.pos.x - doc_width - padding
+				: ac->rect.pos.x + ac->rect.size.x + padding;
+			float doc_y = ac->rect.pos.y;
+			Rect r = rect(V2(doc_x, doc_y), V2(doc_width, doc_height));
+			gl_geometry_rect(r, colors[COLOR_AUTOCOMPLETE_BG]);
+			gl_geometry_rect_border(r, border_thickness, colors[COLOR_AUTOCOMPLETE_BORDER]);
+			
+			// draw the text!
+			TextRenderState text_state = text_render_state_default;
+			text_state.min_x = doc_x + padding;
+			text_state.max_x = doc_x + doc_width - padding;
+			text_state.max_y = doc_y + doc_height;
+			text_state.x = doc_x + padding;
+			text_state.y = doc_y + padding;
+			text_state.wrap = true;
+			rgba_u32_to_floats(colors[COLOR_TEXT], text_state.color);
+			text_utf8_with_state(font, &text_state, document->documentation);
+		}
+	}
+		
 	
 	for (uint i = 0; i < ted->nmouse_clicks[SDL_BUTTON_LEFT]; ++i) {
 		v2 click = ted->mouse_clicks[SDL_BUTTON_LEFT][i];
@@ -293,8 +337,6 @@ static void autocomplete_frame(Ted *ted) {
 	TextRenderState state = text_render_state_default;
 	state.min_x = x + padding; state.min_y = y; state.max_x = x + menu_width - padding; state.max_y = y + menu_height;
 	rgba_u32_to_floats(colors[COLOR_TEXT], state.color);
-	
-	float border_thickness = settings->border_thickness;
 	
 	if (ac->waiting_for_lsp) {
 		state.x = x + padding; state.y = y;
