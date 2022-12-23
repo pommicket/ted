@@ -138,9 +138,11 @@ static void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *respo
 		for (size_t i = 0; i < ncompletions; ++i) {
 			const LSPCompletionItem *lsp_completion = &completion->items[i];
 			Autocompletion *ted_completion = &ac->completions[i];
-			// @TODO: deal with fancier textEdits
 			ted_completion->label = str_dup(lsp_response_string(response, lsp_completion->label));
 			ted_completion->filter = str_dup(lsp_response_string(response, lsp_completion->filter_text));
+			// NOTE: here we don't deal with snippets.
+			// right now we are sending "snippetSupport: false" in the capabilities,
+			// so this should be okay.
 			ted_completion->text = str_dup(lsp_response_string(response, lsp_completion->text_edit.new_text));
 			const char *detail = lsp_response_string(response, lsp_completion->detail);
 			ted_completion->detail = *detail ? str_dup(detail) : NULL;
@@ -265,14 +267,14 @@ static void autocomplete_frame(Ted *ted) {
 	if (cursor_entry < ncompletions) {
 		// highlight moused over entry
 		Rect r = rect(V2(x, start_y + cursor_entry * char_height), V2(menu_width, char_height));
-		gl_geometry_rect(r, colors[COLOR_MENU_HL]);
+		gl_geometry_rect(r, colors[COLOR_AUTOCOMPLETE_HL]);
 		ted->cursor = ted->cursor_hand;	
 	}
 	
 	if (!ac->waiting_for_lsp) {
 		// highlight cursor entry
 		Rect r = rect(V2(x, start_y + (float)ac->cursor * char_height), V2(menu_width, char_height));
-		gl_geometry_rect(r, colors[COLOR_MENU_HL]);
+		gl_geometry_rect(r, colors[COLOR_AUTOCOMPLETE_HL]);
 	}
 	
 	for (uint i = 0; i < ted->nmouse_clicks[SDL_BUTTON_LEFT]; ++i) {

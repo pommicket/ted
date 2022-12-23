@@ -1,4 +1,5 @@
 
+
 static const char *lsp_language_id(Language lang) {
 	switch (lang) {
 	case LANG_CONFIG:
@@ -109,12 +110,27 @@ static void write_key_arr_start(JSONWriter *o, const char *key) {
 	write_arr_start(o);
 }
 
+static void write_arr_elem_obj_start(JSONWriter *o) {
+	write_arr_elem(o);
+	write_obj_start(o);
+}
+
+static void write_arr_elem_arr_start(JSONWriter *o) {
+	write_arr_elem(o);
+	write_arr_start(o);
+}
+
 static void write_number(JSONWriter *o, double number) {
 	str_builder_appendf(&o->builder, "%g", number);
 }
 
 static void write_key_number(JSONWriter *o, const char *key, double number) {
 	write_key(o, key);
+	write_number(o, number);
+}
+
+static void write_arr_elem_number(JSONWriter *o, double number) {
+	write_arr_elem(o);
 	write_number(o, number);
 }
 
@@ -127,8 +143,27 @@ static void write_key_null(JSONWriter *o, const char *key) {
 	write_null(o);
 }
 
+static void write_bool(JSONWriter *o, bool b) {
+	str_builder_append(&o->builder, b ? "true" : "false");
+}
+
+static void write_key_bool(JSONWriter *o, const char *key, bool b) {
+	write_key(o, key);
+	write_bool(o, b);
+}
+
+static void write_arr_elem_null(JSONWriter *o) {
+	write_arr_elem(o);
+	write_null(o);
+}
+
 static void write_key_string(JSONWriter *o, const char *key, const char *s) {
 	write_key(o, key);
+	write_string(o, s);
+}
+
+static void write_arr_elem_string(JSONWriter *o, const char *s) {
+	write_arr_elem(o);
 	write_string(o, s);
 }
 
@@ -251,9 +286,30 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 		write_key_obj_start(o, "params");
 			write_key_number(o, "processId", process_get_id());
 			write_key_obj_start(o, "capabilities");
+				write_key_obj_start(o, "textDocument");
+					write_key_obj_start(o, "completion");
+						// completion capabilities
+						write_key_obj_start(o, "completionItem");
+							write_key_bool(o, "snippetSupport", false);
+						write_obj_end(o);
+						// "completion item kinds" supported by ted
+						// (these are the little icons displayed for function/variable/etc.)
+						write_key_obj_start(o, "completionItemKind");
+							write_key_arr_start(o, "valueSet");
+								for (int i = LSP_COMPLETION_KIND_MIN;
+									i <= LSP_COMPLETION_KIND_MAX; ++i) {
+									write_arr_elem_number(o, i);
+								}
+							write_arr_end(o);
+						write_obj_end(o);
+					write_obj_end(o);
+				write_obj_end(o);
 			write_obj_end(o);
 			write_key_null(o, "rootUri");
 			write_key_null(o, "workspaceFolders");
+			write_key_obj_start(o, "clientInfo");
+				write_key_string(o, "name", "ted");
+			write_obj_end(o);
 		write_obj_end(o);
 	} break;
 	case LSP_REQUEST_DID_OPEN: {

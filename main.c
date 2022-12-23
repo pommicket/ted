@@ -1,8 +1,6 @@
 /*
 @TODO:
-- kind (icon/color)
-   - improve color_for_symbol_kind
-- send textDocument.completion.completionItemKind capability
+- trigger characters (with setting)
 - only show "Loading..." if it's taking some time (prevent flash)
 - LSP setting
 - scroll through completions

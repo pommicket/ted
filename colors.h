@@ -26,6 +26,7 @@ typedef enum {
 	COLOR_FIND_HL,
 	
 	COLOR_AUTOCOMPLETE_BG,
+	COLOR_AUTOCOMPLETE_HL,
 	COLOR_AUTOCOMPLETE_BORDER,
 	COLOR_AUTOCOMPLETE_FUNCTION,
 	COLOR_AUTOCOMPLETE_VARIABLE,
@@ -89,6 +90,7 @@ static ColorName const color_names[] = {
 	{COLOR_CHARACTER, "character"},
 	{COLOR_CONSTANT, "constant"},
 	{COLOR_AUTOCOMPLETE_BG, "autocomplete-bg"},
+	{COLOR_AUTOCOMPLETE_HL, "autocomplete-hl"},
 	{COLOR_AUTOCOMPLETE_BORDER, "autocomplete-border"},
 	{COLOR_AUTOCOMPLETE_VARIABLE, "autocomplete-variable"},
 	{COLOR_AUTOCOMPLETE_FUNCTION, "autocomplete-function"},

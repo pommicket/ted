@@ -1,3 +1,5 @@
+#define write_bool lsp_write_bool
+
 static void lsp_request_free(LSPRequest *r);
 static void lsp_response_free(LSPResponse *r);
 
@@ -411,3 +413,5 @@ SymbolKind lsp_completion_kind_to_ted(LSPCompletionKind kind) {
 		return SYMBOL_KEYWORD;
 	}
 }
+
+#undef write_bool
