@@ -50,6 +50,7 @@ bool process_run_ex(Process *proc, const char *command, const ProcessSettings *s
 	pid_t pid = fork();
 	if (pid == 0) {
 		// child process
+		chdir(settings->working_directory);
 		// put child in its own group. it will be in this group with all of its descendents,
 		// so by killing everything in the group, we kill all the descendents of this process.
 		// if we didn't do this, we would just be killing the sh process in process_kill.

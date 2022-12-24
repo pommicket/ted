@@ -307,74 +307,6 @@ int main(int argc, char **argv) {
 	PROFILE_TIME(init_start)
 	PROFILE_TIME(basic_init_start)
 	
-	
-	if (0) {
-	// @TODO TEMPORARY
-		LSP lsp={0};
-//		chdir("/p/test-lsp");
-		if (!lsp_create(&lsp, "rust-analyzer")) {
-			printf("lsp_create: %s\n",lsp.error);
-			exit(1);
-		}
-		usleep(1000000);//if we don't do this we get "waiting for cargo metadata or cargo check"
-		LSPRequest test_req = {.type = LSP_REQUEST_COMPLETION};
-		test_req.data.completion = (LSPRequestCompletion){
-			.position = {
-				.document = lsp_document_id(&lsp, "/p/test-lsp/src/main.rs"),
-				.pos = {
-					.line = 2,
-					.character = 2,
-				},
-			}
-		};
-		lsp_send_request(&lsp, &test_req);
-		while (1) {
-			LSPMessage message = {0};
-			while (lsp_next_message(&lsp, &message)) {
-				if (message.type == LSP_RESPONSE) {
-					const LSPResponse *response = &message.u.response;
-					switch (response->request.type) {
-					case LSP_REQUEST_COMPLETION: {
-						const LSPResponseCompletion *completion = &response->data.completion;
-						arr_foreach_ptr(completion->items, LSPCompletionItem, item) {
-							printf("(%d)%s => ",
-								item->text_edit.type,
-								lsp_response_string(response, item->label));
-							printf("%s\n",
-								lsp_response_string(response, item->text_edit.new_text));
-						}
-					} break;
-					default:
-						break;
-					}
-				} else if (message.type == LSP_REQUEST) {
-					const LSPRequest *request = &message.u.request;
-					switch (request->type) {
-					case LSP_REQUEST_SHOW_MESSAGE: {
-						const LSPRequestMessage *m = &request->data.message;
-						// @TODO  actually show
-						printf("Show (%d): %s\n", m->type, m->message);
-					} break;
-					case LSP_REQUEST_LOG_MESSAGE: {
-						const LSPRequestMessage *m = &request->data.message;
-						// @TODO  actually log
-						printf("Log (%d): %s\n", m->type, m->message);
-					} break;
-					default: break;
-					}
-				}
-				lsp_message_free(&message);
-			}
-			char error[256];
-			if (lsp_get_error(&lsp, error, sizeof error, true)) {
-				printf("lsp error: %s\n", error);
-			}
-			usleep(10000);
-		}
-		lsp_free(&lsp);
-		exit(0);
-	}
-	
 #if __unix__
 	{
 		struct sigaction act = {0};
@@ -432,9 +364,9 @@ int main(int argc, char **argv) {
 	
 	
 	// @TODO TEMPORARY
-	ted->test_lsp = calloc(1, sizeof(LSP));
-	if (!lsp_create(ted->test_lsp, "rust-analyzer")) {
-		printf("lsp_create: %s\n",ted->test_lsp->error);
+	ted->lsps[0] = lsp_create("/p/autosdf", LANG_RUST, "rust-analyzer");
+	if (!ted->lsps[0]) {
+		printf("couldn't create LSP\n");
 		exit(1);
 	}
 	
@@ -1175,8 +1107,14 @@ int main(int argc, char **argv) {
 	build_stop(ted);
 	if (ted->menu)
 		menu_close(ted);
+	autocomplete_close(ted);
 	session_write(ted);
 	
+	for (int i = 0; i < TED_LSP_MAX; ++i) {
+		if (!ted->lsps[i]) break;
+		lsp_free(ted->lsps[i]);
+		ted->lsps[i] = NULL;
+	}
 	arr_foreach_ptr(ted->shell_history, char *, cmd) {
 		free(*cmd);
 	}

@@ -271,10 +271,7 @@ typedef struct LSP {
 	LSPRequest *requests_server2client;
 	// we keep track of client-to-server requests
 	// so that we can process responses.
-	// also fucking rust-analyzer gives "waiting for cargo metadata or cargo check"
-	// WHY NOT JUST WAIT UNTIL YOUVE DONE THAT BEFORE SENDING THE INITIALIZE RESPONSE. YOU HAVE NOT FINISHED INITIALIZATION. YOU ARE LYING.
-	// YOU GIVE A -32801 ERROR CODE WHICH IS "ContentModified"  -- WHAT THE FUCK? THATS JUST COMPLETLY WRONG
-	// so we need to re-send requests in that case.
+	// this also lets us re-send requests if that's ever necessary.
 	LSPRequest *requests_sent;
 	SDL_mutex *requests_mutex;
 	bool initialized; // has the response to the initialize request been sent?
@@ -284,6 +281,8 @@ typedef struct LSP {
 	bool provides_completion; // can this LSP server handle completion requests?
 	char32_t *trigger_chars; // dynamic array of "trigger characters"
 	SDL_mutex *error_mutex;
+	Language language;
+	char root_dir[TED_PATH_MAX];
 	char error[256];
 } LSP;
 
@@ -299,7 +298,7 @@ u32 lsp_document_id(LSP *lsp, const char *path);
 // don't free the contents of this request! let me handle it!
 void lsp_send_request(LSP *lsp, LSPRequest *request);
 const char *lsp_response_string(const LSPResponse *response, LSPString string);
-bool lsp_create(LSP *lsp, const char *analyzer_command);
+LSP *lsp_create(const char *root_dir, Language language, const char *analyzer_command);
 bool lsp_next_message(LSP *lsp, LSPMessage *message);
 void lsp_document_changed(LSP *lsp, const char *document, LSPDocumentChangeEvent change);
 void lsp_free(LSP *lsp);

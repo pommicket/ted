@@ -66,9 +66,15 @@ Settings *ted_active_settings(Ted *ted) {
 	return settings;
 }
 
-LSP *ted_get_lsp(Ted *ted, Language lang) {
-	// @TODO
-	return ted->test_lsp;
+LSP *ted_get_lsp(Ted *ted, const char *path, Language lang) {
+	for (int i = 0; i < TED_LSP_MAX; ++i) {
+		LSP *lsp = ted->lsps[i];
+		if (!lsp) break;
+		if (lsp->language != lang) continue;
+		if (!str_has_prefix(path, lsp->root_dir)) continue;
+		return lsp;
+	}
+	return NULL;
 }
 
 LSP *ted_get_active_lsp(Ted *ted) {

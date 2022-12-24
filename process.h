@@ -10,6 +10,7 @@ typedef struct {
 	bool stdout_blocking;
 	bool separate_stderr;
 	bool stderr_blocking; // not applicable if separate_stderr is false.
+	const char *working_directory;
 } ProcessSettings;
 
 // get process ID of this process

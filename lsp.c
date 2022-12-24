@@ -291,12 +291,16 @@ u32 lsp_document_id(LSP *lsp, const char *path) {
 	return *value;
 }
 
-bool lsp_create(LSP *lsp, const char *analyzer_command) {
+LSP *lsp_create(const char *root_dir, Language language, const char *analyzer_command) {
+	LSP *lsp = calloc(1, sizeof *lsp);
+	if (!lsp) return NULL;
+	
 	ProcessSettings settings = {
 		.stdin_blocking = true,
 		.stdout_blocking = false,
 		.stderr_blocking = false,
 		.separate_stderr = true,
+		.working_directory = root_dir,
 	};
 	process_run_ex(&lsp->process, analyzer_command, &settings);
 	LSPRequest initialize = {
@@ -307,11 +311,13 @@ bool lsp_create(LSP *lsp, const char *analyzer_command) {
 	write_request(lsp, &initialize);
 	
 	str_hash_table_create(&lsp->document_ids, sizeof(u32));
+	strbuf_cpy(lsp->root_dir, root_dir);
+	lsp->language = language;
 	lsp->quit_sem = SDL_CreateSemaphore(0);	
 	lsp->messages_mutex = SDL_CreateMutex();
 	lsp->requests_mutex = SDL_CreateMutex();
 	lsp->communication_thread = SDL_CreateThread(lsp_communication_thread, "LSP communicate", lsp);
-	return true;
+	return lsp;
 }
 
 bool lsp_next_message(LSP *lsp, LSPMessage *message) {
@@ -343,6 +349,8 @@ void lsp_free(LSP *lsp) {
 	}
 	arr_free(lsp->messages);
 	arr_free(lsp->trigger_chars);
+	memset(lsp, 0, sizeof *lsp);
+	free(lsp);
 }
 
 void lsp_document_changed(LSP *lsp, const char *document, LSPDocumentChangeEvent change) {

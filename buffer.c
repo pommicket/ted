@@ -289,7 +289,7 @@ Language buffer_language(TextBuffer *buffer) {
 LSP *buffer_lsp(TextBuffer *buffer) {
 	if (!buffer_is_named_file(buffer))
 		return NULL;
-	return ted_get_lsp(buffer->ted, buffer_language(buffer));
+	return ted_get_lsp(buffer->ted, buffer->filename, buffer_language(buffer));
 }
 
 

@@ -4,6 +4,8 @@
 
 #define TEXT_SIZE_MIN 6
 #define TEXT_SIZE_MAX 70
+// max number of LSPs running at once
+#define TED_LSP_MAX 200
 
 // these all say "CPP" but really they're C/C++
 enum {
@@ -395,8 +397,9 @@ typedef struct {
 	Rect rect; // rectangle where the autocomplete menu is (needed to avoid interpreting autocomplete clicks as other clicks)
 } Autocomplete;
 
+
 typedef struct Ted {
-	struct LSP *test_lsp; // @TODO: something better
+	struct LSP *lsps[TED_LSP_MAX];
 	// current time, as of the start of this frame
 	struct timespec frame_time;
 	
@@ -516,7 +519,7 @@ void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer);
 // the settings of the active buffer, or the default settings if there is no active buffer
 Settings *ted_active_settings(Ted *ted);
 void ted_load_configs(Ted *ted, bool reloading);
-struct LSP *ted_get_lsp(Ted *ted, Language lang);
+struct LSP *ted_get_lsp(Ted *ted, const char *path, Language lang);
 static TextBuffer *find_search_buffer(Ted *ted);
 // first, we read all config files, then we parse them.
 // this is because we want less specific settings (e.g. settings applied
