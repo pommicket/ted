@@ -327,20 +327,8 @@ static void process_message(LSP *lsp, JSON *json) {
 	JSONValue error = json_get(json, "error.message");
 	if (error.type == JSON_STRING) {
 		char err[256] = {0};
-		json_string_get(json, error.val.string, err, sizeof err);;
-		
-		if (streq(err, "waiting for cargo metadata or cargo check")) {
-			// fine. be that way. i'll resend the goddamn request.
-			// i'll keep bombarding you with requests.
-			// maybe next time you should abide by the standard and only send an initialize response when youre actually ready to handle my requests. fuck you.
-			if (response_to.type) {
-				lsp_send_request(lsp, &response_to);
-				// don't free
-				memset(&response_to, 0, sizeof response_to);
-			}
-		} else {
-			lsp_set_error(lsp, "%s", err);
-		}
+		json_string_get(json, error.val.string, err, sizeof err);
+		printf("%s\n",err);
 		goto ret;
 	}
 	

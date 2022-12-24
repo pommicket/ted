@@ -11,7 +11,6 @@
 - run everything through valgrind ideally with leak checking
 - rust-analyzer bug reports:
     - bad json can give "Unexpected error: client exited without proper shutdown sequence"
-    - rust-analyzer should wait until cargo metadata/check is done before sending initialize response
 FUTURE FEATURES:
 - robust find (results shouldn't move around when you type things)
 - multiple files with command line arguments
