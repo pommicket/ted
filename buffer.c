@@ -307,7 +307,7 @@ static long context_score(const char *path, Language lang, const SettingsContext
 	}
 	
 	if (context->path) {
-		if (path && str_has_prefix(path, context->path)) {
+		if (path && str_has_path_prefix(path, context->path)) {
 			score += (long)strlen(context->path);
 		} else {
 			// dont use this. it's path-specific and for the wrong path.
@@ -320,18 +320,7 @@ static long context_score(const char *path, Language lang, const SettingsContext
 
 // Get the settings used for this buffer.
 Settings *buffer_settings(TextBuffer *buffer) {
-	Ted *ted = buffer->ted;
-	long best_score = 0;
-	Settings *settings = ted->default_settings;
-	Language language = buffer_language(buffer);
-	arr_foreach_ptr(ted->all_settings, Settings, s) {
-		long score = context_score(buffer->filename, language, &s->context);
-		if (score > best_score) {
-			best_score = score;
-			settings = s;
-		}
-	}
-	return settings;
+	return ted_get_settings(buffer->ted, buffer->filename, buffer_language(buffer));
 }
 
 

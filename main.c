@@ -1,7 +1,6 @@
 /*
 @TODO:
-- LSP setting
-   - figure out workspace using root-files variable (also do this for :build)
+- why is it creating the LSP on exit
 - make sure "save as" works
 - more LSP stuff:
      - go to definition using LSP

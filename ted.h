@@ -199,6 +199,7 @@ typedef struct {
 	char bg_shader_text[4096];
 	char bg_shader_image[TED_PATH_MAX];
 	char root_identifiers[4096];
+	char lsp[512];
 	char build_default_command[256];
 	// [i] = comma-separated string of file extensions for language i, or NULL for none
 	char *language_extensions[LANG_COUNT];
@@ -519,6 +520,7 @@ void command_execute(Ted *ted, Command c, i64 argument);
 void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer);
 // the settings of the active buffer, or the default settings if there is no active buffer
 Settings *ted_active_settings(Ted *ted);
+Settings *ted_get_settings(Ted *ted, const char *path, Language lang);
 void ted_load_configs(Ted *ted, bool reloading);
 struct LSP *ted_get_lsp(Ted *ted, const char *path, Language lang);
 static TextBuffer *find_search_buffer(Ted *ted);

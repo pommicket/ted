@@ -13,6 +13,15 @@ Language language_from_str(char const *str) {
 	return LANG_NONE;
 }
 
+const char *language_to_str(Language language) {
+	for (int i = 0; i < LANG_COUNT; ++i) {
+		if (language_names[i].lang == language)
+			return language_names[i].name;
+	}
+	return "???";
+
+}
+
 // start of single line comment for language l -- used for comment/uncomment selection
 char const *language_comment_start(Language l) {
 	switch (l) {

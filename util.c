@@ -80,6 +80,14 @@ static bool str_has_prefix(char const *str, char const *prefix) {
 	return strncmp(str, prefix, strlen(prefix)) == 0;
 }
 
+// e.g. "/usr/share/bla" has the path prefix "/usr/share" but not "/usr/sha"
+static bool str_has_path_prefix(const char *path, const char *prefix) {
+	size_t prefix_len = strlen(prefix);
+	if (strncmp(path, prefix, prefix_len) != 0)
+		return false;
+	return path[prefix_len] == '\0' || strchr(ALL_PATH_SEPARATORS, path[prefix_len]);
+}
+
 static bool streq(char const *a, char const *b) {
 	return strcmp(a, b) == 0;
 }

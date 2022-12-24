@@ -295,6 +295,11 @@ LSP *lsp_create(const char *root_dir, Language language, const char *analyzer_co
 	LSP *lsp = calloc(1, sizeof *lsp);
 	if (!lsp) return NULL;
 	
+	#if DEBUG
+		printf("Starting up LSP `%s` for language %s in %s\n",
+			analyzer_command, language_to_str(language), root_dir);
+	#endif
+	
 	ProcessSettings settings = {
 		.stdin_blocking = true,
 		.stdout_blocking = false,

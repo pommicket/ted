@@ -78,14 +78,41 @@ Settings *ted_active_settings(Ted *ted) {
 	return settings;
 }
 
-LSP *ted_get_lsp(Ted *ted, const char *path, Language lang) {
-	for (int i = 0; i < TED_LSP_MAX; ++i) {
+Settings *ted_get_settings(Ted *ted, const char *path, Language language) {
+	long best_score = 0;
+	Settings *settings = ted->default_settings;
+	arr_foreach_ptr(ted->all_settings, Settings, s) {
+		long score = context_score(path, language, &s->context);
+		if (score > best_score) {
+			best_score = score;
+			settings = s;
+		}
+	}
+	return settings;
+}
+
+LSP *ted_get_lsp(Ted *ted, const char *path, Language language) {
+	int i;
+	for (i = 0; i < TED_LSP_MAX; ++i) {
 		LSP *lsp = ted->lsps[i];
 		if (!lsp) break;
-		if (lsp->language != lang) continue;
-		if (!str_has_prefix(path, lsp->root_dir)) continue;
-		return lsp;
+		if (lsp->language != language) continue;
+		
+		// check if root matches up
+		const char *lsp_root = lsp->root_dir;
+		if (str_has_path_prefix(path, lsp_root))
+			return lsp;
 	}
+	if (i == TED_LSP_MAX)
+		return NULL; // why are there so many LSP open???
+	Settings *settings = ted_get_settings(ted, path, language);
+	if (*settings->lsp) {
+		// start up this LSP
+		char *root_dir = settings_get_root_dir(settings, path);
+		ted->lsps[i] = lsp_create(root_dir, language, settings->lsp);
+		free(root_dir);
+	}
+	
 	return NULL;
 }
 

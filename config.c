@@ -275,6 +275,7 @@ static OptionString const options_string[] = {
 	{"bg-shader", options_zero.bg_shader_text, sizeof options_zero.bg_shader_text, true},
 	{"bg-texture", options_zero.bg_shader_image, sizeof options_zero.bg_shader_image, true},
 	{"root-identifiers", options_zero.root_identifiers, sizeof options_zero.root_identifiers, true},
+	{"lsp", options_zero.lsp, sizeof options_zero.lsp, true},
 };
 
 static void option_bool_set(Settings *settings, const OptionBool *opt, bool value) {
