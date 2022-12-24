@@ -735,13 +735,16 @@ static void buffer_line_free(Line *line) {
 // Free a buffer. Once a buffer is freed, you can call buffer_create on it again.
 // Does not free the pointer `buffer` (buffer might not have even been allocated with malloc)
 void buffer_free(TextBuffer *buffer) {
-	LSP *lsp = buffer_lsp(buffer);
-	if (lsp) {
-		LSPRequest did_close = {.type = LSP_REQUEST_DID_CLOSE};
-		did_close.data.close = (LSPRequestDidClose){
-			.document = lsp_document_id(lsp, buffer->filename)
-		};
-		lsp_send_request(lsp, &did_close);
+	if (!buffer->ted->quit) { // don't send didClose on quit (calling buffer_lsp would actually create a LSP if this is called after destroying all the LSPs which isnt good)
+		
+		LSP *lsp = buffer_lsp(buffer);
+		if (lsp) {
+			LSPRequest did_close = {.type = LSP_REQUEST_DID_CLOSE};
+			did_close.data.close = (LSPRequestDidClose){
+				.document = lsp_document_id(lsp, buffer->filename)
+			};
+			lsp_send_request(lsp, &did_close);	
+		}
 	}
 	
 	Line *lines = buffer->lines;

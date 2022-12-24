@@ -1,7 +1,8 @@
 /*
 @TODO:
-- why is it creating the LSP on exit
+- why arent we always sending didOpen?
 - make sure "save as" works
+- workspaceFolders support (so we don't need to start up multiple instances of rust-analyzer)
 - more LSP stuff:
      - go to definition using LSP
      - find usages
@@ -361,14 +362,6 @@ int main(int argc, char **argv) {
 		die("Not enough memory available to run ted.");
 	}
 	ted->last_save_time = -1e50;
-	
-	
-	// @TODO TEMPORARY
-	ted->lsps[0] = lsp_create("/p/autosdf", LANG_RUST, "rust-analyzer");
-	if (!ted->lsps[0]) {
-		printf("couldn't create LSP\n");
-		exit(1);
-	}
 	
 	// make sure signal handler has access to ted.
 	error_signal_handler_ted = ted;
