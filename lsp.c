@@ -296,8 +296,8 @@ LSP *lsp_create(const char *root_dir, Language language, const char *analyzer_co
 	if (!lsp) return NULL;
 	
 	#if DEBUG
-		printf("Starting up LSP `%s` for language %s in %s\n",
-			analyzer_command, language_to_str(language), root_dir);
+		printf("Starting up LSP %p `%s` for language %s in %s\n",
+			(void *)lsp, analyzer_command, language_to_str(language), root_dir);
 	#endif
 	
 	ProcessSettings settings = {

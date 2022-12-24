@@ -111,6 +111,7 @@ LSP *ted_get_lsp(Ted *ted, const char *path, Language language) {
 		char *root_dir = settings_get_root_dir(settings, path);
 		ted->lsps[i] = lsp_create(root_dir, language, settings->lsp);
 		free(root_dir);
+		return ted->lsps[i];
 	}
 	
 	return NULL;

@@ -1,6 +1,5 @@
 /*
 @TODO:
-- why arent we always sending didOpen?
 - make sure "save as" works
 - workspaceFolders support (so we don't need to start up multiple instances of rust-analyzer)
 - more LSP stuff:

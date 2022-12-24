@@ -2207,19 +2207,20 @@ Status buffer_load_file(TextBuffer *buffer, char const *filename) {
 						// can't write to this file; make the buffer view only.
 						buffer->view_only = true;
 					}
+					
+					LSP *lsp = buffer_lsp(buffer);
+					if (lsp) {
+						// send didOpen
+						LSPRequest request = {.type = LSP_REQUEST_DID_OPEN};
+						LSPRequestDidOpen *open = &request.data.open;
+						open->file_contents = (char *)file_contents;
+						open->document = lsp_document_id(lsp, filename);
+						open->language = buffer_language(buffer);
+						lsp_send_request(lsp, &request);
+						file_contents = NULL; // don't free
+					}
 				}
 				
-				LSP *lsp = buffer_lsp(buffer);
-				if (lsp) {
-					// send didOpen
-					LSPRequest request = {.type = LSP_REQUEST_DID_OPEN};
-					LSPRequestDidOpen *open = &request.data.open;
-					open->file_contents = (char *)file_contents;
-					open->document = lsp_document_id(lsp, filename);
-					open->language = buffer_language(buffer);
-					lsp_send_request(lsp, &request);
-					file_contents = NULL; // don't free
-				}
 			}
 			
 			free(file_contents);
