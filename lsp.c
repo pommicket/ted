@@ -146,7 +146,7 @@ static void lsp_receive(LSP *lsp, size_t max_size) {
 			if (nstderr > 0) {
 				// uh oh
 				stderr_buf[nstderr] = '\0';
-				fprintf(stderr, "\x1b[1m\x1b[93m%s\x1b[0m", stderr_buf);
+				eprint("\x1b[1m\x1b[93m%s\x1b[0m", stderr_buf);
 			} else {
 				break;
 			}

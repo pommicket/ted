@@ -1,10 +1,21 @@
 /*
 @TODO:
+- in texlab, when typing "\something" why does the autocomplete menu close on 's'?
+   - is the weird documentation really what we're getting?
+- in jdtls, opening an empty java file gives an exception. is this my fault?
+- what's wrong with pylsp (try "f.w") in generate.py
+- what's wrong with gopls?
 - make sure "save as" works
-- workspaceFolders support (so we don't need to start up multiple instances of rust-analyzer)
 - more LSP stuff:
+     - hover
      - go to definition using LSP
      - find usages
+- workspaceFolders support (so we don't need to start up multiple instances of rust-analyzer)
+- document lsp.h and lsp.c.
+- maximum queue size for requests/responses just in case?
+- delete old sent requests? but make sure requests that just take a long time are okay.
+    (if the server never sends a response)
+- TESTING: make rust-analyzer-slow (waits 10s before sending response)
 - rename buffer->filename to buffer->path
     - make buffer->path NULL for untitled buffers & fix resulting mess
 - run everything through valgrind ideally with leak checking
@@ -634,7 +645,7 @@ int main(int argc, char **argv) {
 				| (u32)shift_down << KEY_MODIFIER_SHIFT_BIT
 				| (u32)alt_down << KEY_MODIFIER_ALT_BIT;
 		ted->key_modifier = key_modifier;
-			
+		
 		while (SDL_PollEvent(&event)) {
 			TextBuffer *buffer = ted->active_buffer;
 			

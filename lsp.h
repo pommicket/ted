@@ -1,12 +1,3 @@
-// @TODO:
-// - use document IDs instead of strings (also lets us use real document version numbers)
-// - document this and lsp.c.
-// - deal with "Save as" (generate didOpen)
-// - maximum queue size for requests/responses just in case?
-// - delete old sent requests
-//    (if the server never sends a response)
-// - TESTING: make rust-analyzer-slow (waits 10s before sending response)
-
 typedef u32 LSPDocumentID;
 
 typedef enum {

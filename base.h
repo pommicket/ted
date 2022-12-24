@@ -159,10 +159,13 @@ static void print(char const *fmt, ...) {
 	va_end(args);
 	OutputDebugStringA(buf);
 }
+#define eprint print
 #else
 #define print printf
+#define eprint(...) fprintf(stderr, __VA_ARGS__)
 #endif
 #define println(...) print(__VA_ARGS__), print("\n")
+#define eprintln(...) eprint(__VA_ARGS__), eprint("\n")
 
 #if DEBUG
 #define debug_print print

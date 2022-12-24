@@ -101,15 +101,72 @@ the current directory or one of its parents, depending on where `Makefile` is. O
 If a `Cargo.toml` file exists in this directory or one of its parents, F4 will run `cargo build`. You can set the default build command
 in the `[core]` section of the config file.
 
-Jump to definition and autocompletion both depend on [ctags](https://github.com/universal-ctags/ctags). You can press Ctrl+T
-at any time to generate or re-generate tags. Once you have a tags file, you can Ctrl+Click on an identifier
-to go to its definition. You can also press Ctrl+D to get a searchable list of all functions/types where you can select one to go to
-its definition.
+## LSP support
+
+ted has support for [LSPs](https://microsoft.github.io/language-server-protocol/)!
+
+
+You can Ctrl+Click on an identifier to go to its definition.
+You can also press Ctrl+D to get a searchable list of all functions/types where you can select one to go to
+its definition. 
 
 Press Ctrl+space to autocomplete. If there is only one possible completion from the tags file, it will be selected automatically.
 Otherwise, you'll get a popup showing all possible completions. You can press tab to select a completion (or click on it), and press
-Ctrl+space/Ctrl+shift+space to cycle between suggestions. Note that autocomplete just completes to stuff in the tags file, so it won't complete local
-variable names. Sorry.
+Ctrl+space/Ctrl+shift+space to cycle between suggestions.
+
+If these features aren't working properly and you don't know why, try running ted in a terminal (non-Windows) or a debugger (Windows)
+so you can see the stderr output from the server.
+
+You can integrate any LSP server with ted by setting the `lsp` option in the `[core.<language>]` section of `ted.cfg`
+to the command which starts the server. Some defaults will already be there, and are listed below. Make
+sure you install the LSP(s) you want and put the executables in your PATH (or change the `lsp` variable
+to include the absolute path if not).
+
+### C/C++
+
+[clangd](https://clangd.llvm.org/installation)
+is enabled by default. On Debian/Ubuntu you can install it with:
+
+```
+sudo apt install clangd-15  # replace 15 with the highest number you can get
+sudo ln -s /usr/bin/clangd-15 /usr/bin/clangd
+```
+
+### Go
+
+The Go team's `go-pls` is enabled by default. You can download it
+[here](https://github.com/golang/tools/tree/master/gopls).
+
+
+## Java
+
+Eclipse's `jdtls` is enabled by default.
+You can download it [here](download.eclipse.org/jdtls/milestones/?d).
+
+## LaTeX
+
+`texlab` is enabled by default. You can download it
+[here](https://github.com/latex-lsp/texlab).
+
+### Python
+`python-lsp-server` is enabled by default.
+You can download it [here](https://github.com/python-lsp/python-lsp-server).
+
+### Rust
+
+`rust-analyzer` is enabled by default. You can download it
+by following [the instructions here](https://rust-analyzer.github.io/manual.html#rust-analyzer-language-server-binary).
+
+
+
+## Tags (lightweight LSP alternative)
+
+If an LSP is too much for you, you can also use [ctags](https://github.com/universal-ctags/ctags)
+for autocompletion and jump to definition. You can press Ctrl+T
+at any time to generate or re-generate tags.
+Ctrl+Click (go to definition), Ctrl+D (see all definitions), and autocomplete are all supported.
+Autocomplete will just complete to stuff in the tags file, so it won't complete local
+variable names for example.
 
 ## Building from source
 
