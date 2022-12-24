@@ -48,6 +48,18 @@ static void *ted_realloc(Ted *ted, void *p, size_t new_size) {
 	return ret;
 }
 
+// get the project root directory (based on the active buffer or ted->cwd if there's no active buffer).
+// the return value should be freed
+char *ted_get_root_dir(Ted *ted) {
+	Settings *settings = ted_active_settings(ted);
+	TextBuffer *buffer = ted->active_buffer;
+	if (buffer) {
+		return settings_get_root_dir(settings, buffer->filename);
+	} else {
+		return settings_get_root_dir(settings, ted->cwd);
+	}
+}
+
 Settings *ted_active_settings(Ted *ted) {
 	if (ted->active_buffer)
 		return buffer_settings(ted->active_buffer);

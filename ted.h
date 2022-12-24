@@ -198,6 +198,7 @@ typedef struct {
 	GlRcTexture *bg_texture;
 	char bg_shader_text[4096];
 	char bg_shader_image[TED_PATH_MAX];
+	char root_identifiers[4096];
 	char build_default_command[256];
 	// [i] = comma-separated string of file extensions for language i, or NULL for none
 	char *language_extensions[LANG_COUNT];
@@ -538,3 +539,4 @@ static TextBuffer *find_search_buffer(Ted *ted);
 void config_read(Ted *ted, ConfigPart **parts, const char *filename);
 void config_parse(Ted *ted, ConfigPart **parts);
 void config_free(Ted *ted);
+char *settings_get_root_dir(Settings *settings, const char *path);

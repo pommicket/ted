@@ -274,6 +274,7 @@ static OptionString const options_string[] = {
 	{"build-default-command", options_zero.build_default_command, sizeof options_zero.build_default_command, true},
 	{"bg-shader", options_zero.bg_shader_text, sizeof options_zero.bg_shader_text, true},
 	{"bg-texture", options_zero.bg_shader_image, sizeof options_zero.bg_shader_image, true},
+	{"root-identifiers", options_zero.root_identifiers, sizeof options_zero.root_identifiers, true},
 };
 
 static void option_bool_set(Settings *settings, const OptionBool *opt, bool value) {
@@ -992,4 +993,70 @@ void config_free(Ted *ted) {
 	}
 	ted->nstrings = 0;
 	ted->default_settings = NULL;
+}
+
+
+static char *last_separator(char *path) {
+	for (int i = (int)strlen(path) - 1; i >= 0; --i)
+		if (strchr(ALL_PATH_SEPARATORS, path[i]))
+			return &path[i];
+	return NULL;
+}
+
+// returns the best guess for the root directory of the project containing `path` (which should be an absolute path)
+// the return value should be freed.
+char *settings_get_root_dir(Settings *settings, const char *path) {
+	char best_path[TED_PATH_MAX];
+	*best_path = '\0';
+	u32 best_path_score = 0;
+	char pathbuf[TED_PATH_MAX];
+	strbuf_cpy(pathbuf, path);
+	
+	while (1) {
+		FsDirectoryEntry **entries = fs_list_directory(pathbuf);
+		if (entries) { // note: this may actually be NULL on the first iteration if `path` is a file
+			for (int e = 0; entries[e]; ++e) {
+				const char *entry_name = entries[e]->name;
+				const char *ident_name = settings->root_identifiers;
+				while (*ident_name) {
+					const char *separators = ", \t\n\r\v";
+					size_t ident_len = strcspn(ident_name, separators);
+					if (strlen(entry_name) == ident_len && strncmp(entry_name, ident_name, ident_len) == 0) {
+						// we found an identifier!
+						u32 score = U32_MAX - (u32)(ident_name - settings->root_identifiers);
+						if (score > best_path_score) {
+							best_path_score = score;
+							strbuf_cpy(best_path, pathbuf);
+						}
+					}
+					ident_name += ident_len;
+					ident_name += strspn(ident_name, separators);
+				}
+			}
+			fs_dir_entries_free(entries);
+		}
+		
+		char *p = last_separator(pathbuf);
+		if (!p)
+			break;
+		*p = '\0';
+		if (!last_separator(pathbuf))
+			break; // we made it all the way to / (or c:\ or whatever)
+	}
+	
+	if (*best_path) {
+		return str_dup(best_path);
+	} else {
+		// didn't find any identifiers.
+		// just return
+		//  - `path` if it's a directory
+		//  - the directory containing path if it's a file
+		if (fs_path_type(path) == FS_DIRECTORY) {
+			return str_dup(path);
+		}
+		strbuf_cpy(pathbuf, path);
+		char *sep = last_separator(pathbuf);
+		*sep = '\0';
+		return str_dup(pathbuf);
+	}
 }

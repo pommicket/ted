@@ -25,7 +25,7 @@ FsPermission fs_path_permission(char const *path);
 // Does this file exist? Returns false for directories.
 bool fs_file_exists(char const *path);
 // Returns a NULL-terminated array of the files/directories in this directory, or NULL if the directory does not exist/out of memory.
-// When you're done with the entries, call free on each one, then on the array.
+// When you're done with the entries, call fs_dir_entries_free (or call free on each entry, then on the whole array).
 // NOTE: The files/directories aren't returned in any particular order!
 FsDirectoryEntry **fs_list_directory(char const *dirname);
 // Create the directory specified by `path`
@@ -41,6 +41,11 @@ int fs_mkdir(char const *path);
 // -1 if we can't get the cwd for whatever reason.
 int fs_get_cwd(char *buf, size_t buflen);
 
+void fs_dir_entries_free(FsDirectoryEntry **entries) {
+	for (int i = 0; entries[i]; ++i)
+		free(entries[i]);
+	free(entries);
+}
 
 #endif // FILESYSTEM_H_
 

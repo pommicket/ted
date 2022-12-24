@@ -1,7 +1,7 @@
 /*
 @TODO:
 - LSP setting
-- figure out workspace
+   - figure out workspace using root-files variable (also do this for :build)
 - make sure "save as" works
 - more LSP stuff:
      - go to definition using LSP
@@ -9,13 +9,14 @@
 - rename buffer->filename to buffer->path
     - make buffer->path NULL for untitled buffers & fix resulting mess
 - run everything through valgrind ideally with leak checking
+- grep -i -n TODO *.[ch]
 - rust-analyzer bug reports:
     - bad json can give "Unexpected error: client exited without proper shutdown sequence"
 FUTURE FEATURES:
 - robust find (results shouldn't move around when you type things)
 - multiple files with command line arguments
 - configurable max buffer size + max view-only buffer size
-- :set-build-command, don't let ../Cargo.toml override ./Makefile
+- :set-build-command
 - add numlock as a key modifier? (but make sure "Ctrl+S" handles both "No NumLock+Ctrl+S" and "NumLock+Ctrl+S"
 - better undo chaining (dechain on backspace?)
 - allow multiple fonts (fonts directory?)
