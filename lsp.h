@@ -220,6 +220,7 @@ typedef struct {
 } LSPCompletionItem;
 
 typedef struct {
+	bool is_complete;
 	// dynamic array
 	LSPCompletionItem *items;
 } LSPResponseCompletion;

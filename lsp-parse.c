@@ -113,6 +113,8 @@ static bool parse_completion(LSP *lsp, const JSON *json, LSPResponse *response) 
 	
 	JSONValue result = json_get(json, "result");
 	JSONValue items_value = {0};
+	completion->is_complete = true; // default
+	
 	switch (result.type) {
 	case JSON_NULL:
 		// no completions
@@ -122,6 +124,7 @@ static bool parse_completion(LSP *lsp, const JSON *json, LSPResponse *response) 
 		break;
 	case JSON_OBJECT:
 		items_value = json_object_get(json, result.val.object, "items");
+		completion->is_complete = !json_object_get_bool(json, result.val.object, "isIncomplete", false);
 		break;
 	default:
 		lsp_set_error(lsp, "Weird result type for textDocument/completion response: %s.", json_type_to_str(result.type));

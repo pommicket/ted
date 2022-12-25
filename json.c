@@ -478,6 +478,20 @@ double json_array_get_number(const JSON *json, JSONArray array, size_t i) {
 	return json_force_number(json_array_get(json, array, i));
 }
 
+bool json_force_bool(JSONValue x, bool default_value) {
+	if (x.type == JSON_TRUE) return true;
+	if (x.type == JSON_FALSE) return false;
+	return default_value;
+}
+
+bool json_object_get_bool(const JSON *json, JSONObject object, const char *name, bool default_value) {
+	return json_force_bool(json_object_get(json, object, name), default_value);
+}
+
+bool json_array_get_bool(const JSON *json, JSONArray array, size_t i, bool default_value) {
+	return json_force_bool(json_array_get(json, array, i), default_value);
+}
+
 // returns (JSONString){0} (which is interpreted as an empty string) if `x` is not a string
 JSONString json_force_string(JSONValue x) {
 	if (x.type == JSON_STRING) {

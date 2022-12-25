@@ -379,16 +379,26 @@ typedef struct {
 	SymbolKind kind;
 } Autocompletion;
 
+enum {
+	// autocomplete was triggered by :autocomplete command
+	TRIGGER_INVOKED = 0x12000,
+	// autocomplete list needs to be updated because more characters were typed
+	TRIGGER_INCOMPLETE = 0x12001,
+};
+
 typedef struct {
 	bool open; // is the autocomplete window open?
 	bool waiting_for_lsp;
+	bool is_list_complete; // should the completions array be updated when more characters are typed?
 	
-	// which trigger character invoked this (0 if autocomplete was manually invoked)
-	char32_t trigger_char;
+	// what trigger caused the last request for completions:
+	// either a character code (for trigger characters),
+	// or one of the TRIGGER_* constants above
+	uint32_t trigger;
 	
-	// when autocomplete menu was opened
+	// when we sent the request to the LSP for completions
 	//  (this is used to figure out when we should display "Loading...")
-	struct timespec open_time;
+	struct timespec lsp_request_time;
 	
 	Autocompletion *completions; // dynamic array of all completions
 	u32 *suggested; // dynamic array of completions to be suggested (indices into completions)

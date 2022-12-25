@@ -99,39 +99,65 @@ static bool autocomplete_using_lsp(Ted *ted) {
 
 static void autocomplete_no_suggestions(Ted *ted) {
 	Autocomplete *ac = &ted->autocomplete;
-	if (ac->trigger_char == 0)
+	if (ac->trigger == TRIGGER_INVOKED)
 		ted->cursor_error_time = time_get_seconds();
 	autocomplete_close(ted);
 }
 
-static void autocomplete_find_completions(Ted *ted, char32_t trigger_char) {
+static void autocomplete_send_completion_request(Ted *ted, TextBuffer *buffer, BufferPos pos, uint32_t trigger) {
+	LSP *lsp = buffer_lsp(buffer);
+	Autocomplete *ac = &ted->autocomplete;
+
+	LSPRequest request = {
+		.type = LSP_REQUEST_COMPLETION
+	};
+	
+	LSPCompletionTriggerKind lsp_trigger = LSP_TRIGGER_CHARACTER;
+	switch (trigger) {
+	case TRIGGER_INVOKED: lsp_trigger = LSP_TRIGGER_INVOKED; break;
+	case TRIGGER_INCOMPLETE: lsp_trigger = LSP_TRIGGER_INCOMPLETE; break;
+	}
+	
+	request.data.completion = (LSPRequestCompletion) {
+		.position = {
+			.document = lsp_document_id(lsp, buffer->filename),
+			.pos = buffer_pos_to_lsp(buffer, pos)
+		},
+		.context = {
+			.trigger_kind = lsp_trigger,
+			.trigger_character = {0},
+		}
+	};
+	if (trigger < UNICODE_CODE_POINTS)
+		unicode_utf32_to_utf8(request.data.completion.context.trigger_character, trigger);
+	lsp_send_request(lsp, &request);
+	ac->waiting_for_lsp = true;
+	ac->lsp_request_time = ted->frame_time;
+	// *technically sepaking* this can mess things up if a complete
+	// list arrives only after the user has typed some stuff
+	// (in that case we'll send a TriggerKind = incomplete request even though it makes no sense).
+	// but i don't think any servers will have a problem with that.
+	ac->is_list_complete = false;
+}
+
+static void autocomplete_find_completions(Ted *ted, uint32_t trigger) {
 	Autocomplete *ac = &ted->autocomplete;
 	TextBuffer *buffer = ted->active_buffer;
 	BufferPos pos = buffer->cursor_pos;
 	if (buffer_pos_eq(pos, ac->last_pos))
 		return; // no need to update completions.
-	ac->trigger_char = trigger_char;
+	ac->trigger = trigger;
 	ac->last_pos = pos;
 
 	LSP *lsp = buffer_lsp(buffer);
 	if (lsp) {
-		LSPRequest request = {
-			.type = LSP_REQUEST_COMPLETION
-		};
-		bool invoked = ac->trigger_char == 0 || is_word(ac->trigger_char);
-		request.data.completion = (LSPRequestCompletion) {
-			.position = {
-				.document = lsp_document_id(lsp, buffer->filename),
-				.pos = buffer_pos_to_lsp(buffer, pos)
-			},
-			.context = {
-				.trigger_kind = invoked ? LSP_TRIGGER_INVOKED : LSP_TRIGGER_CHARACTER,
-				.trigger_character = {0},
-			}
-		};
-		unicode_utf32_to_utf8(request.data.completion.context.trigger_character, ac->trigger_char);
-		lsp_send_request(lsp, &request);
-		ac->waiting_for_lsp = true;
+		if (ac->is_list_complete && trigger == TRIGGER_INCOMPLETE) {
+			// the list of completions we got from the LSP server is complete,
+			// so we just need to call autocomplete_update_suggested,
+			// we don't need to send a new request.
+		} else {
+			autocomplete_send_completion_request(ted, buffer, pos, trigger);
+		}
 	} else {
 		// tag completion
 		autocomplete_clear_completions(ted);
@@ -150,6 +176,10 @@ static void autocomplete_find_completions(Ted *ted, char32_t trigger_char) {
 			arr_add(ac->suggested, (u32)i);
 		}
 		free(completions);
+		
+		// if we got the full list of tags beginning with `word_at_cursor`,
+		// then we don't need to call `tags_beginning_with` again.
+		ac->is_list_complete = ncompletions == TAGS_MAX_COMPLETIONS;
 	}
 	
 	autocomplete_update_suggested(ted);
@@ -157,7 +187,6 @@ static void autocomplete_find_completions(Ted *ted, char32_t trigger_char) {
 
 static void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *response) {
 	Autocomplete *ac = &ted->autocomplete;
-	bool was_waiting = ac->waiting_for_lsp;
 	ac->waiting_for_lsp = false;
 	if (!ac->open) {
 		// user hit escape or down or something before completions arrived.
@@ -186,6 +215,7 @@ static void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *respo
 			ted_completion->documentation = *documentation ? str_dup(documentation) : NULL;
 			
 		}
+		ac->is_list_complete = completion->is_complete;
 	}
 	autocomplete_update_suggested(ted);
 	switch (arr_len(ac->suggested)) {
@@ -193,15 +223,16 @@ static void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *respo
 		autocomplete_no_suggestions(ted);
 		return;
 	case 1:
-		// if we just finished loading suggestions, and there's only one suggestion, use it
-		if (was_waiting)
+		// if autocomplete was invoked by Ctrl+Space, and there's only one completion, select it.
+		if (ac->trigger == TRIGGER_INVOKED)
 			autocomplete_complete(ted, ac->completions[ac->suggested[0]]);
 		return;	
 	}
 }
 
-// open autocomplete, or just do the completion if there's only one suggestion
-static void autocomplete_open(Ted *ted, char32_t trigger_character) {
+// open autocomplete
+// trigger should either be a character (e.g. '.') or one of the TRIGGER_* constants.
+static void autocomplete_open(Ted *ted, uint32_t trigger) {
 	Autocomplete *ac = &ted->autocomplete;
 	if (ac->open) return;
 	if (!ted->active_buffer) return;
@@ -212,8 +243,7 @@ static void autocomplete_open(Ted *ted, char32_t trigger_character) {
 	ted->cursor_error_time = 0;
 	ac->last_pos = (BufferPos){0,0};
 	ac->cursor = 0;
-	ac->open_time = ted->frame_time;
-	autocomplete_find_completions(ted, trigger_character);
+	autocomplete_find_completions(ted, trigger);
 	
 	switch (arr_len(ac->completions)) {
 	case 0:
@@ -261,13 +291,13 @@ static void autocomplete_frame(Ted *ted) {
 	u32 const *colors = settings->colors;
 	float const padding = settings->padding;
 
-	autocomplete_find_completions(ted, 0);
-
+	autocomplete_find_completions(ted, TRIGGER_INCOMPLETE);
+	
 	size_t ncompletions = arr_len(ac->suggested);
 	
 	if (ac->waiting_for_lsp && ncompletions == 0) {
 		struct timespec now = ted->frame_time;
-		if (timespec_sub(now, ac->open_time) < 0.2) {
+		if (timespec_sub(now, ac->lsp_request_time) < 0.2) {
 			// don't show "Loading..." unless we've actually been loading for a bit of time
 			return;
 		}
