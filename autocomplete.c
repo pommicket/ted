@@ -131,8 +131,7 @@ static void autocomplete_find_completions(Ted *ted, char32_t trigger_char) {
 		};
 		unicode_utf32_to_utf8(request.data.completion.context.trigger_character, ac->trigger_char);
 		lsp_send_request(lsp, &request);
-		if (!ac->completions)
-			ac->waiting_for_lsp = true;
+		ac->waiting_for_lsp = true;
 	} else {
 		// tag completion
 		autocomplete_clear_completions(ted);
@@ -184,7 +183,7 @@ static void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *respo
 			ted_completion->kind = lsp_completion_kind_to_ted(lsp_completion->kind);
 			ted_completion->deprecated = lsp_completion->deprecated;
 			const char *documentation = lsp_response_string(response, lsp_completion->documentation);
-			ted_completion->documentation = documentation ? str_dup(documentation) : NULL;
+			ted_completion->documentation = *documentation ? str_dup(documentation) : NULL;
 			
 		}
 	}
@@ -288,7 +287,7 @@ static void autocomplete_frame(Ted *ted) {
 	
 	float menu_width = 400, menu_height = (float)ncompletions_visible * char_height;
 	
-	if (ac->waiting_for_lsp) {
+	if (ac->waiting_for_lsp && ncompletions == 0) {
 		menu_height = 200.f;
 	}
 	
@@ -332,7 +331,7 @@ static void autocomplete_frame(Ted *ted) {
 	float border_thickness = settings->border_thickness;
 	
 	
-	if (document) {
+	if (document && document->documentation) {
 		// document that entry!!
 		
 		// we've got some wacky calculations to figure out the

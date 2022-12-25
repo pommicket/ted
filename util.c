@@ -21,6 +21,32 @@ static bool is_space(char32_t c) {
 	return c < WCHAR_MAX && iswspace((wint_t)c);
 }
 
+static bool is_a_tty(FILE *out) {
+	return
+	#if __unix__
+		isatty(fileno(out))
+	#else
+		false
+	#endif
+		;
+}
+
+static const char *term_italics(FILE *out) {
+	return is_a_tty(out) ? "\x1b[3m" : "";
+}
+
+static const char *term_bold(FILE *out) {
+	return is_a_tty(out) ? "\x1b[1m" : "";
+}
+
+static const char *term_yellow(FILE *out) {
+	return is_a_tty(out) ? "\x1b[93m" : "";
+}
+
+static const char *term_clear(FILE *out) {
+	return is_a_tty(out) ? "\x1b[0m" : "";
+}
+
 
 static u8 util_popcount(u64 x) {
 #ifdef __GNUC__

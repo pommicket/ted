@@ -1,3 +1,9 @@
+// print server-to-client communication
+#define LSP_SHOW_S2C 0
+// print client-to-server communication
+#define LSP_SHOW_C2S 0
+
+
 #define write_bool lsp_write_bool
 
 static void lsp_request_free(LSPRequest *r);
@@ -146,7 +152,7 @@ static void lsp_receive(LSP *lsp, size_t max_size) {
 			if (nstderr > 0) {
 				// uh oh
 				stderr_buf[nstderr] = '\0';
-				eprint("\x1b[1m\x1b[93m%s\x1b[0m", stderr_buf);
+				eprint("%s%s%s%s", term_bold(stderr), term_yellow(stderr), stderr_buf, term_clear(stderr));
 			} else {
 				break;
 			}
@@ -164,8 +170,8 @@ static void lsp_receive(LSP *lsp, size_t max_size) {
 	// kind of a hack. this is needed because arr_set_len zeroes the data.
 	arr_hdr_(lsp->received_data)->len = (u32)received_so_far;
 	lsp->received_data[received_so_far] = '\0';// null terminate
-	#if 0
-	printf("\x1b[3m%s\x1b[0m\n",lsp->received_data);
+	#if LSP_SHOW_S2C
+	printf("%s%s%s\n",term_italics(stdout),lsp->received_data,term_clear(stdout));
 	#endif
 	
 	u64 response_offset=0, response_size=0;

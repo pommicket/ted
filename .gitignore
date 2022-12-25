@@ -23,4 +23,5 @@ pcre2*
 SDL2
 *.deb
 test.txt
+log.txt
 UpgradeLog.htm

@@ -337,6 +337,9 @@ static void process_message(LSP *lsp, JSON *json) {
 		LSPResponse response = {0};
 		bool add_to_messages = false;
 		response.request = response_to;
+		// make sure (LSPString){0} gets treated as an empty string
+		arr_add(response.string_data, '\0');
+		
 		switch (response_to.type) {
 		case LSP_REQUEST_COMPLETION:
 			add_to_messages = parse_completion(lsp, json, &response);

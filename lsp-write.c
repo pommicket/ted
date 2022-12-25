@@ -414,8 +414,8 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 	memcpy(header + strlen(header), "\r\n\r\n", 4);
 	
 	char *content = header;
-	#if 0
-		printf("\x1b[1m%s\x1b[0m\n",content);
+	#if LSP_SHOW_C2S
+		printf("%s%s%s\n",term_bold(stdout),content,term_clear(stdout));
 	#endif
 	
 	// @TODO: does write always write the full amount? probably not. this should be fixed.

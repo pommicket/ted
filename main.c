@@ -1,9 +1,8 @@
 /*
 @TODO:
-- in texlab, when typing "\something" why does the autocomplete menu close on 's'?
-   - is the weird documentation really what we're getting?
+- stop typing from completing when there's only one copmletion left
 - in jdtls, opening an empty java file gives an exception. is this my fault?
-- what's wrong with pylsp (try "f.w") in generate.py
+- what's wrong with pylsp (try "f.w") in generate.py (might be fixed now)
 - what's wrong with gopls?
 - make sure "save as" works
 - more LSP stuff:
