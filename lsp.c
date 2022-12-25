@@ -1,7 +1,7 @@
 // print server-to-client communication
 #define LSP_SHOW_S2C 0
 // print client-to-server communication
-#define LSP_SHOW_C2S 0
+#define LSP_SHOW_C2S 1
 
 
 #define write_bool lsp_write_bool

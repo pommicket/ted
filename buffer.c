@@ -2142,12 +2142,18 @@ Status buffer_load_file(TextBuffer *buffer, char const *filename) {
 			buffer_seterr(buffer, "File too big (size: %zu).", file_size);
 			success = false;
 		} else {
-			u8 *file_contents = buffer_calloc(buffer, 1, file_size + 1);
+			u8 *file_contents = buffer_calloc(buffer, 1, file_size + 2);
 			lines_capacity = 4;
 			lines = buffer_calloc(buffer, lines_capacity, sizeof *buffer->lines); // initial lines
 			nlines = 1;
 			size_t bytes_read = fread(file_contents, 1, file_size, fp);
 			if (bytes_read == file_size) {
+				// append a newline if there's no newline
+				if (file_contents[file_size - 1] != '\n') {
+					file_contents[file_size] = '\n';
+					++file_size;
+				}
+				
 				char32_t c = 0;
 				for (u8 *p = file_contents, *end = p + file_size; p != end; ) {
 					if (*p == '\r' && p != end-1 && p[1] == '\n') {
@@ -2178,8 +2184,7 @@ Status buffer_load_file(TextBuffer *buffer, char const *filename) {
 						buffer_line_append_char(buffer, line, c);
 					}
 				}
-			}
-			if (ferror(fp)) {
+			} else {
 				buffer_seterr(buffer, "Error reading from file.");
 				success = false;
 			}
