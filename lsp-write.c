@@ -167,6 +167,12 @@ static void write_arr_elem_string(JSONWriter *o, const char *s) {
 	write_string(o, s);
 }
 
+static void write_file_uri_direct(JSONWriter *o, const char *path) {
+	str_builder_append(&o->builder, "\"file://");
+	write_escaped(o, path);
+	str_builder_append(&o->builder, "\"");
+}
+
 static void write_file_uri(JSONWriter *o, LSPDocumentID document) {
 	if (document >= arr_len(o->lsp->document_data)) {
 		assert(0);
@@ -174,14 +180,17 @@ static void write_file_uri(JSONWriter *o, LSPDocumentID document) {
 		return;
 	}
 	const char *path = o->lsp->document_data[document].path;
-	str_builder_append(&o->builder, "\"file:///");
-	write_escaped(o, path);
-	str_builder_append(&o->builder, "\"");
+	write_file_uri_direct(o, path);
 }
 
 static void write_key_file_uri(JSONWriter *o, const char *key, LSPDocumentID document) {
 	write_key(o, key);
 	write_file_uri(o, document);
+}
+
+static void write_key_file_uri_direct(JSONWriter *o, const char *key, const char *path) {
+	write_key(o, key);
+	write_file_uri_direct(o, path);
 }
 
 static void write_position(JSONWriter *o, LSPPosition position) {
@@ -327,8 +336,10 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 					write_obj_end(o);
 				write_obj_end(o);
 			write_obj_end(o);
-			write_key_null(o, "rootUri");
-			write_key_null(o, "workspaceFolders");
+			write_key_file_uri_direct(o, "rootUri", lsp->root_dir);
+// 			write_key_arr_start(o, "workspaceFolders");
+// 				write_arr_elem_obj_start(o);
+// 			write_arr_end(o);
 			write_key_obj_start(o, "clientInfo");
 				write_key_string(o, "name", "ted");
 			write_obj_end(o);

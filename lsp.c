@@ -1,7 +1,7 @@
 // print server-to-client communication
 #define LSP_SHOW_S2C 0
 // print client-to-server communication
-#define LSP_SHOW_C2S 1
+#define LSP_SHOW_C2S 0
 
 
 #define write_bool lsp_write_bool
@@ -306,6 +306,13 @@ LSP *lsp_create(const char *root_dir, Language language, const char *analyzer_co
 			(void *)lsp, analyzer_command, language_to_str(language), root_dir);
 	#endif
 	
+	str_hash_table_create(&lsp->document_ids, sizeof(u32));
+	strbuf_cpy(lsp->root_dir, root_dir);
+	lsp->language = language;
+	lsp->quit_sem = SDL_CreateSemaphore(0);	
+	lsp->messages_mutex = SDL_CreateMutex();
+	lsp->requests_mutex = SDL_CreateMutex();
+	
 	ProcessSettings settings = {
 		.stdin_blocking = true,
 		.stdout_blocking = false,
@@ -320,13 +327,6 @@ LSP *lsp_create(const char *root_dir, Language language, const char *analyzer_co
 	// immediately send the request rather than queueing it.
 	// this is a small request, so it shouldn't be a problem.
 	write_request(lsp, &initialize);
-	
-	str_hash_table_create(&lsp->document_ids, sizeof(u32));
-	strbuf_cpy(lsp->root_dir, root_dir);
-	lsp->language = language;
-	lsp->quit_sem = SDL_CreateSemaphore(0);	
-	lsp->messages_mutex = SDL_CreateMutex();
-	lsp->requests_mutex = SDL_CreateMutex();
 	lsp->communication_thread = SDL_CreateThread(lsp_communication_thread, "LSP communicate", lsp);
 	return lsp;
 }

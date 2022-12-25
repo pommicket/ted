@@ -12,13 +12,15 @@
 - delete old sent requests? but make sure requests that just take a long time are okay.
     (if the server never sends a response)
 - TESTING: make rust-analyzer-slow (waits 10s before sending response)
-- rename buffer->filename to buffer->path
-    - make buffer->path NULL for untitled buffers & fix resulting mess
 - run everything through valgrind ideally with leak checking
 - grep -i -n TODO *.[ch]
+--- LSP MERGE ---
+- rename buffer->filename to buffer->path
+    - make buffer->path NULL for untitled buffers & fix resulting mess
 - rust-analyzer bug reports:
     - bad json can give "Unexpected error: client exited without proper shutdown sequence"
 FUTURE FEATURES:
+- comment-start + comment-end settings
 - robust find (results shouldn't move around when you type things)
 - multiple files with command line arguments
 - configurable max buffer size + max view-only buffer size
