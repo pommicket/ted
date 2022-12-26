@@ -35,6 +35,7 @@ static void lsp_document_change_event_free(LSPDocumentChangeEvent *event) {
 }
 
 static void lsp_request_free(LSPRequest *r) {
+	free(r->id_string);
 	switch (r->type) {
 	case LSP_REQUEST_NONE:
 	case LSP_REQUEST_INITIALIZE:
@@ -43,6 +44,7 @@ static void lsp_request_free(LSPRequest *r) {
 	case LSP_REQUEST_EXIT:
 	case LSP_REQUEST_COMPLETION:
 	case LSP_REQUEST_DID_CLOSE:
+	case LSP_REQUEST_WORKSPACE_FOLDERS:
 		break;
 	case LSP_REQUEST_DID_OPEN: {
 		LSPRequestDidOpen *open = &r->data.open;
@@ -108,8 +110,10 @@ static bool has_response(const char *data, size_t data_len, u64 *p_offset, u64 *
 static bool lsp_supports_request(LSP *lsp, const LSPRequest *request) {
 	switch (request->type) {
 	case LSP_REQUEST_NONE:
+	// return false for server-to-client requests since we should never send them
 	case LSP_REQUEST_SHOW_MESSAGE:
 	case LSP_REQUEST_LOG_MESSAGE:
+	case LSP_REQUEST_WORKSPACE_FOLDERS:
 		return false;
 	case LSP_REQUEST_INITIALIZE:
 	case LSP_REQUEST_INITIALIZED:
@@ -307,7 +311,7 @@ LSP *lsp_create(const char *root_dir, Language language, const char *analyzer_co
 	#endif
 	
 	str_hash_table_create(&lsp->document_ids, sizeof(u32));
-	strbuf_cpy(lsp->root_dir, root_dir);
+	arr_add(lsp->workspace_folders, str_dup(root_dir));
 	lsp->language = language;
 	lsp->quit_sem = SDL_CreateSemaphore(0);	
 	lsp->messages_mutex = SDL_CreateMutex();
@@ -358,6 +362,9 @@ void lsp_free(LSP *lsp) {
 	arr_foreach_ptr(lsp->messages, LSPMessage, message) {
 		lsp_message_free(message);
 	}
+	arr_foreach_ptr(lsp->workspace_folders, char *, folder)
+		free(*folder);
+	arr_free(lsp->workspace_folders);
 	arr_free(lsp->messages);
 	arr_free(lsp->trigger_chars);
 	memset(lsp, 0, sizeof *lsp);

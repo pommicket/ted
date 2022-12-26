@@ -1,6 +1,8 @@
 /*
 @TODO:
 - what's wrong with gopls?
+- ignore telemetry/event
+- handle window/showMessageRequest
 - make sure "save as" works
 - more LSP stuff:
      - hover

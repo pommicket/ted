@@ -103,9 +103,10 @@ LSP *ted_get_lsp(Ted *ted, const char *path, Language language) {
 		if (lsp->language != language) continue;
 		
 		// check if root matches up
-		const char *lsp_root = lsp->root_dir;
-		if (str_has_path_prefix(path, lsp_root))
-			return lsp;
+		arr_foreach_ptr(lsp->workspace_folders, char *, lsp_root) {
+			if (str_has_path_prefix(path, *lsp_root))
+				return lsp;
+		}
 	}
 	if (i == TED_LSP_MAX)
 		return NULL; // why are there so many LSP open???

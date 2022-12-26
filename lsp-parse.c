@@ -266,6 +266,27 @@ static bool parse_completion(LSP *lsp, const JSON *json, LSPResponse *response) 
 	return true;
 }
 
+// fills request->id/id_string appropriately given the request's json
+// returns true on success
+static WarnUnusedResult bool parse_id(JSON *json, LSPRequest *request) {
+	JSONValue id_value = json_get(json, "id");
+	switch (id_value.type) {
+	case JSON_NUMBER: {
+		double id = id_value.val.number;
+		if (id == (u32)id) {
+			request->id = (u32)id;
+			return true;
+		}
+		} break;
+	case JSON_STRING:
+		request->id_string = json_string_get_alloc(json, id_value.val.string);
+		return true;
+	default: break;
+	}
+	return false;
+}
+
+// returns true if `request` was actually filled with a request.
 static bool parse_server2client_request(LSP *lsp, JSON *json, LSPRequest *request) {
 	JSONValue method_value = json_get(json, "method");
 	if (!lsp_expect_string(lsp, method_value, "request method"))
@@ -297,6 +318,18 @@ static bool parse_server2client_request(LSP *lsp, JSON *json, LSPRequest *reques
 		m->type = (LSPWindowMessageType)mtype;
 		m->message = json_string_get_alloc(json, message.val.string);
 		return true;
+	} else if (streq(method, "workspace/workspaceFolders")) {
+		// we can deal with this request right here
+		LSPResponse response = {0};
+		request = &response.request;
+		request->type = LSP_REQUEST_WORKSPACE_FOLDERS;
+		if (!parse_id(json, request)) {
+			// we can't even send an error response since we have no ID.
+			debug_println("Bad ID in workspace/workspaceFolders request. This shouldn't happen.");
+			return false;
+		}
+		lsp_send_response(lsp, &response);
+		return false;
 	} else if (str_has_prefix(method, "$/")) {
 		// we can safely ignore this
 	} else {

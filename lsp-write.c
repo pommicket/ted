@@ -217,6 +217,17 @@ static void write_key_range(JSONWriter *o, const char *key, LSPRange range) {
 	write_range(o, range);
 }
 
+static void write_workspace_folders(JSONWriter *o, char **workspace_folders) {
+	write_arr_start(o);
+		arr_foreach_ptr(workspace_folders, char *, folder) {
+			write_arr_elem_obj_start(o);
+				write_key_file_uri_direct(o, "uri", *folder);
+				write_key_string(o, "name", *folder);
+			write_obj_end(o);
+		}
+	write_arr_end(o);
+}
+
 static const char *lsp_request_method(LSPRequest *request) {
 	switch (request->type) {
 	case LSP_REQUEST_NONE: break;
@@ -240,6 +251,8 @@ static const char *lsp_request_method(LSPRequest *request) {
 		return "shutdown";
 	case LSP_REQUEST_EXIT:
 		return "exit";
+	case LSP_REQUEST_WORKSPACE_FOLDERS:
+		return "workspace/workspaceFolders";
 	}
 	assert(0);
 	return "$/ignore";
@@ -259,21 +272,53 @@ static bool request_type_is_notification(LSPRequestType type) {
 	case LSP_REQUEST_SHOW_MESSAGE:
 	case LSP_REQUEST_LOG_MESSAGE:
 	case LSP_REQUEST_COMPLETION:
+	case LSP_REQUEST_WORKSPACE_FOLDERS:
 		return false;
 	}
 	assert(0);
 	return false;
 }
 
+
+static const size_t max_header_size = 64;
+static JSONWriter message_writer_new(LSP *lsp) {
+	JSONWriter writer = json_writer_new(lsp);
+	// this is where our header will go
+	str_builder_append_null(&writer.builder, max_header_size);
+	return writer;	
+}
+
+static void message_writer_write_and_free(LSP *lsp, JSONWriter *o) {
+	StrBuilder builder = o->builder;
+	
+	// this is kind of hacky but it lets us send the whole request with one write call.
+	// probably not *actually* needed. i thought it would help fix an error but it didn't.
+	size_t content_length = str_builder_len(&builder) - max_header_size;
+	char content_length_str[32];
+	sprintf(content_length_str, "%zu", content_length);
+	size_t header_size = strlen("Content-Length: \r\n\r\n") + strlen(content_length_str);
+	char *header = &builder.str[max_header_size - header_size];
+	strcpy(header, "Content-Length: ");
+	strcat(header, content_length_str);
+	// we specifically DON'T want a null byte
+	memcpy(header + strlen(header), "\r\n\r\n", 4);
+	
+	char *content = header;
+	#if LSP_SHOW_C2S
+		printf("%s%s%s\n",term_bold(stdout),content,term_clear(stdout));
+	#endif
+	
+	// @TODO: does write always write the full amount? probably not. this should be fixed.
+	process_write(&lsp->process, content, strlen(content));
+
+	str_builder_free(&builder);
+}
+
 // NOTE: don't call lsp_request_free after calling this function.
 //  I will do it for you.
 static void write_request(LSP *lsp, LSPRequest *request) {
-	JSONWriter writer = json_writer_new(lsp);
+	JSONWriter writer = message_writer_new(lsp);
 	JSONWriter *o = &writer;
-	
-	u32 max_header_size = 64;
-	// this is where our header will go
-	str_builder_append_null(&o->builder, max_header_size);
 	
 	write_obj_start(o);
 	write_key_string(o, "jsonrpc", "2.0");
@@ -291,6 +336,7 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 	// these are server-to-client-only requests
 	case LSP_REQUEST_SHOW_MESSAGE:
 	case LSP_REQUEST_LOG_MESSAGE:
+	case LSP_REQUEST_WORKSPACE_FOLDERS:
 		assert(0);
 		break;
 	case LSP_REQUEST_INITIALIZED:
@@ -335,11 +381,13 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 						write_key_bool(o, "contextSupport", true);
 					write_obj_end(o);
 				write_obj_end(o);
+				write_key_obj_start(o, "workspace");
+					write_key_bool(o, "workspaceFolders", true);
+				write_obj_end(o);
 			write_obj_end(o);
-			write_key_file_uri_direct(o, "rootUri", lsp->root_dir);
-// 			write_key_arr_start(o, "workspaceFolders");
-// 				write_arr_elem_obj_start(o);
-// 			write_arr_end(o);
+			write_key_file_uri_direct(o, "rootUri", lsp->workspace_folders[0]);
+			write_key(o, "workspaceFolders");
+			write_workspace_folders(o, lsp->workspace_folders);
 			write_key_obj_start(o, "clientInfo");
 				write_key_string(o, "name", "ted");
 			write_obj_end(o);
@@ -410,29 +458,7 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 	
 	write_obj_end(o);
 	
-	StrBuilder builder = o->builder;
-	
-	// this is kind of hacky but it lets us send the whole request with one write call.
-	// probably not *actually* needed. i thought it would help fix an error but it didn't.
-	size_t content_length = str_builder_len(&builder) - max_header_size;
-	char content_length_str[32];
-	sprintf(content_length_str, "%zu", content_length);
-	size_t header_size = strlen("Content-Length: \r\n\r\n") + strlen(content_length_str);
-	char *header = &builder.str[max_header_size - header_size];
-	strcpy(header, "Content-Length: ");
-	strcat(header, content_length_str);
-	// we specifically DON'T want a null byte
-	memcpy(header + strlen(header), "\r\n\r\n", 4);
-	
-	char *content = header;
-	#if LSP_SHOW_C2S
-		printf("%s%s%s\n",term_bold(stdout),content,term_clear(stdout));
-	#endif
-	
-	// @TODO: does write always write the full amount? probably not. this should be fixed.
-	process_write(&lsp->process, content, strlen(content));
-
-	str_builder_free(&builder);
+	message_writer_write_and_free(lsp, o);
 	
 	if (is_notification) {
 		lsp_request_free(request);
@@ -441,4 +467,34 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 		arr_add(lsp->requests_sent, *request);
 		SDL_UnlockMutex(lsp->requests_mutex);
 	}
+}
+
+// NOTE: don't call lsp_response_free after calling this function.
+//  I will do it for you.
+static void write_response(LSP *lsp, LSPResponse *response) {
+	
+	JSONWriter writer = message_writer_new(lsp);
+	JSONWriter *o = &writer;
+	LSPRequest *request = &response->request;
+	
+	if (request->id_string)
+		write_key_string(o, "id", request->id_string);
+	else
+		write_key_number(o, "id", request->id);
+	write_key_obj_start(o, "result");
+	
+	switch (response->request.type) {
+	case LSP_REQUEST_WORKSPACE_FOLDERS:
+		write_workspace_folders(o, lsp->workspace_folders);
+		break;
+	default:
+		// this is not a valid client-to-server response.
+		assert(0);
+		break;
+	}
+	write_obj_end(o);
+	
+	message_writer_write_and_free(lsp, o);
+	
+	lsp_response_free(response);
 }

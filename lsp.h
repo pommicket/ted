@@ -36,6 +36,7 @@ typedef enum {
 	// server-to-client
 	LSP_REQUEST_SHOW_MESSAGE,
 	LSP_REQUEST_LOG_MESSAGE,
+	LSP_REQUEST_WORKSPACE_FOLDERS, // NOTE: this is handled directly in lsp-parse.c (because it only needs information from the LSP struct)
 } LSPRequestType;
 
 typedef struct {
@@ -100,6 +101,7 @@ typedef struct {
 	// id is set by lsp.c; you shouldn't set it.
 	u32 id;
 	LSPRequestType type;
+	char *id_string; // if not NULL, this is the ID (only for server-to-client messages; we always use integer IDs)
 	union {
 		LSPRequestDidOpen open;
 		LSPRequestDidClose close;
@@ -274,7 +276,7 @@ typedef struct LSP {
 	char32_t *trigger_chars; // dynamic array of "trigger characters"
 	SDL_mutex *error_mutex;
 	Language language;
-	char root_dir[TED_PATH_MAX];
+	char **workspace_folders; // dynamic array of root directories of LSP "workspaces" (meaningless garbage)
 	char error[256];
 } LSP;
 
@@ -289,6 +291,8 @@ void lsp_message_free(LSPMessage *message);
 u32 lsp_document_id(LSP *lsp, const char *path);
 // don't free the contents of this request! let me handle it!
 void lsp_send_request(LSP *lsp, LSPRequest *request);
+// don't free the contents of this response! let me handle it!
+void lsp_send_response(LSP *lsp, LSPResponse *response);
 const char *lsp_response_string(const LSPResponse *response, LSPString string);
 LSP *lsp_create(const char *root_dir, Language language, const char *analyzer_command);
 bool lsp_next_message(LSP *lsp, LSPMessage *message);
