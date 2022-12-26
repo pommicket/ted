@@ -251,6 +251,7 @@ static OptionBool const options_bool[] = {
 	{"indent-with-spaces", &options_zero.indent_with_spaces, true},
 	{"trigger-characters", &options_zero.trigger_characters, true},
 	{"identifier-trigger-characters", &options_zero.identifier_trigger_characters, true},
+	{"lsp-enabled", &options_zero.lsp_enabled, true},
 };
 static OptionU8 const options_u8[] = {
 	{"tab-width", &options_zero.tab_width, 1, 100, true},
@@ -778,11 +779,11 @@ static void config_parse_line(ConfigReader *cfg, Settings *settings, const Confi
 		bool const is_floating = *endptr == '\0';
 		bool is_bool = false;
 		bool boolean = false;
-	#define BOOL_HELP "(should be yes/no/on/off)"
-		if (streq(value, "yes") || streq(value, "on")) {
+	#define BOOL_HELP "(should be yes/no/on/off/true/false)"
+		if (streq(value, "yes") || streq(value, "on") || streq(value, "true")) {
 			is_bool = true;
 			boolean = true;
-		} else if (streq(value, "no") || streq(value, "off")) {
+		} else if (streq(value, "no") || streq(value, "off") || streq(value, "false")) {
 			is_bool = true;
 			boolean = false;
 		}

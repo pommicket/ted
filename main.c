@@ -34,6 +34,7 @@ FUTURE FEATURES:
 - plugins?
 - keyboard macros
     -  ctrl+9/0 to inc/dec number would be useful here
+    - with macros we can really test performance of buffer_insert_text_at_pos, etc. (which should ideally be fast)
 */
 
 #include "base.h"

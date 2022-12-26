@@ -92,6 +92,10 @@ Settings *ted_get_settings(Ted *ted, const char *path, Language language) {
 }
 
 LSP *ted_get_lsp(Ted *ted, const char *path, Language language) {
+	Settings *settings = ted_get_settings(ted, path, language);
+	if (!settings->lsp_enabled)
+		return NULL;
+	
 	int i;
 	for (i = 0; i < TED_LSP_MAX; ++i) {
 		LSP *lsp = ted->lsps[i];
@@ -105,7 +109,6 @@ LSP *ted_get_lsp(Ted *ted, const char *path, Language language) {
 	}
 	if (i == TED_LSP_MAX)
 		return NULL; // why are there so many LSP open???
-	Settings *settings = ted_get_settings(ted, path, language);
 	if (*settings->lsp) {
 		// start up this LSP
 		char *root_dir = settings_get_root_dir(settings, path);
