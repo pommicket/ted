@@ -95,6 +95,14 @@ Settings *ted_get_settings(Ted *ted, const char *path, Language language) {
 	return settings;
 }
 
+LSP *ted_get_lsp_by_id(Ted *ted, LSPID id) {
+	for (int i = 0; ted->lsps[i]; ++i) {
+		if (ted->lsps[i]->id == id)
+			return ted->lsps[i];
+	}
+	return NULL;
+}
+
 // IMPORTANT NOTE ABOUT CACHING LSPs:
 //     - be careful if you want to cache LSPs, e.g. adding  a LSP *lsp member to `buffer`.
 //     - right now we pretend that the server has workspace folder support until the initialize response is sent.
@@ -134,7 +142,7 @@ LSP *ted_get_lsp(Ted *ted, const char *path, Language language) {
 		char *root_dir = settings_get_root_dir(settings, path);
 		ted->lsps[i] = lsp_create(root_dir, language, settings->lsp);
 		free(root_dir);
-		return ted->lsps[i];
+		// don't actually return it yet, since it's still initializing (see above)
 	}
 	
 	return NULL;

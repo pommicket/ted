@@ -274,6 +274,9 @@ typedef struct {
 	float x1, y1, x2, y2;
 	u32 nlines;
 	u32 lines_capacity;
+	
+	// which LSP this document is open in (this is a LSPID)
+	u32 lsp_opened_in;
 
 	u32 undo_history_write_pos; // where in the undo history was the last write? used by buffer_unsaved_changes
 	u32 first_line_on_screen, last_line_on_screen; // which lines are on screen? updated when buffer_render is called.
@@ -412,7 +415,7 @@ typedef struct {
 
 
 typedef struct Ted {
-	struct LSP *lsps[TED_LSP_MAX];
+	struct LSP *lsps[TED_LSP_MAX + 1];
 	// current time, as of the start of this frame
 	struct timespec frame_time;
 	
@@ -527,6 +530,7 @@ typedef struct Ted {
 } Ted;
 
 void autocomplete_close(Ted *ted);
+char *buffer_contents_utf8_alloc(TextBuffer *buffer);
 void command_execute(Ted *ted, Command c, i64 argument);
 void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer);
 // the settings of the active buffer, or the default settings if there is no active buffer
@@ -534,6 +538,7 @@ Settings *ted_active_settings(Ted *ted);
 Settings *ted_get_settings(Ted *ted, const char *path, Language lang);
 void ted_load_configs(Ted *ted, bool reloading);
 struct LSP *ted_get_lsp(Ted *ted, const char *path, Language lang);
+struct LSP *ted_get_lsp_by_id(Ted *ted, u32 id);
 static TextBuffer *find_search_buffer(Ted *ted);
 // first, we read all config files, then we parse them.
 // this is because we want less specific settings (e.g. settings applied

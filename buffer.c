@@ -249,7 +249,7 @@ static inline Font *buffer_font(TextBuffer *buffer) {
 
 // what programming language is this?
 Language buffer_language(TextBuffer *buffer) {
-	// @TODO: cache this?
+	// @TODO(optimization): cache this?
 	//         (we're calling buffer_lsp on every edit and that calls this)
 	if (buffer->manual_language >= 1 && buffer->manual_language <= LANG_COUNT)
 		return (Language)(buffer->manual_language - 1);
@@ -286,10 +286,43 @@ Language buffer_language(TextBuffer *buffer) {
 	return match;
 }
 
+// set filename = NULL to default to buffer->filename
+static void buffer_send_lsp_did_close(TextBuffer *buffer, LSP *lsp, const char *filename) {
+	LSPRequest did_close = {.type = LSP_REQUEST_DID_CLOSE};
+	did_close.data.close = (LSPRequestDidClose){
+		.document = lsp_document_id(lsp, filename ? filename : buffer->filename)
+	};
+	lsp_send_request(lsp, &did_close);
+	buffer->lsp_opened_in = 0;
+}
+
+// buffer_contents must either be NULL or allocated with malloc or similar
+//   - don't free it after calling this function.
+// if buffer_contents = NULL, fetches the current buffer contents.
+static void buffer_send_lsp_did_open(TextBuffer *buffer, LSP *lsp, char *buffer_contents) {
+	if (!buffer_contents)
+		buffer_contents = buffer_contents_utf8_alloc(buffer);
+	LSPRequest request = {.type = LSP_REQUEST_DID_OPEN};
+	LSPRequestDidOpen *open = &request.data.open;
+	open->file_contents = buffer_contents;
+	open->document = lsp_document_id(lsp, buffer->filename);
+	open->language = buffer_language(buffer);
+	lsp_send_request(lsp, &request);
+	buffer->lsp_opened_in = lsp->id;
+}
+
 LSP *buffer_lsp(TextBuffer *buffer) {
 	if (!buffer_is_named_file(buffer))
 		return NULL;
-	return ted_get_lsp(buffer->ted, buffer->filename, buffer_language(buffer));
+	LSP *true_lsp = ted_get_lsp(buffer->ted, buffer->filename, buffer_language(buffer));
+	LSP *curr_lsp = ted_get_lsp_by_id(buffer->ted, buffer->lsp_opened_in);
+	if (true_lsp != curr_lsp) {
+		if (curr_lsp)
+			buffer_send_lsp_did_close(buffer, curr_lsp, NULL);
+		if (true_lsp)
+			buffer_send_lsp_did_open(buffer, true_lsp, NULL);
+	}
+	return true_lsp;
 }
 
 
@@ -410,11 +443,11 @@ char *buffer_get_utf8_text_at_pos(TextBuffer *buffer, BufferPos pos, size_t ncha
 }
 
 // Puts a UTF-8 string containing the contents of the buffer into out.
-// Returns the number of bytes.
+// Returns the number of bytes, including a null terminator.
 // To use, first pass NULL for out to get the number of bytes you need to allocate.
 size_t buffer_contents_utf8(TextBuffer *buffer, char *out) {
-	size_t size = 0;
 	char *p = out, x[4];
+	size_t size = 0;
 	for (Line *line = buffer->lines, *end = line + buffer->nlines; line != end; ++line) {
 		char32_t *str = line->str;
 		for (u32 i = 0, len = line->len; i < len; ++i) {
@@ -428,8 +461,20 @@ size_t buffer_contents_utf8(TextBuffer *buffer, char *out) {
 			size += 1;
 		}
 	}
+	if (p) *p = '\0';
+	size += 1;
 	return size;
 }
+
+// Returns a UTF-8 string containing the contents of `buffer`.
+// free the return value.
+char *buffer_contents_utf8_alloc(TextBuffer *buffer) {
+	size_t size = buffer_contents_utf8(buffer, NULL);
+	char *s = calloc(1, size);
+	buffer_contents_utf8(buffer, s);
+	return s;
+}
+
 
 static BufferPos buffer_pos_advance(TextBuffer *buffer, BufferPos pos, size_t nchars) {
 	buffer_pos_validate(buffer, &pos);
@@ -739,11 +784,7 @@ void buffer_free(TextBuffer *buffer) {
 		
 		LSP *lsp = buffer_lsp(buffer);
 		if (lsp) {
-			LSPRequest did_close = {.type = LSP_REQUEST_DID_CLOSE};
-			did_close.data.close = (LSPRequestDidClose){
-				.document = lsp_document_id(lsp, buffer->filename)
-			};
-			lsp_send_request(lsp, &did_close);	
+			buffer_send_lsp_did_close(buffer, lsp, NULL);	
 		}
 	}
 	
@@ -1395,7 +1436,7 @@ LSPPosition buffer_pos_to_lsp(TextBuffer *buffer, BufferPos pos) {
 	return lsp_pos;
 }
 
-static void buffer_send_lsp_did_change_request(LSP *lsp, TextBuffer *buffer, BufferPos pos,
+static void buffer_send_lsp_did_change(LSP *lsp, TextBuffer *buffer, BufferPos pos,
 	u32 nchars_deleted, String32 new_text) {
 	if (!buffer_is_named_file(buffer))
 		return; // this isn't a named buffer so we can't send a didChange request.
@@ -1460,7 +1501,7 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 
 	LSP *lsp = buffer_lsp(buffer);
 	if (lsp)
-		buffer_send_lsp_did_change_request(lsp, buffer, pos, 0, str);
+		buffer_send_lsp_did_change(lsp, buffer, pos, 0, str);
 
 	if (buffer->store_undo_events) {
 		BufferEdit *last_edit = arr_lastp(buffer->undo_history);
@@ -1732,7 +1773,7 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 
 	LSP *lsp = buffer_lsp(buffer);
 	if (lsp)
-		buffer_send_lsp_did_change_request(lsp, buffer, pos, nchars, (String32){0});
+		buffer_send_lsp_did_change(lsp, buffer, pos, nchars, (String32){0});
 
 	if (buffer->store_undo_events) {
 		// we need to make sure the undo history keeps track of the edit.
@@ -2213,17 +2254,8 @@ Status buffer_load_file(TextBuffer *buffer, char const *filename) {
 						buffer->view_only = true;
 					}
 					
-					LSP *lsp = buffer_lsp(buffer);
-					if (lsp) {
-						// send didOpen
-						LSPRequest request = {.type = LSP_REQUEST_DID_OPEN};
-						LSPRequestDidOpen *open = &request.data.open;
-						open->file_contents = (char *)file_contents;
-						open->document = lsp_document_id(lsp, filename);
-						open->language = buffer_language(buffer);
-						lsp_send_request(lsp, &request);
-						file_contents = NULL; // don't free
-					}
+					// this will send a didOpen request if needed
+					buffer_lsp(buffer);
 				}
 				
 			}
@@ -2344,24 +2376,24 @@ bool buffer_save(TextBuffer *buffer) {
 
 // save, but with a different file name
 bool buffer_save_as(TextBuffer *buffer, char const *new_filename) {
+	LSP *lsp = buffer_lsp(buffer);
 	char *prev_filename = buffer->filename;
-	if ((buffer->filename = buffer_strdup(buffer, new_filename))) {
+	buffer->filename = buffer_strdup(buffer, new_filename);
+	
+	if (buffer->filename && buffer_save(buffer)) {
 		buffer->view_only = false;
-		
 		// ensure whole file is syntax highlighted when saving with a different
 		//  file extension
 		buffer->frame_earliest_line_modified = 0;
 		buffer->frame_latest_line_modified = buffer->nlines - 1;
-		
-		if (buffer_save(buffer)) {
-			free(prev_filename);
-			return true;
-		} else {
-			free(buffer->filename);
-			buffer->filename = prev_filename;
-			return false;
-		}
+		if (lsp)
+			buffer_send_lsp_did_close(buffer, lsp, prev_filename);
+		// we'll send a didOpen the next time buffer_lsp is called.
+		free(prev_filename);
+		return true;
 	} else {
+		free(buffer->filename);
+		buffer->filename = prev_filename;
 		return false;
 	}
 }
@@ -2430,6 +2462,9 @@ bool buffer_handle_click(Ted *ted, TextBuffer *buffer, v2 click, u8 times) {
 
 // Render the text buffer in the given rectangle
 void buffer_render(TextBuffer *buffer, Rect r) {
+	
+	buffer_lsp(buffer); // this will send didOpen/didClose if the buffer's LSP changed
+	
 	if (r.size.x < 1 || r.size.y < 1) {
 		// rectangle less than 1 pixel
 		// set x1,y1,x2,y2 to an size 0 rectangle

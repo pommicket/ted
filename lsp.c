@@ -1,8 +1,7 @@
 // print server-to-client communication
 #define LSP_SHOW_S2C 0
 // print client-to-server communication
-#define LSP_SHOW_C2S 1
-
+#define LSP_SHOW_C2S 0
 
 #define write_bool lsp_write_bool
 
@@ -324,6 +323,9 @@ u32 lsp_document_id(LSP *lsp, const char *path) {
 LSP *lsp_create(const char *root_dir, Language language, const char *analyzer_command) {
 	LSP *lsp = calloc(1, sizeof *lsp);
 	if (!lsp) return NULL;
+	
+	static _Atomic LSPID curr_id = 1;
+	lsp->id = curr_id++;
 	
 	#if DEBUG
 		printf("Starting up LSP %p `%s` for language %s in %s\n",

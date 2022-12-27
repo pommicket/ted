@@ -1,4 +1,5 @@
 typedef u32 LSPDocumentID;
+typedef u32 LSPID;
 
 typedef enum {
 	LSP_REQUEST,
@@ -270,6 +271,7 @@ typedef struct {
 } LSPCapabilities;
 
 typedef struct LSP {
+	LSPID id;
 	Process process;
 	u32 request_id;
 	// for our purposes, folders are "documents"

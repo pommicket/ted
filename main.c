@@ -1,8 +1,5 @@
 /*
 @TODO:
-- LSP IDs, and make buffer send (didClose +) didOpen if its ID isn't maching up
-   (this should fix current "unexpected didChange" multi-root rust-analyzer problem and
-    also fix "save as")
 - lsp_document_id / lsp_document_path thread-safety
 - double check thread safety of other things
 - ignore telemetry/event
@@ -19,7 +16,7 @@
      - go to definition using LSP
      - find usages
      - that thing where it shows you the current function argument
-- workspaceFolders support (so we don't need to start up multiple instances of rust-analyzer)
+- do something with lsp->error
 - document lsp.h and lsp.c.
 - maximum queue size for requests/responses just in case?
    - idea: configurable timeout
