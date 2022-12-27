@@ -271,35 +271,56 @@ typedef struct {
 } LSPCapabilities;
 
 typedef struct LSP {
+	// thread safety is important here!
+	// every member should either be indented to indicate which mutex controls it,
+	// or have a comment explaining why it doesn't need one
+
+	// A unique ID number for this LSP.
+	// thread-safety: only set once in lsp_create.
 	LSPID id;
+	
+	// The server process
+	// thread-safety: created in lsp_create, then only accessed by the communication thread
 	Process process;
+	
+	// Which ID number the next request will get
+	// thread-safety: only accessed in communication thread
 	u32 request_id;
-	// for our purposes, folders are "documents"
-	// the spec kinda does this too: WorkspaceFolder has a `uri: DocumentUri` member.
-	StrHashTable document_ids; // values are u32. they are indices into document_data.
-	// this is a dynamic array which just keeps growing.
-	// but the user isn't gonna open millions of files so it's fine.
-	LSPDocumentData *document_data;
+	
+	SDL_mutex *document_mutex;
+		// for our purposes, folders are "documents"
+		// the spec kinda does this too: WorkspaceFolder has a `uri: DocumentUri` member.
+		StrHashTable document_ids; // values are u32. they are indices into document_data.
+		// this is a dynamic array which just keeps growing.
+		// but the user isn't gonna open millions of files so it's fine.
+		LSPDocumentData *document_data;
 	SDL_mutex *messages_mutex;
-	LSPMessage *messages_server2client;
-	LSPMessage *messages_client2server;
-	// we keep track of client-to-server requests
-	// so that we can process responses.
-	// this also lets us re-send requests if that's ever necessary.
-	LSPRequest *requests_sent;
+		LSPMessage *messages_server2client;
+		LSPMessage *messages_client2server;
+		// we keep track of client-to-server requests
+		// so that we can process responses.
+		// this also lets us re-send requests if that's ever necessary.
+		LSPRequest *requests_sent;
 	// has the response to the initialize request been sent?
-	//    we access this both in the main thread and in the LSP communication thread.
+	// thread-safety: this is atomic. it starts out false, and only gets set to true once
+	//                (when the initialize response is received)
 	_Atomic bool initialized;
+	// thread-safety: only set once in lsp_create.
+	Language language;
 	SDL_Thread *communication_thread;
 	SDL_sem *quit_sem;
+	// thread-safety: only accessed in communication thread
 	char *received_data; // dynamic array
+	// thread-safety: in the communication thread, we fill this in, then set `initialized = true`.
+	//                after that, this never changes.
+	//                never accessed in main thread before `initialized = true`.
 	LSPCapabilities capabilities;
+	// thread-safety: same as `capabilities`
 	char32_t *trigger_chars; // dynamic array of "trigger characters"
-	SDL_mutex *error_mutex;
-	Language language;
 	SDL_mutex *workspace_folders_mutex;
-	LSPDocumentID *workspace_folders; // dynamic array of root directories of LSP workspace folders
-	char error[256];
+		LSPDocumentID *workspace_folders; // dynamic array of root directories of LSP workspace folders
+	SDL_mutex *error_mutex;
+		char error[256];
 } LSP;
 
 // @TODO: function declarations
@@ -311,6 +332,8 @@ typedef struct LSP {
 bool lsp_get_error(LSP *lsp, char *error, size_t error_size, bool clear);
 void lsp_message_free(LSPMessage *message);
 u32 lsp_document_id(LSP *lsp, const char *path);
+// returned pointer lives exactly as long as lsp.
+const char *lsp_document_path(LSP *lsp, LSPDocumentID id);
 // don't free the contents of this request! let me handle it!
 void lsp_send_request(LSP *lsp, LSPRequest *request);
 // don't free the contents of this response! let me handle it!

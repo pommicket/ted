@@ -1,7 +1,5 @@
 /*
 @TODO:
-- lsp_document_id / lsp_document_path thread-safety
-- double check thread safety of other things
 - ignore telemetry/event
 - https://github.com/typescript-language-server/typescript-language-server
    - NOTE: This supports javascript.

@@ -309,15 +309,29 @@ static int lsp_communication_thread(void *data) {
 }
 
 u32 lsp_document_id(LSP *lsp, const char *path) {
-	u32 *value = str_hash_table_get(&lsp->document_ids, path);
-	if (!value) {
-		u32 id = arr_len(lsp->document_data);
-		value = str_hash_table_insert(&lsp->document_ids, path);
-		*value = id;
-		LSPDocumentData *data = arr_addp(lsp->document_data);
-		data->path = str_dup(path);
-	}
-	return *value;
+	SDL_LockMutex(lsp->document_mutex);
+		u32 *value = str_hash_table_get(&lsp->document_ids, path);
+		if (!value) {
+			u32 id = arr_len(lsp->document_data);
+			value = str_hash_table_insert(&lsp->document_ids, path);
+			*value = id;
+			LSPDocumentData *data = arr_addp(lsp->document_data);
+			data->path = str_dup(path);
+		}
+		u32 id = *value;
+	SDL_UnlockMutex(lsp->document_mutex);
+	return id;
+}
+
+const char *lsp_document_path(LSP *lsp, LSPDocumentID document) {
+	SDL_LockMutex(lsp->document_mutex);
+		if (document >= arr_len(lsp->document_data)) {
+			assert(0);
+			return "";
+		}
+		const char *path = lsp->document_data[document].path;
+	SDL_UnlockMutex(lsp->document_mutex);
+	return path;
 }
 
 LSP *lsp_create(const char *root_dir, Language language, const char *analyzer_command) {

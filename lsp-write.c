@@ -32,14 +32,6 @@ static const char *lsp_language_id(Language lang) {
 	return "text";
 }
 
-static const char *lsp_document_path(LSP *lsp, LSPDocumentID document) {
-	if (document >= arr_len(lsp->document_data)) {
-		assert(0);
-		return "";
-	}
-	return lsp->document_data[document].path;
-}
-
 typedef struct {
 	LSP *lsp;
 	StrBuilder builder;
@@ -425,15 +417,15 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 	} break;
 	case LSP_REQUEST_DID_CHANGE: {
 		LSPRequestDidChange *change = &request->data.change;
-		if (change->document >= arr_len(lsp->document_data)) {
-			assert(0);
-			break;
-		}
-		LSPDocumentData *document = &lsp->document_data[change->document];
-		++document->version_number;
+		SDL_LockMutex(lsp->document_mutex);
+			assert(change->document < arr_len(lsp->document_data));
+			LSPDocumentData *document = &lsp->document_data[change->document];
+			u32 version = ++document->version_number;
+		SDL_UnlockMutex(lsp->document_mutex);
+		
 		write_key_obj_start(o, "params");
 			write_key_obj_start(o, "textDocument");
-				write_key_number(o, "version", (double)document->version_number);
+				write_key_number(o, "version", version);
 				write_key_file_uri(o, "uri", change->document);
 			write_obj_end(o);
 			write_key_arr_start(o, "contentChanges");
