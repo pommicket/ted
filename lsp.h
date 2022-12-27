@@ -33,6 +33,7 @@ typedef enum {
 	LSP_REQUEST_DID_CLOSE, // textDocument/didClose
 	LSP_REQUEST_DID_CHANGE, // textDocument/didChange
 	LSP_REQUEST_COMPLETION, // textDocument/completion
+	LSP_REQUEST_SIGNATURE_HELP, // textDocument/signatureHelp
 	LSP_REQUEST_DID_CHANGE_WORKSPACE_FOLDERS, // workspace/didChangeWorkspaceFolders
 	
 	// server-to-client
@@ -82,12 +83,15 @@ typedef struct {
 	LSPPosition pos;
 } LSPDocumentPosition;
 
-typedef enum {
-	LSP_TRIGGER_NONE = 0, // not actually defined in LSP spec
-	LSP_TRIGGER_INVOKED = 1,
-	LSP_TRIGGER_CHARACTER = 2,
-	LSP_TRIGGER_INCOMPLETE = 3
-} LSPCompletionTriggerKind;
+
+// these triggers are used for completion context and signature help context.
+#define LSP_TRIGGER_NONE 0 // not actually defined in LSP spec
+#define LSP_TRIGGER_INVOKED 1
+#define LSP_TRIGGER_CHARACTER 2
+#define LSP_TRIGGER_INCOMPLETE 3
+#define LSP_TRIGGER_CONTENT_CHANGE 3
+typedef u8 LSPCompletionTriggerKind;
+typedef u8 LSPSignatureHelpTriggerKind;
 
 typedef struct {
 	LSPCompletionTriggerKind trigger_kind;
@@ -98,6 +102,10 @@ typedef struct {
 	LSPDocumentPosition position;
 	LSPCompletionContext context;
 } LSPRequestCompletion;
+
+typedef struct {
+	LSPDocumentPosition position;
+} LSPRequestSignatureHelp;
 
 typedef struct {
 	LSPDocumentID *removed; // dynamic array
@@ -115,6 +123,7 @@ typedef struct {
 		LSPRequestDidClose close;
 		LSPRequestDidChange change;
 		LSPRequestCompletion completion;
+		LSPRequestSignatureHelp signature_help;
 		// LSP_REQUEST_SHOW_MESSAGE or LSP_REQUEST_LOG_MESSAGE
 		LSPRequestMessage message;
 		LSPRequestDidChangeWorkspaceFolders change_workspace_folders;
@@ -263,6 +272,7 @@ typedef struct {
 } LSPDocumentData;
 
 typedef struct {
+	bool signature_help_support;
 	bool completion_support;
 	// support for multiple root folders
 	// sadly, as of me writing this, clangd and rust-analyzer don't support this
@@ -316,7 +326,11 @@ typedef struct LSP {
 	//                never accessed in main thread before `initialized = true`.
 	LSPCapabilities capabilities;
 	// thread-safety: same as `capabilities`
-	char32_t *trigger_chars; // dynamic array of "trigger characters"
+	char32_t *completion_trigger_chars; // dynamic array
+	// thread-safety: same as `capabilities`
+	char32_t *signature_help_trigger_chars; // dynamic array
+	// thread-safety: same as `capabilities`
+	char32_t *signature_help_retrigger_chars; // dynamic array
 	SDL_mutex *workspace_folders_mutex;
 		LSPDocumentID *workspace_folders; // dynamic array of root directories of LSP workspace folders
 	SDL_mutex *error_mutex;

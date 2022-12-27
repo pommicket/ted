@@ -1419,8 +1419,13 @@ static Status buffer_insert_lines(TextBuffer *buffer, u32 where, u32 number) {
 	return false;
 }
 
+LSPDocumentID buffer_lsp_document_id(TextBuffer *buffer) {
+	LSP *lsp = buffer_lsp(buffer);
+	return lsp_document_id(lsp, buffer->filename);
+}
+
 // LSP uses UTF-16 indices because Microsoft fucking loves UTF-16 and won't let it die
-LSPPosition buffer_pos_to_lsp(TextBuffer *buffer, BufferPos pos) {
+LSPPosition buffer_pos_to_lsp_position(TextBuffer *buffer, BufferPos pos) {
 	LSPPosition lsp_pos = {
 		.line = pos.line
 	};
@@ -1436,6 +1441,22 @@ LSPPosition buffer_pos_to_lsp(TextBuffer *buffer, BufferPos pos) {
 	return lsp_pos;
 }
 
+LSPDocumentPosition buffer_pos_to_lsp_document_position(TextBuffer *buffer, BufferPos pos) {
+	LSPDocumentPosition docpos = {
+		.document = buffer_lsp_document_id(buffer),
+		.pos = buffer_pos_to_lsp_position(buffer, pos)
+	};
+	return docpos;
+}
+
+LSPPosition buffer_cursor_pos_as_lsp_position(TextBuffer *buffer) {
+	return buffer_pos_to_lsp_position(buffer, buffer->cursor_pos);
+}
+
+LSPDocumentPosition buffer_cursor_pos_as_lsp_document_position(TextBuffer *buffer) {
+	return buffer_pos_to_lsp_document_position(buffer, buffer->cursor_pos);
+}
+
 static void buffer_send_lsp_did_change(LSP *lsp, TextBuffer *buffer, BufferPos pos,
 	u32 nchars_deleted, String32 new_text) {
 	if (!buffer_is_named_file(buffer))
@@ -1443,9 +1464,9 @@ static void buffer_send_lsp_did_change(LSP *lsp, TextBuffer *buffer, BufferPos p
 	LSPDocumentChangeEvent event = {0};
 	if (new_text.len > 0)
 		event.text = str32_to_utf8_cstr(new_text);
-	event.range.start = buffer_pos_to_lsp(buffer, pos);
+	event.range.start = buffer_pos_to_lsp_position(buffer, pos);
 	BufferPos pos_end = buffer_pos_advance(buffer, pos, nchars_deleted);
-	event.range.end = buffer_pos_to_lsp(buffer, pos_end);
+	event.range.end = buffer_pos_to_lsp_position(buffer, pos_end);
 	lsp_document_changed(lsp, buffer->filename, event);
 }
 

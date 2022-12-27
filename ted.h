@@ -417,6 +417,11 @@ typedef struct {
 	Rect rect; // rectangle where the autocomplete menu is (needed to avoid interpreting autocomplete clicks as other clicks)
 } Autocomplete;
 
+// "signature help" (LSP) is thing that shows the current parameter, etc.
+typedef struct {
+	bool open;
+} SignatureHelp;
+
 
 typedef struct Ted {
 	struct LSP *lsps[TED_LSP_MAX + 1];
@@ -463,6 +468,7 @@ typedef struct Ted {
 	bool find; // is the find or find+replace menu open?
 	bool replace; // is the find+replace menu open?
 	bool find_regex, find_case_sensitive; // find options
+	SignatureHelp signature_help;
 	u32 find_flags; // flags used last time search term was compiled
 	pcre2_code *find_code;
 	pcre2_match_data *find_match_data;
@@ -542,6 +548,7 @@ Settings *ted_active_settings(Ted *ted);
 Settings *ted_get_settings(Ted *ted, const char *path, Language lang);
 void ted_load_configs(Ted *ted, bool reloading);
 struct LSP *ted_get_lsp(Ted *ted, const char *path, Language lang);
+struct LSP *ted_active_lsp(Ted *ted);
 struct LSP *ted_get_lsp_by_id(Ted *ted, u32 id);
 static TextBuffer *find_search_buffer(Ted *ted);
 // first, we read all config files, then we parse them.

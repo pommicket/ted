@@ -121,7 +121,7 @@ static void autocomplete_send_completion_request(Ted *ted, TextBuffer *buffer, B
 	request.data.completion = (LSPRequestCompletion) {
 		.position = {
 			.document = lsp_document_id(lsp, buffer->filename),
-			.pos = buffer_pos_to_lsp(buffer, pos)
+			.pos = buffer_pos_to_lsp_position(buffer, pos)
 		},
 		.context = {
 			.trigger_kind = lsp_trigger,

@@ -5,6 +5,8 @@
      - hover
      - go to definition using LSP
      - find usages
+- go through signature help capabilities
+- separate signature-help setting (dont use trigger-characters)
 - check if there are any other non-optional/nice-to-have-support-for server-to-client requests
 - do something with lsp->error
 - document lsp.h and lsp.c.
@@ -138,6 +140,7 @@ bool tag_goto(Ted *ted, char const *tag);
 #include "tags.c"
 #include "menu.c"
 #include "autocomplete.c"
+#include "signature-help.c"
 #include "command.c"
 #include "config.c"
 #include "session.c"
@@ -768,12 +771,32 @@ int main(int argc, char **argv) {
 						char32_t last_char = 0;
 						unicode_utf8_to_utf32(&last_char, &text[last_code_point],
 							strlen(text) - last_code_point);
-						arr_foreach_ptr(lsp->trigger_chars, char32_t, c) {
+						arr_foreach_ptr(lsp->completion_trigger_chars, char32_t, c) {
 							if (*c == last_char) {
 								autocomplete_open(ted, last_char);
 								break;
 							}
 						}
+						
+						bool signature_help = false;
+						arr_foreach_ptr(lsp->signature_help_trigger_chars, char32_t, c) {
+							if (*c == last_char) {
+								signature_help = true;
+								break;
+							}
+						}
+						
+						if (ted->signature_help.open) {
+							arr_foreach_ptr(lsp->signature_help_retrigger_chars, char32_t, c) {
+								if (*c == last_char) {
+									signature_help = true;
+									break;
+								}
+							}
+						}
+						
+						if (signature_help)
+							signature_help_open(ted, last_char);
 						
 						if (settings->identifier_trigger_characters && is_word(last_char)
 							&& !is_digit(last_char))

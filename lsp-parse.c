@@ -78,6 +78,28 @@ static bool parse_range(LSP *lsp, const JSON *json, JSONValue range_value, LSPRa
 }
 
 
+static uint32_t *parse_trigger_characters(const JSON *json, JSONArray trigger_chars) {
+	uint32_t *array = NULL;
+	arr_reserve(array, trigger_chars.len);
+	for (u32 i = 0; i < trigger_chars.len; ++i) {
+		char character[8] = {0};
+		json_string_get(json,
+			json_array_get_string(json, trigger_chars, i),
+			character,
+			sizeof character);
+		if (*character) {
+			// the fact that they're called "trigger characters" makes
+			// me think multi-character triggers aren't allowed
+			// even though that would be nice in some languages,
+			// e.g. "::"
+			char32_t c = 0;
+			unicode_utf8_to_utf32(&c, character, strlen(character));
+			if (c) arr_add(array, c);
+		}
+	}
+	return array;
+}
+
 static void parse_capabilities(LSP *lsp, const JSON *json, JSONObject capabilities) {
 	LSPCapabilities *cap = &lsp->capabilities;
 	
@@ -88,26 +110,19 @@ static void parse_capabilities(LSP *lsp, const JSON *json, JSONObject capabiliti
 		JSONObject completion = completion_value.val.object;
 		
 		JSONArray trigger_chars = json_object_get_array(json, completion, "triggerCharacters");
-		for (u32 i = 0; i < trigger_chars.len; ++i) {
-			char character[8] = {0};
-			json_string_get(json,
-				json_array_get_string(json, trigger_chars, i),
-				character,
-				sizeof character);
-			if (*character) {
-				char32_t c = 0;
-				unicode_utf8_to_utf32(&c, character, strlen(character));
-				// the fact that they're called "trigger characters" makes
-				// me think multi-character triggers aren't allowed
-				// even though that would be nice in some languages,
-				// e.g. "::"
-				if (c) {
-					arr_add(lsp->trigger_chars, c);
-				}
-			}
-		}
+		lsp->completion_trigger_chars = parse_trigger_characters(json, trigger_chars);
 	}
 	
+	// check SignatureHelpOptions
+	JSONValue signature_help_value = json_object_get(json, capabilities, "signatureHelpProvider");
+	if (signature_help_value.type == JSON_OBJECT) {
+		cap->signature_help_support = true;
+		JSONObject signature_help = signature_help_value.val.object;
+		JSONArray trigger_chars = json_object_get_array(json, signature_help, "triggerCharacters");
+		lsp->signature_help_trigger_chars = parse_trigger_characters(json, trigger_chars);
+		JSONArray retrigger_chars = json_object_get_array(json, signature_help, "retriggerCharacters");
+		lsp->signature_help_retrigger_chars = parse_trigger_characters(json, retrigger_chars);
+	}
 	
 	JSONObject workspace = json_object_get_object(json, capabilities, "workspace");
 	// check WorkspaceFoldersServerCapabilities

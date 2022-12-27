@@ -447,7 +447,9 @@ void lsp_free(LSP *lsp) {
 	
 	arr_free(lsp->workspace_folders);
 	
-	arr_free(lsp->trigger_chars);
+	arr_free(lsp->completion_trigger_chars);
+	arr_free(lsp->signature_help_trigger_chars);
+	arr_free(lsp->signature_help_retrigger_chars);
 	memset(lsp, 0, sizeof *lsp);
 	free(lsp);
 }

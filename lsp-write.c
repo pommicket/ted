@@ -251,6 +251,8 @@ static const char *lsp_request_method(LSPRequest *request) {
 		return "textDocument/didChange";
 	case LSP_REQUEST_COMPLETION:
 		return "textDocument/completion";
+	case LSP_REQUEST_SIGNATURE_HELP:
+		return "textDocument/signatureHelp";
 	case LSP_REQUEST_WORKSPACE_FOLDERS:
 		return "workspace/workspaceFolders";
 	case LSP_REQUEST_DID_CHANGE_WORKSPACE_FOLDERS:
@@ -275,6 +277,7 @@ static bool request_type_is_notification(LSPRequestType type) {
 	case LSP_REQUEST_SHOW_MESSAGE:
 	case LSP_REQUEST_LOG_MESSAGE:
 	case LSP_REQUEST_COMPLETION:
+	case LSP_REQUEST_SIGNATURE_HELP:
 	case LSP_REQUEST_WORKSPACE_FOLDERS:
 		return false;
 	}
@@ -385,6 +388,10 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 							write_arr_end(o);
 						write_obj_end(o);
 						write_key_bool(o, "contextSupport", true);
+					write_obj_end(o);
+					write_key_obj_start(o, "signatureHelp");
+						// we don't have context support because sending the activeSignatureHelp member is annoying
+						//write_key_bool(o, "contextSupport", true);
 					write_obj_end(o);
 				write_obj_end(o);
 				write_key_obj_start(o, "workspace");
