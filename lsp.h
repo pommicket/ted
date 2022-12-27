@@ -26,12 +26,13 @@ typedef enum {
 	// client-to-server
 	LSP_REQUEST_INITIALIZE,
 	LSP_REQUEST_INITIALIZED,
+	LSP_REQUEST_SHUTDOWN,
+	LSP_REQUEST_EXIT,
 	LSP_REQUEST_DID_OPEN,
 	LSP_REQUEST_DID_CLOSE,
 	LSP_REQUEST_DID_CHANGE,
 	LSP_REQUEST_COMPLETION,
-	LSP_REQUEST_SHUTDOWN,
-	LSP_REQUEST_EXIT,
+	LSP_REQUEST_DID_CHANGE_WORKSPACE_FOLDERS,
 	
 	// server-to-client
 	LSP_REQUEST_SHOW_MESSAGE,
@@ -98,17 +99,24 @@ typedef struct {
 } LSPRequestCompletion;
 
 typedef struct {
+	LSPDocumentID *removed; // dynamic array
+	LSPDocumentID *added; // dynamic array
+} LSPRequestDidChangeWorkspaceFolders;
+
+typedef struct {
 	// id is set by lsp.c; you shouldn't set it.
 	u32 id;
 	LSPRequestType type;
 	char *id_string; // if not NULL, this is the ID (only for server-to-client messages; we always use integer IDs)
-	union {
+	// one member of this union is set depending on `type`.
+	union {	
 		LSPRequestDidOpen open;
 		LSPRequestDidClose close;
 		LSPRequestDidChange change;
 		LSPRequestCompletion completion;
-		// for LSP_SHOW_MESSAGE and LSP_LOG_MESSAGE
+		// LSP_REQUEST_SHOW_MESSAGE or LSP_REQUEST_LOG_MESSAGE
 		LSPRequestMessage message;
+		LSPRequestDidChangeWorkspaceFolders change_workspace_folders;
 	} data;
 } LSPRequest;
 
@@ -227,6 +235,7 @@ typedef struct {
 	LSPCompletionItem *items;
 } LSPResponseCompletion;
 
+
 typedef LSPRequestType LSPResponseType;
 typedef struct {
 	LSPRequest request; // the request which this is a response to
@@ -252,9 +261,19 @@ typedef struct {
 	u32 version_number; // for LSP
 } LSPDocumentData;
 
+typedef struct {
+	bool completion_support;
+	// support for multiple root folders
+	// sadly, as of me writing this, clangd and rust-analyzer don't support this
+	// (but jdtls and gopls do)
+	bool workspace_folders_support;
+} LSPCapabilities;
+
 typedef struct LSP {
 	Process process;
 	u32 request_id;
+	// for our purposes, folders are "documents"
+	// the spec kinda does this too: WorkspaceFolder has a `uri: DocumentUri` member.
 	StrHashTable document_ids; // values are u32. they are indices into document_data.
 	// this is a dynamic array which just keeps growing.
 	// but the user isn't gonna open millions of files so it's fine.
@@ -266,15 +285,18 @@ typedef struct LSP {
 	// so that we can process responses.
 	// this also lets us re-send requests if that's ever necessary.
 	LSPRequest *requests_sent;
-	bool initialized; // has the response to the initialize request been sent?
+	// has the response to the initialize request been sent?
+	//    we access this both in the main thread and in the LSP communication thread.
+	_Atomic bool initialized;
 	SDL_Thread *communication_thread;
 	SDL_sem *quit_sem;
 	char *received_data; // dynamic array
-	bool provides_completion; // can this LSP server handle completion requests?
+	LSPCapabilities capabilities;
 	char32_t *trigger_chars; // dynamic array of "trigger characters"
 	SDL_mutex *error_mutex;
 	Language language;
-	char **workspace_folders; // dynamic array of root directories of LSP "workspaces" (meaningless garbage)
+	SDL_mutex *workspace_folders_mutex;
+	LSPDocumentID *workspace_folders; // dynamic array of root directories of LSP "workspaces" (meaningless garbage)
 	char error[256];
 } LSP;
 
@@ -293,6 +315,11 @@ void lsp_send_request(LSP *lsp, LSPRequest *request);
 void lsp_send_response(LSP *lsp, LSPResponse *response);
 const char *lsp_response_string(const LSPResponse *response, LSPString string);
 LSP *lsp_create(const char *root_dir, Language language, const char *analyzer_command);
+// try to add a new "workspace folder" to the lsp.
+// returns true on success or if new_root_dir is already contained in a workspace folder for this LSP.
+// if this fails (i.e. if the LSP does not have workspace support), create a new LSP
+// with root directory `new_root_dir`.
+bool lsp_try_add_root_dir(LSP *lsp, const char *new_root_dir);
 bool lsp_next_message(LSP *lsp, LSPMessage *message);
 void lsp_document_changed(LSP *lsp, const char *document, LSPDocumentChangeEvent change);
 void lsp_free(LSP *lsp);

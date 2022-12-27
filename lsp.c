@@ -1,7 +1,7 @@
 // print server-to-client communication
 #define LSP_SHOW_S2C 0
 // print client-to-server communication
-#define LSP_SHOW_C2S 0
+#define LSP_SHOW_C2S 1
 
 
 #define write_bool lsp_write_bool
@@ -60,6 +60,11 @@ static void lsp_request_free(LSPRequest *r) {
 			lsp_document_change_event_free(event);
 		arr_free(c->changes);
 		} break;
+	case LSP_REQUEST_DID_CHANGE_WORKSPACE_FOLDERS: {
+		LSPRequestDidChangeWorkspaceFolders *w = &r->data.change_workspace_folders;
+		arr_free(w->added);
+		arr_free(w->removed);
+		} break;
 	}
 	memset(r, 0, sizeof *r);
 }
@@ -108,6 +113,7 @@ static bool has_response(const char *data, size_t data_len, u64 *p_offset, u64 *
 }
 
 static bool lsp_supports_request(LSP *lsp, const LSPRequest *request) {
+	LSPCapabilities *cap = &lsp->capabilities;
 	switch (request->type) {
 	case LSP_REQUEST_NONE:
 	// return false for server-to-client requests since we should never send them
@@ -124,7 +130,9 @@ static bool lsp_supports_request(LSP *lsp, const LSPRequest *request) {
 	case LSP_REQUEST_EXIT:
 		return true;
 	case LSP_REQUEST_COMPLETION:
-		return lsp->provides_completion;
+		return cap->completion_support;
+	case LSP_REQUEST_DID_CHANGE_WORKSPACE_FOLDERS:
+		return cap->workspace_folders_support;
 	}
 	assert(0);
 	return false;
@@ -323,10 +331,12 @@ LSP *lsp_create(const char *root_dir, Language language, const char *analyzer_co
 	#endif
 	
 	str_hash_table_create(&lsp->document_ids, sizeof(u32));
-	arr_add(lsp->workspace_folders, str_dup(root_dir));
 	lsp->language = language;
 	lsp->quit_sem = SDL_CreateSemaphore(0);	
+	lsp->error_mutex = SDL_CreateMutex();
 	lsp->messages_mutex = SDL_CreateMutex();
+	arr_add(lsp->workspace_folders, lsp_document_id(lsp, root_dir));
+	lsp->workspace_folders_mutex = SDL_CreateMutex();
 	
 	ProcessSettings settings = {
 		.stdin_blocking = true,
@@ -346,6 +356,46 @@ LSP *lsp_create(const char *root_dir, Language language, const char *analyzer_co
 	return lsp;
 }
 
+bool lsp_try_add_root_dir(LSP *lsp, const char *new_root_dir) {
+	bool got_it = false;
+	SDL_LockMutex(lsp->workspace_folders_mutex);
+		if (!lsp->initialized) {
+			// pretend we have workspace folder support until we get initialize response
+			// (it's totally possible that this would be called with lsp->initialized = false,
+			//  e.g. if the user starts up ted with multiple files in different projects)
+			// we'll fix things up when we get the initialize response if there's no actual support.
+			arr_add(lsp->workspace_folders, lsp_document_id(lsp, new_root_dir));
+			got_it = true;
+		} else {	
+			arr_foreach_ptr(lsp->workspace_folders, LSPDocumentID, folder) {
+				if (str_has_path_prefix(new_root_dir, lsp_document_path(lsp, *folder))) {
+					got_it = true;
+					break;
+				}
+			}
+		}
+	SDL_UnlockMutex(lsp->workspace_folders_mutex);
+	if (got_it) return true;
+	
+	if (!lsp->capabilities.workspace_folders_support) {
+		return false;
+	}
+	
+	// send workspace/didChangeWorkspaceFolders notification
+	LSPRequest req = {.type = LSP_REQUEST_DID_CHANGE_WORKSPACE_FOLDERS};
+	LSPRequestDidChangeWorkspaceFolders *w = &req.data.change_workspace_folders;
+	LSPDocumentID document_id = lsp_document_id(lsp, new_root_dir);
+	arr_add(w->added, document_id);
+	lsp_send_request(lsp, &req);
+	// *technically* this is incorrect because if the server *just now sent* a
+	// workspace/workspaceFolders request, we'd give it back inconsistent information.
+	// i don't care.
+	SDL_LockMutex(lsp->workspace_folders_mutex);
+		arr_add(lsp->workspace_folders, document_id);
+	SDL_UnlockMutex(lsp->workspace_folders_mutex);
+	return true;
+}
+
 bool lsp_next_message(LSP *lsp, LSPMessage *message) {
 	bool any = false;
 	SDL_LockMutex(lsp->messages_mutex);
@@ -362,6 +412,8 @@ void lsp_free(LSP *lsp) {
 	SDL_SemPost(lsp->quit_sem);
 	SDL_WaitThread(lsp->communication_thread, NULL);
 	SDL_DestroyMutex(lsp->messages_mutex);
+	SDL_DestroyMutex(lsp->workspace_folders_mutex);
+	SDL_DestroyMutex(lsp->error_mutex);
 	SDL_DestroySemaphore(lsp->quit_sem);
 	process_kill(&lsp->process);
 	
@@ -384,8 +436,6 @@ void lsp_free(LSP *lsp) {
 		lsp_request_free(r);
 	arr_free(lsp->requests_sent);
 	
-	arr_foreach_ptr(lsp->workspace_folders, char *, folder)
-		free(*folder);
 	arr_free(lsp->workspace_folders);
 	
 	arr_free(lsp->trigger_chars);

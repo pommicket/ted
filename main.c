@@ -1,6 +1,11 @@
 /*
 @TODO:
 - ignore telemetry/event
+- https://github.com/typescript-language-server/typescript-language-server
+   - NOTE: This supports javascript.
+     -  We should also add a typescript language (but just use javascript syntax highlighting for now)
+     - (don't want to add .ts as a Javascript extension since that won't be forwards-compatible
+        if we ever do add real typescript highlighting support)
 - handle window/showMessageRequest
 - make sure "save as" works
 - what's wrong with gopls?
@@ -8,6 +13,7 @@
      - hover
      - go to definition using LSP
      - find usages
+     - that thing where it shows you the current function argument
 - workspaceFolders support (so we don't need to start up multiple instances of rust-analyzer)
 - document lsp.h and lsp.c.
 - maximum queue size for requests/responses just in case?
@@ -39,6 +45,7 @@ FUTURE FEATURES:
 - keyboard macros
     -  ctrl+9/0 to inc/dec number would be useful here
     - with macros we can really test performance of buffer_insert_text_at_pos, etc. (which should ideally be fast)
+- real typescript highlighting (?)
 */
 
 #include "base.h"

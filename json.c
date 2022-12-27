@@ -2,7 +2,6 @@
 // provides FAST(ish) parsing but SLOW lookup
 // this is especially fast for small objects
 // this actually supports "extended json", where objects can have arbitrary values as keys.
-
 typedef struct {
 	u32 pos;
 	u32 len;
@@ -56,6 +55,7 @@ typedef struct {
 	// root = values[0]
 	JSONValue *values;
 } JSON;
+
 
 #define SKIP_WHITESPACE while (json_is_space(text[index])) ++index;
 

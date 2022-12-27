@@ -79,9 +79,12 @@ static bool parse_range(LSP *lsp, const JSON *json, JSONValue range_value, LSPRa
 
 
 static void parse_capabilities(LSP *lsp, const JSON *json, JSONObject capabilities) {
+	LSPCapabilities *cap = &lsp->capabilities;
+	
+	// check CompletionOptions
 	JSONValue completion_value = json_object_get(json, capabilities, "completionProvider");
 	if (completion_value.type == JSON_OBJECT) {
-		lsp->provides_completion = true;
+		cap->completion_support = true;
 		JSONObject completion = completion_value.val.object;
 		
 		JSONArray trigger_chars = json_object_get_array(json, completion, "triggerCharacters");
@@ -103,6 +106,14 @@ static void parse_capabilities(LSP *lsp, const JSON *json, JSONObject capabiliti
 				}
 			}
 		}
+	}
+	
+	
+	JSONObject workspace = json_object_get_object(json, capabilities, "workspace");
+	// check WorkspaceFoldersServerCapabilities
+	JSONObject workspace_folders = json_object_get_object(json, workspace, "workspaceFolders");
+	if (json_object_get_bool(json, workspace_folders, "supported", false)) {
+		cap->workspace_folders_support = true;
 	}
 }
 
@@ -383,15 +394,12 @@ static void process_message(LSP *lsp, JSON *json) {
 			break;
 		case LSP_REQUEST_INITIALIZE: {
 			// it's the response to our initialize request!
-			
 			if (result.type == JSON_OBJECT) {
 				// read server capabilities
 				JSONObject capabilities = json_object_get_object(json, result.val.object, "capabilities");
 				parse_capabilities(lsp, json, capabilities);
 			}
 			
-			// let's send back an "initialized" request (notification) because apparently
-			// that's something we need to do.
 			LSPRequest initialized = {
 				.type = LSP_REQUEST_INITIALIZED,
 				.data = {0},

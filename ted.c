@@ -48,15 +48,19 @@ static void *ted_realloc(Ted *ted, void *p, size_t new_size) {
 	return ret;
 }
 
+char *ted_get_root_dir_of(Ted *ted, const char *path) {
+	Settings *settings = ted_active_settings(ted);
+	return settings_get_root_dir(settings, path);
+}
+
 // get the project root directory (based on the active buffer or ted->cwd if there's no active buffer).
 // the return value should be freed
 char *ted_get_root_dir(Ted *ted) {
-	Settings *settings = ted_active_settings(ted);
 	TextBuffer *buffer = ted->active_buffer;
 	if (buffer) {
-		return settings_get_root_dir(settings, buffer->filename);
+		return ted_get_root_dir_of(ted, buffer->filename);
 	} else {
-		return settings_get_root_dir(settings, ted->cwd);
+		return ted_get_root_dir_of(ted, ted->cwd);
 	}
 }
 
@@ -91,6 +95,14 @@ Settings *ted_get_settings(Ted *ted, const char *path, Language language) {
 	return settings;
 }
 
+// IMPORTANT NOTE ABOUT CACHING LSPs:
+//     - be careful if you want to cache LSPs, e.g. adding  a LSP *lsp member to `buffer`.
+//     - right now we pretend that the server has workspace folder support until the initialize response is sent.
+//     - specifically, this means that:
+//                 ted_get_lsp("/path1/a") =>  new LSP 0x12345
+//                 ted_get_lsp("/path2/b") => same LSP 0x12345
+//                 (receive initialize request, realize we don't have workspace folder support)
+//                 ted_get_lsp("/path2/b") =>  new LSP 0x6789A
 LSP *ted_get_lsp(Ted *ted, const char *path, Language language) {
 	Settings *settings = ted_get_settings(ted, path, language);
 	if (!settings->lsp_enabled)
@@ -102,11 +114,11 @@ LSP *ted_get_lsp(Ted *ted, const char *path, Language language) {
 		if (!lsp) break;
 		if (lsp->language != language) continue;
 		
-		// check if root matches up
-		arr_foreach_ptr(lsp->workspace_folders, char *, lsp_root) {
-			if (str_has_path_prefix(path, *lsp_root))
-				return lsp;
-		}
+		// check if root matches up or if we can add a workspace folder
+		char *root = ted_get_root_dir_of(ted, path);
+		bool success = lsp_try_add_root_dir(lsp, root);
+		free(root);
+		if (success) return lsp;
 	}
 	if (i == TED_LSP_MAX)
 		return NULL; // why are there so many LSP open???

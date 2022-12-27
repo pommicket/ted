@@ -234,3 +234,8 @@ ted is in the public domain (see `LICENSE.txt`).
 
 You can report a bug by sending an email to `pommicket at pommicket.com`.
 
+If ted is crashing on startup try doing these things:
+
+- Delete `~/.local/share/ted/session.txt` or `C:\Users\<your user name>\AppData\Local\ted\session.txt`
+- Reset your ted configuration by moving `ted.cfg` somewhere else.
+

@@ -32,6 +32,13 @@ static const char *lsp_language_id(Language lang) {
 	return "text";
 }
 
+static const char *lsp_document_path(LSP *lsp, LSPDocumentID document) {
+	if (document >= arr_len(lsp->document_data)) {
+		assert(0);
+		return "";
+	}
+	return lsp->document_data[document].path;
+}
 
 typedef struct {
 	LSP *lsp;
@@ -174,13 +181,7 @@ static void write_file_uri_direct(JSONWriter *o, const char *path) {
 }
 
 static void write_file_uri(JSONWriter *o, LSPDocumentID document) {
-	if (document >= arr_len(o->lsp->document_data)) {
-		assert(0);
-		str_builder_append(&o->builder, "\"\"");
-		return;
-	}
-	const char *path = o->lsp->document_data[document].path;
-	write_file_uri_direct(o, path);
+	write_file_uri_direct(o, lsp_document_path(o->lsp, document));
 }
 
 static void write_key_file_uri(JSONWriter *o, const char *key, LSPDocumentID document) {
@@ -217,13 +218,18 @@ static void write_key_range(JSONWriter *o, const char *key, LSPRange range) {
 	write_range(o, range);
 }
 
-static void write_workspace_folders(JSONWriter *o, char **workspace_folders) {
+static void write_workspace_folder(JSONWriter *o, LSPDocumentID folder) {
+	write_obj_start(o);
+		write_key_file_uri(o, "uri", folder);
+		write_key_string(o, "name", lsp_document_path(o->lsp, folder));
+	write_obj_end(o);
+}
+
+static void write_workspace_folders(JSONWriter *o, LSPDocumentID *workspace_folders) {
 	write_arr_start(o);
-		arr_foreach_ptr(workspace_folders, char *, folder) {
-			write_arr_elem_obj_start(o);
-				write_key_file_uri_direct(o, "uri", *folder);
-				write_key_string(o, "name", *folder);
-			write_obj_end(o);
+		arr_foreach_ptr(workspace_folders, LSPDocumentID, folder) {
+			write_arr_elem(o);
+			write_workspace_folder(o, *folder);
 		}
 	write_arr_end(o);
 }
@@ -231,14 +237,18 @@ static void write_workspace_folders(JSONWriter *o, char **workspace_folders) {
 static const char *lsp_request_method(LSPRequest *request) {
 	switch (request->type) {
 	case LSP_REQUEST_NONE: break;
-	case LSP_REQUEST_SHOW_MESSAGE:
-		return "window/showMessage";
-	case LSP_REQUEST_LOG_MESSAGE:
-		return "window/logMessage";
 	case LSP_REQUEST_INITIALIZE:
 		return "initialize";
 	case LSP_REQUEST_INITIALIZED:
 		return "initialized";
+	case LSP_REQUEST_SHUTDOWN:
+		return "shutdown";
+	case LSP_REQUEST_EXIT:
+		return "exit";
+	case LSP_REQUEST_SHOW_MESSAGE:
+		return "window/showMessage";
+	case LSP_REQUEST_LOG_MESSAGE:
+		return "window/logMessage";
 	case LSP_REQUEST_DID_OPEN:
 		return "textDocument/didOpen";
 	case LSP_REQUEST_DID_CLOSE:
@@ -247,12 +257,10 @@ static const char *lsp_request_method(LSPRequest *request) {
 		return "textDocument/didChange";
 	case LSP_REQUEST_COMPLETION:
 		return "textDocument/completion";
-	case LSP_REQUEST_SHUTDOWN:
-		return "shutdown";
-	case LSP_REQUEST_EXIT:
-		return "exit";
 	case LSP_REQUEST_WORKSPACE_FOLDERS:
 		return "workspace/workspaceFolders";
+	case LSP_REQUEST_DID_CHANGE_WORKSPACE_FOLDERS:
+		return "workspace/didChangeWorkspaceFolders";
 	}
 	assert(0);
 	return "$/ignore";
@@ -266,6 +274,7 @@ static bool request_type_is_notification(LSPRequestType type) {
 	case LSP_REQUEST_DID_OPEN:
 	case LSP_REQUEST_DID_CLOSE:
 	case LSP_REQUEST_DID_CHANGE:
+	case LSP_REQUEST_DID_CHANGE_WORKSPACE_FOLDERS:
 		return true;
 	case LSP_REQUEST_INITIALIZE:
 	case LSP_REQUEST_SHUTDOWN:
@@ -385,9 +394,11 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 					write_key_bool(o, "workspaceFolders", true);
 				write_obj_end(o);
 			write_obj_end(o);
-			write_key_file_uri_direct(o, "rootUri", lsp->workspace_folders[0]);
+			SDL_LockMutex(lsp->workspace_folders_mutex);
+			write_key_file_uri(o, "rootUri", lsp->workspace_folders[0]);
 			write_key(o, "workspaceFolders");
 			write_workspace_folders(o, lsp->workspace_folders);
+			SDL_UnlockMutex(lsp->workspace_folders_mutex);
 			write_key_obj_start(o, "clientInfo");
 				write_key_string(o, "name", "ted");
 			write_obj_end(o);
@@ -454,6 +465,25 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 			}
 		write_obj_end(o);
 	} break;
+	case LSP_REQUEST_DID_CHANGE_WORKSPACE_FOLDERS: {
+		const LSPRequestDidChangeWorkspaceFolders *w = &request->data.change_workspace_folders;
+		write_key_obj_start(o, "params");
+			write_key_obj_start(o, "event");
+				write_key_arr_start(o, "added");
+					arr_foreach_ptr(w->added, LSPDocumentID, added) {
+						write_arr_elem(o);
+						write_workspace_folder(o, *added);
+					}
+				write_arr_end(o);
+				write_key_arr_start(o, "removed");
+					arr_foreach_ptr(w->removed, LSPDocumentID, removed) {
+						write_arr_elem(o);
+						write_workspace_folder(o, *removed);
+					}
+				write_arr_end(o);
+			write_obj_end(o);
+		write_obj_end(o);
+		} break;
 	}
 	
 	write_obj_end(o);
@@ -486,7 +516,9 @@ static void write_response(LSP *lsp, LSPResponse *response) {
 		write_key(o, "result");
 		switch (response->request.type) {
 		case LSP_REQUEST_WORKSPACE_FOLDERS:
-			write_workspace_folders(o, lsp->workspace_folders);
+			SDL_LockMutex(lsp->workspace_folders_mutex);
+				write_workspace_folders(o, lsp->workspace_folders);
+			SDL_UnlockMutex(lsp->workspace_folders_mutex);
 			break;
 		default:
 			// this is not a valid client-to-server response.
