@@ -170,6 +170,46 @@ static Keyword const *const syntax_all_keywords_javascript[] = {
 	['A'] = syntax_keywords_javascript_A, ['B'] = syntax_keywords_javascript_B, ['D'] = syntax_keywords_javascript_D, ['E'] = syntax_keywords_javascript_E, ['F'] = syntax_keywords_javascript_F, ['G'] = syntax_keywords_javascript_G, ['I'] = syntax_keywords_javascript_I, ['J'] = syntax_keywords_javascript_J, ['M'] = syntax_keywords_javascript_M, ['N'] = syntax_keywords_javascript_N, ['O'] = syntax_keywords_javascript_O, ['P'] = syntax_keywords_javascript_P, ['R'] = syntax_keywords_javascript_R, ['S'] = syntax_keywords_javascript_S, ['T'] = syntax_keywords_javascript_T, ['U'] = syntax_keywords_javascript_U, ['W'] = syntax_keywords_javascript_W, ['a'] = syntax_keywords_javascript_a, ['b'] = syntax_keywords_javascript_b, ['c'] = syntax_keywords_javascript_c, ['d'] = syntax_keywords_javascript_d, ['e'] = syntax_keywords_javascript_e, ['f'] = syntax_keywords_javascript_f, ['g'] = syntax_keywords_javascript_g, ['i'] = syntax_keywords_javascript_i, ['l'] = syntax_keywords_javascript_l, ['n'] = syntax_keywords_javascript_n, ['p'] = syntax_keywords_javascript_p, ['r'] = syntax_keywords_javascript_r, ['s'] = syntax_keywords_javascript_s, ['t'] = syntax_keywords_javascript_t, ['u'] = syntax_keywords_javascript_u, ['v'] = syntax_keywords_javascript_v, ['w'] = syntax_keywords_javascript_w, ['y'] = syntax_keywords_javascript_y
 };
 
+static Keyword const syntax_keywords_typescript_A[8] = {{"AggregateError", SYNTAX_BUILTIN},{"Array", SYNTAX_BUILTIN},{"ArrayBuffer", SYNTAX_BUILTIN},{"AsyncFunction", SYNTAX_BUILTIN},{"AsyncGenerator", SYNTAX_BUILTIN},{"AsyncGeneratorFunction", SYNTAX_BUILTIN},{"Atomics", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_typescript_B[5] = {{"BigInt", SYNTAX_BUILTIN},{"BigInt64Array", SYNTAX_BUILTIN},{"BigUint64Array", SYNTAX_BUILTIN},{"Boolean", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_typescript_D[3] = {{"DataView", SYNTAX_BUILTIN},{"Date", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_typescript_E[3] = {{"Error", SYNTAX_BUILTIN},{"EvalError", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_typescript_F[5] = {{"FinalizationRegistry", SYNTAX_BUILTIN},{"Float32Array", SYNTAX_BUILTIN},{"Float64Array", SYNTAX_BUILTIN},{"Function", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_typescript_G[3] = {{"Generator", SYNTAX_BUILTIN},{"GeneratorFunction", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_typescript_I[7] = {{"Infinity", SYNTAX_BUILTIN},{"Int16Array", SYNTAX_BUILTIN},{"Int32Array", SYNTAX_BUILTIN},{"Int8Array", SYNTAX_BUILTIN},{"InternalError", SYNTAX_BUILTIN},{"Intl", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_typescript_J[2] = {{"JSON", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_typescript_M[3] = {{"Map", SYNTAX_BUILTIN},{"Math", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_typescript_N[3] = {{"NaN", SYNTAX_BUILTIN},{"Number", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_typescript_O[2] = {{"Object", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_typescript_P[3] = {{"Promise", SYNTAX_BUILTIN},{"Proxy", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_typescript_R[5] = {{"RangeError", SYNTAX_BUILTIN},{"ReferenceError", SYNTAX_BUILTIN},{"Reflect", SYNTAX_BUILTIN},{"RegExp", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_typescript_S[6] = {{"Set", SYNTAX_BUILTIN},{"SharedArrayBuffer", SYNTAX_BUILTIN},{"String", SYNTAX_BUILTIN},{"Symbol", SYNTAX_BUILTIN},{"SyntaxError", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_typescript_T[3] = {{"TypeError", SYNTAX_BUILTIN},{"TypedArray", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_typescript_U[6] = {{"URIError", SYNTAX_BUILTIN},{"Uint16Array", SYNTAX_BUILTIN},{"Uint32Array", SYNTAX_BUILTIN},{"Uint8Array", SYNTAX_BUILTIN},{"Uint8ClampedArray", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_typescript_W[5] = {{"WeakMap", SYNTAX_BUILTIN},{"WeakRef", SYNTAX_BUILTIN},{"WeakSet", SYNTAX_BUILTIN},{"WebAssembly", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_typescript_a[4] = {{"any", SYNTAX_KEYWORD},{"as", SYNTAX_KEYWORD},{"await", SYNTAX_KEYWORD}};
+static Keyword const syntax_keywords_typescript_b[2] = {{"break", SYNTAX_KEYWORD}};
+static Keyword const syntax_keywords_typescript_c[6] = {{"case", SYNTAX_KEYWORD},{"catch", SYNTAX_KEYWORD},{"class", SYNTAX_KEYWORD},{"const", SYNTAX_KEYWORD},{"continue", SYNTAX_KEYWORD}};
+static Keyword const syntax_keywords_typescript_d[7] = {{"debugger", SYNTAX_KEYWORD},{"default", SYNTAX_KEYWORD},{"delete", SYNTAX_KEYWORD},{"do", SYNTAX_KEYWORD},{"decodeURI", SYNTAX_BUILTIN},{"decodeURIComponent", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_typescript_e[8] = {{"else", SYNTAX_KEYWORD},{"enum", SYNTAX_KEYWORD},{"export", SYNTAX_KEYWORD},{"extends", SYNTAX_KEYWORD},{"encodeURI", SYNTAX_BUILTIN},{"encodeURIComponent", SYNTAX_BUILTIN},{"eval", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_typescript_f[5] = {{"finally", SYNTAX_KEYWORD},{"for", SYNTAX_KEYWORD},{"function", SYNTAX_KEYWORD},{"false", SYNTAX_CONSTANT}};
+static Keyword const syntax_keywords_typescript_g[3] = {{"get", SYNTAX_BUILTIN},{"globalThis", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_typescript_i[9] = {{"if", SYNTAX_KEYWORD},{"implements", SYNTAX_KEYWORD},{"import", SYNTAX_KEYWORD},{"in", SYNTAX_KEYWORD},{"instanceof", SYNTAX_KEYWORD},{"interface", SYNTAX_KEYWORD},{"isFinite", SYNTAX_BUILTIN},{"isNaN", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_typescript_l[2] = {{"let", SYNTAX_KEYWORD}};
+static Keyword const syntax_keywords_typescript_m[2] = {{"module", SYNTAX_KEYWORD}};
+static Keyword const syntax_keywords_typescript_n[4] = {{"new", SYNTAX_KEYWORD},{"null", SYNTAX_BUILTIN},{"number", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_typescript_p[6] = {{"package", SYNTAX_KEYWORD},{"private", SYNTAX_KEYWORD},{"public", SYNTAX_KEYWORD},{"parseFloat", SYNTAX_BUILTIN},{"parseInt", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_typescript_r[2] = {{"return", SYNTAX_KEYWORD}};
+static Keyword const syntax_keywords_typescript_s[6] = {{"static", SYNTAX_KEYWORD},{"super", SYNTAX_KEYWORD},{"switch", SYNTAX_KEYWORD},{"set", SYNTAX_BUILTIN},{"string", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_typescript_t[7] = {{"this", SYNTAX_KEYWORD},{"throw", SYNTAX_KEYWORD},{"try", SYNTAX_KEYWORD},{"type", SYNTAX_KEYWORD},{"typeof", SYNTAX_KEYWORD},{"true", SYNTAX_CONSTANT}};
+static Keyword const syntax_keywords_typescript_u[2] = {{"undefined", SYNTAX_BUILTIN}};
+static Keyword const syntax_keywords_typescript_v[3] = {{"var", SYNTAX_KEYWORD},{"void", SYNTAX_KEYWORD}};
+static Keyword const syntax_keywords_typescript_w[3] = {{"while", SYNTAX_KEYWORD},{"with", SYNTAX_KEYWORD}};
+static Keyword const syntax_keywords_typescript_y[2] = {{"yield", SYNTAX_KEYWORD}};
+static Keyword const *const syntax_all_keywords_typescript[] = {
+	['A'] = syntax_keywords_typescript_A, ['B'] = syntax_keywords_typescript_B, ['D'] = syntax_keywords_typescript_D, ['E'] = syntax_keywords_typescript_E, ['F'] = syntax_keywords_typescript_F, ['G'] = syntax_keywords_typescript_G, ['I'] = syntax_keywords_typescript_I, ['J'] = syntax_keywords_typescript_J, ['M'] = syntax_keywords_typescript_M, ['N'] = syntax_keywords_typescript_N, ['O'] = syntax_keywords_typescript_O, ['P'] = syntax_keywords_typescript_P, ['R'] = syntax_keywords_typescript_R, ['S'] = syntax_keywords_typescript_S, ['T'] = syntax_keywords_typescript_T, ['U'] = syntax_keywords_typescript_U, ['W'] = syntax_keywords_typescript_W, ['a'] = syntax_keywords_typescript_a, ['b'] = syntax_keywords_typescript_b, ['c'] = syntax_keywords_typescript_c, ['d'] = syntax_keywords_typescript_d, ['e'] = syntax_keywords_typescript_e, ['f'] = syntax_keywords_typescript_f, ['g'] = syntax_keywords_typescript_g, ['i'] = syntax_keywords_typescript_i, ['l'] = syntax_keywords_typescript_l, ['m'] = syntax_keywords_typescript_m, ['n'] = syntax_keywords_typescript_n, ['p'] = syntax_keywords_typescript_p, ['r'] = syntax_keywords_typescript_r, ['s'] = syntax_keywords_typescript_s, ['t'] = syntax_keywords_typescript_t, ['u'] = syntax_keywords_typescript_u, ['v'] = syntax_keywords_typescript_v, ['w'] = syntax_keywords_typescript_w, ['y'] = syntax_keywords_typescript_y
+};
+
 static Keyword const syntax_keywords_go_a[2] = {{"append", SYNTAX_BUILTIN}};
 static Keyword const syntax_keywords_go_b[4] = {{"break", SYNTAX_KEYWORD},{"bool", SYNTAX_BUILTIN},{"byte", SYNTAX_BUILTIN}};
 static Keyword const syntax_keywords_go_c[12] = {{"case", SYNTAX_KEYWORD},{"chan", SYNTAX_KEYWORD},{"const", SYNTAX_KEYWORD},{"continue", SYNTAX_KEYWORD},{"cap", SYNTAX_BUILTIN},{"close", SYNTAX_BUILTIN},{"comparable", SYNTAX_BUILTIN},{"complex", SYNTAX_BUILTIN},{"complex128", SYNTAX_BUILTIN},{"complex64", SYNTAX_BUILTIN},{"copy", SYNTAX_BUILTIN}};

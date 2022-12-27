@@ -2,9 +2,6 @@
 @TODO:
 - https://github.com/typescript-language-server/typescript-language-server
    - NOTE: This supports javascript.
-     -  We should also add a typescript language (but just use javascript syntax highlighting for now)
-     - (don't want to add .ts as a Javascript extension since that won't be forwards-compatible
-        if we ever do add real typescript highlighting support)
 - make sure "save as" works
 - more LSP stuff:
      - signature help

@@ -14,6 +14,8 @@ static const char *lsp_language_id(Language lang) {
 		return "java";
 	case LANG_JAVASCRIPT:
 		return "javascript";
+	case LANG_TYPESCRIPT:
+		return "typescript";
 	case LANG_MARKDOWN:
 		return "markdown";
 	case LANG_GO:

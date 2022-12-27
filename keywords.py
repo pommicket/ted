@@ -296,6 +296,18 @@ keywords_java = [
 	'const', 'float', 'native', 'super', 'volatile', 'while'
 ]
 
+keywords_typescript = keywords_javascript + [
+	'public', 'any', 'as', 'module',
+	'static', 'interface', 'enum', 'type',
+	'implements', 'private', 'package'
+]
+
+builtins_typescript = builtins_javascript + [
+	'string', 'number', 'get', 'set'
+]
+
+constants_typescript = constants_javascript
+
 constants_java = [
 	'true', 'false', 'null'
 ]
@@ -347,6 +359,8 @@ output_keywords(file, cpp_things, 'cpp')
 output_keywords(file, label(keywords_rust, SYNTAX_KEYWORD) + label(builtins_rust, SYNTAX_BUILTIN) + label(constants_rust, SYNTAX_CONSTANT), 'rust')
 output_keywords(file, label(keywords_javascript, SYNTAX_KEYWORD) + label(builtins_javascript, SYNTAX_BUILTIN) +
 	label(constants_javascript, SYNTAX_CONSTANT), 'javascript')
+output_keywords(file, label(keywords_typescript, SYNTAX_KEYWORD) + label(builtins_typescript, SYNTAX_BUILTIN) +
+	label(constants_typescript, SYNTAX_CONSTANT), 'typescript')
 output_keywords(file, label(keywords_go, SYNTAX_KEYWORD) + label(builtins_go, SYNTAX_BUILTIN) +
 	label(constants_go, SYNTAX_CONSTANT), 'go')
 output_keywords(file, label(keywords_java, SYNTAX_KEYWORD) + label(constants_java, SYNTAX_CONSTANT), 'java')

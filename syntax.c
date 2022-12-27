@@ -29,6 +29,7 @@ char const *language_comment_start(Language l) {
 	case LANG_RUST:
 	case LANG_CPP:
 	case LANG_JAVASCRIPT:
+	case LANG_TYPESCRIPT:
 	case LANG_JAVA:
 	case LANG_GO:
 		return "// ";
@@ -1168,7 +1169,8 @@ static void syntax_highlight_config(SyntaxState *state, char32_t const *line, u3
 	}
 }
 
-static void syntax_highlight_javascript(SyntaxState *state, char32_t const *line, u32 line_len, SyntaxCharType *char_types) {
+static void syntax_highlight_javascript_typescript(
+	SyntaxState *state, char32_t const *line, u32 line_len, SyntaxCharType *char_types, bool is_typescript) {
 	(void)state;
 	bool string_is_template = (*state & SYNTAX_STATE_JAVASCRIPT_TEMPLATE_STRING) != 0;
 	bool in_multiline_comment = (*state & SYNTAX_STATE_JAVASCRIPT_MULTILINE_COMMENT) != 0;
@@ -1281,7 +1283,9 @@ static void syntax_highlight_javascript(SyntaxState *state, char32_t const *line
 			
 			if (char_types && !in_string && !in_number && !in_multiline_comment) {
 				u32 keyword_len = syntax_keyword_len(LANG_JAVASCRIPT, line, i, line_len);
-				Keyword const *keyword = syntax_keyword_lookup(syntax_all_keywords_javascript, arr_count(syntax_all_keywords_javascript),
+				Keyword const *keyword = syntax_keyword_lookup(
+					is_typescript ? syntax_all_keywords_typescript : syntax_all_keywords_javascript,
+					is_typescript ? arr_count(syntax_all_keywords_typescript) : arr_count(syntax_all_keywords_javascript),
 					&line[i], keyword_len);
 				if (keyword) {
 					SyntaxCharType type = keyword->type;
@@ -1622,7 +1626,10 @@ void syntax_highlight(SyntaxState *state, Language lang, char32_t const *line, u
 		syntax_highlight_config(state, line, line_len, char_types, true);
 		break;
 	case LANG_JAVASCRIPT:
-		syntax_highlight_javascript(state, line, line_len, char_types);
+		syntax_highlight_javascript_typescript(state, line, line_len, char_types, false);
+		break;
+	case LANG_TYPESCRIPT:
+		syntax_highlight_javascript_typescript(state, line, line_len, char_types, true);
 		break;
 	case LANG_JAVA:
 		syntax_highlight_java(state, line, line_len, char_types);
