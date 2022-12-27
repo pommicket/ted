@@ -2176,10 +2176,14 @@ Status buffer_load_file(TextBuffer *buffer, char const *filename) {
 		long file_pos = ftell(fp);
 		size_t file_size = (size_t)file_pos;
 		fseek(fp, 0, SEEK_SET);
+		const Settings *default_settings = buffer->ted->default_settings;
+		u32 max_file_size_editable = default_settings->max_file_size;
+		u32 max_file_size_view_only = default_settings->max_file_size_view_only;
+		
 		if (file_pos == -1 || file_pos == LONG_MAX) {
 			buffer_seterr(buffer, "Couldn't get file position. There is something wrong with the file '%s'.", filename);
 			success = false;
-		} else if (file_size > 10L<<20) {
+		} else if (file_size > max_file_size_editable && file_size > max_file_size_view_only) {
 			buffer_seterr(buffer, "File too big (size: %zu).", file_size);
 			success = false;
 		} else {
@@ -2251,6 +2255,11 @@ Status buffer_load_file(TextBuffer *buffer, char const *filename) {
 					buffer->last_write_time = time_last_modified(buffer->filename);
 					if (!(fs_path_permission(filename) & FS_PERMISSION_WRITE)) {
 						// can't write to this file; make the buffer view only.
+						buffer->view_only = true;
+					}
+					
+					if (file_size > max_file_size_editable) {
+						// file very large; open in view-only mode.
 						buffer->view_only = true;
 					}
 					

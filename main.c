@@ -32,7 +32,6 @@ FUTURE FEATURES:
 - comment-start + comment-end settings
 - robust find (results shouldn't move around when you type things)
 - multiple files with command line arguments
-- configurable max buffer size + max view-only buffer size
 - :set-build-command
 - add numlock as a key modifier? (but make sure "Ctrl+S" handles both "No NumLock+Ctrl+S" and "NumLock+Ctrl+S"
 - better undo chaining (dechain on backspace?)

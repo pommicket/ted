@@ -175,6 +175,8 @@ typedef struct {
 	SettingsContext context;
 	float cursor_blink_time_on, cursor_blink_time_off;
 	u32 colors[COLOR_COUNT];
+	u32 max_file_size;
+	u32 max_file_size_view_only;
 	u16 text_size;
 	u16 max_menu_width;
 	u16 error_display_time;

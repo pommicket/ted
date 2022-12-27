@@ -212,6 +212,12 @@ typedef struct {
 } OptionU16;
 typedef struct {
 	char const *name;
+	const u32 *control;
+	u32 min, max;
+	bool per_language;
+} OptionU32;
+typedef struct {
+	char const *name;
 	const char *control;
 	size_t buf_size;
 	bool per_language;
@@ -221,6 +227,7 @@ typedef enum {
 	OPTION_BOOL = 1,
 	OPTION_U8,
 	OPTION_U16,
+	OPTION_U32,
 	OPTION_FLOAT,
 	OPTION_STRING
 } OptionType;
@@ -232,6 +239,7 @@ typedef struct {
 		OptionU8 _u8;
 		OptionBool _bool;
 		OptionU16 _u16;
+		OptionU32 _u32;
 		OptionFloat _float;
 		OptionString _string;
 	} u;
@@ -267,6 +275,10 @@ static OptionU16 const options_u16[] = {
 	{"max-menu-width", &options_zero.max_menu_width, 10, U16_MAX, false},
 	{"error-display-time", &options_zero.error_display_time, 0, U16_MAX, false},
 };
+static OptionU32 const options_u32[] = {
+	{"max-file-size", &options_zero.max_file_size, 100, 2000000000, false},
+	{"max-file-size-view-only", &options_zero.max_file_size_view_only, 100, 2000000000, false},
+};
 static OptionFloat const options_float[] = {
 	{"cursor-blink-time-on", &options_zero.cursor_blink_time_on, 0, 1000, true},
 	{"cursor-blink-time-off", &options_zero.cursor_blink_time_off, 0, 1000, true},
@@ -289,6 +301,10 @@ static void option_u8_set(Settings *settings, const OptionU8 *opt, u8 value) {
 static void option_u16_set(Settings *settings, const OptionU16 *opt, u16 value) {
 	if (value >= opt->min && value <= opt->max)
 		*(u16 *)((char *)settings + ((char*)opt->control - (char*)&options_zero)) = value;
+}
+static void option_u32_set(Settings *settings, const OptionU32 *opt, u32 value) {
+	if (value >= opt->min && value <= opt->max)
+		*(u32 *)((char *)settings + ((char*)opt->control - (char*)&options_zero)) = value;
 }
 static void option_float_set(Settings *settings, const OptionFloat *opt, float value) {
 	if (value >= opt->min && value <= opt->max)
@@ -387,6 +403,13 @@ static void config_init_options(void) {
 		opt->name = options_u16[i].name;
 		opt->per_language = options_u16[i].per_language;
 		opt->u._u16 = options_u16[i];
+		++opt;
+	}
+	for (size_t i = 0; i < arr_count(options_u32); ++i) {
+		opt->type = OPTION_U32;
+		opt->name = options_u32[i].name;
+		opt->per_language = options_u32[i].per_language;
+		opt->u._u32 = options_u32[i];
 		++opt;
 	}
 	for (size_t i = 0; i < arr_count(options_float); ++i) {
@@ -842,6 +865,14 @@ static void config_parse_line(ConfigReader *cfg, Settings *settings, const Confi
 						option_u16_set(settings, option, (u16)integer);
 					else
 						config_err(cfg, "Invalid %s: %s. This should be an integer from %u to %u.", option->name, value, option->min, option->max);
+				} break;
+				case OPTION_U32: {
+					OptionU32 const *option = &any->u._u32;
+					if (is_integer && integer >= option->min && integer <= option->max)
+						option_u32_set(settings, option, (u32)integer);
+					else
+						config_err(cfg, "Invalid %s: %s. This should be an integer from %" PRIu32 " to %" PRIu32 ".",
+							option->name, value, option->min, option->max);
 				} break;
 				case OPTION_FLOAT: {
 					OptionFloat const *option = &any->u._float;
