@@ -29,7 +29,7 @@ in other editors.
 - Multiple tabs, each with a different file
 - Split screen
 - Auto-indent
-- Syntax highlighting for C, C++, Go, HTML, Java, JavaScript, LaTeX, Markdown, Python, and Rust.
+- Syntax highlighting for C, C++, Go, HTML, Java, JavaScript, LaTeX, Markdown, Python, Rust, and TypeScript.
 - Find and replace (with regular expressions!)
 - Run build command, go to errors
 - Run any shell command
@@ -143,6 +143,12 @@ The Go team's `go-pls` is enabled by default. You can download it
 Eclipse's `jdtls` is enabled by default.
 You can download it [here](download.eclipse.org/jdtls/milestones/?d).
 
+## JavaScript/TypeScript
+
+`typescript-language-server` is enabled by default.
+You can download it by following
+[the instructions here](https://github.com/typescript-language-server/typescript-language-server).
+
 ## LaTeX
 
 `texlab` is enabled by default. You can download it
@@ -156,7 +162,6 @@ You can download it [here](https://github.com/python-lsp/python-lsp-server).
 
 `rust-analyzer` is enabled by default. You can download it
 by following [the instructions here](https://rust-analyzer.github.io/manual.html#rust-analyzer-language-server-binary).
-
 
 
 ## Tags (lightweight LSP alternative)

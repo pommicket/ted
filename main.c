@@ -1,8 +1,6 @@
 /*
 @TODO:
-- https://github.com/typescript-language-server/typescript-language-server
-   - NOTE: This supports javascript.
-- make sure "save as" works
+- HTML https://github.com/Microsoft/vscode/tree/main/extensions/html-language-features/server
 - more LSP stuff:
      - signature help
      - hover
