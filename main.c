@@ -1,15 +1,14 @@
 /*
 @TODO:
-- ignore telemetry/event
+- handle window/showMessageRequest
 - https://github.com/typescript-language-server/typescript-language-server
    - NOTE: This supports javascript.
      -  We should also add a typescript language (but just use javascript syntax highlighting for now)
      - (don't want to add .ts as a Javascript extension since that won't be forwards-compatible
         if we ever do add real typescript highlighting support)
-- handle window/showMessageRequest
 - make sure "save as" works
-- what's wrong with gopls?
 - more LSP stuff:
+     - signature help
      - hover
      - go to definition using LSP
      - find usages
@@ -21,6 +20,7 @@
    -  what to do if initialize request takes a long time?
 - delete old sent requests? but make sure requests that just take a long time are okay.
     (if the server never sends a response)
+- what's wrong with gopls?
 - TESTING: make rust-analyzer-slow (waits 10s before sending response)
 - run everything through valgrind ideally with leak checking
 - grep -i -n TODO *.[ch]

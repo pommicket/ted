@@ -341,7 +341,7 @@ static bool parse_server2client_request(LSP *lsp, JSON *json, LSPRequest *reques
 		}
 		lsp_send_response(lsp, &response);
 		return false;
-	} else if (str_has_prefix(method, "$/")) {
+	} else if (str_has_prefix(method, "$/") || str_has_prefix(method, "telemetry/")) {
 		// we can safely ignore this
 	} else {
 		lsp_set_error(lsp, "Unrecognized request method: %s", method);
