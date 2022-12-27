@@ -114,6 +114,13 @@ LSP *ted_get_lsp(Ted *ted, const char *path, Language language) {
 		if (!lsp) break;
 		if (lsp->language != language) continue;
 		
+		if (!lsp->initialized) {
+			// withhold judgement until this server initializes.
+			// we shouldn't call lsp_try_add_root_dir yet because it doesn't know
+			// if the server supports workspaceFolders.
+			return NULL;
+		}
+		
 		// check if root matches up or if we can add a workspace folder
 		char *root = ted_get_root_dir_of(ted, path);
 		bool success = lsp_try_add_root_dir(lsp, root);

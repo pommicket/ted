@@ -357,21 +357,14 @@ LSP *lsp_create(const char *root_dir, Language language, const char *analyzer_co
 }
 
 bool lsp_try_add_root_dir(LSP *lsp, const char *new_root_dir) {
+	assert(lsp->initialized);
+
 	bool got_it = false;
 	SDL_LockMutex(lsp->workspace_folders_mutex);
-		if (!lsp->initialized) {
-			// pretend we have workspace folder support until we get initialize response
-			// (it's totally possible that this would be called with lsp->initialized = false,
-			//  e.g. if the user starts up ted with multiple files in different projects)
-			// we'll fix things up when we get the initialize response if there's no actual support.
-			arr_add(lsp->workspace_folders, lsp_document_id(lsp, new_root_dir));
-			got_it = true;
-		} else {	
-			arr_foreach_ptr(lsp->workspace_folders, LSPDocumentID, folder) {
-				if (str_has_path_prefix(new_root_dir, lsp_document_path(lsp, *folder))) {
-					got_it = true;
-					break;
-				}
+		arr_foreach_ptr(lsp->workspace_folders, LSPDocumentID, folder) {
+			if (str_has_path_prefix(new_root_dir, lsp_document_path(lsp, *folder))) {
+				got_it = true;
+				break;
 			}
 		}
 	SDL_UnlockMutex(lsp->workspace_folders_mutex);

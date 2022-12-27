@@ -296,7 +296,7 @@ typedef struct LSP {
 	SDL_mutex *error_mutex;
 	Language language;
 	SDL_mutex *workspace_folders_mutex;
-	LSPDocumentID *workspace_folders; // dynamic array of root directories of LSP "workspaces" (meaningless garbage)
+	LSPDocumentID *workspace_folders; // dynamic array of root directories of LSP workspace folders
 	char error[256];
 } LSP;
 
@@ -316,6 +316,8 @@ void lsp_send_response(LSP *lsp, LSPResponse *response);
 const char *lsp_response_string(const LSPResponse *response, LSPString string);
 LSP *lsp_create(const char *root_dir, Language language, const char *analyzer_command);
 // try to add a new "workspace folder" to the lsp.
+// IMPORTANT: only call this if lsp->initialized is true
+//            (if not we don't yet know whether the server supports workspace folders)
 // returns true on success or if new_root_dir is already contained in a workspace folder for this LSP.
 // if this fails (i.e. if the LSP does not have workspace support), create a new LSP
 // with root directory `new_root_dir`.

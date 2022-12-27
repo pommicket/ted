@@ -1,5 +1,10 @@
 /*
 @TODO:
+- LSP IDs, and make buffer send (didClose +) didOpen if its ID isn't maching up
+   (this should fix current "unexpected didChange" multi-root rust-analyzer problem and
+    also fix "save as")
+- lsp_document_id / lsp_document_path thread-safety
+- double check thread safety of other things
 - ignore telemetry/event
 - https://github.com/typescript-language-server/typescript-language-server
    - NOTE: This supports javascript.
@@ -17,6 +22,8 @@
 - workspaceFolders support (so we don't need to start up multiple instances of rust-analyzer)
 - document lsp.h and lsp.c.
 - maximum queue size for requests/responses just in case?
+   - idea: configurable timeout
+   -  what to do if initialize request takes a long time?
 - delete old sent requests? but make sure requests that just take a long time are okay.
     (if the server never sends a response)
 - TESTING: make rust-analyzer-slow (waits 10s before sending response)
