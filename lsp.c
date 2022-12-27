@@ -130,14 +130,26 @@ static bool lsp_supports_request(LSP *lsp, const LSPRequest *request) {
 	return false;
 }
 
+void lsp_send_message(LSP *lsp, LSPMessage *message) {
+	SDL_LockMutex(lsp->messages_mutex);
+	arr_add(lsp->messages_client2server, *message);
+	SDL_UnlockMutex(lsp->messages_mutex);
+}
+
 void lsp_send_request(LSP *lsp, LSPRequest *request) {
 	if (!lsp_supports_request(lsp, request)) {
 		lsp_request_free(request);
 		return;
 	}
-	SDL_LockMutex(lsp->requests_mutex);
-	arr_add(lsp->requests_client2server, *request);
-	SDL_UnlockMutex(lsp->requests_mutex);
+	LSPMessage message = {.type = LSP_REQUEST};
+	message.u.request = *request;
+	lsp_send_message(lsp, &message);
+}
+
+void lsp_send_response(LSP *lsp, LSPResponse *response) {
+	LSPMessage message = {.type = LSP_RESPONSE};
+	message.u.response = *response;
+	lsp_send_message(lsp, &message);
 }
 
 const char *lsp_response_string(const LSPResponse *response, LSPString string) {
@@ -215,21 +227,21 @@ static bool lsp_send(LSP *lsp) {
 		return false;
 	}
 	
-	LSPRequest *requests = NULL;
-	SDL_LockMutex(lsp->requests_mutex);
-	size_t n_requests = arr_len(lsp->requests_client2server);
-	requests = calloc(n_requests, sizeof *requests);
-	memcpy(requests, lsp->requests_client2server, n_requests * sizeof *requests);
-	arr_clear(lsp->requests_client2server);
-	SDL_UnlockMutex(lsp->requests_mutex);
+	LSPMessage *messages = NULL;
+	SDL_LockMutex(lsp->messages_mutex);
+	size_t n_messages = arr_len(lsp->messages_client2server);
+	messages = calloc(n_messages, sizeof *messages);
+	memcpy(messages, lsp->messages_client2server, n_messages * sizeof *messages);
+	arr_clear(lsp->messages_client2server);
+	SDL_UnlockMutex(lsp->messages_mutex);
 
 	bool quit = false;
-	for (size_t i = 0; i < n_requests; ++i) {
-		LSPRequest *r = &requests[i];
+	for (size_t i = 0; i < n_messages; ++i) {
+		LSPMessage *m = &messages[i];
 		if (quit) {
-			lsp_request_free(r);
+			lsp_message_free(m);
 		} else {
-			write_request(lsp, r);
+			write_message(lsp, m);
 		}
 		
 		if (SDL_SemTryWait(lsp->quit_sem) == 0) {
@@ -237,7 +249,7 @@ static bool lsp_send(LSP *lsp) {
 		}
 	}
 
-	free(requests);
+	free(messages);
 	return quit;
 }
 
@@ -315,7 +327,6 @@ LSP *lsp_create(const char *root_dir, Language language, const char *analyzer_co
 	lsp->language = language;
 	lsp->quit_sem = SDL_CreateSemaphore(0);	
 	lsp->messages_mutex = SDL_CreateMutex();
-	lsp->requests_mutex = SDL_CreateMutex();
 	
 	ProcessSettings settings = {
 		.stdin_blocking = true,
@@ -338,9 +349,9 @@ LSP *lsp_create(const char *root_dir, Language language, const char *analyzer_co
 bool lsp_next_message(LSP *lsp, LSPMessage *message) {
 	bool any = false;
 	SDL_LockMutex(lsp->messages_mutex);
-	if (arr_len(lsp->messages)) {
-		*message = lsp->messages[0];
-		arr_remove(lsp->messages, 0);
+	if (arr_len(lsp->messages_server2client)) {
+		*message = lsp->messages_server2client[0];
+		arr_remove(lsp->messages_server2client, 0);
 		any = true;
 	}
 	SDL_UnlockMutex(lsp->messages_mutex);
@@ -351,21 +362,32 @@ void lsp_free(LSP *lsp) {
 	SDL_SemPost(lsp->quit_sem);
 	SDL_WaitThread(lsp->communication_thread, NULL);
 	SDL_DestroyMutex(lsp->messages_mutex);
-	SDL_DestroyMutex(lsp->requests_mutex);
 	SDL_DestroySemaphore(lsp->quit_sem);
 	process_kill(&lsp->process);
+	
 	arr_free(lsp->received_data);
+	
 	str_hash_table_clear(&lsp->document_ids);
 	for (size_t i = 0; i < arr_len(lsp->document_data); ++i)
 		free(lsp->document_data[i].path);
 	arr_free(lsp->document_data);
-	arr_foreach_ptr(lsp->messages, LSPMessage, message) {
+	
+	arr_foreach_ptr(lsp->messages_server2client, LSPMessage, message)
 		lsp_message_free(message);
-	}
+	arr_free(lsp->messages_server2client);
+	
+	arr_foreach_ptr(lsp->messages_client2server, LSPMessage, message)
+		lsp_message_free(message);
+	arr_free(lsp->messages_client2server);
+	
+	arr_foreach_ptr(lsp->requests_sent, LSPRequest, r)
+		lsp_request_free(r);
+	arr_free(lsp->requests_sent);
+	
 	arr_foreach_ptr(lsp->workspace_folders, char *, folder)
 		free(*folder);
 	arr_free(lsp->workspace_folders);
-	arr_free(lsp->messages);
+	
 	arr_free(lsp->trigger_chars);
 	memset(lsp, 0, sizeof *lsp);
 	free(lsp);

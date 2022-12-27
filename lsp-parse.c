@@ -370,6 +370,7 @@ static void process_message(LSP *lsp, JSON *json) {
 	
 	JSONValue result = json_get(json, "result");
 	if (result.type != JSON_UNDEFINED) {
+		// server-to-client response
 		LSPResponse response = {0};
 		bool add_to_messages = false;
 		response.request = response_to;
@@ -405,7 +406,7 @@ static void process_message(LSP *lsp, JSON *json) {
 		}
 		if (add_to_messages) {
 			SDL_LockMutex(lsp->messages_mutex);
-			LSPMessage *message = arr_addp(lsp->messages);
+			LSPMessage *message = arr_addp(lsp->messages_server2client);
 			message->type = LSP_RESPONSE;
 			message->u.response = response;
 			SDL_UnlockMutex(lsp->messages_mutex);
@@ -414,10 +415,11 @@ static void process_message(LSP *lsp, JSON *json) {
 			lsp_response_free(&response);
 		}
 	} else if (json_has(json, "method")) {
+		// server-to-client request
 		LSPRequest request = {0};
 		if (parse_server2client_request(lsp, json, &request)) {
 			SDL_LockMutex(lsp->messages_mutex);
-			LSPMessage *message = arr_addp(lsp->messages);
+			LSPMessage *message = arr_addp(lsp->messages_server2client);
 			message->type = LSP_REQUEST;
 			message->u.request = request;
 			SDL_UnlockMutex(lsp->messages_mutex);

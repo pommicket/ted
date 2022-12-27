@@ -1,9 +1,9 @@
 /*
 @TODO:
-- what's wrong with gopls?
 - ignore telemetry/event
 - handle window/showMessageRequest
 - make sure "save as" works
+- what's wrong with gopls?
 - more LSP stuff:
      - hover
      - go to definition using LSP
@@ -17,6 +17,8 @@
 - run everything through valgrind ideally with leak checking
 - grep -i -n TODO *.[ch]
 --- LSP MERGE ---
+- improve structure of ted source code to make LSP completions better
+      (make every c file a valid translation unit)
 - rename buffer->filename to buffer->path
     - make buffer->path NULL for untitled buffers & fix resulting mess
 - rust-analyzer bug reports:
@@ -1082,6 +1084,7 @@ int main(int argc, char **argv) {
 
 		SDL_SetWindowTitle(window, ted->window_title);
 		SDL_SetCursor(ted->cursor);
+		
 		
 		// annoyingly, SDL_GL_SwapWindow seems to be a busy loop on my laptop for some reason...
 		// enforce a framerate of 60. this isn't ideal but SDL_GetDisplayMode is *extremely slow* (250ms), so we don't really have a choice.

@@ -463,9 +463,9 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 	if (is_notification) {
 		lsp_request_free(request);
 	} else {
-		SDL_LockMutex(lsp->requests_mutex);
+		SDL_LockMutex(lsp->messages_mutex);
 		arr_add(lsp->requests_sent, *request);
-		SDL_UnlockMutex(lsp->requests_mutex);
+		SDL_UnlockMutex(lsp->messages_mutex);
 	}
 }
 
@@ -477,24 +477,38 @@ static void write_response(LSP *lsp, LSPResponse *response) {
 	JSONWriter *o = &writer;
 	LSPRequest *request = &response->request;
 	
-	if (request->id_string)
-		write_key_string(o, "id", request->id_string);
-	else
-		write_key_number(o, "id", request->id);
-	write_key_obj_start(o, "result");
-	
-	switch (response->request.type) {
-	case LSP_REQUEST_WORKSPACE_FOLDERS:
-		write_workspace_folders(o, lsp->workspace_folders);
-		break;
-	default:
-		// this is not a valid client-to-server response.
-		assert(0);
-		break;
-	}
+	write_obj_start(o);
+		if (request->id_string)
+			write_key_string(o, "id", request->id_string);
+		else
+			write_key_number(o, "id", request->id);
+		write_key_string(o, "jsonrpc", "2.0");
+		write_key(o, "result");
+		switch (response->request.type) {
+		case LSP_REQUEST_WORKSPACE_FOLDERS:
+			write_workspace_folders(o, lsp->workspace_folders);
+			break;
+		default:
+			// this is not a valid client-to-server response.
+			assert(0);
+			break;
+		}
 	write_obj_end(o);
 	
 	message_writer_write_and_free(lsp, o);
-	
 	lsp_response_free(response);
+}
+
+static void write_message(LSP *lsp, LSPMessage *message) {
+	switch (message->type) {
+	case LSP_REQUEST:
+		write_request(lsp, &message->u.request);
+		break;
+	case LSP_RESPONSE:
+		write_response(lsp, &message->u.response);
+		break;
+	}
+	// it's okay to free the message here since the request/response part has been zeroed.
+	// (as i'm writing this, this won't do anything but it might in the future)
+	lsp_message_free(message);
 }

@@ -259,15 +259,13 @@ typedef struct LSP {
 	// this is a dynamic array which just keeps growing.
 	// but the user isn't gonna open millions of files so it's fine.
 	LSPDocumentData *document_data;
-	LSPMessage *messages;
 	SDL_mutex *messages_mutex;
-	LSPRequest *requests_client2server;
-	LSPRequest *requests_server2client;
+	LSPMessage *messages_server2client;
+	LSPMessage *messages_client2server;
 	// we keep track of client-to-server requests
 	// so that we can process responses.
 	// this also lets us re-send requests if that's ever necessary.
 	LSPRequest *requests_sent;
-	SDL_mutex *requests_mutex;
 	bool initialized; // has the response to the initialize request been sent?
 	SDL_Thread *communication_thread;
 	SDL_sem *quit_sem;
