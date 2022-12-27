@@ -118,14 +118,15 @@ bool syntax_is_opening_bracket(Language lang, char32_t c) {
 }
 
 // lookup the given string in the keywords table
-static Keyword const *syntax_keyword_lookup(Keyword const *const *all_keywords, size_t n_all_keywords, char32_t const *str, size_t len) {
+static Keyword const *syntax_keyword_lookup(const KeywordList *all_keywords, size_t n_all_keywords, char32_t const *str, size_t len) {
 	if (!len) return NULL;
 	if (str[0] >= n_all_keywords) return NULL;
 
-	Keyword const *keywords = all_keywords[str[0]];
-
+	const KeywordList *list = &all_keywords[str[0]];
+	const Keyword *keywords = list->keywords;
+	size_t nkeywords = list->len;
 	if (keywords) {
-		for (size_t k = 0; keywords[k].str; ++k) {
+		for (size_t k = 0; k < nkeywords; ++k) {
 			if (syntax_keyword_matches(str, len, keywords[k].str)) {
 				return &keywords[k];
 			}
