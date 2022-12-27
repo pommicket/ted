@@ -1,6 +1,5 @@
 /*
 @TODO:
-- handle window/showMessageRequest
 - https://github.com/typescript-language-server/typescript-language-server
    - NOTE: This supports javascript.
      -  We should also add a typescript language (but just use javascript syntax highlighting for now)
@@ -13,6 +12,7 @@
      - go to definition using LSP
      - find usages
      - that thing where it shows you the current function argument
+- check if there are any other non-optional/nice-to-have-support-for server-to-client requests
 - do something with lsp->error
 - document lsp.h and lsp.c.
 - maximum queue size for requests/responses just in case?

@@ -512,6 +512,9 @@ static void write_response(LSP *lsp, LSPResponse *response) {
 				write_workspace_folders(o, lsp->workspace_folders);
 			SDL_UnlockMutex(lsp->workspace_folders_mutex);
 			break;
+		case LSP_REQUEST_SHOW_MESSAGE:
+			write_null(o);
+			break;
 		default:
 			// this is not a valid client-to-server response.
 			assert(0);

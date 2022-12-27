@@ -25,20 +25,20 @@ typedef enum {
 	LSP_REQUEST_NONE,
 	
 	// client-to-server
-	LSP_REQUEST_INITIALIZE,
-	LSP_REQUEST_INITIALIZED,
-	LSP_REQUEST_SHUTDOWN,
-	LSP_REQUEST_EXIT,
-	LSP_REQUEST_DID_OPEN,
-	LSP_REQUEST_DID_CLOSE,
-	LSP_REQUEST_DID_CHANGE,
-	LSP_REQUEST_COMPLETION,
-	LSP_REQUEST_DID_CHANGE_WORKSPACE_FOLDERS,
+	LSP_REQUEST_INITIALIZE, // initialize
+	LSP_REQUEST_INITIALIZED, // initialized
+	LSP_REQUEST_SHUTDOWN, // shutdown
+	LSP_REQUEST_EXIT, // exit
+	LSP_REQUEST_DID_OPEN, // textDocument/didOpen
+	LSP_REQUEST_DID_CLOSE, // textDocument/didClose
+	LSP_REQUEST_DID_CHANGE, // textDocument/didChange
+	LSP_REQUEST_COMPLETION, // textDocument/completion
+	LSP_REQUEST_DID_CHANGE_WORKSPACE_FOLDERS, // workspace/didChangeWorkspaceFolders
 	
 	// server-to-client
-	LSP_REQUEST_SHOW_MESSAGE,
-	LSP_REQUEST_LOG_MESSAGE,
-	LSP_REQUEST_WORKSPACE_FOLDERS, // NOTE: this is handled directly in lsp-parse.c (because it only needs information from the LSP struct)
+	LSP_REQUEST_SHOW_MESSAGE, // window/showMessage and window/showMessageRequest
+	LSP_REQUEST_LOG_MESSAGE, // window/logMessage
+	LSP_REQUEST_WORKSPACE_FOLDERS, // workspace/workspaceFolders - NOTE: this is handled directly in lsp-parse.c (because it only needs information from the LSP struct)
 } LSPRequestType;
 
 typedef struct {

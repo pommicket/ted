@@ -297,6 +297,27 @@ static WarnUnusedResult bool parse_id(JSON *json, LSPRequest *request) {
 	return false;
 }
 
+// handles window/showMessage, window/logMessage, and window/showMessageRequest parameters
+static bool parse_window_message(LSP *lsp, const JSON *json, LSPRequestMessage *m) {
+	JSONObject params = json_force_object(json_get(json, "params"));
+	JSONValue type = json_object_get(json, params, "type");
+	JSONValue message = json_object_get(json, params, "message");
+	if (!lsp_expect_number(lsp, type, "MessageType"))
+		return false;
+	if (!lsp_expect_string(lsp, message, "message string"))
+		return false;
+	
+	int mtype = (int)type.val.number;
+	if (mtype < 1 || mtype > 4) {
+		lsp_set_error(lsp, "Bad MessageType: %g", type.val.number);
+		return false;
+	}
+	
+	m->type = (LSPWindowMessageType)mtype;
+	m->message = json_string_get_alloc(json, message.val.string);
+	return true;
+}
+
 // returns true if `request` was actually filled with a request.
 static bool parse_server2client_request(LSP *lsp, JSON *json, LSPRequest *request) {
 	JSONValue method_value = json_get(json, "method");
@@ -308,34 +329,29 @@ static bool parse_server2client_request(LSP *lsp, JSON *json, LSPRequest *reques
 	
 	if (streq(method, "window/showMessage")) {
 		request->type = LSP_REQUEST_SHOW_MESSAGE;
-		goto window_message;
-	} else if (streq(method, "window/logMessage")) {
-		request->type = LSP_REQUEST_LOG_MESSAGE;
-		window_message:;
-		JSONValue type = json_get(json, "params.type");
-		JSONValue message = json_get(json, "params.message");
-		if (!lsp_expect_number(lsp, type, "MessageType"))
-			return false;
-		if (!lsp_expect_string(lsp, message, "message string"))
-			return false;
-		
-		int mtype = (int)type.val.number;
-		if (mtype < 1 || mtype > 4) {
-			lsp_set_error(lsp, "Bad MessageType: %g", type.val.number);
+		return parse_window_message(lsp, json, &request->data.message);
+	} else if (streq(method, "window/showMessageRequest")) {
+		// we'll deal with the repsonse right here
+		LSPResponse response = {0};
+		LSPRequest *r = &response.request;
+		r->type = LSP_REQUEST_SHOW_MESSAGE;
+		if (!parse_id(json, request)) {
+			debug_println("Bad ID in window/showMessageRequest request. This shouldn't happen.");
 			return false;
 		}
+		lsp_send_response(lsp, &response);
 		
-		LSPRequestMessage *m = &request->data.message;
-		m->type = (LSPWindowMessageType)mtype;
-		m->message = json_string_get_alloc(json, message.val.string);
-		return true;
+		request->type = LSP_REQUEST_SHOW_MESSAGE;
+		return parse_window_message(lsp, json, &request->data.message);
+	} else if (streq(method, "window/logMessage")) {
+		request->type = LSP_REQUEST_LOG_MESSAGE;
+		return parse_window_message(lsp, json, &request->data.message);
 	} else if (streq(method, "workspace/workspaceFolders")) {
 		// we can deal with this request right here
 		LSPResponse response = {0};
 		request = &response.request;
 		request->type = LSP_REQUEST_WORKSPACE_FOLDERS;
 		if (!parse_id(json, request)) {
-			// we can't even send an error response since we have no ID.
 			debug_println("Bad ID in workspace/workspaceFolders request. This shouldn't happen.");
 			return false;
 		}
@@ -343,8 +359,10 @@ static bool parse_server2client_request(LSP *lsp, JSON *json, LSPRequest *reques
 		return false;
 	} else if (str_has_prefix(method, "$/") || str_has_prefix(method, "telemetry/")) {
 		// we can safely ignore this
+	} else if (streq(method, "textDocument/publishDiagnostics")) {
+		// currently ignored
 	} else {
-		lsp_set_error(lsp, "Unrecognized request method: %s", method);
+		debug_println("Unrecognized request method: %s", method);
 	}
 	return false;
 }
@@ -431,6 +449,8 @@ static void process_message(LSP *lsp, JSON *json) {
 			message->type = LSP_REQUEST;
 			message->u.request = request;
 			SDL_UnlockMutex(lsp->messages_mutex);
+		} else {
+			lsp_request_free(&request);
 		}
 	} else {
 		lsp_set_error(lsp, "Bad message from server (no result, no method).");
