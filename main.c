@@ -1,12 +1,10 @@
 /*
 @TODO:
-- HTML https://github.com/Microsoft/vscode/tree/main/extensions/html-language-features/server
 - more LSP stuff:
      - signature help
      - hover
      - go to definition using LSP
      - find usages
-     - that thing where it shows you the current function argument
 - check if there are any other non-optional/nice-to-have-support-for server-to-client requests
 - do something with lsp->error
 - document lsp.h and lsp.c.
