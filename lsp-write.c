@@ -342,10 +342,13 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 	case LSP_REQUEST_WORKSPACE_FOLDERS:
 		assert(0);
 		break;
-	case LSP_REQUEST_INITIALIZED:
 	case LSP_REQUEST_SHUTDOWN:
 	case LSP_REQUEST_EXIT:
 		// no params
+		break;
+	case LSP_REQUEST_INITIALIZED:
+		write_key_obj_start(o, "params");
+		write_obj_end(o);
 		break;
 	case LSP_REQUEST_INITIALIZE: {
 		write_key_obj_start(o, "params");

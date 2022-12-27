@@ -13,7 +13,6 @@
    -  what to do if initialize request takes a long time?
 - delete old sent requests? but make sure requests that just take a long time are okay.
     (if the server never sends a response)
-- what's wrong with gopls?
 - TESTING: make rust-analyzer-slow (waits 10s before sending response)
 - run everything through valgrind ideally with leak checking
 - grep -i -n TODO *.[ch]
