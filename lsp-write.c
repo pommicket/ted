@@ -397,6 +397,9 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 					write_key_obj_start(o, "signatureHelp");
 						// we don't have context support because sending the activeSignatureHelp member is annoying
 						//write_key_bool(o, "contextSupport", true);
+						write_key_obj_start(o, "signatureInformation");
+							write_key_bool(o, "activeParameterSupport", true);
+						write_obj_end(o);
 					write_obj_end(o);
 				write_obj_end(o);
 				write_key_obj_start(o, "workspace");

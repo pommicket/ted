@@ -118,7 +118,6 @@ static void parse_capabilities(LSP *lsp, const JSON *json, JSONObject capabiliti
 	if (signature_help_value.type == JSON_OBJECT) {
 		cap->signature_help_support = true;
 		JSONObject signature_help = signature_help_value.val.object;
-		json_debug_print_object(json, signature_help);
 		JSONArray trigger_chars = json_object_get_array(json, signature_help, "triggerCharacters");
 		lsp->signature_help_trigger_chars = parse_trigger_characters(json, trigger_chars);
 		JSONArray retrigger_chars = json_object_get_array(json, signature_help, "retriggerCharacters");

@@ -1,5 +1,10 @@
 /*
 @TODO:
+Unrecognized request method: language/status
+Unrecognized request method: client/registerCapability
+Unrecognized request method: workspace/executeClientCommand
+- why is jdtls not giving us signatures?
+- why is clangd not giving us active parameter?
 - more LSP stuff:
      - signature help
      - hover

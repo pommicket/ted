@@ -241,6 +241,7 @@ void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer) {
 					if (idx == *tab) {
 						node->active_tab = (u16)(tab - node->tabs);
 						ted->active_node = node;
+						signature_help_retrigger(ted);
 						return;
 					}
 				}
@@ -250,6 +251,7 @@ void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer) {
 	} else {
 		ted->active_node = NULL;
 	}
+	
 }
 
 // set ted->active_buffer to something nice

@@ -430,6 +430,8 @@ typedef struct {
 
 // "signature help" (LSP) is thing that shows the current parameter, etc.
 typedef struct {
+	// should we resend a signature help request this frame?
+	bool retrigger;
 	// if signature_count = 0, signature help is closed
 	u16 signature_count;
 	Signature signatures[SIGNATURE_HELP_MAX];
@@ -553,6 +555,7 @@ typedef struct Ted {
 } Ted;
 
 void autocomplete_close(Ted *ted);
+void signature_help_retrigger(Ted *ted);
 char *buffer_contents_utf8_alloc(TextBuffer *buffer);
 void command_execute(Ted *ted, Command c, i64 argument);
 void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer);

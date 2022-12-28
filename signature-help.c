@@ -1,14 +1,26 @@
 // deals with textDocument/signatureHelp LSP requests
 
-void signature_help_open(Ted *ted, char32_t trigger) {
-	(void)trigger; // for now we don't send context
+void signature_help_send_request(Ted *ted) {
 	TextBuffer *buffer = ted->active_buffer;
 	if (!buffer) return;
 	LSP *lsp = buffer_lsp(buffer);
+	if (!lsp) return;
 	LSPRequest request  = {.type = LSP_REQUEST_SIGNATURE_HELP};
 	LSPRequestSignatureHelp *s = &request.data.signature_help;
 	s->position = buffer_cursor_pos_as_lsp_document_position(buffer);
 	lsp_send_request(lsp, &request);
+	ted->signature_help.retrigger = false;
+}
+
+void signature_help_retrigger(Ted *ted) {
+	// don't just send the request here -- we don't want to send more than
+	// one request per frame.
+	ted->signature_help.retrigger = true;
+}
+
+void signature_help_open(Ted *ted, char32_t trigger) {
+	(void)trigger; // for now we don't send context
+	signature_help_send_request(ted);
 }
 
 bool signature_help_is_open(Ted *ted) {
@@ -66,6 +78,8 @@ void signature_help_process_lsp_response(Ted *ted, const LSPResponse *response) 
 
 void signature_help_frame(Ted *ted) {
 	SignatureHelp *help = &ted->signature_help;
+	if (help->retrigger)
+		signature_help_send_request(ted);
 	u16 signature_count = help->signature_count;
 	if (!signature_count)
 		return;
@@ -74,6 +88,7 @@ void signature_help_frame(Ted *ted) {
 	TextBuffer *buffer = ted->active_buffer;
 	if (!buffer)
 		return;
+	
 	Settings *settings = buffer_settings(buffer);
 	u32 *colors = settings->colors;
 	float border = settings->border_thickness;

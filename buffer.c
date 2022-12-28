@@ -1186,6 +1186,7 @@ void buffer_cursor_move_to_pos(TextBuffer *buffer, BufferPos pos) {
 	buffer->cursor_pos = pos;
 	buffer->selection = false;
 	buffer_scroll_to_cursor(buffer);
+	signature_help_retrigger(buffer->ted);
 }
 
 i64 buffer_cursor_move_left(TextBuffer *buffer, i64 by) {
