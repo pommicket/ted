@@ -325,10 +325,13 @@ static bool parse_signature_help(LSP *lsp, const JSON *json, LSPResponse *respon
 			return false;
 		}
 		
+		#if 0
+		// currently we don't show signature documentation
 		JSONString documentation = get_markup_content(json,
 			json_object_get(json, signature_in, "documentation"));
 		if (documentation.len)
 			signature_out->documentation = lsp_response_add_json_string(response, json, documentation);
+		#endif
 		
 		JSONArray parameters = json_object_get_array(json, signature_in, "parameters");
 		u32 active_parameter = U32_MAX;
@@ -344,19 +347,21 @@ static bool parse_signature_help(LSP *lsp, const JSON *json, LSPResponse *respon
 			JSONObject parameter_info = json_array_get_object(json, parameters, active_parameter);
 			JSONValue parameter_label_value = json_object_get(json, parameter_info, "label");
 			u16 start = 0, end = 0;
+			// parse the parameter label
 			if (parameter_label_value.type == JSON_ARRAY) {
+				// parameter label is specified as UTF-16 character range
 				JSONArray parameter_label = parameter_label_value.val.array;
 				double start_dbl = json_array_get_number(json, parameter_label, 0);
 				double end_dbl = json_array_get_number(json, parameter_label, 1);
-				if (isfinite(start_dbl) && isfinite(end_dbl)) {
+				if (!(isfinite(start_dbl) && isfinite(end_dbl))) {
 					lsp_set_error(lsp, "Bad contents of ParameterInfo.label array.");
 					return false;
 				}
 				start = (u16)start_dbl;
 				end = (u16)end_dbl;
 			} else if (parameter_label_value.type == JSON_STRING) {
+				// parameter label is specified as substring
 				JSONString parameter_label = parameter_label_value.val.string;
-				// this is a substring within the label.
 				char *sig_lbl = json_string_get_alloc(json, label);
 				char *param_lbl = json_string_get_alloc(json, parameter_label);
 				const char *pos = strstr(sig_lbl, param_lbl);

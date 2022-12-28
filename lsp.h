@@ -251,7 +251,6 @@ typedef struct {
 
 typedef struct {
 	LSPString label;
-	LSPString documentation;
 	// NOTE: LSP gives us parameter information for *all*
 	// parameters, but we only really need it for the active parameter.
 	
@@ -259,8 +258,6 @@ typedef struct {
 	// part of it should be highlighted for the active parameter
 	u16 active_start;
 	u16 active_end;
-	// documentation for the active parameter
-	LSPString active_documentation;
 } LSPSignatureInformation;
 
 typedef struct {

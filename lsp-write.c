@@ -365,6 +365,7 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 		write_key_obj_start(o, "params");
 			write_key_number(o, "processId", process_get_id());
 			write_key_obj_start(o, "capabilities");
+				// here are the client capabilities for ted
 				write_key_obj_start(o, "textDocument");
 					write_key_obj_start(o, "completion");
 						// completion capabilities
@@ -398,11 +399,14 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 						write_key_bool(o, "contextSupport", true);
 					write_obj_end(o);
 					write_key_obj_start(o, "signatureHelp");
-						// we don't have context support because sending the activeSignatureHelp member is annoying
-						//write_key_bool(o, "contextSupport", true);
 						write_key_obj_start(o, "signatureInformation");
+							write_key_obj_start(o, "parameterInformation");
+								write_key_bool(o, "labelOffsetSupport", true);
+							write_obj_end(o);
 							write_key_bool(o, "activeParameterSupport", true);
 						write_obj_end(o);
+						// we don't have context support because sending the activeSignatureHelp member is annoying
+						//write_key_bool(o, "contextSupport", true);
 					write_obj_end(o);
 				write_obj_end(o);
 				write_key_obj_start(o, "workspace");
