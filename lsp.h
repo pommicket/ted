@@ -27,6 +27,10 @@ typedef enum {
 	// client-to-server
 	LSP_REQUEST_INITIALIZE, // initialize
 	LSP_REQUEST_INITIALIZED, // initialized
+	// workspace/didChangeConfiguration with parameters specifically for jdtls.
+	// we need this because annoyingly jdtls refuses to give signature help
+	// unless you specifically configure it to do that
+	LSP_REQUEST_JDTLS_CONFIGURATION,
 	LSP_REQUEST_SHUTDOWN, // shutdown
 	LSP_REQUEST_EXIT, // exit
 	LSP_REQUEST_DID_OPEN, // textDocument/didOpen

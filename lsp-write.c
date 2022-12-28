@@ -262,6 +262,8 @@ static const char *lsp_request_method(LSPRequest *request) {
 		return "workspace/workspaceFolders";
 	case LSP_REQUEST_DID_CHANGE_WORKSPACE_FOLDERS:
 		return "workspace/didChangeWorkspaceFolders";
+	case LSP_REQUEST_JDTLS_CONFIGURATION:
+		return "workspace/didChangeConfiguration";
 	}
 	assert(0);
 	return "$/ignore";
@@ -276,6 +278,7 @@ static bool request_type_is_notification(LSPRequestType type) {
 	case LSP_REQUEST_DID_CLOSE:
 	case LSP_REQUEST_DID_CHANGE:
 	case LSP_REQUEST_DID_CHANGE_WORKSPACE_FOLDERS:
+	case LSP_REQUEST_JDTLS_CONFIGURATION:
 		return true;
 	case LSP_REQUEST_INITIALIZE:
 	case LSP_REQUEST_SHUTDOWN:
@@ -499,6 +502,17 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 			write_obj_end(o);
 		write_obj_end(o);
 		} break;
+	case LSP_REQUEST_JDTLS_CONFIGURATION:
+		write_key_obj_start(o, "params");
+			write_key_obj_start(o, "settings");
+				write_key_obj_start(o, "java");
+					write_key_obj_start(o, "signatureHelp");
+						write_key_bool(o, "enabled", true);
+					write_obj_end(o);
+				write_obj_end(o);
+			write_obj_end(o);
+		write_obj_end(o);
+		break;
 	}
 	
 	write_obj_end(o);

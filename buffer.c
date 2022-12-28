@@ -1183,6 +1183,9 @@ i64 buffer_pos_move_down(TextBuffer *buffer, BufferPos *pos, i64 by) {
 
 void buffer_cursor_move_to_pos(TextBuffer *buffer, BufferPos pos) {
 	buffer_pos_validate(buffer, &pos);
+	if (buffer_pos_eq(buffer->cursor_pos, pos)) {
+		return;
+	}
 	buffer->cursor_pos = pos;
 	buffer->selection = false;
 	buffer_scroll_to_cursor(buffer);
@@ -1606,6 +1609,9 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 
 	BufferPos b = {.line = line_idx, .index = index};
 	free(str_alloc);
+	
+	signature_help_retrigger(buffer->ted);
+	
 	return b;
 }
 
@@ -1907,6 +1913,7 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 	buffer_validate_cursor(buffer);
 
 	buffer_lines_modified(buffer, line_idx, line_idx);
+	signature_help_retrigger(buffer->ted);
 }
 
 // Delete characters between the given buffer positions. Returns number of characters deleted.
@@ -2012,11 +2019,12 @@ i64 buffer_backspace_at_pos(TextBuffer *buffer, BufferPos *pos, i64 ntimes) {
 // returns number of characters backspaced
 i64 buffer_backspace_at_cursor(TextBuffer *buffer, i64 ntimes) {
 	i64 ret = 0;
+	BufferPos cursor_pos = buffer->cursor_pos;
 	if (buffer->selection)
 		ret = buffer_delete_selection(buffer);
 	else
-		ret = buffer_backspace_at_pos(buffer, &buffer->cursor_pos, ntimes);
-	buffer_scroll_to_cursor(buffer);
+		ret = buffer_backspace_at_pos(buffer, &cursor_pos, ntimes);
+	buffer_cursor_move_to_pos(buffer, cursor_pos);
 	return ret;
 }
 
@@ -2041,11 +2049,12 @@ void buffer_backspace_words_at_pos(TextBuffer *buffer, BufferPos *pos, i64 nword
 }
 
 void buffer_backspace_words_at_cursor(TextBuffer *buffer, i64 nwords) {
+	BufferPos cursor_pos = buffer->cursor_pos;
 	if (buffer->selection)
 		buffer_delete_selection(buffer);
 	else
-		buffer_backspace_words_at_pos(buffer, &buffer->cursor_pos, nwords);
-	buffer_scroll_to_cursor(buffer);
+		buffer_backspace_words_at_pos(buffer, &cursor_pos, nwords);
+	buffer_cursor_move_to_pos(buffer, cursor_pos);
 }
 
 // puts the inverse edit into `inverse`

@@ -1,9 +1,6 @@
 /*
 @TODO:
-- why is jdtls not giving us signatures?
-- why is clangd not giving us active parameter?
 - more LSP stuff:
-     - signature help
      - hover
      - go to definition using LSP
      - find usages
@@ -780,26 +777,9 @@ int main(int argc, char **argv) {
 								break;
 							}
 						}
-						
-						bool signature_help = false;
-						arr_foreach_ptr(lsp->signature_help_trigger_chars, char32_t, c) {
-							if (*c == last_char) {
-								signature_help = true;
-								break;
-							}
-						}
-						
-						if (signature_help_is_open(ted)) {
-							arr_foreach_ptr(lsp->signature_help_retrigger_chars, char32_t, c) {
-								if (*c == last_char) {
-									signature_help = true;
-									break;
-								}
-							}
-						}
-						
-						if (signature_help)
-							signature_help_open(ted, last_char);
+						// NOTE: we are not checking for signature help trigger
+						// characters because currently we ask for signature
+						// help any time a character is inserted.
 						
 						if (settings->identifier_trigger_characters && is_word(last_char)
 							&& !is_digit(last_char))

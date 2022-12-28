@@ -45,6 +45,7 @@ static void lsp_request_free(LSPRequest *r) {
 	case LSP_REQUEST_SIGNATURE_HELP:
 	case LSP_REQUEST_DID_CLOSE:
 	case LSP_REQUEST_WORKSPACE_FOLDERS:
+	case LSP_REQUEST_JDTLS_CONFIGURATION:
 		break;
 	case LSP_REQUEST_DID_OPEN: {
 		LSPRequestDidOpen *open = &r->data.open;
@@ -132,6 +133,9 @@ static bool lsp_supports_request(LSP *lsp, const LSPRequest *request) {
 	case LSP_REQUEST_SHUTDOWN:
 	case LSP_REQUEST_EXIT:
 		return true;
+	case LSP_REQUEST_JDTLS_CONFIGURATION:
+		// @TODO: check if this is actually jdtls
+		return lsp->language == LANG_JAVA;
 	case LSP_REQUEST_COMPLETION:
 		return cap->completion_support;
 	case LSP_REQUEST_SIGNATURE_HELP:

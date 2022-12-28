@@ -301,14 +301,14 @@ static bool parse_completion(LSP *lsp, const JSON *json, LSPResponse *response) 
 
 static bool parse_signature_help(LSP *lsp, const JSON *json, LSPResponse *response) {
 	JSONObject result = json_force_object(json_get(json, "result"));
-	json_debug_print_object(json, result);printf("\n");
+	//json_debug_print_object(json, result);printf("\n");
 	LSPResponseSignatureHelp *help = &response->data.signature_help;
 	
 	u32 active_signature = 0;
 	double active_signature_dbl = json_object_get_number(json, result, "activeSignature");
 	if (isfinite(active_signature_dbl))
 		active_signature = (u32)active_signature_dbl;
-	double active_signature_active_parameter = json_object_get_number(json, result, "activeParameter");
+	double global_active_parameter = json_object_get_number(json, result, "activeParameter");
 	
 	JSONArray signatures = json_object_get_array(json, result, "signatures");
 	if (active_signature >= signatures.len)
@@ -336,9 +336,9 @@ static bool parse_signature_help(LSP *lsp, const JSON *json, LSPResponse *respon
 		if (isfinite(active_parameter_dbl)) {
 			active_parameter = (u32)active_parameter_dbl;
 		}
-		if (s == active_signature && active_parameter == U32_MAX &&
-			isfinite(active_signature_active_parameter)) {
-			active_parameter = (u32)active_parameter_dbl;
+		if (active_parameter == U32_MAX &&
+			isfinite(global_active_parameter)) {
+			active_parameter = (u32)global_active_parameter;
 		}
 		if (active_parameter < parameters.len) {
 			JSONObject parameter_info = json_array_get_object(json, parameters, active_parameter);
@@ -543,6 +543,14 @@ static void process_message(LSP *lsp, JSON *json) {
 			write_request(lsp, &initialized);
 			// we can now send requests which have nothing to do with initialization
 			lsp->initialized = true;
+			{
+				// configure jdtls so it actually supports signature help
+				// NOTE: this won't send if the LSP isn't jdtls (because of lsp_supports_request)
+				LSPRequest jdtls_configuration = {
+					.type = LSP_REQUEST_JDTLS_CONFIGURATION
+				};
+				lsp_send_request(lsp, &jdtls_configuration);
+			}
 			} break;
 		default:
 			// it's some response we don't care about
