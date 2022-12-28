@@ -1,8 +1,5 @@
 /*
 @TODO:
-Unrecognized request method: language/status
-Unrecognized request method: client/registerCapability
-Unrecognized request method: workspace/executeClientCommand
 - why is jdtls not giving us signatures?
 - why is clangd not giving us active parameter?
 - more LSP stuff:
@@ -12,7 +9,7 @@ Unrecognized request method: workspace/executeClientCommand
      - find usages
 - go through signature help capabilities
 - JSON syntax highlighting
-- separate signature-help setting (dont use trigger-characters)
+- separate signature-help setting
 - check if there are any other non-optional/nice-to-have-support-for server-to-client requests
 - better non-error window/showMessage(Request)
 - document lsp.h and lsp.c.

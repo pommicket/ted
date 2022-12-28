@@ -301,6 +301,7 @@ static bool parse_completion(LSP *lsp, const JSON *json, LSPResponse *response) 
 
 static bool parse_signature_help(LSP *lsp, const JSON *json, LSPResponse *response) {
 	JSONObject result = json_force_object(json_get(json, "result"));
+	json_debug_print_object(json, result);printf("\n");
 	LSPResponseSignatureHelp *help = &response->data.signature_help;
 	
 	u32 active_signature = 0;

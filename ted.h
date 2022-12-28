@@ -557,6 +557,7 @@ typedef struct Ted {
 void autocomplete_close(Ted *ted);
 void signature_help_retrigger(Ted *ted);
 char *buffer_contents_utf8_alloc(TextBuffer *buffer);
+Command command_from_str(char const *str);
 void command_execute(Ted *ted, Command c, i64 argument);
 void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer);
 // the settings of the active buffer, or the default settings if there is no active buffer
@@ -585,3 +586,6 @@ void config_read(Ted *ted, ConfigPart **parts, const char *filename);
 void config_parse(Ted *ted, ConfigPart **parts);
 void config_free(Ted *ted);
 char *settings_get_root_dir(Settings *settings, const char *path);
+void menu_open(Ted *ted, Menu menu);
+void menu_close(Ted *ted);
+void find_update(Ted *ted, bool force);
