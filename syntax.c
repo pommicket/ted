@@ -30,6 +30,7 @@ char const *language_comment_start(Language l) {
 	case LANG_CPP:
 	case LANG_JAVASCRIPT:
 	case LANG_TYPESCRIPT:
+	case LANG_JSON: // JSON technically doesn't have comments but apparently some parsers support this so might as well have this here
 	case LANG_JAVA:
 	case LANG_GO:
 		return "// ";
@@ -40,6 +41,7 @@ char const *language_comment_start(Language l) {
 	case LANG_TEX:
 		return "% ";
 	case LANG_HTML:
+	case LANG_XML:
 		return "<!-- ";
 	case LANG_NONE:
 	case LANG_MARKDOWN:
@@ -118,11 +120,10 @@ bool syntax_is_opening_bracket(Language lang, char32_t c) {
 }
 
 // lookup the given string in the keywords table
-static Keyword const *syntax_keyword_lookup(const KeywordList *all_keywords, size_t n_all_keywords, char32_t const *str, size_t len) {
+static Keyword const *syntax_keyword_lookup(const KeywordList *all_keywords, char32_t const *str, size_t len) {
 	if (!len) return NULL;
-	if (str[0] >= n_all_keywords) return NULL;
 
-	const KeywordList *list = &all_keywords[str[0]];
+	const KeywordList *list = &all_keywords[str[0] % 128];
 	const Keyword *keywords = list->keywords;
 	size_t nkeywords = list->len;
 	if (keywords) {
@@ -289,11 +290,9 @@ static void syntax_highlight_c_cpp(SyntaxState *state_ptr, bool cpp, char32_t co
 				u32 keyword_len = syntax_keyword_len(cpp ? LANG_CPP : LANG_C, line, i, line_len);
 				Keyword const *keyword = NULL;
 				if (cpp)
-					keyword = syntax_keyword_lookup(syntax_all_keywords_cpp, arr_count(syntax_all_keywords_cpp),
-						&line[i], keyword_len);
+					keyword = syntax_keyword_lookup(syntax_all_keywords_cpp, &line[i], keyword_len);
 				if (!keyword)
-					keyword = syntax_keyword_lookup(syntax_all_keywords_c, arr_count(syntax_all_keywords_c),
-					&line[i], keyword_len);
+					keyword = syntax_keyword_lookup(syntax_all_keywords_c, &line[i], keyword_len);
 				
 				if (keyword) {
 					SyntaxCharType type = keyword->type;
@@ -520,8 +519,7 @@ static void syntax_highlight_rust(SyntaxState *state, char32_t const *line, u32 
 			}
 			if (char_types && !in_string && !comment_depth && !in_number) {
 				u32 keyword_len = syntax_keyword_len(LANG_RUST, line, i, line_len);
-				Keyword const *keyword = syntax_keyword_lookup(syntax_all_keywords_rust, arr_count(syntax_all_keywords_rust),
-					&line[i], keyword_len);
+				Keyword const *keyword = syntax_keyword_lookup(syntax_all_keywords_rust, &line[i], keyword_len);
 				if (keyword) {
 					SyntaxCharType type = keyword->type;
 					for (size_t j = 0; j < keyword_len; ++j) {
@@ -649,8 +647,7 @@ static void syntax_highlight_python(SyntaxState *state, char32_t const *line, u3
 			
 			if (char_types && !in_string && !in_number) {
 				u32 keyword_len = syntax_keyword_len(LANG_PYTHON, line, i, line_len);
-				Keyword const *keyword = syntax_keyword_lookup(syntax_all_keywords_python, arr_count(syntax_all_keywords_python),
-					&line[i], keyword_len);
+				Keyword const *keyword = syntax_keyword_lookup(syntax_all_keywords_python, &line[i], keyword_len);
 				if (keyword) {
 					SyntaxCharType type = keyword->type;
 					for (size_t j = 0; j < keyword_len; ++j) {
@@ -1065,8 +1062,7 @@ static void syntax_highlight_html(SyntaxState *state, char32_t const *line, u32 
 						break; // can't be a keyword on its own.
 					
 					u32 keyword_len = syntax_keyword_len(LANG_HTML, line, i, line_len);
-					Keyword const *keyword = syntax_keyword_lookup(syntax_all_keywords_html, arr_count(syntax_all_keywords_html),
-						&line[i], keyword_len);
+					Keyword const *keyword = syntax_keyword_lookup(syntax_all_keywords_html, &line[i], keyword_len);
 					if (keyword) {
 						SyntaxCharType type = keyword->type;
 						for (size_t j = 0; j < keyword_len; ++j) {
@@ -1145,8 +1141,7 @@ static void syntax_highlight_config(SyntaxState *state, char32_t const *line, u3
 			if (is32_ident(line[i-1]) || line[i-1] == '-' || !is32_ident(line[i]))
 				break; // can't be a keyword on its own.
 			u32 keyword_len = syntax_keyword_len(LANG_CONFIG, line, i, line_len);
-			Keyword const *keyword = syntax_keyword_lookup(syntax_all_keywords_config, arr_count(syntax_all_keywords_config),
-				&line[i], keyword_len);
+			Keyword const *keyword = syntax_keyword_lookup(syntax_all_keywords_config, &line[i], keyword_len);
 			if (keyword) {
 				SyntaxCharType type = keyword->type;
 				for (size_t j = 0; j < keyword_len; ++j) {
@@ -1170,8 +1165,9 @@ static void syntax_highlight_config(SyntaxState *state, char32_t const *line, u3
 	}
 }
 
-static void syntax_highlight_javascript_typescript(
-	SyntaxState *state, char32_t const *line, u32 line_len, SyntaxCharType *char_types, bool is_typescript) {
+// highlighting for javascript, typescript, and JSON
+static void syntax_highlight_javascript_like(
+	SyntaxState *state, char32_t const *line, u32 line_len, SyntaxCharType *char_types, Language language) {
 	(void)state;
 	bool string_is_template = (*state & SYNTAX_STATE_JAVASCRIPT_TEMPLATE_STRING) != 0;
 	bool in_multiline_comment = (*state & SYNTAX_STATE_JAVASCRIPT_MULTILINE_COMMENT) != 0;
@@ -1284,10 +1280,21 @@ static void syntax_highlight_javascript_typescript(
 			
 			if (char_types && !in_string && !in_number && !in_multiline_comment) {
 				u32 keyword_len = syntax_keyword_len(LANG_JAVASCRIPT, line, i, line_len);
-				Keyword const *keyword = syntax_keyword_lookup(
-					is_typescript ? syntax_all_keywords_typescript : syntax_all_keywords_javascript,
-					is_typescript ? arr_count(syntax_all_keywords_typescript) : arr_count(syntax_all_keywords_javascript),
-					&line[i], keyword_len);
+				const KeywordList *keywords = NULL;
+				switch (language) {
+				case LANG_JAVASCRIPT:
+					keywords = syntax_all_keywords_javascript;
+					break;
+				case LANG_TYPESCRIPT:
+					keywords = syntax_all_keywords_typescript;
+					break;
+				default:
+					assert(language == LANG_JSON);
+					keywords = syntax_all_keywords_json;
+					break;
+				}
+				
+				Keyword const *keyword = syntax_keyword_lookup(keywords, &line[i], keyword_len);
 				if (keyword) {
 					SyntaxCharType type = keyword->type;
 					for (size_t j = 0; j < keyword_len; ++j) {
@@ -1407,8 +1414,7 @@ static void syntax_highlight_java(SyntaxState *state_ptr, char32_t const *line, 
 			// keywords don't matter for advancing the state
 			if (char_types && !in_multiline_comment && !in_number && !in_string && !in_char) {
 				u32 keyword_len = syntax_keyword_len(LANG_JAVA, line, i, line_len);
-				Keyword const *keyword = syntax_keyword_lookup(syntax_all_keywords_java, arr_count(syntax_all_keywords_java),
-						&line[i], keyword_len);
+				Keyword const *keyword = syntax_keyword_lookup(syntax_all_keywords_java, &line[i], keyword_len);
 				
 				
 				if (keyword) {
@@ -1548,8 +1554,7 @@ static void syntax_highlight_go(SyntaxState *state_ptr, char32_t const *line, u3
 			// keywords don't matter for advancing the state
 			if (char_types && !in_multiline_comment && !in_number && !in_string && !in_char) {
 				u32 keyword_len = syntax_keyword_len(LANG_GO, line, i, line_len);
-				Keyword const *keyword = syntax_keyword_lookup(syntax_all_keywords_go, arr_count(syntax_all_keywords_go),
-						&line[i], keyword_len);
+				Keyword const *keyword = syntax_keyword_lookup(syntax_all_keywords_go, &line[i], keyword_len);
 				
 				
 				if (keyword) {
@@ -1618,6 +1623,7 @@ void syntax_highlight(SyntaxState *state, Language lang, char32_t const *line, u
 		syntax_highlight_markdown(state, line, line_len, char_types);
 		break;
 	case LANG_HTML:
+	case LANG_XML:
 		syntax_highlight_html(state, line, line_len, char_types);
 		break;
 	case LANG_CONFIG:
@@ -1627,10 +1633,13 @@ void syntax_highlight(SyntaxState *state, Language lang, char32_t const *line, u
 		syntax_highlight_config(state, line, line_len, char_types, true);
 		break;
 	case LANG_JAVASCRIPT:
-		syntax_highlight_javascript_typescript(state, line, line_len, char_types, false);
+		syntax_highlight_javascript_like(state, line, line_len, char_types, LANG_JAVASCRIPT);
 		break;
 	case LANG_TYPESCRIPT:
-		syntax_highlight_javascript_typescript(state, line, line_len, char_types, true);
+		syntax_highlight_javascript_like(state, line, line_len, char_types, LANG_TYPESCRIPT);
+		break;
+	case LANG_JSON:
+		syntax_highlight_javascript_like(state, line, line_len, char_types, LANG_JSON);
 		break;
 	case LANG_JAVA:
 		syntax_highlight_java(state, line, line_len, char_types);

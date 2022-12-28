@@ -1,17 +1,38 @@
 // deals with textDocument/signatureHelp LSP requests
 
+static void signature_help_clear(SignatureHelp *help) {
+	for (int i = 0; i < help->signature_count; ++i) {
+		Signature sig = help->signatures[i];
+		free(sig.label_pre);
+		free(sig.label_active);
+		free(sig.label_post);
+	}
+	memset(help->signatures, 0, sizeof help->signatures);
+	help->signature_count = 0;
+}
+
 void signature_help_send_request(Ted *ted) {
+	SignatureHelp *help = &ted->signature_help;
 	Settings *settings = ted_active_settings(ted);
-	if (!settings->signature_help) return;
+	if (!settings->signature_help) {
+		signature_help_clear(help);
+		return;
+	}
 	TextBuffer *buffer = ted->active_buffer;
-	if (!buffer) return;
+	if (!buffer) {
+		signature_help_clear(help);
+		return;
+	}
 	LSP *lsp = buffer_lsp(buffer);
-	if (!lsp) return;
+	if (!lsp) {
+		signature_help_clear(help);
+		return;
+	}
 	LSPRequest request  = {.type = LSP_REQUEST_SIGNATURE_HELP};
 	LSPRequestSignatureHelp *s = &request.data.signature_help;
 	s->position = buffer_cursor_pos_as_lsp_document_position(buffer);
 	lsp_send_request(lsp, &request);
-	ted->signature_help.retrigger = false;
+	help->retrigger = false;
 }
 
 void signature_help_retrigger(Ted *ted) {
@@ -29,15 +50,6 @@ bool signature_help_is_open(Ted *ted) {
 	return ted->signature_help.signature_count > 0;
 }
 
-static void signature_help_clear(SignatureHelp *help) {
-	for (int i = 0; i < help->signature_count; ++i) {
-		Signature sig = help->signatures[i];
-		free(sig.label_pre);
-		free(sig.label_active);
-		free(sig.label_post);
-	}
-	memset(help->signatures, 0, sizeof help->signatures);
-}
 
 void signature_help_close(Ted *ted) {
 	signature_help_clear(&ted->signature_help);

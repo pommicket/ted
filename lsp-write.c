@@ -12,6 +12,8 @@ static const char *lsp_language_id(Language lang) {
 		return "java";
 	case LANG_JAVASCRIPT:
 		return "javascript";
+	case LANG_JSON:
+		return "json";
 	case LANG_TYPESCRIPT:
 		return "typescript";
 	case LANG_MARKDOWN:
@@ -26,6 +28,8 @@ static const char *lsp_language_id(Language lang) {
 		return "html";
 	case LANG_TEX:
 		return "latex";
+	case LANG_XML:
+		return "xml";
 	case LANG_COUNT: break;
 	}
 	assert(0);

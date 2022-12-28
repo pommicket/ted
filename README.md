@@ -101,6 +101,22 @@ the current directory or one of its parents, depending on where `Makefile` is. O
 If a `Cargo.toml` file exists in this directory or one of its parents, F4 will run `cargo build`. You can set the default build command
 in the `[core]` section of the config file.
 
+### ctags vs LSP
+
+`ted` has support for two separate systems for IDE features. `ctags`
+is very lightweight (a ctags installation is just 1.6 MB), and allows
+for go-to-definition and limited autocompletion. This has very low CPU usage,
+and will work just fine on very large projects (for large projects I would
+recommend increasing `tags-max-depth` and turning `regenerate-tags-if-not-found` off).
+
+LSP servers have lots of features but use lots of CPU and memory,
+and may take longer to come up with completions/find definitions, especially
+for large projects. However the LSP server runs in a separate thread, so it will not slow down
+the ordinary text editing features of `ted` (unless the server starts
+using 100% of all CPU cores, which is unlikely).
+
+I would recommend trying out an LSP server if you're unsure about which one to use.
+
 ## LSP support
 
 ted has support for [LSPs](https://microsoft.github.io/language-server-protocol/)!

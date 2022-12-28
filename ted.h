@@ -80,6 +80,8 @@ typedef enum {
 	LANG_GO = 11,
 	LANG_TED_CFG = 12, // like LANG_CONFIG, but with multiline strings.
 	LANG_TYPESCRIPT = 13,
+	LANG_JSON = 14,
+	LANG_XML = 15,
 	LANG_COUNT
 } Language;
 
@@ -103,6 +105,8 @@ static LanguageName const language_names[] = {
 	{LANG_GO, "Go"},
 	{LANG_TED_CFG, "TedCfg"},
 	{LANG_TYPESCRIPT, "TypeScript"},
+	{LANG_JSON, "JSON"},
+	{LANG_XML, "XML"},
 };
 
 static_assert_if_possible(arr_count(language_names) == LANG_COUNT)

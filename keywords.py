@@ -1,4 +1,10 @@
 #!/usr/bin/python3
+
+# creates lists of keywords for all languages
+# to make keyword lookup more efficient, the lists are split up by their first letter
+# (or by their first codepoint, modulo 128, although no language I know of has non-ASCII keywords)
+#       (probably APL but i hope no one is using APL)
+
 import ast
 
 types = [
@@ -23,7 +29,7 @@ def output_keywords(file, keywords, language):
         kwds = list(sorted(kwds))
         file.write('static const Keyword syntax_keywords_{}_{}[{}] = {{'.format(language, c, len(kwds)))
         file.write(','.join(map(lambda kwd: '{"'+kwd[0]+'", ' + types[kwd[1]] + '}', kwds)) + '};\n')
-    file.write('static const KeywordList syntax_all_keywords_{}[] = {{\n'.format(language))
+    file.write('static const KeywordList syntax_all_keywords_{}[128] = {{\n'.format(language))
     file.write('\t'+', '.join(["['{}'] = {{syntax_keywords_{}_{}, arr_count(syntax_keywords_{}_{})}}".format(
     	c, language, c, language, c) for c in sorted(keywords.keys())]) + '\n')
     file.write('};\n\n')
@@ -268,9 +274,10 @@ keywords_javascript = [
 	'let', 'await'
 ]
 
-constants_javascript = [
-	'true', 'false'
+constants_json = [
+	'true', 'false', 'null'
 ]
+constants_javascript = constants_json + ['undefined']
 
 builtins_javascript = [
 	'AggregateError','Array','ArrayBuffer','AsyncFunction','AsyncGenerator','AsyncGeneratorFunction',
@@ -280,8 +287,8 @@ builtins_javascript = [
 	'Int16Array','Int32Array','Int8Array','InternalError','Intl','isFinite','isNaN','JSON','Map','Math',
 	'NaN','Number','Object','parseFloat','parseInt','Promise','Proxy','RangeError','ReferenceError',
 	'Reflect','RegExp','Set','SharedArrayBuffer','String','Symbol','SyntaxError','TypedArray',
-	'TypeError','Uint16Array','Uint32Array','Uint8Array','Uint8ClampedArray','undefined',
-	'URIError','WeakMap','WeakRef','WeakSet','WebAssembly', 'null'
+	'TypeError','Uint16Array','Uint32Array','Uint8Array','Uint8ClampedArray',
+	'URIError','WeakMap','WeakRef','WeakSet','WebAssembly'
 ]
 
 keywords_java = [
@@ -296,6 +303,7 @@ keywords_java = [
 	'class', 'finally', 'long', 'strictfp', 'void',
 	'const', 'float', 'native', 'super', 'volatile', 'while'
 ]
+
 
 keywords_typescript = keywords_javascript + [
 	'public', 'any', 'as', 'module',
@@ -364,6 +372,7 @@ output_keywords(file, cpp_things, 'cpp')
 output_keywords(file, label(keywords_rust, SYNTAX_KEYWORD) + label(builtins_rust, SYNTAX_BUILTIN) + label(constants_rust, SYNTAX_CONSTANT), 'rust')
 output_keywords(file, label(keywords_javascript, SYNTAX_KEYWORD) + label(builtins_javascript, SYNTAX_BUILTIN) +
 	label(constants_javascript, SYNTAX_CONSTANT), 'javascript')
+output_keywords(file, label(constants_json, SYNTAX_CONSTANT), 'json')
 output_keywords(file, label(keywords_typescript, SYNTAX_KEYWORD) + label(builtins_typescript, SYNTAX_BUILTIN) +
 	label(constants_typescript, SYNTAX_CONSTANT), 'typescript')
 output_keywords(file, label(keywords_go, SYNTAX_KEYWORD) + label(builtins_go, SYNTAX_BUILTIN) +

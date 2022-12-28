@@ -1,10 +1,11 @@
 /*
 @TODO:
+- separate GLSL language
+- don't highlight HTML stuff for XML
 - more LSP stuff:
      - hover
      - go to definition using LSP
      - find usages
-- JSON syntax highlighting
 - check if there are any other non-optional/nice-to-have-support-for server-to-client requests
 - better non-error window/showMessage(Request)
 - document lsp.h and lsp.c.
