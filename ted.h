@@ -82,6 +82,7 @@ typedef enum {
 	LANG_TYPESCRIPT = 13,
 	LANG_JSON = 14,
 	LANG_XML = 15,
+	LANG_GLSL = 16,
 	LANG_COUNT
 } Language;
 
@@ -107,6 +108,7 @@ static LanguageName const language_names[] = {
 	{LANG_TYPESCRIPT, "TypeScript"},
 	{LANG_JSON, "JSON"},
 	{LANG_XML, "XML"},
+	{LANG_GLSL, "GLSL"},
 };
 
 static_assert_if_possible(arr_count(language_names) == LANG_COUNT)

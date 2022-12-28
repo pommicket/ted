@@ -33,6 +33,7 @@ char const *language_comment_start(Language l) {
 	case LANG_JSON: // JSON technically doesn't have comments but apparently some parsers support this so might as well have this here
 	case LANG_JAVA:
 	case LANG_GO:
+	case LANG_GLSL:
 		return "// ";
 	case LANG_CONFIG:
 	case LANG_TED_CFG:
@@ -180,7 +181,8 @@ static inline u32 syntax_keyword_len(Language lang, char32_t const *line, u32 i,
 	return keyword_end - i;
 }	
 
-static void syntax_highlight_c_cpp(SyntaxState *state_ptr, bool cpp, char32_t const *line, u32 line_len, SyntaxCharType *char_types) {
+// highlighting for C, C++, and GLSL
+static void syntax_highlight_c_cpp(SyntaxState *state_ptr, Language lang, char32_t const *line, u32 line_len, SyntaxCharType *char_types) {
 	SyntaxState state = *state_ptr;
 	bool in_preprocessor = (state & SYNTAX_STATE_CPP_PREPROCESSOR) != 0;
 	bool in_string = (state & SYNTAX_STATE_CPP_STRING) != 0;
@@ -287,13 +289,22 @@ static void syntax_highlight_c_cpp(SyntaxState *state_ptr, bool cpp, char32_t co
 			
 			// keywords don't matter for advancing the state
 			if (char_types && !in_single_line_comment && !in_multi_line_comment && !in_number && !in_string && !in_preprocessor && !in_char) {
-				u32 keyword_len = syntax_keyword_len(cpp ? LANG_CPP : LANG_C, line, i, line_len);
+				u32 keyword_len = syntax_keyword_len(lang, line, i, line_len);
 				Keyword const *keyword = NULL;
-				if (cpp)
+				switch (lang) {
+				case LANG_CPP:
 					keyword = syntax_keyword_lookup(syntax_all_keywords_cpp, &line[i], keyword_len);
-				if (!keyword)
+					if (!keyword)
+						keyword = syntax_keyword_lookup(syntax_all_keywords_c, &line[i], keyword_len);
+					break;
+				case LANG_GLSL:
+					keyword = syntax_keyword_lookup(syntax_all_keywords_glsl, &line[i], keyword_len);
+					break;
+				default:
+					assert(lang == LANG_C);
 					keyword = syntax_keyword_lookup(syntax_all_keywords_c, &line[i], keyword_len);
-				
+					break;
+				}
 				if (keyword) {
 					SyntaxCharType type = keyword->type;
 					for (size_t j = 0; j < keyword_len; ++j) {
@@ -307,7 +318,7 @@ static void syntax_highlight_c_cpp(SyntaxState *state_ptr, bool cpp, char32_t co
 		} break;
 		}
 		if (c != '\\') backslashes = 0;
-		if (in_number && !syntax_number_continues(LANG_CPP, line, line_len, i)) {
+		if (in_number && !syntax_number_continues(lang, line, line_len, i)) {
 			in_number = false;
 		}
 
@@ -1605,10 +1616,13 @@ void syntax_highlight(SyntaxState *state, Language lang, char32_t const *line, u
 			memset(char_types, 0, line_len * sizeof *char_types);
 		break;
 	case LANG_C:
-		syntax_highlight_c_cpp(state, false, line, line_len, char_types);
+		syntax_highlight_c_cpp(state, LANG_C, line, line_len, char_types);
 		break;
 	case LANG_CPP:
-		syntax_highlight_c_cpp(state, true, line, line_len, char_types);
+		syntax_highlight_c_cpp(state, LANG_CPP, line, line_len, char_types);
+		break;
+	case LANG_GLSL:
+		syntax_highlight_c_cpp(state, LANG_GLSL, line, line_len, char_types);
 		break;
 	case LANG_RUST:
 		syntax_highlight_rust(state, line, line_len, char_types);

@@ -1,6 +1,5 @@
 /*
 @TODO:
-- separate GLSL language
 - don't highlight HTML stuff for XML
 - more LSP stuff:
      - hover

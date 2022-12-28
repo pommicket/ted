@@ -30,6 +30,9 @@ static const char *lsp_language_id(Language lang) {
 		return "latex";
 	case LANG_XML:
 		return "xml";
+	case LANG_GLSL:
+		// not specified as of LSP 3.17, but this seems like the natural choice
+		return "glsl";
 	case LANG_COUNT: break;
 	}
 	assert(0);
