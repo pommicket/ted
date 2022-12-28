@@ -1,5 +1,3 @@
-
-
 static const char *lsp_language_id(Language lang) {
 	switch (lang) {
 	case LANG_CONFIG:
@@ -228,6 +226,13 @@ static void write_workspace_folders(JSONWriter *o, LSPDocumentID *workspace_fold
 	write_arr_end(o);
 }
 
+static void write_document_position(JSONWriter *o, LSPDocumentPosition pos) {
+	write_key_obj_start(o, "textDocument");
+		write_key_file_uri(o, "uri", pos.document);
+	write_obj_end(o);
+	write_key_position(o, "position", pos.pos);
+}
+
 static const char *lsp_request_method(LSPRequest *request) {
 	switch (request->type) {
 	case LSP_REQUEST_NONE: break;
@@ -454,10 +459,7 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 	case LSP_REQUEST_COMPLETION: {
 		const LSPRequestCompletion *completion = &request->data.completion;
 		write_key_obj_start(o, "params");
-			write_key_obj_start(o, "textDocument");
-				write_key_file_uri(o, "uri", completion->position.document);
-			write_obj_end(o);
-			write_key_position(o, "position", completion->position.pos);
+			write_document_position(o, completion->position);
 			const LSPCompletionContext *context = &completion->context;
 			LSPCompletionTriggerKind trigger_kind = context->trigger_kind;
 			if (trigger_kind != LSP_TRIGGER_NONE) {
@@ -467,6 +469,12 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 						write_key_string(o, "triggerCharacter", context->trigger_character);
 				write_obj_end(o);
 			}
+		write_obj_end(o);
+	} break;
+	case LSP_REQUEST_SIGNATURE_HELP: {
+		const LSPRequestSignatureHelp *help = &request->data.signature_help;
+		write_key_obj_start(o, "params");
+			write_document_position(o, help->position);
 		write_obj_end(o);
 	} break;
 	case LSP_REQUEST_DID_CHANGE_WORKSPACE_FOLDERS: {

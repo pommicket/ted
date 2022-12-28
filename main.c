@@ -6,6 +6,7 @@
      - go to definition using LSP
      - find usages
 - go through signature help capabilities
+- JSON syntax highlighting
 - separate signature-help setting (dont use trigger-characters)
 - check if there are any other non-optional/nice-to-have-support-for server-to-client requests
 - do something with lsp->error

@@ -1,5 +1,5 @@
 // print server-to-client communication
-#define LSP_SHOW_S2C 0
+#define LSP_SHOW_S2C 1
 // print client-to-server communication
 #define LSP_SHOW_C2S 0
 
@@ -42,6 +42,7 @@ static void lsp_request_free(LSPRequest *r) {
 	case LSP_REQUEST_SHUTDOWN:
 	case LSP_REQUEST_EXIT:
 	case LSP_REQUEST_COMPLETION:
+	case LSP_REQUEST_SIGNATURE_HELP:
 	case LSP_REQUEST_DID_CLOSE:
 	case LSP_REQUEST_WORKSPACE_FOLDERS:
 		break;
@@ -73,6 +74,9 @@ static void lsp_response_free(LSPResponse *r) {
 	switch (r->request.type) {
 	case LSP_REQUEST_COMPLETION:
 		arr_free(r->data.completion.items);
+		break;
+	case LSP_REQUEST_SIGNATURE_HELP:
+		arr_free(r->data.signature_help.signatures);
 		break;
 	default:
 		break;
@@ -130,6 +134,8 @@ static bool lsp_supports_request(LSP *lsp, const LSPRequest *request) {
 		return true;
 	case LSP_REQUEST_COMPLETION:
 		return cap->completion_support;
+	case LSP_REQUEST_SIGNATURE_HELP:
+		return cap->signature_help_support;
 	case LSP_REQUEST_DID_CHANGE_WORKSPACE_FOLDERS:
 		return cap->workspace_folders_support;
 	}

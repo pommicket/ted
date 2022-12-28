@@ -245,6 +245,26 @@ typedef struct {
 	LSPCompletionItem *items;
 } LSPResponseCompletion;
 
+typedef struct {
+	LSPString label;
+	LSPString documentation;
+	// NOTE: LSP gives us parameter information for *all*
+	// parameters, but we only really need it for the active parameter.
+	
+	// (UTF-16) indices into `label` indicating which
+	// part of it should be highlighted for the active parameter
+	u16 active_start;
+	u16 active_end;
+	// documentation for the active parameter
+	LSPString active_documentation;
+} LSPSignatureInformation;
+
+typedef struct {
+	// NOTE: the "active" signature will be the first one
+	// in this array.
+	LSPSignatureInformation *signatures;
+} LSPResponseSignatureHelp;
+
 
 typedef LSPRequestType LSPResponseType;
 typedef struct {
@@ -255,6 +275,7 @@ typedef struct {
 	char *string_data;
 	union {
 		LSPResponseCompletion completion;
+		LSPResponseSignatureHelp signature_help;
 	} data;
 } LSPResponse;
 

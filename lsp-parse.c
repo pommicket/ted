@@ -132,6 +132,18 @@ static void parse_capabilities(LSP *lsp, const JSON *json, JSONObject capabiliti
 	}
 }
 
+static JSONString get_markup_content(const JSON *json, JSONValue markup_value) {
+	// some fields are of type string | MarkupContent (e.g. completion documentation)
+	// this converts either one to a string.
+	if (markup_value.type == JSON_STRING) {
+		return markup_value.val.string;
+	} else if (markup_value.type == JSON_OBJECT) {
+		return json_object_get_string(json, markup_value.val.object, "value");
+	} else {
+		return (JSONString){0};
+	}
+}
+
 static bool parse_completion(LSP *lsp, const JSON *json, LSPResponse *response) {
 	// deal with textDocument/completion response.
 	// result: CompletionItem[] | CompletionList | null
@@ -229,16 +241,8 @@ static bool parse_completion(LSP *lsp, const JSON *json, LSPResponse *response) 
 			item->text_edit.type = (LSPTextEditType)edit_type;
 		}
 		
-		JSONString documentation = {0};
 		JSONValue documentation_value = json_object_get(json, item_object, "documentation");
-		// the "documentation" field is either just a string or an object containing
-		// a type ("markdown" or "plaintext") and a string.
-		if (documentation_value.type == JSON_STRING) {
-			documentation = documentation_value.val.string;
-		} else if (documentation_value.type == JSON_OBJECT) {
-			documentation = json_object_get_string(json, documentation_value.val.object,
-				"value");
-		}
+		JSONString documentation = get_markup_content(json, documentation_value);
 		if (documentation.len) {
 			if (documentation.len > 1000) {
 				// rust has some docs which are *20,000* bytes long
@@ -288,6 +292,56 @@ static bool parse_completion(LSP *lsp, const JSON *json, LSPResponse *response) 
 	
 	qsort_with_context(completion->items, items.len, sizeof *completion->items,
 		completion_qsort_cmp, response);
+	
+	return true;
+}
+
+static bool parse_signature_help(LSP *lsp, const JSON *json, LSPResponse *response) {
+	JSONObject result = json_force_object(json_get(json, "result"));
+	LSPResponseSignatureHelp *help = &response->data.signature_help;
+	
+	u32 active_signature = 0;
+	double active_signature_dbl = json_object_get_number(json, result, "activeSignature");
+	if (isnormal(active_signature_dbl))
+		active_signature = (u32)active_signature_dbl;
+	double active_signature_active_parameter = json_object_get_number(json, result, "activeParameter");
+	
+	JSONArray signatures = json_object_get_array(json, result, "signatures");
+	if (active_signature >= signatures.len)
+		active_signature = 0;
+	for (u32 s = 0; s < signatures.len; ++s) {
+		// parse SignatureInformation
+		LSPSignatureInformation *signature_out = arr_addp(help->signatures);
+		JSONObject signature_in = json_array_get_object(json, signatures, s);
+		JSONString label = json_object_get_string(json, signature_in, "label");
+		signature_out->label = lsp_response_add_json_string(response, json, label);
+		JSONString documentation = get_markup_content(json,
+			json_object_get(json, signature_in, "documentation"));
+		if (documentation.len)
+			signature_out->documentation = lsp_response_add_json_string(response, json, documentation);
+		
+		JSONArray parameters = json_object_get_array(json, signature_in, "parameters");
+		u32 active_parameter = U32_MAX;
+		double active_parameter_dbl = json_object_get_number(json, signature_in, "activeParameter");
+		if (isnormal(active_parameter_dbl)) {
+			active_parameter = (u32)active_parameter_dbl;
+		}
+		if (s == active_signature && active_parameter == U32_MAX &&
+			isnormal(active_signature_active_parameter)) {
+			active_parameter = (u32)active_parameter_dbl;
+		}
+		if (active_parameter < parameters.len) {
+			JSONObject parameter_info = json_array_get_object(json, parameters, active_parameter);
+			@TODO
+		}
+	}
+	
+	if (active_signature != 0) {
+		//make sure active signature is #0
+		LSPSignatureInformation active = help->signatures[active_signature];
+		arr_remove(help->signatures, active_signature);
+		arr_insert(help->signatures, 0, active);
+	}
 	
 	return true;
 }
@@ -424,6 +478,9 @@ static void process_message(LSP *lsp, JSON *json) {
 		switch (response_to.type) {
 		case LSP_REQUEST_COMPLETION:
 			add_to_messages = parse_completion(lsp, json, &response);
+			break;
+		case LSP_REQUEST_SIGNATURE_HELP:
+			add_to_messages = parse_signature_help(lsp, json, &response);
 			break;
 		case LSP_REQUEST_INITIALIZE: {
 			// it's the response to our initialize request!
