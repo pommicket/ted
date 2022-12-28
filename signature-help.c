@@ -1,6 +1,8 @@
 // deals with textDocument/signatureHelp LSP requests
 
 void signature_help_send_request(Ted *ted) {
+	Settings *settings = ted_active_settings(ted);
+	if (!settings->signature_help) return;
 	TextBuffer *buffer = ted->active_buffer;
 	if (!buffer) return;
 	LSP *lsp = buffer_lsp(buffer);
@@ -42,6 +44,9 @@ void signature_help_close(Ted *ted) {
 }
 
 void signature_help_process_lsp_response(Ted *ted, const LSPResponse *response) {
+	Settings *settings = ted_active_settings(ted);
+	if (!settings->signature_help) return;
+	
 	if (response->request.type != LSP_REQUEST_SIGNATURE_HELP)
 		return;
 	SignatureHelp *help = &ted->signature_help;
@@ -77,6 +82,10 @@ void signature_help_process_lsp_response(Ted *ted, const LSPResponse *response) 
 }
 
 void signature_help_frame(Ted *ted) {
+	Settings *settings = ted_active_settings(ted);
+	if (!settings->signature_help)
+		return;
+	
 	SignatureHelp *help = &ted->signature_help;
 	if (help->retrigger)
 		signature_help_send_request(ted);
@@ -89,7 +98,6 @@ void signature_help_frame(Ted *ted) {
 	if (!buffer)
 		return;
 	
-	Settings *settings = buffer_settings(buffer);
 	u32 *colors = settings->colors;
 	float border = settings->border_thickness;
 	

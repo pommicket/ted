@@ -259,6 +259,7 @@ static OptionBool const options_bool[] = {
 	{"indent-with-spaces", &options_zero.indent_with_spaces, true},
 	{"trigger-characters", &options_zero.trigger_characters, true},
 	{"identifier-trigger-characters", &options_zero.identifier_trigger_characters, true},
+	{"signature-help", &options_zero.signature_help, true},
 	{"lsp-enabled", &options_zero.lsp_enabled, true},
 };
 static OptionU8 const options_u8[] = {

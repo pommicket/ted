@@ -4,9 +4,7 @@
      - hover
      - go to definition using LSP
      - find usages
-- go through signature help capabilities
 - JSON syntax highlighting
-- separate signature-help setting
 - check if there are any other non-optional/nice-to-have-support-for server-to-client requests
 - better non-error window/showMessage(Request)
 - document lsp.h and lsp.c.

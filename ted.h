@@ -172,6 +172,9 @@ typedef struct {
 } GlRcSAB;
 
 typedef struct {
+	// NOTE: to add more options to ted, add fields here,
+	// and change the options_<type> global constant in config.c
+	
 	SettingsContext context;
 	float cursor_blink_time_on, cursor_blink_time_off;
 	u32 colors[COLOR_COUNT];
@@ -191,6 +194,7 @@ typedef struct {
 	bool indent_with_spaces;
 	bool trigger_characters;
 	bool identifier_trigger_characters;
+	bool signature_help;
 	bool lsp_enabled;
 	u8 tab_width;
 	u8 cursor_width;
