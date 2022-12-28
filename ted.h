@@ -417,9 +417,22 @@ typedef struct {
 	Rect rect; // rectangle where the autocomplete menu is (needed to avoid interpreting autocomplete clicks as other clicks)
 } Autocomplete;
 
+typedef struct {
+	// displayed normal
+	char *label_pre;
+	// displayed bold
+	char *label_active;
+	// displayed normal
+	char *label_post;
+} Signature;
+
+#define SIGNATURE_HELP_MAX 5
+
 // "signature help" (LSP) is thing that shows the current parameter, etc.
 typedef struct {
 	bool open;
+	u16 signature_count;
+	Signature signatures[SIGNATURE_HELP_MAX];
 } SignatureHelp;
 
 

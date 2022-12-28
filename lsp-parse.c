@@ -201,7 +201,7 @@ static bool parse_completion(LSP *lsp, const JSON *json, LSPResponse *response) 
 		};
 		
 		double kind = json_object_get_number(json, item_object, "kind");
-		if (isnormal(kind) && kind >= LSP_COMPLETION_KIND_MIN && kind <= LSP_COMPLETION_KIND_MAX) {
+		if (isfinite(kind) && kind >= LSP_COMPLETION_KIND_MIN && kind <= LSP_COMPLETION_KIND_MAX) {
 			item->kind = (LSPCompletionKind)kind;
 		}
 		
@@ -302,7 +302,7 @@ static bool parse_signature_help(LSP *lsp, const JSON *json, LSPResponse *respon
 	
 	u32 active_signature = 0;
 	double active_signature_dbl = json_object_get_number(json, result, "activeSignature");
-	if (isnormal(active_signature_dbl))
+	if (isfinite(active_signature_dbl))
 		active_signature = (u32)active_signature_dbl;
 	double active_signature_active_parameter = json_object_get_number(json, result, "activeParameter");
 	
@@ -315,6 +315,12 @@ static bool parse_signature_help(LSP *lsp, const JSON *json, LSPResponse *respon
 		JSONObject signature_in = json_array_get_object(json, signatures, s);
 		JSONString label = json_object_get_string(json, signature_in, "label");
 		signature_out->label = lsp_response_add_json_string(response, json, label);
+		size_t label_len_utf16 = unicode_utf16_len(lsp_response_string(response, signature_out->label));
+		if (label_len_utf16 == (size_t)-1) {
+			lsp_set_error(lsp, "Bad UTF-8 in SignatureInformation.label");
+			return false;
+		}
+		
 		JSONString documentation = get_markup_content(json,
 			json_object_get(json, signature_in, "documentation"));
 		if (documentation.len)
@@ -323,16 +329,52 @@ static bool parse_signature_help(LSP *lsp, const JSON *json, LSPResponse *respon
 		JSONArray parameters = json_object_get_array(json, signature_in, "parameters");
 		u32 active_parameter = U32_MAX;
 		double active_parameter_dbl = json_object_get_number(json, signature_in, "activeParameter");
-		if (isnormal(active_parameter_dbl)) {
+		if (isfinite(active_parameter_dbl)) {
 			active_parameter = (u32)active_parameter_dbl;
 		}
 		if (s == active_signature && active_parameter == U32_MAX &&
-			isnormal(active_signature_active_parameter)) {
+			isfinite(active_signature_active_parameter)) {
 			active_parameter = (u32)active_parameter_dbl;
 		}
 		if (active_parameter < parameters.len) {
 			JSONObject parameter_info = json_array_get_object(json, parameters, active_parameter);
-			@TODO
+			JSONValue parameter_label_value = json_object_get(json, parameter_info, "label");
+			u16 start = 0, end = 0;
+			if (parameter_label_value.type == JSON_ARRAY) {
+				JSONArray parameter_label = parameter_label_value.val.array;
+				double start_dbl = json_array_get_number(json, parameter_label, 0);
+				double end_dbl = json_array_get_number(json, parameter_label, 1);
+				if (isfinite(start_dbl) && isfinite(end_dbl)) {
+					lsp_set_error(lsp, "Bad contents of ParameterInfo.label array.");
+					return false;
+				}
+				start = (u16)start_dbl;
+				end = (u16)end_dbl;
+			} else if (parameter_label_value.type == JSON_STRING) {
+				JSONString parameter_label = parameter_label_value.val.string;
+				// this is a substring within the label.
+				char *sig_lbl = json_string_get_alloc(json, label);
+				char *param_lbl = json_string_get_alloc(json, parameter_label);
+				const char *pos = strstr(sig_lbl, param_lbl);
+				if (pos) {
+					start = (u16)(pos - sig_lbl);
+					end = (u16)(start + strlen(param_lbl));
+				}
+				free(sig_lbl);
+				free(param_lbl);
+			} else {
+				lsp_set_error(lsp, "Bad type for ParameterInfo.label");
+				return false;
+			}
+			
+			
+			if (start > end || end > label_len_utf16) {
+				lsp_set_error(lsp, "Bad range for ParameterInfo.label: %u-%u within signature label of length %u", start, end, label.len);
+				return false;
+			}
+			
+			signature_out->active_start = start;
+			signature_out->active_end = end;
 		}
 	}
 	

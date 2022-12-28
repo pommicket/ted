@@ -152,4 +152,46 @@ static size_t unicode_utf32_to_utf8(char *s, char32_t c32) {
 		return (size_t)-1;
 	}
 }
+
+
+// get the number of UTF-16 codepoints needed to encode `str`.
+// returns (size_t)-1 on bad UTF-8
+static size_t unicode_utf16_len(const char *str) {
+	size_t len = 0;
+	char32_t c = 0;
+	while (*str) {
+		size_t n = unicode_utf8_to_utf32(&c, str, 4);
+		if (n >= (size_t)-2)
+			return (size_t)-1;
+		if (c >= 0x10000)
+			len += 2;
+		else
+			len += 1;
+		str += n;
+	}
+	return len;
+}
+
+// returns the UTF-8 offset from `str` which corresponds to a UTF-16 offset of utf16_offset (rounds down if utf16_offset is in the middle of a codepoint).
+// returns strlen(str) if utf16_offset == unicode_utf16_len(str)
+// returns (size_t)-1 on bad UTF-8, or if utf16_offset > unicode_utf16_len(str)
+static size_t unicode_utf16_to_utf8_offset(const char *str, size_t utf16_offset) {
+	size_t offset = 0;
+	char32_t c = 0;
+	while (*str) {
+		size_t n = unicode_utf8_to_utf32(&c, str, 4);
+		if (n >= (size_t)-2)
+			return (size_t)-1;
+		size_t u = c >= 0x10000 ? 2 : 1;
+		if (utf16_offset < u)
+			return offset;
+		utf16_offset -= u;
+		offset += n;
+		str += n;
+	}
+	if (utf16_offset == 0)
+		return offset;
+	return SIZE_MAX;
+}
+
 #endif // UNICODE_H_

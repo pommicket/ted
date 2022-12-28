@@ -9,7 +9,7 @@
 - JSON syntax highlighting
 - separate signature-help setting (dont use trigger-characters)
 - check if there are any other non-optional/nice-to-have-support-for server-to-client requests
-- do something with lsp->error
+- better non-error window/showMessage(Request)
 - document lsp.h and lsp.c.
 - maximum queue size for requests/responses just in case?
    - idea: configurable timeout
@@ -905,6 +905,7 @@ int main(int argc, char **argv) {
 					case LSP_RESPONSE: {
 						LSPResponse *r = &message.u.response;
 						autocomplete_process_lsp_response(ted, r);
+						signature_help_process_lsp_response(ted, r);
 						} break;
 					}
 					lsp_message_free(&message);
@@ -1036,6 +1037,12 @@ int main(int argc, char **argv) {
 			if (buffer_haserr(buffer)) {
 				ted_seterr_to_buferr(ted, buffer);
 				buffer_clearerr(buffer);
+			}
+		}
+		for (int i = 0; ted->lsps[i]; ++i) {
+			LSP *lsp = ted->lsps[i];
+			if (lsp_get_error(lsp, NULL, 0, false)) {
+				lsp_get_error(lsp, ted->error, sizeof ted->error, true);
 			}
 		}
 

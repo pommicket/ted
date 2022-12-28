@@ -273,6 +273,7 @@ typedef struct {
 	// to avoid doing a ton of allocations+frees,
 	// they're all stored here.
 	char *string_data;
+	// one of these is filled based on request.type
 	union {
 		LSPResponseCompletion completion;
 		LSPResponseSignatureHelp signature_help;
