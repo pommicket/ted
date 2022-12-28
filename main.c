@@ -787,7 +787,7 @@ int main(int argc, char **argv) {
 							}
 						}
 						
-						if (ted->signature_help.open) {
+						if (signature_help_is_open(ted)) {
 							arr_foreach_ptr(lsp->signature_help_retrigger_chars, char32_t, c) {
 								if (*c == last_char) {
 									signature_help = true;
@@ -1010,9 +1010,9 @@ int main(int argc, char **argv) {
 			if (ted->nodes_used[0]) {
 				float y1 = padding;
 				node_frame(ted, node, rect4(x1, y1, x2, y));
-				if (ted->autocomplete.open) {
+				if (ted->autocomplete.open)
 					autocomplete_frame(ted);
-				}
+				signature_help_frame(ted);
 			} else {
 				autocomplete_close(ted);
 				text_utf8_anchored(font, "Press Ctrl+O to open a file or Ctrl+N to create a new one.",

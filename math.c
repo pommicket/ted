@@ -687,6 +687,12 @@ static Rect rect4(float x1, float y1, float x2, float y2) {
 	return rect(V2(x1,y1), V2(x2-x1, y2-y1));
 }
 
+static Rect rect_xywh(float x, float y, float w, float h) {
+	assert(w >= 0);
+	assert(h >= 0);
+	return rect(V2(x, y), V2(w, h));
+}
+
 static Rect rect_centered(v2 center, v2 size) {
 	Rect r;
 	r.pos = v2_sub(center, v2_scale(size, 0.5f));

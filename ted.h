@@ -430,7 +430,7 @@ typedef struct {
 
 // "signature help" (LSP) is thing that shows the current parameter, etc.
 typedef struct {
-	bool open;
+	// if signature_count = 0, signature help is closed
 	u16 signature_count;
 	Signature signatures[SIGNATURE_HELP_MAX];
 } SignatureHelp;

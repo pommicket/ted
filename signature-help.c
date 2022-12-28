@@ -11,6 +11,10 @@ void signature_help_open(Ted *ted, char32_t trigger) {
 	lsp_send_request(lsp, &request);
 }
 
+bool signature_help_is_open(Ted *ted) {
+	return ted->signature_help.signature_count > 0;
+}
+
 static void signature_help_clear(SignatureHelp *help) {
 	for (int i = 0; i < help->signature_count; ++i) {
 		Signature sig = help->signatures[i];
@@ -19,6 +23,10 @@ static void signature_help_clear(SignatureHelp *help) {
 		free(sig.label_post);
 	}
 	memset(help->signatures, 0, sizeof help->signatures);
+}
+
+void signature_help_close(Ted *ted) {
+	signature_help_clear(&ted->signature_help);
 }
 
 void signature_help_process_lsp_response(Ted *ted, const LSPResponse *response) {
@@ -51,8 +59,60 @@ void signature_help_process_lsp_response(Ted *ted, const LSPResponse *response) 
 		signature->label_pre = strn_dup(label, active_start);
 		signature->label_active = strn_dup(label + active_start, active_end - active_start);
 		signature->label_post = str_dup(label + active_end);
-		printf("%s*%s*%s\n",signature->label_pre,signature->label_active,signature->label_post);
 	}
 	
 	help->signature_count = (u16)signature_count;
+}
+
+void signature_help_frame(Ted *ted) {
+	SignatureHelp *help = &ted->signature_help;
+	u16 signature_count = help->signature_count;
+	if (!signature_count)
+		return;
+	Font *font = ted->font;
+	Font *font_bold = ted->font_bold;
+	TextBuffer *buffer = ted->active_buffer;
+	if (!buffer)
+		return;
+	Settings *settings = buffer_settings(buffer);
+	u32 *colors = settings->colors;
+	float border = settings->border_thickness;
+	
+	float width = buffer->x2 - buffer->x1;
+	float height = FLT_MAX;
+	// make sure signature help doesn't take up too much space
+	while (1) {
+		height = font->char_height * signature_count;
+		if (height < (buffer->y2 - buffer->y1) * 0.25f)
+			break;
+		--signature_count;
+		if (signature_count == 0) return;
+	}
+	float x = buffer->x1, y = buffer->y2 - height;
+	gl_geometry_rect(rect_xywh(x, y - border, width, border),
+		colors[COLOR_AUTOCOMPLETE_BORDER]);
+	gl_geometry_rect(rect_xywh(x, y, width, height),
+		colors[COLOR_AUTOCOMPLETE_BG]);
+	
+	// draw the signatures
+	for (int s = 0; s < signature_count; ++s) {
+		const Signature *signature = &help->signatures[s];
+		TextRenderState state = text_render_state_default;
+		state.x = x;
+		state.y = y;
+		state.min_x = x;
+		state.min_y = y;
+		state.max_x = buffer->x2;
+		state.max_y = buffer->y2;
+		rgba_u32_to_floats(colors[COLOR_TEXT], state.color);
+		
+		text_utf8_with_state(font, &state, signature->label_pre);
+		text_utf8_with_state(font_bold, &state, signature->label_active);
+		text_utf8_with_state(font, &state, signature->label_post);
+		y += font->char_height;
+	}
+	
+	gl_geometry_draw();
+	text_render(font);
+	text_render(font_bold);
 }
