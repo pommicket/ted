@@ -163,6 +163,7 @@ static bool is_keyword(Language lang, char32_t c) {
 			return true;
 		break;
 	case LANG_HTML:
+	case LANG_XML:
 		if (c == '-' || c == '=')
 			return true;
 		break;
@@ -182,7 +183,7 @@ static inline u32 syntax_keyword_len(Language lang, char32_t const *line, u32 i,
 }	
 
 // highlighting for C, C++, and GLSL
-static void syntax_highlight_c_cpp(SyntaxState *state_ptr, Language lang, char32_t const *line, u32 line_len, SyntaxCharType *char_types) {
+static void syntax_highlight_c_cpp(SyntaxState *state_ptr, char32_t const *line, u32 line_len, SyntaxCharType *char_types, Language lang) {
 	SyntaxState state = *state_ptr;
 	bool in_preprocessor = (state & SYNTAX_STATE_CPP_PREPROCESSOR) != 0;
 	bool in_string = (state & SYNTAX_STATE_CPP_STRING) != 0;
@@ -988,7 +989,8 @@ static bool is_html_tag_char(char32_t c) {
 	return c == '<' || c == '/' || c == '!' || c == ':' || is32_alnum(c);
 }
 
-static void syntax_highlight_html(SyntaxState *state, char32_t const *line, u32 line_len, SyntaxCharType *char_types) {
+// highlights XML and HTML
+static void syntax_highlight_xml(SyntaxState *state, char32_t const *line, u32 line_len, SyntaxCharType *char_types, Language lang) {
 	bool comment = (*state & SYNTAX_STATE_HTML_COMMENT) != 0;
 	bool in_sgl_string = false; // 'string'
 	bool in_dbl_string = false; // "string"
@@ -1072,7 +1074,12 @@ static void syntax_highlight_html(SyntaxState *state, char32_t const *line, u32 
 					if ((i && is32_ident(line[i - 1])) || !is32_ident(line[i]))
 						break; // can't be a keyword on its own.
 					
-					u32 keyword_len = syntax_keyword_len(LANG_HTML, line, i, line_len);
+					if (lang == LANG_XML)
+						break; // XML has no keywords
+					
+					assert(lang == LANG_HTML);
+					
+					u32 keyword_len = syntax_keyword_len(lang, line, i, line_len);
 					Keyword const *keyword = syntax_keyword_lookup(syntax_all_keywords_html, &line[i], keyword_len);
 					if (keyword) {
 						SyntaxCharType type = keyword->type;
@@ -1616,13 +1623,13 @@ void syntax_highlight(SyntaxState *state, Language lang, char32_t const *line, u
 			memset(char_types, 0, line_len * sizeof *char_types);
 		break;
 	case LANG_C:
-		syntax_highlight_c_cpp(state, LANG_C, line, line_len, char_types);
+		syntax_highlight_c_cpp(state, line, line_len, char_types, LANG_C);
 		break;
 	case LANG_CPP:
-		syntax_highlight_c_cpp(state, LANG_CPP, line, line_len, char_types);
+		syntax_highlight_c_cpp(state, line, line_len, char_types, LANG_CPP);
 		break;
 	case LANG_GLSL:
-		syntax_highlight_c_cpp(state, LANG_GLSL, line, line_len, char_types);
+		syntax_highlight_c_cpp(state, line, line_len, char_types, LANG_GLSL);
 		break;
 	case LANG_RUST:
 		syntax_highlight_rust(state, line, line_len, char_types);
@@ -1637,8 +1644,10 @@ void syntax_highlight(SyntaxState *state, Language lang, char32_t const *line, u
 		syntax_highlight_markdown(state, line, line_len, char_types);
 		break;
 	case LANG_HTML:
+		syntax_highlight_xml(state, line, line_len, char_types, LANG_HTML);
+		break;
 	case LANG_XML:
-		syntax_highlight_html(state, line, line_len, char_types);
+		syntax_highlight_xml(state, line, line_len, char_types, LANG_XML);
 		break;
 	case LANG_CONFIG:
 		syntax_highlight_config(state, line, line_len, char_types, false);

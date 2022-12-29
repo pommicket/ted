@@ -1,6 +1,5 @@
 /*
 @TODO:
-- don't highlight HTML stuff for XML
 - more LSP stuff:
      - hover
      - go to definition using LSP
@@ -19,6 +18,8 @@
 --- LSP MERGE ---
 - improve structure of ted source code to make LSP completions better
       (make every c file a valid translation unit)
+- CSS highlighting
+- more documentation generally (development.md or something?)
 - rename buffer->filename to buffer->path
     - make buffer->path NULL for untitled buffers & fix resulting mess
 - rust-analyzer bug reports:
