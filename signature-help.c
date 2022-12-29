@@ -14,7 +14,7 @@ static void signature_help_clear(SignatureHelp *help) {
 void signature_help_send_request(Ted *ted) {
 	SignatureHelp *help = &ted->signature_help;
 	Settings *settings = ted_active_settings(ted);
-	if (!settings->signature_help) {
+	if (!settings->signature_help_enabled) {
 		signature_help_clear(help);
 		return;
 	}
@@ -57,7 +57,7 @@ void signature_help_close(Ted *ted) {
 
 void signature_help_process_lsp_response(Ted *ted, const LSPResponse *response) {
 	Settings *settings = ted_active_settings(ted);
-	if (!settings->signature_help) return;
+	if (!settings->signature_help_enabled) return;
 	
 	if (response->request.type != LSP_REQUEST_SIGNATURE_HELP)
 		return;
@@ -95,7 +95,7 @@ void signature_help_process_lsp_response(Ted *ted, const LSPResponse *response) 
 
 void signature_help_frame(Ted *ted) {
 	Settings *settings = ted_active_settings(ted);
-	if (!settings->signature_help)
+	if (!settings->signature_help_enabled)
 		return;
 	
 	SignatureHelp *help = &ted->signature_help;

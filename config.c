@@ -259,8 +259,9 @@ static OptionBool const options_bool[] = {
 	{"indent-with-spaces", &options_zero.indent_with_spaces, true},
 	{"trigger-characters", &options_zero.trigger_characters, true},
 	{"identifier-trigger-characters", &options_zero.identifier_trigger_characters, true},
-	{"signature-help", &options_zero.signature_help, true},
+	{"signature-help-enabled", &options_zero.signature_help_enabled, true},
 	{"lsp-enabled", &options_zero.lsp_enabled, true},
+	{"hover-enabled", &options_zero.hover_enabled, true},
 };
 static OptionU8 const options_u8[] = {
 	{"tab-width", &options_zero.tab_width, 1, 100, true},

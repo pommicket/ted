@@ -130,6 +130,8 @@ Press Ctrl+space to autocomplete. If there is only one possible completion from 
 Otherwise, you'll get a popup showing all possible completions. You can press tab to select a completion (or click on it), and press
 Ctrl+space/Ctrl+shift+space to cycle between suggestions.
 
+Hover over a variable or function and press Shift to see its type and documentation ("hover information").
+
 If these features aren't working properly and you don't know why, try running ted in a terminal (non-Windows) or a debugger (Windows)
 so you can see the stderr output from the server.
 

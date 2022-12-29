@@ -152,8 +152,9 @@ typedef struct {
 	bool indent_with_spaces;
 	bool trigger_characters;
 	bool identifier_trigger_characters;
-	bool signature_help;
+	bool signature_help_enabled;
 	bool lsp_enabled;
+	bool hover_enabled;
 	u8 tab_width;
 	u8 cursor_width;
 	u8 undo_save_time;

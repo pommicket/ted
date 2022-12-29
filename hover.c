@@ -76,6 +76,9 @@ void hover_process_lsp_response(Ted *ted, LSPResponse *response) {
 }
 
 void hover_frame(Ted *ted, double dt) {
+	const Settings *settings = ted_active_settings(ted);
+	if (!settings->hover_enabled)
+		return;
 	Hover *hover = &ted->hover;
 	
 	bool shift_down = SDL_GetKeyboardState(NULL)[SDL_SCANCODE_LSHIFT]
@@ -112,7 +115,6 @@ void hover_frame(Ted *ted, double dt) {
 	
 	
 	
-	const Settings *settings = ted_active_settings(ted);
 	const float padding = settings->padding;
 	const float border = settings->border_thickness;
 	const u32 *colors = settings->colors;

@@ -5,7 +5,6 @@
      - find usages
      - refactoring?
 - test full unicode position handling
-- hover-enabled, hover-time settings
 - check if there are any other non-optional/nice-to-have-support-for server-to-client requests
 - better non-error window/showMessage(Request)
 - document lsp.h and lsp.c.
