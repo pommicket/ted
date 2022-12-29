@@ -1453,6 +1453,12 @@ LSPDocumentPosition buffer_pos_to_lsp_document_position(TextBuffer *buffer, Buff
 	return docpos;
 }
 
+BufferPos buffer_pos_from_lsp(TextBuffer *buffer, LSPPosition lsp_pos) {
+	BufferPos pos = {.line = lsp_pos.line};
+	abort(); // @TODO
+	return pos;
+}
+
 LSPPosition buffer_cursor_pos_as_lsp_position(TextBuffer *buffer) {
 	return buffer_pos_to_lsp_position(buffer, buffer->cursor_pos);
 }

@@ -408,6 +408,8 @@ typedef struct {
 	// we use this to check if we need to refresh it.
 	LSPDocumentPosition requested_position;
 	LSPID requested_lsp;
+	BufferPos range_start;
+	BufferPos range_end;
 } Hover;
 
 

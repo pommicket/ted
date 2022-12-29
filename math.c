@@ -681,6 +681,13 @@ static Rect rect(v2 pos, v2 size) {
 	return r;
 }
 
+static Rect rect_endpoints(v2 e1, v2 e2) {
+	Rect r;
+	r.pos = e1;
+	r.size = v2_sub(e2, e1);
+	return r;
+}
+
 static Rect rect4(float x1, float y1, float x2, float y2) {
 	assert(x2 >= x1);
 	assert(y2 >= y1);

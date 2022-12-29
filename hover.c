@@ -7,7 +7,7 @@ void hover_close(Ted *ted) {
 	hover->text = NULL;
 }
 
-static bool get_hover_position(Ted *ted, LSPDocumentPosition *pos, LSP **lsp) {
+static bool get_hover_position(Ted *ted, LSPDocumentPosition *pos, TextBuffer **pbuffer, LSP **lsp) {
 	// find the buffer where the mouse is
 	for (int i = 0; i < TED_MAX_BUFFERS; ++i) {
 		TextBuffer *buffer = &ted->buffers[i];
@@ -16,8 +16,9 @@ static bool get_hover_position(Ted *ted, LSPDocumentPosition *pos, LSP **lsp) {
 		if (!l) continue;
 		BufferPos mouse_pos = {0};
 		if (buffer_pixels_to_pos(buffer, ted->mouse_pos, &mouse_pos)) {
-			*pos = buffer_pos_to_lsp_document_position(buffer, mouse_pos);
-			*lsp = l;
+			if (pos) *pos = buffer_pos_to_lsp_document_position(buffer, mouse_pos);
+			if (pbuffer) *pbuffer = buffer;
+			if (lsp) *lsp = l;
 			return true;
 		}
 	}
@@ -28,7 +29,7 @@ void hover_send_request(Ted *ted) {
 	LSPRequest request = {.type = LSP_REQUEST_HOVER};
 	LSPRequestHover *h = &request.data.hover;
 	LSP *lsp = NULL;
-	if (get_hover_position(ted, &h->position, &lsp)) {
+	if (get_hover_position(ted, &h->position, NULL, &lsp)) {
 		hover->requested_position = h->position;
 		hover->requested_lsp = lsp->id;
 		lsp_send_request(lsp, &request);
@@ -42,8 +43,15 @@ void hover_process_lsp_response(Ted *ted, LSPResponse *response) {
 	Hover *hover = &ted->hover;
 	LSPResponseHover *hover_response = &response->data.hover;
 	free(hover->text);
-	hover->text = NULL;
 	
+	TextBuffer *buffer=0;
+	get_hover_position(ted, NULL, &buffer, NULL);
+	
+	hover->text = NULL;
+	if (buffer) {
+		hover->range_start = buffer_pos_from_lsp(buffer, hover_response->range.start);
+		hover->range_end = buffer_pos_from_lsp(buffer, hover_response->range.end);
+	}
 	const char *contents = lsp_response_string(response, hover_response->contents);
 	if (*contents) {
 		hover->text = str_dup(contents);
@@ -74,10 +82,11 @@ void hover_frame(Ted *ted, double dt) {
 		return;
 	}
 	
+	TextBuffer *buffer=0;
 	{
 		LSPDocumentPosition pos={0};
 		LSP *lsp=0;
-		if (get_hover_position(ted, &pos, &lsp)) {
+		if (get_hover_position(ted, &pos, &buffer, &lsp)) {
 			if (lsp->id != hover->requested_lsp
 				|| !lsp_document_position_eq(pos, hover->requested_position)) {
 				// refresh hover
@@ -89,8 +98,7 @@ void hover_frame(Ted *ted, double dt) {
 		}
 	}
 	
-	if (!hover->text)
-		return;
+	
 	
 	const Settings *settings = ted_active_settings(ted);
 	const float padding = settings->padding;
@@ -99,29 +107,41 @@ void hover_frame(Ted *ted, double dt) {
 	const char *text = hover->text;
 	Font *font = ted->font;
 	float x = ted->mouse_pos.x, y = ted->mouse_pos.y;
-	TextRenderState state = text_render_state_default;
-	state.x = state.min_x = x;
-	state.y = state.min_y = y;
-	state.render = false;
-	state.wrap = true;
-	state.max_x = x + 400;
-	state.max_y = ted->window_height;
-	text_utf8_with_state(font, &state, text);
-	float width = (float)(state.x_largest - x);
-	float height = (float)(state.y_largest - y) + font->char_height;
-	if (height > 300) {
-		height = 300;
-	}
-	state.x = x;
-	state.y = y;
-	state.render = true;
-	state.max_y = y + height;
 	
-	Rect rect = rect_xywh(x - padding, y - padding, width + 2*padding, height + 2*padding);
-	gl_geometry_rect(rect, colors[COLOR_HOVER_BG]);
-	gl_geometry_rect_border(rect, border, colors[COLOR_HOVER_BORDER]);
-	rgba_u32_to_floats(colors[COLOR_HOVER_TEXT], state.color);
-	text_utf8_with_state(font, &state, text);
+	if (hover->text) {
+		TextRenderState state = text_render_state_default;
+		state.x = state.min_x = x;
+		state.y = state.min_y = y;
+		state.render = false;
+		state.wrap = true;
+		state.max_x = x + 400;
+		state.max_y = ted->window_height;
+		text_utf8_with_state(font, &state, text);
+		float width = (float)(state.x_largest - x);
+		float height = (float)(state.y_largest - y) + font->char_height;
+		if (height > 300) {
+			height = 300;
+		}
+		state.x = x;
+		state.y = y;
+		state.render = true;
+		state.max_y = y + height;
+		
+		Rect rect = rect_xywh(x - padding, y - padding, width + 2*padding, height + 2*padding);
+		gl_geometry_rect(rect, colors[COLOR_HOVER_BG]);
+		gl_geometry_rect_border(rect, border, colors[COLOR_HOVER_BORDER]);
+		rgba_u32_to_floats(colors[COLOR_HOVER_TEXT], state.color);
+		text_utf8_with_state(font, &state, text);
+	}
+	if (!buffer_pos_eq(hover->range_start, hover->range_end)) {
+		// draw the highlight
+		v2 range_start = buffer_pos_to_pixels(buffer, hover->range_start);
+		v2 range_end = buffer_pos_to_pixels(buffer, hover->range_end);
+		range_end.y += font->char_height;
+		Rect rect = rect_endpoints(range_start, range_end);
+		gl_geometry_rect(rect, colors[COLOR_HOVER_BG]);//@TODO: HOVER_HL color
+	}
+	
 	gl_geometry_draw();
 	text_render(font);
 }
