@@ -136,7 +136,7 @@ void find_update(Ted *ted, bool force) {
 	find_free_pattern(ted);
 
 	if (find_compile_pattern(ted)) {
-		BufferPos pos = buffer_start_of_file(buffer);
+		BufferPos pos = buffer_pos_start_of_file(buffer);
 		BufferPos best_scroll_candidate = {U32_MAX, U32_MAX};
 		BufferPos cursor_pos = buffer->cursor_pos;
 		// find all matches

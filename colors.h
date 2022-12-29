@@ -35,6 +35,7 @@ typedef enum {
 	COLOR_HOVER_BG,
 	COLOR_HOVER_BORDER,
 	COLOR_HOVER_TEXT,
+	COLOR_HOVER_HL,
 
 	COLOR_YES,
 	COLOR_NO,
@@ -102,6 +103,7 @@ static ColorName const color_names[] = {
 	{COLOR_HOVER_BORDER, "hover-border"},
 	{COLOR_HOVER_BG, "hover-bg"},
 	{COLOR_HOVER_TEXT, "hover-text"},
+	{COLOR_HOVER_HL, "hover-hl"},
 	{COLOR_YES, "yes"},
 	{COLOR_NO, "no"},
 	{COLOR_CANCEL, "cancel"},

@@ -365,7 +365,7 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 					*p = PATH_SEPARATOR;
 
 			if (file_selector_cd(ted, fs, dir_name)) {
-				buffer_delete_chars_at_pos(line_buffer, buffer_start_of_file(line_buffer), last_path_sep + 1); // delete up to and including the last path separator
+				buffer_delete_chars_at_pos(line_buffer, buffer_pos_start_of_file(line_buffer), last_path_sep + 1); // delete up to and including the last path separator
 				buffer_clear_undo_redo(line_buffer);			
 			} else {
 				// delete up to first path separator in line buffer

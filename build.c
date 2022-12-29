@@ -207,7 +207,7 @@ static void build_frame(Ted *ted, float x1, float y1, float x2, float y2) {
 					} else {
 						if (ret == 0) ret = 1;
 						// got a code point
-						buffer_insert_char_at_pos(buffer, buffer_end_of_file(buffer), c);
+						buffer_insert_char_at_pos(buffer, buffer_pos_end_of_file(buffer), c);
 						p += ret;
 					}
 				}
@@ -216,7 +216,7 @@ static void build_frame(Ted *ted, float x1, float y1, float x2, float y2) {
 
 		if (any_text_inserted) {
 			// show bottom of output (only relevant if there are no build errors)
-			buffer->cursor_pos = buffer_end_of_file(buffer);
+			buffer->cursor_pos = buffer_pos_end_of_file(buffer);
 			buffer_scroll_to_cursor(buffer);
 		}
 

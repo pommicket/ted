@@ -24,6 +24,7 @@ static bool get_hover_position(Ted *ted, LSPDocumentPosition *pos, TextBuffer **
 	}
 	return false;
 }
+
 void hover_send_request(Ted *ted) {
 	Hover *hover = &ted->hover;
 	LSPRequest request = {.type = LSP_REQUEST_HOVER};
@@ -42,12 +43,23 @@ void hover_process_lsp_response(Ted *ted, LSPResponse *response) {
 	
 	Hover *hover = &ted->hover;
 	LSPResponseHover *hover_response = &response->data.hover;
-	free(hover->text);
 	
 	TextBuffer *buffer=0;
-	get_hover_position(ted, NULL, &buffer, NULL);
+	LSPDocumentPosition pos={0};
+	LSP *lsp=0;
+	get_hover_position(ted, &pos, &buffer, &lsp);
 	
-	hover->text = NULL;
+	if (hover->text // we already have hover text
+		&& (
+		lsp->id != hover->requested_lsp // this request is from a different LSP
+		|| !lsp_document_position_eq(response->request.data.hover.position, pos) // this request is for a different position
+		)) {
+		// this is a stale request. ignore it
+		return;
+	}
+	
+	free(hover->text); hover->text = NULL;
+	
 	if (buffer) {
 		hover->range_start = buffer_pos_from_lsp(buffer, hover_response->range.start);
 		hover->range_end = buffer_pos_from_lsp(buffer, hover_response->range.end);
@@ -106,23 +118,65 @@ void hover_frame(Ted *ted, double dt) {
 	const u32 *colors = settings->colors;
 	const char *text = hover->text;
 	Font *font = ted->font;
-	float x = ted->mouse_pos.x, y = ted->mouse_pos.y;
+	float x = ted->mouse_pos.x, y = ted->mouse_pos.y + font->char_height;
+	float char_height = font->char_height;
 	
+	BufferPos range_start = hover->range_start, range_end = hover->range_end;
+	if (!buffer_pos_eq(range_start, range_end)) {
+		// draw the highlight
+		if (range_start.line == range_end.line) {
+			v2 a = buffer_pos_to_pixels(buffer, range_start);
+			v2 b = buffer_pos_to_pixels(buffer, range_end);
+			b.y += char_height;
+			gl_geometry_rect(rect_endpoints(a, b), colors[COLOR_HOVER_HL]);
+		} else if (range_end.line - range_start.line < 1000) { // prevent gigantic highlights from slowing things down
+			// multiple lines.
+			v2 a = buffer_pos_to_pixels(buffer, range_start);
+			v2 b = buffer_pos_to_pixels(buffer, buffer_pos_end_of_line(buffer, range_start.line));
+			b.y += char_height;
+			gl_geometry_rect(rect_endpoints(a, b), colors[COLOR_HOVER_HL]);
+			
+			for (u32 line = range_start.line + 1; line < range_end.line; ++line) {
+				// these lines are fully contained in the range.
+				BufferPos start = buffer_pos_start_of_line(buffer, line);
+				BufferPos end = buffer_pos_end_of_line(buffer, line);
+				a = buffer_pos_to_pixels(buffer, start);
+				b = buffer_pos_to_pixels(buffer, end);
+				b.y += char_height;
+				gl_geometry_rect(rect_endpoints(a, b), colors[COLOR_HOVER_HL]);
+			}
+			
+			// last line
+			a = buffer_pos_to_pixels(buffer, buffer_pos_start_of_line(buffer, range_end.line));
+			b = buffer_pos_to_pixels(buffer, range_end);
+			b.y += char_height;
+			gl_geometry_rect(rect_endpoints(a, b), colors[COLOR_HOVER_HL]);
+		}
+		
+	}
 	if (hover->text) {
+		float max_width = 400;
 		TextRenderState state = text_render_state_default;
 		state.x = state.min_x = x;
 		state.y = state.min_y = y;
 		state.render = false;
 		state.wrap = true;
-		state.max_x = x + 400;
+		state.max_x = x + max_width;
 		state.max_y = ted->window_height;
 		text_utf8_with_state(font, &state, text);
 		float width = (float)(state.x_largest - x);
-		float height = (float)(state.y_largest - y) + font->char_height;
+		float height = (float)(state.y_largest - y) + char_height;
 		if (height > 300) {
 			height = 300;
 		}
-		state.x = x;
+		
+		if (x + width > ted->window_width)
+			x -= width; // open left
+		if (y + height > ted->window_height)
+			y -= height + char_height * 2; // open up
+		state.x = state.min_x = x;
+		state.y = state.min_y = y;
+		state.max_x = x + max_width;
 		state.y = y;
 		state.render = true;
 		state.max_y = y + height;
@@ -132,14 +186,6 @@ void hover_frame(Ted *ted, double dt) {
 		gl_geometry_rect_border(rect, border, colors[COLOR_HOVER_BORDER]);
 		rgba_u32_to_floats(colors[COLOR_HOVER_TEXT], state.color);
 		text_utf8_with_state(font, &state, text);
-	}
-	if (!buffer_pos_eq(hover->range_start, hover->range_end)) {
-		// draw the highlight
-		v2 range_start = buffer_pos_to_pixels(buffer, hover->range_start);
-		v2 range_end = buffer_pos_to_pixels(buffer, hover->range_end);
-		range_end.y += font->char_height;
-		Rect rect = rect_endpoints(range_start, range_end);
-		gl_geometry_rect(rect, colors[COLOR_HOVER_BG]);//@TODO: HOVER_HL color
 	}
 	
 	gl_geometry_draw();

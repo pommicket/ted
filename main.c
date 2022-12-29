@@ -3,8 +3,8 @@
 - more LSP stuff:
      - go to definition using LSP
      - find usages
+     - refactoring?
 - test full unicode position handling
-- highlight hover range
 - hover-enabled, hover-time settings
 - check if there are any other non-optional/nice-to-have-support-for server-to-client requests
 - better non-error window/showMessage(Request)

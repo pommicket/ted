@@ -63,7 +63,7 @@ static bool parse_position(LSP *lsp, const JSON *json, JSONValue pos_value, LSPP
 		|| !lsp_expect_number(lsp, character, "document column number"))
 		return false;
 	pos->line = (u32)line.val.number;
-	pos->character = (u32)line.val.number;
+	pos->character = (u32)character.val.number;
 	return true;
 }
 

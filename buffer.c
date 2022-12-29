@@ -233,12 +233,12 @@ char32_t buffer_char_after_cursor(TextBuffer *buffer) {
 	return buffer_char_after_pos(buffer, buffer->cursor_pos);
 }
 
-BufferPos buffer_start_of_file(TextBuffer *buffer) {
+BufferPos buffer_pos_start_of_file(TextBuffer *buffer) {
 	(void)buffer;
 	return (BufferPos){.line = 0, .index = 0};
 }
 
-BufferPos buffer_end_of_file(TextBuffer *buffer) {
+BufferPos buffer_pos_end_of_file(TextBuffer *buffer) {
 	return (BufferPos){.line = buffer->nlines - 1, .index = buffer->lines[buffer->nlines-1].len};
 }
 
@@ -493,7 +493,7 @@ static BufferPos buffer_pos_advance(TextBuffer *buffer, BufferPos pos, size_t nc
 		index = 0;
 		++line;
 	}
-	return buffer_end_of_file(buffer);
+	return buffer_pos_end_of_file(buffer);
 }
 
 
@@ -947,6 +947,7 @@ void buffer_scroll(TextBuffer *buffer, double dx, double dy) {
 
 // returns the position of the character at the given position in the buffer.
 v2 buffer_pos_to_pixels(TextBuffer *buffer, BufferPos pos) {
+	buffer_pos_validate(buffer, &pos);
 	u32 line = pos.line, index = pos.index;
 	// we need to convert the index to a column
 	u32 col = buffer_index_to_column(buffer, line, index);
@@ -1105,7 +1106,7 @@ i64 buffer_pos_move_horizontally(TextBuffer *buffer, BufferPos *p, i64 by) {
 	} else if (by > 0) {
 		i64 by_start = by;
 		if (p->line >= buffer->nlines)
-			*p = buffer_end_of_file(buffer); // invalid position; move to end of buffer
+			*p = buffer_pos_end_of_file(buffer); // invalid position; move to end of buffer
 		Line *line = &buffer->lines[p->line];
 		while (by > 0) {
 			if (by <= line->len - p->index) {
@@ -1386,11 +1387,11 @@ void buffer_cursor_move_to_end_of_line(TextBuffer *buffer) {
 }
 
 void buffer_cursor_move_to_start_of_file(TextBuffer *buffer) {
-	buffer_cursor_move_to_pos(buffer, buffer_start_of_file(buffer));
+	buffer_cursor_move_to_pos(buffer, buffer_pos_start_of_file(buffer));
 }
 
 void buffer_cursor_move_to_end_of_file(TextBuffer *buffer) {
-	buffer_cursor_move_to_pos(buffer, buffer_end_of_file(buffer));
+	buffer_cursor_move_to_pos(buffer, buffer_pos_end_of_file(buffer));
 }
 
 
@@ -1454,9 +1455,22 @@ LSPDocumentPosition buffer_pos_to_lsp_document_position(TextBuffer *buffer, Buff
 }
 
 BufferPos buffer_pos_from_lsp(TextBuffer *buffer, LSPPosition lsp_pos) {
-	BufferPos pos = {.line = lsp_pos.line};
-	abort(); // @TODO
-	return pos;
+	if (lsp_pos.line >= buffer->nlines) {
+		return buffer_pos_end_of_file(buffer);
+	}
+	const Line *line = &buffer->lines[lsp_pos.line];
+	const char32_t *str = line->str;
+	u32 character = 0;
+	for (u32 i = 0; i < line->len; ++i) {
+		if (character >= lsp_pos.character)
+			return (BufferPos){.line = lsp_pos.line, .index = i};
+		if (str[i] < 0x10000)
+			character += 1;
+		else
+			character += 2;
+	}
+
+	return buffer_pos_end_of_line(buffer, lsp_pos.line);
 }
 
 LSPPosition buffer_cursor_pos_as_lsp_position(TextBuffer *buffer) {
@@ -1680,11 +1694,11 @@ void buffer_select_to_end_of_line(TextBuffer *buffer) {
 }
 
 void buffer_select_to_start_of_file(TextBuffer *buffer) {
-	buffer_select_to_pos(buffer, buffer_start_of_file(buffer));
+	buffer_select_to_pos(buffer, buffer_pos_start_of_file(buffer));
 }
 
 void buffer_select_to_end_of_file(TextBuffer *buffer) {
-	buffer_select_to_pos(buffer, buffer_end_of_file(buffer));
+	buffer_select_to_pos(buffer, buffer_pos_end_of_file(buffer));
 }
 
 // select the word the cursor is inside of
@@ -1710,8 +1724,8 @@ void buffer_select_line(TextBuffer *buffer) {
 }
 
 void buffer_select_all(TextBuffer *buffer) {
-	buffer_cursor_move_to_pos(buffer, buffer_start_of_file(buffer));
-	buffer_select_to_pos(buffer, buffer_end_of_file(buffer));
+	buffer_cursor_move_to_pos(buffer, buffer_pos_start_of_file(buffer));
+	buffer_select_to_pos(buffer, buffer_pos_end_of_file(buffer));
 }
 
 // stop selecting
@@ -2372,7 +2386,7 @@ bool buffer_save(TextBuffer *buffer) {
 					// if the last line isn't empty, add a newline to the end of the file
 					char32_t c = '\n';
 					String32 s = {&c, 1};
-					buffer_insert_text_at_pos(buffer, buffer_end_of_file(buffer), s);
+					buffer_insert_text_at_pos(buffer, buffer_pos_end_of_file(buffer), s);
 				}
 			}
 
