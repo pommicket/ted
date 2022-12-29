@@ -1,3 +1,5 @@
+#define write_bool lsp_write_bool // prevent naming conflict
+
 static const char *lsp_language_id(Language lang) {
 	switch (lang) {
 	case LANG_CONFIG:
@@ -267,6 +269,8 @@ static const char *lsp_request_method(LSPRequest *request) {
 		return "textDocument/signatureHelp";
 	case LSP_REQUEST_HOVER:
 		return "textDocument/hover";
+	case LSP_REQUEST_DEFINITION:
+		return "textDocument/definition";
 	case LSP_REQUEST_WORKSPACE_FOLDERS:
 		return "workspace/workspaceFolders";
 	case LSP_REQUEST_DID_CHANGE_WORKSPACE_FOLDERS:
@@ -296,6 +300,7 @@ static bool request_type_is_notification(LSPRequestType type) {
 	case LSP_REQUEST_COMPLETION:
 	case LSP_REQUEST_SIGNATURE_HELP:
 	case LSP_REQUEST_HOVER:
+	case LSP_REQUEST_DEFINITION:
 	case LSP_REQUEST_WORKSPACE_FOLDERS:
 		return false;
 	}
@@ -512,6 +517,12 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 			write_document_position(o, hover->position);
 		write_obj_end(o);
 	} break;
+	case LSP_REQUEST_DEFINITION: {
+		const LSPRequestDefinition *def = &request->data.definition;
+		write_key_obj_start(o, "params");
+			write_document_position(o, def->position);
+		write_obj_end(o);
+	} break;
 	case LSP_REQUEST_DID_CHANGE_WORKSPACE_FOLDERS: {
 		const LSPRequestDidChangeWorkspaceFolders *w = &request->data.change_workspace_folders;
 		write_key_obj_start(o, "params");
@@ -605,3 +616,5 @@ static void write_message(LSP *lsp, LSPMessage *message) {
 	// (as i'm writing this, this won't do anything but it might in the future)
 	lsp_message_free(message);
 }
+
+#undef write_bool

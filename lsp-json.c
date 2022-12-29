@@ -545,6 +545,10 @@ JSONArray json_array_get_array(const JSON *json, JSONArray array, size_t i) {
 	return json_force_array(json_array_get(json, array, i));
 }
 
+JSONValue json_root(const JSON *json) {
+	return json->values[0];
+}
+
 // e.g. if json is  { "a" : { "b": 3 }}, then json_get(json, "a.b") = 3.
 // returns undefined if there is no such property
 JSONValue json_get(const JSON *json, const char *path) {

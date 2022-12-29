@@ -1,5 +1,7 @@
 /*
 @TODO:
+- check definition capabilities
+- some way of showing that we're currently loading the definition location (different cursor color?)
 - more LSP stuff:
      - go to definition using LSP
      - find usages
@@ -13,9 +15,11 @@
    -  what to do if initialize request takes a long time?
 - delete old sent requests? but make sure requests that just take a long time are okay.
     (if the server never sends a response)
+- check that tags still works
 - TESTING: make rust-analyzer-slow (waits 10s before sending response)
 - run everything through valgrind ideally with leak checking
 - grep -i -n TODO *.[ch]
+- when searching files/definitions, sort by length? or put exact matches at the top? 
 --- LSP MERGE ---
 - improve structure of ted source code to make LSP completions better
       (make every c file a valid translation unit)
@@ -140,13 +144,13 @@ bool tag_goto(Ted *ted, char const *tag);
 #include "build.c"
 #include "tags.c"
 #include "menu.c"
-#include "autocomplete.c"
-#include "signature-help.c"
-#include "hover.c"
+#include "ide-autocomplete.c"
+#include "ide-signature-help.c"
+#include "ide-hover.c"
+#include "ide-definitions.c"
 #include "command.c"
 #include "config.c"
 #include "session.c"
-#include "json.c"
 #include "lsp.c"
 
 #if PROFILE
@@ -891,6 +895,7 @@ int main(int argc, char **argv) {
 						autocomplete_process_lsp_response(ted, r);
 						signature_help_process_lsp_response(ted, r);
 						hover_process_lsp_response(ted, r);
+						definitions_process_lsp_response(ted, lsp, r);
 						} break;
 					}
 					lsp_message_free(&message);

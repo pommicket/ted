@@ -26,6 +26,11 @@ typedef struct {
 	LSPPosition end;
 } LSPRange;
 
+typedef struct {
+	LSPDocumentID document;
+	LSPRange range;
+} LSPLocation;
+
 typedef enum {
 	LSP_REQUEST_NONE,
 	
@@ -44,6 +49,7 @@ typedef enum {
 	LSP_REQUEST_COMPLETION, // textDocument/completion
 	LSP_REQUEST_SIGNATURE_HELP, // textDocument/signatureHelp
 	LSP_REQUEST_HOVER, // textDocument/hover
+	LSP_REQUEST_DEFINITION, // textDocument/definition
 	LSP_REQUEST_DID_CHANGE_WORKSPACE_FOLDERS, // workspace/didChangeWorkspaceFolders
 	
 	// server-to-client
@@ -117,6 +123,10 @@ typedef struct {
 } LSPRequestHover;
 
 typedef struct {
+	LSPDocumentPosition position;
+} LSPRequestDefinition;
+
+typedef struct {
 	LSPDocumentID *removed; // dynamic array
 	LSPDocumentID *added; // dynamic array
 } LSPRequestDidChangeWorkspaceFolders;
@@ -134,6 +144,7 @@ typedef struct {
 		LSPRequestCompletion completion;
 		LSPRequestSignatureHelp signature_help;
 		LSPRequestHover hover;
+		LSPRequestDefinition definition;
 		// LSP_REQUEST_SHOW_MESSAGE or LSP_REQUEST_LOG_MESSAGE
 		LSPRequestMessage message;
 		LSPRequestDidChangeWorkspaceFolders change_workspace_folders;
@@ -279,6 +290,10 @@ typedef struct {
 	LSPString contents;
 } LSPResponseHover;
 
+typedef struct {
+	// where the symbol is defined (dynamic array)
+	LSPLocation *locations;
+} LSPResponseDefinition;
 
 typedef LSPRequestType LSPResponseType;
 typedef struct {
@@ -292,6 +307,7 @@ typedef struct {
 		LSPResponseCompletion completion;
 		LSPResponseSignatureHelp signature_help;
 		LSPResponseHover hover;
+		LSPResponseDefinition definition;
 	} data;
 } LSPResponse;
 
@@ -312,6 +328,7 @@ typedef struct {
 	bool signature_help_support;
 	bool completion_support;
 	bool hover_support;
+	bool definition_support;
 	// support for multiple root folders
 	// sadly, as of me writing this, clangd and rust-analyzer don't support this
 	// (but jdtls and gopls do)
@@ -398,8 +415,11 @@ LSP *lsp_create(const char *root_dir, Language language, const char *analyzer_co
 // if this fails (i.e. if the LSP does not have workspace support), create a new LSP
 // with root directory `new_root_dir`.
 bool lsp_try_add_root_dir(LSP *lsp, const char *new_root_dir);
+// report that this document has changed
+void lsp_document_changed(LSP *lsp, const char *document, LSPDocumentChangeEvent change);
 bool lsp_next_message(LSP *lsp, LSPMessage *message);
 bool lsp_position_eq(LSPPosition a, LSPPosition b);
 bool lsp_document_position_eq(LSPDocumentPosition a, LSPDocumentPosition b);
-void lsp_document_changed(LSP *lsp, const char *document, LSPDocumentChangeEvent change);
+LSPDocumentPosition lsp_location_start_position(LSPLocation location);
+LSPDocumentPosition lsp_location_end_position(LSPLocation location);
 void lsp_free(LSP *lsp);

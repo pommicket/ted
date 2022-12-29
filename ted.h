@@ -413,6 +413,14 @@ typedef struct {
 	BufferPos range_end;
 } Hover;
 
+typedef struct {
+	
+	// LSPID and ID of the last response which was processed.
+	// used to process responses in chronological order (= ID order)
+	LSPID last_response_lsp;
+	u32 last_response_id;
+} Definitions;
+
 
 typedef struct Ted {
 	struct LSP *lsps[TED_LSP_MAX + 1];
@@ -470,6 +478,7 @@ typedef struct Ted {
 	Autocomplete autocomplete;
 	SignatureHelp signature_help;
 	Hover hover;
+	Definitions definitions;
 	
 	FILE *log;
 	
@@ -530,9 +539,6 @@ typedef struct Ted {
 	char error[512];
 	char error_shown[512]; // error display in box on screen
 } Ted;
-
-void autocomplete_close(Ted *ted);
-void signature_help_retrigger(Ted *ted);
 char *buffer_contents_utf8_alloc(TextBuffer *buffer);
 Command command_from_str(char const *str);
 void command_execute(Ted *ted, Command c, i64 argument);
@@ -566,3 +572,10 @@ char *settings_get_root_dir(Settings *settings, const char *path);
 void menu_open(Ted *ted, Menu menu);
 void menu_close(Ted *ted);
 void find_update(Ted *ted, bool force);
+void autocomplete_close(Ted *ted);
+void signature_help_retrigger(Ted *ted);
+// go to the definition of `name`.
+// if `lsp` is NULL, tags will be used.
+// Note: the document position is required for LSP requests because of overloading (where the name
+// alone isn't sufficient)
+void definition_goto(Ted *ted, LSP *lsp, const char *name, LSPDocumentPosition pos);

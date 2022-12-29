@@ -2489,12 +2489,14 @@ bool buffer_handle_click(Ted *ted, TextBuffer *buffer, v2 click, u8 times) {
 				break;
 			case KEY_MODIFIER_CTRL: 
 				if (!buffer->is_line_buffer) {
+					// go to definition
 					buffer_cursor_move_to_pos(buffer, buffer_pos);
 					String32 word = buffer_word_at_cursor(buffer);
 					if (word.len) {
 						char *tag = str32_to_utf8_cstr(word);
 						if (tag) {
-							tag_goto(buffer->ted, tag);
+							LSPDocumentPosition pos = buffer_pos_to_lsp_document_position(buffer, buffer_pos);
+							definition_goto(buffer->ted, buffer_lsp(buffer), tag, pos);
 							free(tag);
 						}
 					}

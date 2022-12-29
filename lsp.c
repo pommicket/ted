@@ -3,8 +3,6 @@
 // print client-to-server communication
 #define LSP_SHOW_C2S 0
 
-#define write_bool lsp_write_bool
-
 static void lsp_request_free(LSPRequest *r);
 static void lsp_response_free(LSPResponse *r);
 
@@ -13,6 +11,7 @@ static void lsp_response_free(LSPResponse *r);
 		strbuf_printf(lsp->error, __VA_ARGS__);\
 		SDL_UnlockMutex(lsp->error_mutex);\
 	} while (0)
+#include "lsp-json.c"
 #include "lsp-write.c"
 #include "lsp-parse.c"
 
@@ -44,6 +43,7 @@ static void lsp_request_free(LSPRequest *r) {
 	case LSP_REQUEST_COMPLETION:
 	case LSP_REQUEST_SIGNATURE_HELP:
 	case LSP_REQUEST_HOVER:
+	case LSP_REQUEST_DEFINITION:
 	case LSP_REQUEST_DID_CLOSE:
 	case LSP_REQUEST_WORKSPACE_FOLDERS:
 	case LSP_REQUEST_JDTLS_CONFIGURATION:
@@ -79,6 +79,9 @@ static void lsp_response_free(LSPResponse *r) {
 		break;
 	case LSP_REQUEST_SIGNATURE_HELP:
 		arr_free(r->data.signature_help.signatures);
+		break;
+	case LSP_REQUEST_DEFINITION:
+		arr_free(r->data.definition.locations);
 		break;
 	default:
 		break;
@@ -145,6 +148,8 @@ static bool lsp_supports_request(LSP *lsp, const LSPRequest *request) {
 		return cap->workspace_folders_support;
 	case LSP_REQUEST_HOVER:
 		return cap->hover_support;
+	case LSP_REQUEST_DEFINITION:
+		return cap->definition_support;
 	}
 	assert(0);
 	return false;
@@ -542,4 +547,18 @@ bool lsp_document_position_eq(LSPDocumentPosition a, LSPDocumentPosition b) {
 	return a.document == b.document && lsp_position_eq(a.pos, b.pos);
 }
 
-#undef write_bool
+
+LSPDocumentPosition lsp_location_start_position(LSPLocation location) {
+	return (LSPDocumentPosition) {
+		.document = location.document,
+		.pos = location.range.start
+	};
+}
+
+LSPDocumentPosition lsp_location_end_position(LSPLocation location) {
+	return (LSPDocumentPosition) {
+		.document = location.document,
+		.pos = location.range.end
+	};
+}
+

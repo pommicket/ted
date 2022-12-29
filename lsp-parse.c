@@ -25,6 +25,7 @@ static WarnUnusedResult bool lsp_expect_number(LSP *lsp, JSONValue value, const 
 	return lsp_expect_type(lsp, value, JSON_NUMBER, what);
 }
 
+
 static LSPString lsp_response_add_json_string(LSPResponse *response, const JSON *json, JSONString string) {
 	u32 offset = arr_len(response->string_data);
 	arr_set_len(response->string_data, offset + string.len + 1);
@@ -78,6 +79,24 @@ static bool parse_range(LSP *lsp, const JSON *json, JSONValue range_value, LSPRa
 	if (!success)
 		memset(range, 0, sizeof *range);
 	return success;
+}
+
+static bool parse_document_uri(LSP *lsp, const JSON *json, JSONValue value, LSPDocumentID *id) {
+	if (value.type != JSON_STRING) {
+		lsp_set_error(lsp, "Expected string for URI, got %s",
+			json_type_to_str(value.type));
+		return false;
+	}
+	char *string = json_string_get_alloc(json, value.val.string);
+	if (!str_has_prefix(string, "file://")) {
+		lsp_set_error(lsp, "Can't process non-local URI %s",
+			string);
+		free(string);
+		return false;
+	}
+	*id = lsp_document_id(lsp, string + strlen("file://"));
+	free(string);
+	return true;
 }
 
 
@@ -134,6 +153,12 @@ static void parse_capabilities(LSP *lsp, const JSON *json, JSONObject capabiliti
 	JSONValue hover_value = json_object_get(json, capabilities, "hoverProvider");
 	if (hover_value.type != JSON_UNDEFINED) {
 		cap->hover_support = true;
+	}
+	
+	// check for definition support
+	JSONValue definition_value = json_object_get(json, capabilities, "definitionProvider");
+	if (definition_value.type != JSON_UNDEFINED) {
+		cap->definition_support = true;
 	}
 	
 	JSONObject workspace = json_object_get_object(json, capabilities, "workspace");
@@ -208,7 +233,7 @@ static bool parse_completion(LSP *lsp, const JSON *json, LSPResponse *response) 
 		item->text_edit = (LSPTextEdit) {
 			.type = LSP_TEXT_EDIT_PLAIN,
 			.at_cursor = true,
-			.range = {{0}},
+			.range = {{0}, {0}},
 			.new_text = item->label
 		};
 		
@@ -462,6 +487,47 @@ static bool parse_hover(LSP *lsp, const JSON *json, LSPResponse *response) {
 	return true;
 }
 
+// parse a Location:  {uri: DocumentUri, range: Range}
+static bool parse_location(LSP *lsp, const JSON *json, JSONValue value, LSPLocation *location) {
+	if (value.type != JSON_OBJECT) {
+		lsp_set_error(lsp, "Expected object for location but got %s",
+			json_type_to_str(value.type));
+		return false;
+	}
+	JSONObject object = value.val.object;
+	JSONValue uri = json_object_get(json, object, "uri");
+	if (!parse_document_uri(lsp, json, uri, &location->document))
+		return false;
+	JSONValue range = json_object_get(json, object, "range");
+	if (!parse_range(lsp, json, range, &location->range))
+		return false;
+	return true;
+}
+
+static bool parse_definition(LSP *lsp, const JSON *json, LSPResponse *response) {
+	JSONValue result = json_get(json, "result");
+	if (result.type == JSON_NULL) {
+		// no location
+		return true;
+	}
+	LSPResponseDefinition *definition = &response->data.definition;
+	if (result.type == JSON_ARRAY) {
+		JSONArray locations = result.val.array;
+		if (locations.len == 0)
+			return true;
+		for (u32 l = 0; l < locations.len; ++l) {
+			JSONValue location_json = json_array_get(json, locations, l);
+			LSPLocation *location = arr_addp(definition->locations);
+			if (!parse_location(lsp, json, location_json, location))
+				return false;
+		}
+		return true;
+	} else {
+		LSPLocation *location = arr_addp(definition->locations);
+		return parse_location(lsp, json, result, location);
+	}
+}
+
 // fills request->id/id_string appropriately given the request's json
 // returns true on success
 static WarnUnusedResult bool parse_id(JSON *json, LSPRequest *request) {
@@ -552,6 +618,8 @@ static bool parse_server2client_request(LSP *lsp, JSON *json, LSPRequest *reques
 	return false;
 }
 
+
+
 static void process_message(LSP *lsp, JSON *json) {
 		
 	#if 0
@@ -600,6 +668,9 @@ static void process_message(LSP *lsp, JSON *json) {
 			break;
 		case LSP_REQUEST_HOVER:
 			add_to_messages = parse_hover(lsp, json, &response);
+			break;
+		case LSP_REQUEST_DEFINITION:
+			add_to_messages = parse_definition(lsp, json, &response);
 			break;
 		case LSP_REQUEST_INITIALIZE: {
 			// it's the response to our initialize request!

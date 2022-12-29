@@ -507,3 +507,36 @@ void ted_press_key(Ted *ted, SDL_Scancode scancode, SDL_Keymod modifier) {
 		}
 	}
 }
+
+// make the cursor red for a bit to indicate an error (e.g. no autocompletions)
+void ted_flash_error_cursor(Ted *ted) {
+	ted->cursor_error_time = time_get_seconds();
+}
+
+void ted_go_to_position(Ted *ted, const char *path, u32 line, u32 index, bool is_lsp) {
+	if (ted_open_file(ted, path)) {
+		TextBuffer *buffer = ted->active_buffer;
+		BufferPos pos = {0};
+		if (is_lsp) {
+			LSPPosition lsp_pos = {
+				.line = line,
+				.character = index
+			};
+			pos = buffer_pos_from_lsp(buffer, lsp_pos);
+		} else {
+			pos.line = line;
+			pos.index = index;
+		}
+		buffer_cursor_move_to_pos(buffer, pos);
+		buffer->center_cursor_next_frame = true;
+	} else {
+		ted_flash_error_cursor(ted);
+	}
+}
+
+void ted_go_to_lsp_document_position(Ted *ted, LSP *lsp, LSPDocumentPosition position) {
+	const char *path = lsp_document_path(lsp, position.document);
+	u32 line = position.pos.line;
+	u32 character = position.pos.character;
+	ted_go_to_position(ted, path, line, character, true);
+}
