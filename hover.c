@@ -93,6 +93,8 @@ void hover_frame(Ted *ted, double dt) {
 		return;
 	
 	const Settings *settings = ted_active_settings(ted);
+	const float padding = settings->padding;
+	const float border = settings->border_thickness;
 	const u32 *colors = settings->colors;
 	const char *text = hover->text;
 	Font *font = ted->font;
@@ -114,8 +116,11 @@ void hover_frame(Ted *ted, double dt) {
 	state.y = y;
 	state.render = true;
 	state.max_y = y + height;
-	gl_geometry_rect(rect_xywh(x, y, width, height), colors[COLOR_AUTOCOMPLETE_BG]);
-	rgba_u32_to_floats(colors[COLOR_TEXT], state.color);
+	
+	Rect rect = rect_xywh(x - padding, y - padding, width + 2*padding, height + 2*padding);
+	gl_geometry_rect(rect, colors[COLOR_HOVER_BG]);
+	gl_geometry_rect_border(rect, border, colors[COLOR_HOVER_BORDER]);
+	rgba_u32_to_floats(colors[COLOR_HOVER_TEXT], state.color);
 	text_utf8_with_state(font, &state, text);
 	gl_geometry_draw();
 	text_render(font);

@@ -477,7 +477,7 @@ typedef struct Ted {
 	v2d prev_active_buffer_scroll;
 	
 	SDL_Cursor *cursor_arrow, *cursor_ibeam, *cursor_resize_h, *cursor_resize_v, *cursor_hand, *cursor_move;
-	SDL_Cursor *cursor; // which cursor to use this frame
+	SDL_Cursor *cursor; // which cursor to use this frame (NULL for no cursor)
 	
 	// node containing tab user is dragging around, NULL if user is not dragging a tab
 	Node *dragging_tab_node;

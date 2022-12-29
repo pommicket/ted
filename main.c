@@ -1,7 +1,6 @@
 /*
 @TODO:
 - more LSP stuff:
-     - hover
      - go to definition using LSP
      - find usages
 - highlight hover range
@@ -1100,8 +1099,12 @@ int main(int argc, char **argv) {
 			ted->cursor = ted->cursor_move;
 
 		SDL_SetWindowTitle(window, ted->window_title);
-		SDL_SetCursor(ted->cursor);
-		
+		if (ted->cursor) {
+			SDL_SetCursor(ted->cursor);
+			SDL_ShowCursor(SDL_ENABLE);
+		} else {
+			SDL_ShowCursor(SDL_DISABLE);
+		}
 		
 		// annoyingly, SDL_GL_SwapWindow seems to be a busy loop on my laptop for some reason...
 		// enforce a framerate of 60. this isn't ideal but SDL_GetDisplayMode is *extremely slow* (250ms), so we don't really have a choice.

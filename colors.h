@@ -31,6 +31,10 @@ typedef enum {
 	COLOR_AUTOCOMPLETE_FUNCTION,
 	COLOR_AUTOCOMPLETE_VARIABLE,
 	COLOR_AUTOCOMPLETE_TYPE,
+	
+	COLOR_HOVER_BG,
+	COLOR_HOVER_BORDER,
+	COLOR_HOVER_TEXT,
 
 	COLOR_YES,
 	COLOR_NO,
@@ -95,6 +99,9 @@ static ColorName const color_names[] = {
 	{COLOR_AUTOCOMPLETE_VARIABLE, "autocomplete-variable"},
 	{COLOR_AUTOCOMPLETE_FUNCTION, "autocomplete-function"},
 	{COLOR_AUTOCOMPLETE_TYPE, "autocomplete-type"},
+	{COLOR_HOVER_BORDER, "hover-border"},
+	{COLOR_HOVER_BG, "hover-bg"},
+	{COLOR_HOVER_TEXT, "hover-text"},
 	{COLOR_YES, "yes"},
 	{COLOR_NO, "no"},
 	{COLOR_CANCEL, "cancel"},
