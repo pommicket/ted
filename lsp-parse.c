@@ -73,8 +73,11 @@ static bool parse_range(LSP *lsp, const JSON *json, JSONValue range_value, LSPRa
 	JSONObject range_object = range_value.val.object;
 	JSONValue start = json_object_get(json, range_object, "start");
 	JSONValue end = json_object_get(json, range_object, "end");
-	return parse_position(lsp, json, start, &range->start)
+	bool success = parse_position(lsp, json, start, &range->start)
 		&& parse_position(lsp, json, end, &range->end);
+	if (!success)
+		memset(range, 0, sizeof *range);
+	return success;
 }
 
 
@@ -403,6 +406,55 @@ static bool parse_signature_help(LSP *lsp, const JSON *json, LSPResponse *respon
 	return true;
 }
 
+static bool parse_hover(LSP *lsp, const JSON *json, LSPResponse *response) {
+	LSPResponseHover *hover = &response->data.hover;
+	JSONObject result = json_force_object(json_get(json, "result"));
+	
+	JSONValue range = json_object_get(json, result, "range");
+	parse_range(lsp, json, range, &hover->range);
+	
+	JSONValue contents = json_object_get(json, result, "contents");
+	
+	switch (contents.type) {
+	case JSON_OBJECT:
+	case JSON_STRING:
+		// all good
+		break;
+	case JSON_ARRAY: {
+		JSONArray contents_array = contents.val.array;
+		if (contents_array.len == 0) {
+			// the server probably should have just returned result: null.
+			// but the spec doesn't seem to forbid this, so we'll handle it.
+			return true;
+		}
+		// it's giving us multiple strings, but we'll just show the first one
+		contents = json_array_get(json, contents_array, 0);
+	} break;
+	default:
+		lsp_set_error(lsp, "Bad contents field on textDocument/hover response.");
+		return false;
+	}
+	
+	// contents should either be a MarkupContent or a MarkedString
+	// i.e. it is either a string or has a member `value: string`
+	JSONString contents_string = {0};
+	if (contents.type == JSON_STRING) {
+		contents_string = contents.val.string;
+	} else {
+		JSONObject contents_object = json_force_object(contents);
+		JSONValue value = json_object_get(json, contents_object, "value");
+		if (value.type == JSON_STRING) {
+			contents_string = value.val.string;
+		} else {
+			lsp_set_error(lsp, "Bad contents field on textDocument/hover response.");
+			return false;
+		}
+	}
+	
+	hover->contents = lsp_response_add_json_string(response, json, contents_string);
+	return true;
+}
+
 // fills request->id/id_string appropriately given the request's json
 // returns true on success
 static WarnUnusedResult bool parse_id(JSON *json, LSPRequest *request) {
@@ -538,6 +590,9 @@ static void process_message(LSP *lsp, JSON *json) {
 			break;
 		case LSP_REQUEST_SIGNATURE_HELP:
 			add_to_messages = parse_signature_help(lsp, json, &response);
+			break;
+		case LSP_REQUEST_HOVER:
+			add_to_messages = parse_hover(lsp, json, &response);
 			break;
 		case LSP_REQUEST_INITIALIZE: {
 			// it's the response to our initialize request!

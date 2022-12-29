@@ -447,6 +447,15 @@ typedef struct {
 	Signature signatures[SIGNATURE_HELP_MAX];
 } SignatureHelp;
 
+typedef struct {
+	// is some hover info being displayed?
+	bool open;
+	// amount of time user has been hovering cursor for
+	double time;
+	// text to display
+	char *text;
+} Hover;
+
 
 typedef struct Ted {
 	struct LSP *lsps[TED_LSP_MAX + 1];
@@ -493,7 +502,6 @@ typedef struct Ted {
 	bool find; // is the find or find+replace menu open?
 	bool replace; // is the find+replace menu open?
 	bool find_regex, find_case_sensitive; // find options
-	SignatureHelp signature_help;
 	u32 find_flags; // flags used last time search term was compiled
 	pcre2_code *find_code;
 	pcre2_match_data *find_match_data;
@@ -503,6 +511,8 @@ typedef struct Ted {
 	bool build_shown; // are we showing the build output?
 	bool building; // is the build process running?
 	Autocomplete autocomplete;
+	SignatureHelp signature_help;
+	Hover hover;
 	
 	FILE *log;
 	

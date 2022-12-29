@@ -4,6 +4,9 @@
      - hover
      - go to definition using LSP
      - find usages
+- highlight hover range
+- check mouse position in hover_process_lsp_response
+- hover-enabled, hover-time settings
 - check if there are any other non-optional/nice-to-have-support-for server-to-client requests
 - better non-error window/showMessage(Request)
 - document lsp.h and lsp.c.
@@ -140,6 +143,7 @@ bool tag_goto(Ted *ted, char const *tag);
 #include "menu.c"
 #include "autocomplete.c"
 #include "signature-help.c"
+#include "hover.c"
 #include "command.c"
 #include "config.c"
 #include "session.c"
@@ -656,6 +660,8 @@ int main(int argc, char **argv) {
 			
 			switch (event.type) {
 			case SDL_QUIT:
+				hover_close(ted);
+				
 				command_execute(ted, CMD_QUIT, 1);
 				break;
 			case SDL_MOUSEWHEEL: {
@@ -670,6 +676,8 @@ int main(int argc, char **argv) {
 				}
 			} break;
 			case SDL_MOUSEBUTTONDOWN: {
+				hover_close(ted);
+				
 				Uint32 button = event.button.button;
 				u8 times = event.button.clicks; // number of clicks
 				float x = (float)event.button.x, y = (float)event.button.y;
@@ -736,6 +744,8 @@ int main(int argc, char **argv) {
 				}
 			} break;
 			case SDL_MOUSEMOTION: {
+				hover_close(ted);
+				
 				float x = (float)event.motion.x, y = (float)event.motion.y;
 				if (ted->drag_buffer != ted->active_buffer)
 					ted->drag_buffer = NULL;
@@ -748,11 +758,15 @@ int main(int argc, char **argv) {
 				}
 			} break;
 			case SDL_KEYDOWN: {
+				hover_close(ted);
+				
 				SDL_Scancode scancode = event.key.keysym.scancode;
 				SDL_Keymod modifier = event.key.keysym.mod;
 				ted_press_key(ted, scancode, modifier);
 			} break;
 			case SDL_TEXTINPUT: {
+				hover_close(ted);
+				
 				char *text = event.text.text;
 				if (buffer
 					// unfortunately, some key combinations like ctrl+minus still register as a "-" text input event
@@ -887,6 +901,7 @@ int main(int argc, char **argv) {
 						LSPResponse *r = &message.u.response;
 						autocomplete_process_lsp_response(ted, r);
 						signature_help_process_lsp_response(ted, r);
+						hover_process_lsp_response(ted, r);
 						} break;
 					}
 					lsp_message_free(&message);
@@ -991,9 +1006,9 @@ int main(int argc, char **argv) {
 			if (ted->nodes_used[0]) {
 				float y1 = padding;
 				node_frame(ted, node, rect4(x1, y1, x2, y));
-				if (ted->autocomplete.open)
-					autocomplete_frame(ted);
+				autocomplete_frame(ted);
 				signature_help_frame(ted);
+				hover_frame(ted, frame_dt);
 			} else {
 				autocomplete_close(ted);
 				text_utf8_anchored(font, "Press Ctrl+O to open a file or Ctrl+N to create a new one.",
@@ -1126,6 +1141,7 @@ int main(int argc, char **argv) {
 	build_stop(ted);
 	if (ted->menu)
 		menu_close(ted);
+	hover_close(ted);
 	autocomplete_close(ted);
 	session_write(ted);
 	

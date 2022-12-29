@@ -408,6 +408,8 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 						write_obj_end(o);
 						write_key_bool(o, "contextSupport", true);
 					write_obj_end(o);
+					
+					// signature help capabilities
 					write_key_obj_start(o, "signatureHelp");
 						write_key_obj_start(o, "signatureInformation");
 							write_key_obj_start(o, "parameterInformation");
@@ -417,6 +419,13 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 						write_obj_end(o);
 						// we don't have context support because sending the activeSignatureHelp member is annoying
 						//write_key_bool(o, "contextSupport", true);
+					write_obj_end(o);
+					
+					// hover capabilities
+					write_key_obj_start(o, "hover");
+						write_key_arr_start(o, "contentFormat");
+							write_arr_elem_string(o, "plaintext");
+						write_arr_end(o);
 					write_obj_end(o);
 				write_obj_end(o);
 				write_key_obj_start(o, "workspace");

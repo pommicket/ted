@@ -288,6 +288,8 @@ static char symbol_kind_icon(SymbolKind k) {
 
 static void autocomplete_frame(Ted *ted) {
 	Autocomplete *ac = &ted->autocomplete;
+	if (!ac->open) return;
+	
 	TextBuffer *buffer = ted->active_buffer;
 	Font *font = ted->font;
 	float char_height = text_font_char_height(font);

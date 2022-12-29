@@ -272,6 +272,13 @@ typedef struct {
 	LSPSignatureInformation *signatures;
 } LSPResponseSignatureHelp;
 
+typedef struct {
+	// the range of text to highlight
+	LSPRange range;
+	// little tool tip to show
+	LSPString contents;
+} LSPResponseHover;
+
 
 typedef LSPRequestType LSPResponseType;
 typedef struct {
@@ -284,6 +291,7 @@ typedef struct {
 	union {
 		LSPResponseCompletion completion;
 		LSPResponseSignatureHelp signature_help;
+		LSPResponseHover hover;
 	} data;
 } LSPResponse;
 
