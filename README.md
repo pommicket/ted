@@ -145,7 +145,7 @@ to include the absolute path if not).
 [clangd](https://clangd.llvm.org/installation)
 is enabled by default. On Debian/Ubuntu you can install it with:
 
-```
+```bash
 sudo apt install clangd-15  # replace 15 with the highest number you can get
 sudo ln -s /usr/bin/clangd-15 /usr/bin/clangd
 ```
@@ -180,6 +180,13 @@ You can download it [here](https://github.com/python-lsp/python-lsp-server).
 
 `rust-analyzer` is enabled by default. You can download it
 by following [the instructions here](https://rust-analyzer.github.io/manual.html#rust-analyzer-language-server-binary).
+On Linux you can install it with:
+
+```bash
+mkdir -p ~/.local/bin
+curl -L https://github.com/rust-lang/rust-analyzer/releases/latest/download/rust-analyzer-x86_64-unknown-linux-gnu.gz | gunzip -c - > ~/.local/bin/rust-analyzer
+chmod +x ~/.local/bin/rust-analyzer
+```
 
 
 ## Tags (lightweight LSP alternative)
@@ -204,7 +211,7 @@ To install `ted` from source on Linux, you will also need:
 
 These can be installed on Ubuntu/Debian with:
 
-```
+```bash
 sudo apt install clang libsdl2-dev cmake
 ```
 

@@ -1,6 +1,6 @@
 /*
 @TODO:
-- check definition capabilities
+- LSPResponse is_error member (and make sure ide-*.c handles it)
 - some way of showing that we're currently loading the definition location (different cursor color?)
 - more LSP stuff:
      - go to definition using LSP

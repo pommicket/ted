@@ -432,6 +432,11 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 							write_arr_elem_string(o, "plaintext");
 						write_arr_end(o);
 					write_obj_end(o);
+					
+					// definition capabilities
+					write_key_obj_start(o, "definition");
+						// NOTE: LocationLink support doesn't seem useful to us right now.
+					write_obj_end(o);
 				write_obj_end(o);
 				write_key_obj_start(o, "workspace");
 					write_key_bool(o, "workspaceFolders", true);
