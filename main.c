@@ -20,6 +20,7 @@
 - improve structure of ted source code to make LSP completions better
       (make every c file a valid translation unit)
 - CSS highlighting
+- styles ([color] sections)
 - more documentation generally (development.md or something?)
 - rename buffer->filename to buffer->path
     - make buffer->path NULL for untitled buffers & fix resulting mess
@@ -30,7 +31,7 @@ FUTURE FEATURES:
 - robust find (results shouldn't move around when you type things)
 - multiple files with command line arguments
 - :set-build-command
-- add numlock as a key modifier? (but make sure "Ctrl+S" handles both "No NumLock+Ctrl+S" and "NumLock+Ctrl+S"
+- add numlock as a key modifier? (but make sure "Ctrl+S" handles both "No NumLock+Ctrl+S" and "NumLock+Ctrl+S")
 - better undo chaining (dechain on backspace?)
 - allow multiple fonts (fonts directory?)
 - regenerate tags for completion too if there are no results
