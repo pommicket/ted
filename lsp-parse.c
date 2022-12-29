@@ -408,7 +408,14 @@ static bool parse_signature_help(LSP *lsp, const JSON *json, LSPResponse *respon
 
 static bool parse_hover(LSP *lsp, const JSON *json, LSPResponse *response) {
 	LSPResponseHover *hover = &response->data.hover;
-	JSONObject result = json_force_object(json_get(json, "result"));
+	JSONValue result_value = json_get(json, "result");
+	if (result_value.type == JSON_NULL)
+		return true; // no results
+	if (result_value.type != JSON_OBJECT) {
+		lsp_set_error(lsp, "Bad result type for textDocument/hover response.");
+		return false;
+	}
+	JSONObject result = json_force_object(result_value);
 	
 	JSONValue range = json_object_get(json, result, "range");
 	parse_range(lsp, json, range, &hover->range);
@@ -446,7 +453,7 @@ static bool parse_hover(LSP *lsp, const JSON *json, LSPResponse *response) {
 		if (value.type == JSON_STRING) {
 			contents_string = value.val.string;
 		} else {
-			lsp_set_error(lsp, "Bad contents field on textDocument/hover response.");
+			lsp_set_error(lsp, "Bad contents object in textDocument/hover response.");
 			return false;
 		}
 	}

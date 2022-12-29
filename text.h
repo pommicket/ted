@@ -23,6 +23,10 @@ typedef struct {
 	float min_x, max_x, min_y, max_y;
 	// [0] = r, [1] = g, [2] = b, [3] = a.
 	float color[4];
+	
+	// largest x & y achieved (for computing size)
+	double x_largest;
+	double y_largest;
 } TextRenderState;
 
 typedef enum {

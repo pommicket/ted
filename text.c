@@ -59,6 +59,7 @@ TextRenderState const text_render_state_default = {
 	.min_x = -FLT_MAX, .max_x = +FLT_MAX,
 	.min_y = -FLT_MAX, .max_y = +FLT_MAX,
 	.color = {1, 0, 1, 1},
+	.x_largest = -FLT_MAX, .y_largest = -FLT_MAX
 };
 
 static char text_err[200];
@@ -295,7 +296,7 @@ top:
 		if (state->wrap && c == '\n') {
 			state->x = state->min_x;
 			state->y += char_height;
-			return;
+			goto ret;
 		}
 		
 		{
@@ -334,7 +335,7 @@ top:
 		}
 
 		if (x0 > max_x || y0 > max_y || x1 < min_x || y1 < min_y)
-			return;
+			goto ret;
 		if (x0 < min_x) {
 			// left side of character is clipped
 			s0 = (min_x-x0) / (x1-x0) * (s1-s0) + s0;
@@ -367,6 +368,11 @@ top:
 			arr_add(font->triangles[page], triangle2);
 		}
 	}
+	ret:
+	if (state->x > state->x_largest)
+		state->x_largest = state->x;
+	if (state->y > state->y_largest)
+		state->y_largest = state->y;
 }
 
 void text_utf8_with_state(Font *font, TextRenderState *state, char const *str) {
@@ -387,19 +393,21 @@ void text_utf8_with_state(Font *font, TextRenderState *state, char const *str) {
 	}
 }
 
-static void text_render_utf8_internal(Font *font, char const *text, double *x, double *y, u32 color, bool render) {
+static v2 text_render_utf8_internal(Font *font, char const *text, double x, double y, u32 color, bool render) {
 	TextRenderState render_state = text_render_state_default;
 	render_state.render = render;
-	render_state.x = *x;
-	render_state.y = *y;
+	render_state.x = x;
+	render_state.y = y;
 	rgba_u32_to_floats(color, render_state.color);
 	text_utf8_with_state(font, &render_state, text);
-	*x = render_state.x;
-	*y = render_state.y;
+	return V2(
+		(float)(render_state.x_largest - x),
+		(float)(render_state.y_largest - y)
+	);
 }
 
 void text_utf8(Font *font, char const *text, double x, double y, u32 color) {
-	text_render_utf8_internal(font, text, &x, &y, color, true);
+	text_render_utf8_internal(font, text, x, y, color, true);
 }
 
 void text_utf8_anchored(Font *font, char const *text, double x, double y, u32 color, Anchor anchor) {
@@ -422,9 +430,9 @@ void text_utf8_anchored(Font *font, char const *text, double x, double y, u32 co
 
 void text_get_size(Font *font, char const *text, float *width, float *height) {
 	double x = 0, y = 0;
-	text_render_utf8_internal(font, text, &x, &y, 0, false);
-	if (width)  *width = (float)x;
-	if (height) *height = (float)y + font->char_height;
+	v2 size = text_render_utf8_internal(font, text, x, y, 0, false);
+	if (width)  *width = size.x;
+	if (height) *height = size.y + font->char_height;
 }
 
 v2 text_get_size_v2(Font *font, char const *text) {

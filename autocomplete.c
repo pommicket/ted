@@ -54,6 +54,8 @@ void autocomplete_scroll(Ted *ted, i32 by) {
 static void autocomplete_move_cursor(Ted *ted, i32 by) {
 	Autocomplete *ac = &ted->autocomplete;
 	u32 ncompletions = arr_len(ac->suggested);
+	if (ncompletions == 0)
+		return;
 	i32 cursor = ac->cursor;
 	cursor += by;
 	cursor = (i32)mod_i32(cursor, (i32)ncompletions);
@@ -185,6 +187,52 @@ static void autocomplete_find_completions(Ted *ted, uint32_t trigger) {
 	
 	autocomplete_update_suggested(ted);
 }
+
+static SymbolKind lsp_completion_kind_to_ted(LSPCompletionKind kind) {
+	switch (kind) {
+	case LSP_COMPLETION_TEXT:
+	case LSP_COMPLETION_MODULE:
+	case LSP_COMPLETION_UNIT:
+	case LSP_COMPLETION_COLOR:
+	case LSP_COMPLETION_FILE:
+	case LSP_COMPLETION_REFERENCE:
+	case LSP_COMPLETION_FOLDER:
+	case LSP_COMPLETION_OPERATOR:
+		return SYMBOL_OTHER;
+	
+	case LSP_COMPLETION_METHOD:
+	case LSP_COMPLETION_FUNCTION:
+	case LSP_COMPLETION_CONSTRUCTOR:
+		return SYMBOL_FUNCTION;
+	
+	case LSP_COMPLETION_FIELD:
+	case LSP_COMPLETION_PROPERTY:
+		return SYMBOL_FIELD;
+	
+	case LSP_COMPLETION_VARIABLE:
+		return SYMBOL_VARIABLE;
+	
+	case LSP_COMPLETION_CLASS:
+	case LSP_COMPLETION_INTERFACE:
+	case LSP_COMPLETION_ENUM:
+	case LSP_COMPLETION_STRUCT:
+	case LSP_COMPLETION_EVENT:
+	case LSP_COMPLETION_TYPEPARAMETER:
+		return SYMBOL_TYPE;
+	
+	case LSP_COMPLETION_VALUE:
+	case LSP_COMPLETION_ENUMMEMBER:
+	case LSP_COMPLETION_CONSTANT:
+		return SYMBOL_CONSTANT;
+	
+	case LSP_COMPLETION_KEYWORD:
+	case LSP_COMPLETION_SNIPPET:
+		return SYMBOL_KEYWORD;
+	}
+	assert(0);
+	return SYMBOL_OTHER;
+}
+
 
 static void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *response) {
 	const LSPRequest *request = &response->request;

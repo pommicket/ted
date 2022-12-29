@@ -477,6 +477,7 @@ void lsp_document_changed(LSP *lsp, const char *document, LSPDocumentChangeEvent
 	lsp_send_request(lsp, &request);
 }
 
+#if 0
 SymbolKind lsp_symbol_kind_to_ted(LSPSymbolKind kind) {
 	switch (kind) {
 	case LSP_SYMBOL_OTHER:
@@ -521,48 +522,14 @@ SymbolKind lsp_symbol_kind_to_ted(LSPSymbolKind kind) {
 	
 	return SYMBOL_OTHER;
 }
+#endif
 
-SymbolKind lsp_completion_kind_to_ted(LSPCompletionKind kind) {
-	switch (kind) {
-	case LSP_COMPLETION_TEXT:
-	case LSP_COMPLETION_MODULE:
-	case LSP_COMPLETION_UNIT:
-	case LSP_COMPLETION_COLOR:
-	case LSP_COMPLETION_FILE:
-	case LSP_COMPLETION_REFERENCE:
-	case LSP_COMPLETION_FOLDER:
-	case LSP_COMPLETION_OPERATOR:
-		return SYMBOL_OTHER;
-	
-	case LSP_COMPLETION_METHOD:
-	case LSP_COMPLETION_FUNCTION:
-	case LSP_COMPLETION_CONSTRUCTOR:
-		return SYMBOL_FUNCTION;
-	
-	case LSP_COMPLETION_FIELD:
-	case LSP_COMPLETION_PROPERTY:
-		return SYMBOL_FIELD;
-	
-	case LSP_COMPLETION_VARIABLE:
-		return SYMBOL_VARIABLE;
-	
-	case LSP_COMPLETION_CLASS:
-	case LSP_COMPLETION_INTERFACE:
-	case LSP_COMPLETION_ENUM:
-	case LSP_COMPLETION_STRUCT:
-	case LSP_COMPLETION_EVENT:
-	case LSP_COMPLETION_TYPEPARAMETER:
-		return SYMBOL_TYPE;
-	
-	case LSP_COMPLETION_VALUE:
-	case LSP_COMPLETION_ENUMMEMBER:
-	case LSP_COMPLETION_CONSTANT:
-		return SYMBOL_CONSTANT;
-	
-	case LSP_COMPLETION_KEYWORD:
-	case LSP_COMPLETION_SNIPPET:
-		return SYMBOL_KEYWORD;
-	}
+bool lsp_position_eq(LSPPosition a, LSPPosition b) {
+	return a.line == b.line && a.character == b.character;
+}
+
+bool lsp_document_position_eq(LSPDocumentPosition a, LSPDocumentPosition b) {
+	return a.document == b.document && lsp_position_eq(a.pos, b.pos);
 }
 
 #undef write_bool

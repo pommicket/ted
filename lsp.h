@@ -1,6 +1,17 @@
 typedef u32 LSPDocumentID;
 typedef u32 LSPID;
 
+typedef struct {
+	u32 line;
+	// NOTE: this is the UTF-16 character index!
+	u32 character;
+} LSPPosition;
+
+typedef struct {
+	LSPDocumentID document;
+	LSPPosition pos;
+} LSPDocumentPosition;
+
 typedef enum {
 	LSP_REQUEST,
 	LSP_RESPONSE
@@ -9,12 +20,6 @@ typedef enum {
 typedef struct {
 	u32 offset;
 } LSPString;
-
-typedef struct {
-	u32 line;
-	// NOTE: this is the UTF-16 character index!
-	u32 character;
-} LSPPosition;
 
 typedef struct {
 	LSPPosition start;
@@ -82,11 +87,6 @@ typedef struct {
 	// freed by lsp_request_free
 	char *message;
 } LSPRequestMessage;
-
-typedef struct {
-	LSPDocumentID document;
-	LSPPosition pos;
-} LSPDocumentPosition;
 
 
 // these triggers are used for completion context and signature help context.
@@ -375,8 +375,6 @@ typedef struct LSP {
 		char error[256];
 } LSP;
 
-// @TODO: function declarations
-
 // returns true if there's an error.
 // returns false and sets error to "" if there's no error.
 // if clear = true, the error will be cleared.
@@ -401,7 +399,7 @@ LSP *lsp_create(const char *root_dir, Language language, const char *analyzer_co
 // with root directory `new_root_dir`.
 bool lsp_try_add_root_dir(LSP *lsp, const char *new_root_dir);
 bool lsp_next_message(LSP *lsp, LSPMessage *message);
+bool lsp_position_eq(LSPPosition a, LSPPosition b);
+bool lsp_document_position_eq(LSPDocumentPosition a, LSPDocumentPosition b);
 void lsp_document_changed(LSP *lsp, const char *document, LSPDocumentChangeEvent change);
 void lsp_free(LSP *lsp);
-SymbolKind lsp_symbol_kind_to_ted(LSPSymbolKind kind);
-SymbolKind lsp_completion_kind_to_ted(LSPCompletionKind kind);

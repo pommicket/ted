@@ -124,10 +124,10 @@ static void die(char const *fmt, ...) {
 #include "command.h"
 #include "colors.h"
 #include "time.c"
+#include "lsp.h"
 #include "ted.h"
 #include "gl.c"
 #include "text.c"
-#include "lsp.h"
 
 #include "string32.c"
 #include "colors.c"
@@ -660,8 +660,6 @@ int main(int argc, char **argv) {
 			
 			switch (event.type) {
 			case SDL_QUIT:
-				hover_close(ted);
-				
 				command_execute(ted, CMD_QUIT, 1);
 				break;
 			case SDL_MOUSEWHEEL: {
@@ -676,8 +674,6 @@ int main(int argc, char **argv) {
 				}
 			} break;
 			case SDL_MOUSEBUTTONDOWN: {
-				hover_close(ted);
-				
 				Uint32 button = event.button.button;
 				u8 times = event.button.clicks; // number of clicks
 				float x = (float)event.button.x, y = (float)event.button.y;
@@ -744,8 +740,6 @@ int main(int argc, char **argv) {
 				}
 			} break;
 			case SDL_MOUSEMOTION: {
-				hover_close(ted);
-				
 				float x = (float)event.motion.x, y = (float)event.motion.y;
 				if (ted->drag_buffer != ted->active_buffer)
 					ted->drag_buffer = NULL;
@@ -758,15 +752,11 @@ int main(int argc, char **argv) {
 				}
 			} break;
 			case SDL_KEYDOWN: {
-				hover_close(ted);
-				
 				SDL_Scancode scancode = event.key.keysym.scancode;
 				SDL_Keymod modifier = event.key.keysym.mod;
 				ted_press_key(ted, scancode, modifier);
 			} break;
 			case SDL_TEXTINPUT: {
-				hover_close(ted);
-				
 				char *text = event.text.text;
 				if (buffer
 					// unfortunately, some key combinations like ctrl+minus still register as a "-" text input event

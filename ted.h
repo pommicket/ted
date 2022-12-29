@@ -63,56 +63,6 @@ enum {
 
 typedef u8 SyntaxState;
 
-// If you are adding new languages, DO NOT change the constant values
-// of the previous languages. It will mess up config files which use :set-language!
-typedef enum {
-	LANG_NONE = 0,
-	LANG_C = 1,
-	LANG_CPP = 2,
-	LANG_RUST = 3,
-	LANG_PYTHON = 4,
-	LANG_TEX = 5,
-	LANG_MARKDOWN = 6,
-	LANG_HTML = 7,
-	LANG_CONFIG = 8, // .cfg files
-	LANG_JAVASCRIPT = 9,
-	LANG_JAVA = 10,
-	LANG_GO = 11,
-	LANG_TED_CFG = 12, // like LANG_CONFIG, but with multiline strings.
-	LANG_TYPESCRIPT = 13,
-	LANG_JSON = 14,
-	LANG_XML = 15,
-	LANG_GLSL = 16,
-	LANG_COUNT
-} Language;
-
-typedef struct {
-	Language lang;
-	char const *name;
-} LanguageName;
-
-static LanguageName const language_names[] = {
-	{LANG_NONE, "None"},
-	{LANG_C, "C"},
-	{LANG_CPP, "C++"},
-	{LANG_RUST, "Rust"},
-	{LANG_PYTHON, "Python"},
-	{LANG_TEX, "Tex"},
-	{LANG_MARKDOWN, "Markdown"},
-	{LANG_HTML, "HTML"},
-	{LANG_CONFIG, "Config"},
-	{LANG_JAVASCRIPT, "JavaScript"},
-	{LANG_JAVA, "Java"},
-	{LANG_GO, "Go"},
-	{LANG_TED_CFG, "TedCfg"},
-	{LANG_TYPESCRIPT, "TypeScript"},
-	{LANG_JSON, "JSON"},
-	{LANG_XML, "XML"},
-	{LANG_GLSL, "GLSL"},
-};
-
-static_assert_if_possible(arr_count(language_names) == LANG_COUNT)
-
 ENUM_U8 {
 	SYNTAX_NORMAL,
 	SYNTAX_KEYWORD,
@@ -176,6 +126,8 @@ typedef struct {
 	u32 array;
 	u32 buffer;
 } GlRcSAB;
+
+
 
 typedef struct {
 	// NOTE: to add more options to ted, add fields here,
@@ -450,10 +402,12 @@ typedef struct {
 typedef struct {
 	// is some hover info being displayed?
 	bool open;
-	// amount of time user has been hovering cursor for
-	double time;
 	// text to display
 	char *text;
+	// where the hover data is coming from.
+	// we use this to check if we need to refresh it.
+	LSPDocumentPosition requested_position;
+	LSPID requested_lsp;
 } Hover;
 
 
