@@ -332,6 +332,8 @@ static char symbol_kind_icon(SymbolKind k) {
 	case SYMBOL_OTHER:
 		return ' ';
 	}
+	assert(0);
+	return ' ';
 }
 
 static void autocomplete_frame(Ted *ted) {

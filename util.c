@@ -119,11 +119,14 @@ static bool streq(char const *a, char const *b) {
 }
 
 static size_t strn_len(const char *src, size_t n) {
-	const char *p = memchr(src, '\0', n);
-	if (p)
-		return (size_t)(p - src);
-	else
-		return n;
+	const char *p = src;
+	// in C99 and C++11/14, calling memchr with a size larger than
+	// the size of the object is undefined behaviour.
+	// i don't think there's any way of doing this (efficiently) with standard C functions.
+	for (size_t i = 0 ; i < n; ++i, ++p)
+		if (*p == '\0')
+			break;
+	return (size_t)(p - src);
 }
 
 // duplicates at most n characters from src

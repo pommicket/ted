@@ -78,6 +78,8 @@ const char *json_type_to_str(JSONValueType type) {
 	case JSON_OBJECT:
 		return "object";
 	}
+	assert(0);
+	return "???";
 }
 
 static bool json_parse_value(JSON *json, u32 *p_index, JSONValue *val);

@@ -208,7 +208,7 @@ static bool parse_completion(LSP *lsp, const JSON *json, LSPResponse *response) 
 		item->text_edit = (LSPTextEdit) {
 			.type = LSP_TEXT_EDIT_PLAIN,
 			.at_cursor = true,
-			.range = {0},
+			.range = {{0}},
 			.new_text = item->label
 		};
 		
@@ -611,7 +611,7 @@ static void process_message(LSP *lsp, JSON *json) {
 			
 			LSPRequest initialized = {
 				.type = LSP_REQUEST_INITIALIZED,
-				.data = {0},
+				.data = {{0}},
 			};
 			write_request(lsp, &initialized);
 			// we can now send requests which have nothing to do with initialization

@@ -253,7 +253,17 @@ static bool lsp_send(LSP *lsp) {
 	size_t n_messages = arr_len(lsp->messages_client2server);
 	messages = calloc(n_messages, sizeof *messages);
 	memcpy(messages, lsp->messages_client2server, n_messages * sizeof *messages);
+	
+	#if __GNUC__ && !__clang__
+	#pragma GCC diagnostic push
+	// i don't know why GCC is giving me this. some compiler bug.
+	#pragma GCC diagnostic ignored "-Wfree-nonheap-object"
+	#endif
 	arr_clear(lsp->messages_client2server);
+	#if __GNUC__ && !__clang__
+	#pragma GCC diagnostic pop
+	#endif
+	
 	SDL_UnlockMutex(lsp->messages_mutex);
 
 	bool quit = false;
@@ -291,11 +301,11 @@ static int lsp_communication_thread(void *data) {
 	if (lsp->initialized) {
 		LSPRequest shutdown = {
 			.type = LSP_REQUEST_SHUTDOWN,
-			.data = {0}
+			.data = {{0}}
 		};
 		LSPRequest exit = {
 			.type = LSP_REQUEST_EXIT,
-			.data = {0}
+			.data = {{0}}
 		};
 		write_request(lsp, &shutdown);
 		// i give you ONE MILLISECOND to send your fucking shutdown response

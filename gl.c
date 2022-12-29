@@ -161,10 +161,11 @@ static GLuint gl_compile_shader(char error_buf[256], char const *code, GLenum sh
 	if (status == GL_FALSE) {
 		char log[1024] = {0};
 		glGetShaderInfoLog(shader, sizeof log - 1, NULL, log);
-		if (error_buf)
+		if (error_buf) {
 			str_printf(error_buf, 256, "Error compiling shader: %s", log);
-		else
+		} else {
 			debug_println("Error compiling shader: %s", log);
+		}
 		return 0;
 	}
 	return shader;

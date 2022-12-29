@@ -169,7 +169,6 @@ static void *arr_remove_(void *arr, size_t member_size, size_t index) {
 
 #define arr__join2(a,b) a##b
 #define arr__join(a,b) arr__join2(a,b) // macro used internally
-
 // if the array is not NULL, free it and set it to NULL
 #define arr_free(a) do { if (a) { free(arr_hdr_(a)); (a) = NULL; } } while (0)
 // a nice alias
