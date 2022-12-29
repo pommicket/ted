@@ -38,6 +38,7 @@ typedef enum {
 	LSP_REQUEST_DID_CHANGE, // textDocument/didChange
 	LSP_REQUEST_COMPLETION, // textDocument/completion
 	LSP_REQUEST_SIGNATURE_HELP, // textDocument/signatureHelp
+	LSP_REQUEST_HOVER, // textDocument/hover
 	LSP_REQUEST_DID_CHANGE_WORKSPACE_FOLDERS, // workspace/didChangeWorkspaceFolders
 	
 	// server-to-client
@@ -112,6 +113,10 @@ typedef struct {
 } LSPRequestSignatureHelp;
 
 typedef struct {
+	LSPDocumentPosition position;
+} LSPRequestHover;
+
+typedef struct {
 	LSPDocumentID *removed; // dynamic array
 	LSPDocumentID *added; // dynamic array
 } LSPRequestDidChangeWorkspaceFolders;
@@ -128,6 +133,7 @@ typedef struct {
 		LSPRequestDidChange change;
 		LSPRequestCompletion completion;
 		LSPRequestSignatureHelp signature_help;
+		LSPRequestHover hover;
 		// LSP_REQUEST_SHOW_MESSAGE or LSP_REQUEST_LOG_MESSAGE
 		LSPRequestMessage message;
 		LSPRequestDidChangeWorkspaceFolders change_workspace_folders;
@@ -297,6 +303,7 @@ typedef struct {
 typedef struct {
 	bool signature_help_support;
 	bool completion_support;
+	bool hover_support;
 	// support for multiple root folders
 	// sadly, as of me writing this, clangd and rust-analyzer don't support this
 	// (but jdtls and gopls do)
@@ -371,8 +378,9 @@ void lsp_message_free(LSPMessage *message);
 u32 lsp_document_id(LSP *lsp, const char *path);
 // returned pointer lives exactly as long as lsp.
 const char *lsp_document_path(LSP *lsp, LSPDocumentID id);
-// don't free the contents of this request! let me handle it!
-void lsp_send_request(LSP *lsp, LSPRequest *request);
+// returns false if the request is not supported by the LSP
+// don't free the contents of this request (even on failure)! let me handle it!
+bool lsp_send_request(LSP *lsp, LSPRequest *request);
 // don't free the contents of this response! let me handle it!
 void lsp_send_response(LSP *lsp, LSPResponse *response);
 const char *lsp_response_string(const LSPResponse *response, LSPString string);

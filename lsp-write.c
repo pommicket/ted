@@ -265,6 +265,8 @@ static const char *lsp_request_method(LSPRequest *request) {
 		return "textDocument/completion";
 	case LSP_REQUEST_SIGNATURE_HELP:
 		return "textDocument/signatureHelp";
+	case LSP_REQUEST_HOVER:
+		return "textDocument/hover";
 	case LSP_REQUEST_WORKSPACE_FOLDERS:
 		return "workspace/workspaceFolders";
 	case LSP_REQUEST_DID_CHANGE_WORKSPACE_FOLDERS:
@@ -293,6 +295,7 @@ static bool request_type_is_notification(LSPRequestType type) {
 	case LSP_REQUEST_LOG_MESSAGE:
 	case LSP_REQUEST_COMPLETION:
 	case LSP_REQUEST_SIGNATURE_HELP:
+	case LSP_REQUEST_HOVER:
 	case LSP_REQUEST_WORKSPACE_FOLDERS:
 		return false;
 	}
@@ -492,6 +495,12 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 		const LSPRequestSignatureHelp *help = &request->data.signature_help;
 		write_key_obj_start(o, "params");
 			write_document_position(o, help->position);
+		write_obj_end(o);
+	} break;
+	case LSP_REQUEST_HOVER: {
+		const LSPRequestHover *hover = &request->data.hover;
+		write_key_obj_start(o, "params");
+			write_document_position(o, hover->position);
 		write_obj_end(o);
 	} break;
 	case LSP_REQUEST_DID_CHANGE_WORKSPACE_FOLDERS: {

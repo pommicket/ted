@@ -127,6 +127,12 @@ static void parse_capabilities(LSP *lsp, const JSON *json, JSONObject capabiliti
 		arr_add(lsp->signature_help_retrigger_chars, '>');
 	}
 	
+	// check for hover support
+	JSONValue hover_value = json_object_get(json, capabilities, "hoverProvider");
+	if (hover_value.type != JSON_UNDEFINED) {
+		cap->hover_support = true;
+	}
+	
 	JSONObject workspace = json_object_get_object(json, capabilities, "workspace");
 	// check WorkspaceFoldersServerCapabilities
 	JSONObject workspace_folders = json_object_get_object(json, workspace, "workspaceFolders");

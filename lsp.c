@@ -1,5 +1,5 @@
 // print server-to-client communication
-#define LSP_SHOW_S2C 0
+#define LSP_SHOW_S2C 1
 // print client-to-server communication
 #define LSP_SHOW_C2S 0
 
@@ -43,6 +43,7 @@ static void lsp_request_free(LSPRequest *r) {
 	case LSP_REQUEST_EXIT:
 	case LSP_REQUEST_COMPLETION:
 	case LSP_REQUEST_SIGNATURE_HELP:
+	case LSP_REQUEST_HOVER:
 	case LSP_REQUEST_DID_CLOSE:
 	case LSP_REQUEST_WORKSPACE_FOLDERS:
 	case LSP_REQUEST_JDTLS_CONFIGURATION:
@@ -142,6 +143,8 @@ static bool lsp_supports_request(LSP *lsp, const LSPRequest *request) {
 		return cap->signature_help_support;
 	case LSP_REQUEST_DID_CHANGE_WORKSPACE_FOLDERS:
 		return cap->workspace_folders_support;
+	case LSP_REQUEST_HOVER:
+		return cap->hover_support;
 	}
 	assert(0);
 	return false;
@@ -153,14 +156,15 @@ void lsp_send_message(LSP *lsp, LSPMessage *message) {
 	SDL_UnlockMutex(lsp->messages_mutex);
 }
 
-void lsp_send_request(LSP *lsp, LSPRequest *request) {
+bool lsp_send_request(LSP *lsp, LSPRequest *request) {
 	if (!lsp_supports_request(lsp, request)) {
 		lsp_request_free(request);
-		return;
+		return false;
 	}
 	LSPMessage message = {.type = LSP_REQUEST};
 	message.u.request = *request;
 	lsp_send_message(lsp, &message);
+	return true;
 }
 
 void lsp_send_response(LSP *lsp, LSPResponse *response) {

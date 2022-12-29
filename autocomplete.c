@@ -130,14 +130,15 @@ static void autocomplete_send_completion_request(Ted *ted, TextBuffer *buffer, B
 	};
 	if (trigger < UNICODE_CODE_POINTS)
 		unicode_utf32_to_utf8(request.data.completion.context.trigger_character, trigger);
-	lsp_send_request(lsp, &request);
-	ac->waiting_for_lsp = true;
-	ac->lsp_request_time = ted->frame_time;
-	// *technically sepaking* this can mess things up if a complete
-	// list arrives only after the user has typed some stuff
-	// (in that case we'll send a TriggerKind = incomplete request even though it makes no sense).
-	// but i don't think any servers will have a problem with that.
-	ac->is_list_complete = false;
+	if (lsp_send_request(lsp, &request)) {
+		ac->waiting_for_lsp = true;
+		ac->lsp_request_time = ted->frame_time;
+		// *technically sepaking* this can mess things up if a complete
+		// list arrives only after the user has typed some stuff
+		// (in that case we'll send a TriggerKind = incomplete request even though it makes no sense).
+		// but i don't think any servers will have a problem with that.
+		ac->is_list_complete = false;
+	}
 }
 
 static void autocomplete_find_completions(Ted *ted, uint32_t trigger) {
@@ -186,6 +187,10 @@ static void autocomplete_find_completions(Ted *ted, uint32_t trigger) {
 }
 
 static void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *response) {
+	const LSPRequest *request = &response->request;
+	if (request->type != LSP_REQUEST_COMPLETION)
+		return;
+	
 	Autocomplete *ac = &ted->autocomplete;
 	ac->waiting_for_lsp = false;
 	if (!ac->open) {
@@ -193,30 +198,29 @@ static void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *respo
 		return;
 	}
 	
-	const LSPRequest *request = &response->request;
-	if (request->type == LSP_REQUEST_COMPLETION) {
-		const LSPResponseCompletion *completion = &response->data.completion;
-		size_t ncompletions = arr_len(completion->items);
-		arr_set_len(ac->completions, ncompletions);
-		for (size_t i = 0; i < ncompletions; ++i) {
-			const LSPCompletionItem *lsp_completion = &completion->items[i];
-			Autocompletion *ted_completion = &ac->completions[i];
-			ted_completion->label = str_dup(lsp_response_string(response, lsp_completion->label));
-			ted_completion->filter = str_dup(lsp_response_string(response, lsp_completion->filter_text));
-			// NOTE: here we don't deal with snippets.
-			// right now we are sending "snippetSupport: false" in the capabilities,
-			// so this should be okay.
-			ted_completion->text = str_dup(lsp_response_string(response, lsp_completion->text_edit.new_text));
-			const char *detail = lsp_response_string(response, lsp_completion->detail);
-			ted_completion->detail = *detail ? str_dup(detail) : NULL;
-			ted_completion->kind = lsp_completion_kind_to_ted(lsp_completion->kind);
-			ted_completion->deprecated = lsp_completion->deprecated;
-			const char *documentation = lsp_response_string(response, lsp_completion->documentation);
-			ted_completion->documentation = *documentation ? str_dup(documentation) : NULL;
-			
-		}
-		ac->is_list_complete = completion->is_complete;
+		
+	const LSPResponseCompletion *completion = &response->data.completion;
+	size_t ncompletions = arr_len(completion->items);
+	arr_set_len(ac->completions, ncompletions);
+	for (size_t i = 0; i < ncompletions; ++i) {
+		const LSPCompletionItem *lsp_completion = &completion->items[i];
+		Autocompletion *ted_completion = &ac->completions[i];
+		ted_completion->label = str_dup(lsp_response_string(response, lsp_completion->label));
+		ted_completion->filter = str_dup(lsp_response_string(response, lsp_completion->filter_text));
+		// NOTE: here we don't deal with snippets.
+		// right now we are sending "snippetSupport: false" in the capabilities,
+		// so this should be okay.
+		ted_completion->text = str_dup(lsp_response_string(response, lsp_completion->text_edit.new_text));
+		const char *detail = lsp_response_string(response, lsp_completion->detail);
+		ted_completion->detail = *detail ? str_dup(detail) : NULL;
+		ted_completion->kind = lsp_completion_kind_to_ted(lsp_completion->kind);
+		ted_completion->deprecated = lsp_completion->deprecated;
+		const char *documentation = lsp_response_string(response, lsp_completion->documentation);
+		ted_completion->documentation = *documentation ? str_dup(documentation) : NULL;
+		
 	}
+	ac->is_list_complete = completion->is_complete;
+	
 	autocomplete_update_suggested(ted);
 	switch (arr_len(ac->suggested)) {
 	case 0:
