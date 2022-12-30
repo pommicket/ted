@@ -51,6 +51,7 @@ typedef enum {
 	LSP_REQUEST_SIGNATURE_HELP, // textDocument/signatureHelp
 	LSP_REQUEST_HOVER, // textDocument/hover
 	LSP_REQUEST_DEFINITION, // textDocument/definition
+	LSP_REQUEST_WORKSPACE_SYMBOLS, // workspace/symbol
 	LSP_REQUEST_DID_CHANGE_WORKSPACE_FOLDERS, // workspace/didChangeWorkspaceFolders
 	
 	// server-to-client
@@ -128,12 +129,15 @@ typedef struct {
 } LSPRequestDefinition;
 
 typedef struct {
+	char *query;
+} LSPRequestWorkspaceSymbols;
+
+typedef struct {
 	LSPDocumentID *removed; // dynamic array
 	LSPDocumentID *added; // dynamic array
 } LSPRequestDidChangeWorkspaceFolders;
 
 typedef struct {
-	// id is set by lsp.c; you shouldn't set it.
 	u32 id;
 	LSPRequestType type;
 	char *id_string; // if not NULL, this is the ID (only for server-to-client messages; we always use integer IDs)
@@ -146,6 +150,7 @@ typedef struct {
 		LSPRequestSignatureHelp signature_help;
 		LSPRequestHover hover;
 		LSPRequestDefinition definition;
+		LSPRequestWorkspaceSymbols workspace_symbols;
 		// LSP_REQUEST_SHOW_MESSAGE or LSP_REQUEST_LOG_MESSAGE
 		LSPRequestMessage message;
 		LSPRequestDidChangeWorkspaceFolders change_workspace_folders;
@@ -331,6 +336,7 @@ typedef struct {
 	bool completion_support;
 	bool hover_support;
 	bool definition_support;
+	bool workspace_symbols_support;
 	// support for multiple root folders
 	// sadly, as of me writing this, clangd and rust-analyzer don't support this
 	// (but jdtls and gopls do)

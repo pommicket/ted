@@ -161,6 +161,12 @@ static void parse_capabilities(LSP *lsp, const JSON *json, JSONObject capabiliti
 		cap->definition_support = true;
 	}
 	
+	// check for workspace/symbol support
+	JSONValue workspace_symbol_value = json_object_get(json, capabilities, "workspaceSymbolProvider");
+	if (workspace_symbol_value.type != JSON_UNDEFINED) {
+		cap->workspace_symbols_support = true;
+	}
+	
 	JSONObject workspace = json_object_get_object(json, capabilities, "workspace");
 	// check WorkspaceFoldersServerCapabilities
 	JSONObject workspace_folders = json_object_get_object(json, workspace, "workspaceFolders");

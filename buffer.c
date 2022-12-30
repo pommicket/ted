@@ -314,6 +314,8 @@ static void buffer_send_lsp_did_open(TextBuffer *buffer, LSP *lsp, char *buffer_
 LSP *buffer_lsp(TextBuffer *buffer) {
 	if (!buffer_is_named_file(buffer))
 		return NULL;
+	if (buffer->view_only)
+		return NULL; // we don't really want to start up an LSP in /usr/include
 	LSP *true_lsp = ted_get_lsp(buffer->ted, buffer->filename, buffer_language(buffer));
 	LSP *curr_lsp = ted_get_lsp_by_id(buffer->ted, buffer->lsp_opened_in);
 	if (true_lsp != curr_lsp) {

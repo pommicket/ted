@@ -67,6 +67,9 @@ static void lsp_request_free(LSPRequest *r) {
 		arr_free(w->added);
 		arr_free(w->removed);
 		} break;
+	case LSP_REQUEST_WORKSPACE_SYMBOLS:
+		free(r->data.workspace_symbols.query);
+		break;
 	}
 	memset(r, 0, sizeof *r);
 }
@@ -151,6 +154,8 @@ static bool lsp_supports_request(LSP *lsp, const LSPRequest *request) {
 		return cap->hover_support;
 	case LSP_REQUEST_DEFINITION:
 		return cap->definition_support;
+	case LSP_REQUEST_WORKSPACE_SYMBOLS:
+		return cap->workspace_symbols_support;
 	}
 	assert(0);
 	return false;
@@ -181,6 +186,7 @@ static bool request_type_is_notification(LSPRequestType type) {
 	case LSP_REQUEST_SIGNATURE_HELP:
 	case LSP_REQUEST_HOVER:
 	case LSP_REQUEST_DEFINITION:
+	case LSP_REQUEST_WORKSPACE_SYMBOLS:
 	case LSP_REQUEST_WORKSPACE_FOLDERS:
 		return false;
 	}

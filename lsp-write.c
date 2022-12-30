@@ -277,12 +277,12 @@ static const char *lsp_request_method(LSPRequest *request) {
 		return "workspace/didChangeWorkspaceFolders";
 	case LSP_REQUEST_JDTLS_CONFIGURATION:
 		return "workspace/didChangeConfiguration";
+	case LSP_REQUEST_WORKSPACE_SYMBOLS:
+		return "workspace/symbol";
 	}
 	assert(0);
 	return "$/ignore";
 }
-
-
 
 static const size_t max_header_size = 64;
 static JSONWriter message_writer_new(LSP *lsp) {
@@ -498,6 +498,12 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 		const LSPRequestDefinition *def = &request->data.definition;
 		write_key_obj_start(o, "params");
 			write_document_position(o, def->position);
+		write_obj_end(o);
+	} break;
+	case LSP_REQUEST_WORKSPACE_SYMBOLS: {
+		const LSPRequestWorkspaceSymbols *syms = &request->data.workspace_symbols;
+		write_key_obj_start(o, "params");
+			write_key_string(o, "query", syms->query);
 		write_obj_end(o);
 	} break;
 	case LSP_REQUEST_DID_CHANGE_WORKSPACE_FOLDERS: {
