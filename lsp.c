@@ -75,6 +75,9 @@ static void lsp_request_free(LSPRequest *r) {
 		arr_free(w->added);
 		arr_free(w->removed);
 		} break;
+	case LSP_REQUEST_RENAME:
+		free(r->data.rename.new_name);
+		break;
 	case LSP_REQUEST_WORKSPACE_SYMBOLS:
 		free(r->data.workspace_symbols.query);
 		break;
@@ -168,6 +171,8 @@ static bool lsp_supports_request(LSP *lsp, const LSPRequest *request) {
 		return cap->definition_support;
 	case LSP_REQUEST_WORKSPACE_SYMBOLS:
 		return cap->workspace_symbols_support;
+	case LSP_REQUEST_RENAME:
+		return cap->rename_support;
 	}
 	assert(0);
 	return false;
@@ -199,6 +204,7 @@ static bool request_type_is_notification(LSPRequestType type) {
 	case LSP_REQUEST_SIGNATURE_HELP:
 	case LSP_REQUEST_HOVER:
 	case LSP_REQUEST_DEFINITION:
+	case LSP_REQUEST_RENAME:
 	case LSP_REQUEST_WORKSPACE_SYMBOLS:
 	case LSP_REQUEST_WORKSPACE_FOLDERS:
 		return false;

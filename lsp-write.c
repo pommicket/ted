@@ -273,6 +273,8 @@ static const char *lsp_request_method(LSPRequest *request) {
 		return "textDocument/hover";
 	case LSP_REQUEST_DEFINITION:
 		return "textDocument/definition";
+	case LSP_REQUEST_RENAME:
+		return "textDocument/rename";
 	case LSP_REQUEST_WORKSPACE_FOLDERS:
 		return "workspace/workspaceFolders";
 	case LSP_REQUEST_DID_CHANGE_WORKSPACE_FOLDERS:
@@ -533,6 +535,13 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 		const LSPRequestDefinition *def = &request->data.definition;
 		write_key_obj_start(o, "params");
 			write_document_position(o, def->position);
+		write_obj_end(o);
+	} break;
+	case LSP_REQUEST_RENAME: {
+		const LSPRequestRename *rename = &request->data.rename;
+		write_key_obj_start(o, "params");
+			write_document_position(o, rename->position);
+			write_key_string(o, "newName", rename->new_name);
 		write_obj_end(o);
 	} break;
 	case LSP_REQUEST_WORKSPACE_SYMBOLS: {

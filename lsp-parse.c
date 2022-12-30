@@ -158,6 +158,12 @@ static void parse_capabilities(LSP *lsp, const JSON *json, JSONObject capabiliti
 		cap->definition_support = true;
 	}
 	
+	// check for textDocument/rename support
+	JSONValue rename_value = json_object_get(json, capabilities, "renameProvider");
+	if (rename_value.type != JSON_UNDEFINED) {
+		cap->rename_support = true;
+	}
+	
 	// check for workspace/symbol support
 	JSONValue workspace_symbol_value = json_object_get(json, capabilities, "workspaceSymbolProvider");
 	if (workspace_symbol_value.type != JSON_UNDEFINED) {

@@ -1,9 +1,11 @@
 /*
 @TODO:
-- handle multiple symbols with same name
 - more LSP stuff:
      - find usages
-     - refactoring?
+     - rename
+     - check for others
+- handle multiple symbols with same name in go-to-definition menu
+- :go-to-cursor-definition
 - test full unicode position handling
 - check if there are any other non-optional/nice-to-have-support-for server-to-client requests
 - better non-error window/showMessage(Request)

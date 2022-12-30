@@ -52,6 +52,7 @@ typedef enum {
 	LSP_REQUEST_SIGNATURE_HELP, // textDocument/signatureHelp
 	LSP_REQUEST_HOVER, // textDocument/hover
 	LSP_REQUEST_DEFINITION, // textDocument/definition
+	LSP_REQUEST_RENAME, // textDocument/rename
 	LSP_REQUEST_WORKSPACE_SYMBOLS, // workspace/symbol
 	LSP_REQUEST_DID_CHANGE_WORKSPACE_FOLDERS, // workspace/didChangeWorkspaceFolders
 	
@@ -152,6 +153,11 @@ typedef struct {
 } LSPRequestWorkspaceSymbols;
 
 typedef struct {
+	LSPDocumentPosition position;
+	char *new_name;
+} LSPRequestRename;
+
+typedef struct {
 	LSPDocumentID *removed; // dynamic array
 	LSPDocumentID *added; // dynamic array
 } LSPRequestDidChangeWorkspaceFolders;
@@ -174,6 +180,7 @@ typedef struct {
 		// LSP_REQUEST_SHOW_MESSAGE or LSP_REQUEST_LOG_MESSAGE
 		LSPRequestMessage message;
 		LSPRequestDidChangeWorkspaceFolders change_workspace_folders;
+		LSPRequestRename rename;
 	} data;
 } LSPRequest;
 
@@ -380,6 +387,7 @@ typedef struct {
 	// sadly, as of me writing this, clangd and rust-analyzer don't support this
 	// (but jdtls and gopls do)
 	bool workspace_folders_support;
+	bool rename_support;
 } LSPCapabilities;
 
 typedef struct LSP {
