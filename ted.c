@@ -143,7 +143,7 @@ LSP *ted_get_lsp(Ted *ted, const char *path, Language language) {
 	return NULL;
 }
 
-LSP *ted_get_active_lsp(Ted *ted) {
+LSP *ted_active_lsp(Ted *ted) {
 	if (!ted->active_buffer)
 		return NULL;
 	return buffer_lsp(ted->active_buffer);

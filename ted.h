@@ -420,11 +420,14 @@ typedef struct {
 	// last_request_id is set to 0.
 	LSPRequestID last_request_id;
 	struct timespec last_request_time;
+	
+	Selector selector; // for "go to definition of..." menu
+	SelectorEntry *selector_all_entries; // an array of all definitions
 } Definitions;
 
 
 typedef struct Ted {
-	struct LSP *lsps[TED_LSP_MAX + 1];
+	LSP *lsps[TED_LSP_MAX + 1];
 	// current time, as of the start of this frame
 	struct timespec frame_time;
 	
@@ -453,7 +456,6 @@ typedef struct Ted {
 	int scroll_total_x, scroll_total_y; // total amount scrolled in the x and y direction this frame
 	Menu menu;
 	FileSelector file_selector;
-	Selector tag_selector; // for "go to definition of..." menu
 	Selector command_selector;
 	TextBuffer line_buffer; // general-purpose line buffer for inputs -- used for menus
 	TextBuffer find_buffer; // use for "find" term in find/find+replace
@@ -502,7 +504,6 @@ typedef struct Ted {
 	// if not NULL, points to the node whose split the user is currently resizing.
 	Node *resizing_split;
 	
-	char **tag_selector_entries; // an array of all tags (see tag_selector_open)
 	char **shell_history; // dynamic array of history of commands run with :shell (UTF-8)
 	u32 shell_history_pos; // for keeping track of where we are in the shell history.
 
@@ -549,10 +550,10 @@ void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer);
 Settings *ted_active_settings(Ted *ted);
 Settings *ted_get_settings(Ted *ted, const char *path, Language lang);
 void ted_load_configs(Ted *ted, bool reloading);
-struct LSP *ted_get_lsp(Ted *ted, const char *path, Language lang);
-struct LSP *ted_active_lsp(Ted *ted);
-struct LSP *ted_get_lsp_by_id(Ted *ted, u32 id);
-static TextBuffer *find_search_buffer(Ted *ted);
+LSP *ted_get_lsp(Ted *ted, const char *path, Language lang);
+LSP *ted_active_lsp(Ted *ted);
+LSP *ted_get_lsp_by_id(Ted *ted, u32 id);
+TextBuffer *find_search_buffer(Ted *ted);
 // first, we read all config files, then we parse them.
 // this is because we want less specific settings (e.g. settings applied
 // to all languages instead of one particular language) to be applied first,
@@ -581,3 +582,9 @@ void signature_help_retrigger(Ted *ted);
 // Note: the document position is required for LSP requests because of overloading (where the name
 // alone isn't sufficient)
 void definition_goto(Ted *ted, LSP *lsp, const char *name, LSPDocumentPosition pos);
+void definitions_selector_open(Ted *ted);
+// returns tag selected (should be free'd), or NULL if none was.
+// if this is an LSP-based menu, this function will always return NULL.
+char *definitions_selector_update(Ted *ted);
+void definitions_selector_render(Ted *ted, Rect bounds);
+void definitions_selector_close(Ted *ted);

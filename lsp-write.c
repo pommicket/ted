@@ -622,9 +622,6 @@ static void write_message(LSP *lsp, LSPMessage *message) {
 		write_response(lsp, &message->u.response);
 		break;
 	}
-	// it's okay to free the message here since the request/response part has been zeroed.
-	// (as i'm writing this, this won't do anything but it might in the future)
-	lsp_message_free(message);
 }
 
 #undef write_bool

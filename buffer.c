@@ -312,6 +312,8 @@ static void buffer_send_lsp_did_open(TextBuffer *buffer, LSP *lsp, char *buffer_
 }
 
 LSP *buffer_lsp(TextBuffer *buffer) {
+	if (!buffer)
+		return NULL;
 	if (!buffer_is_named_file(buffer))
 		return NULL;
 	if (buffer->view_only)

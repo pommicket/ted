@@ -10,7 +10,7 @@ static u32 find_replace_flags(Ted *ted) {
 }
 
 // which buffer will be searched?
-static TextBuffer *find_search_buffer(Ted *ted) {
+TextBuffer *find_search_buffer(Ted *ted) {
 	if (ted->active_buffer && ted->active_buffer != &ted->find_buffer && ted->active_buffer != &ted->replace_buffer) {
 		return ted->active_buffer;
 	}

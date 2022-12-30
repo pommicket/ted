@@ -1,10 +1,12 @@
 /*
 @TODO:
 - cancelling requests e.g. in ide-definitions.c
+- sort symbols by score (clangd extension?)
 - more LSP stuff:
      - go to definition using LSP
      - find usages
      - refactoring?
+- ted_active_lsp should return something even when buffer isn't open
 - test full unicode position handling
 - check if there are any other non-optional/nice-to-have-support-for server-to-client requests
 - better non-error window/showMessage(Request)
@@ -14,6 +16,7 @@
    -  what to do if initialize request takes a long time?
 - delete old sent requests? but make sure requests that just take a long time are okay.
     (if the server never sends a response)
+- make tags_dir the root folder
 - check that tags still works
 - TESTING: make rust-analyzer-slow (waits 10s before sending response)
 - run everything through valgrind ideally with leak checking
@@ -868,45 +871,43 @@ int main(int argc, char **argv) {
 			menu_update(ted);
 		}
 		
-		{
-			LSP *lsp = ted_get_active_lsp(ted);
-			if (lsp) {
-				LSPMessage message = {0};
-				while (lsp_next_message(lsp, &message)) {
-					switch (message.type) {
-					case LSP_REQUEST: {
-						LSPRequest *r = &message.u.request;
-						switch (r->type) {
-						case LSP_REQUEST_SHOW_MESSAGE: {
-							LSPRequestMessage *m = &r->data.message;
-							// @TODO: multiple messages
-							ted_seterr(ted, "%s", m->message);
-							} break;
-						case LSP_REQUEST_LOG_MESSAGE: {
-							LSPRequestMessage *m = &r->data.message;
-							// @TODO: actual logging
-							printf("%s\n", m->message);
-							} break;
-						default: break;
-						}
+		for (int i = 0; ted->lsps[i]; ++i) {
+			LSP *lsp = ted->lsps[i];
+			LSPMessage message = {0};
+			while (lsp_next_message(lsp, &message)) {
+				switch (message.type) {
+				case LSP_REQUEST: {
+					LSPRequest *r = &message.u.request;
+					switch (r->type) {
+					case LSP_REQUEST_SHOW_MESSAGE: {
+						LSPRequestMessage *m = &r->data.message;
+						// @TODO: multiple messages
+						ted_seterr(ted, "%s", m->message);
 						} break;
-					case LSP_RESPONSE: {
-						LSPResponse *r = &message.u.response;
-						if (r->error) {
-							// not displaying this right now
-							// idk it might be spammy
-							//ted_seterr(ted, "%s", r->error);
-						}
-						// it's important that we send error responses here too.
-						// we don't want to be waiting around for a response that's never coming.
-						autocomplete_process_lsp_response(ted, r);
-						signature_help_process_lsp_response(ted, r);
-						hover_process_lsp_response(ted, r);
-						definitions_process_lsp_response(ted, lsp, r);
+					case LSP_REQUEST_LOG_MESSAGE: {
+						LSPRequestMessage *m = &r->data.message;
+						// @TODO: actual logging
+						printf("%s\n", m->message);
 						} break;
+					default: break;
 					}
-					lsp_message_free(&message);
+					} break;
+				case LSP_RESPONSE: {
+					LSPResponse *r = &message.u.response;
+					if (r->error) {
+						// not displaying this right now
+						// idk it might be spammy
+						//ted_seterr(ted, "%s", r->error);
+					}
+					// it's important that we send error responses here too.
+					// we don't want to be waiting around for a response that's never coming.
+					autocomplete_process_lsp_response(ted, r);
+					signature_help_process_lsp_response(ted, r);
+					hover_process_lsp_response(ted, r);
+					definitions_process_lsp_response(ted, lsp, r);
+					} break;
 				}
+				lsp_message_free(&message);
 			}
 		}
 		
@@ -1172,7 +1173,7 @@ int main(int argc, char **argv) {
 	SDL_DestroyWindow(window);
 	SDL_Quit();
 	if (log) fclose(log);
-	tag_selector_close(ted);
+	definitions_selector_close(ted);
 	for (u16 i = 0; i < TED_MAX_BUFFERS; ++i)
 		if (ted->buffers_used[i])
 			buffer_free(&ted->buffers[i]);

@@ -1,6 +1,6 @@
-static char const *tags_filename(Ted *ted, bool error_if_does_not_exist) {
+static const char *tags_filename(Ted *ted, bool error_if_does_not_exist) {
 	change_directory(ted->cwd);
-	char const *filename = "tags";
+	const char *filename = "tags";
 	ted_path_full(ted, ".", ted->tags_dir, sizeof ted->tags_dir);
 	if (!fs_file_exists(filename)) {
 		filename = "../tags";
@@ -347,70 +347,26 @@ top:;
 	return success;
 }
 
-static void tag_selector_open(Ted *ted) {
+SelectorEntry *tags_get_entries(Ted *ted) {
 	// read tags file and extract tag names
 	char const *filename = tags_filename(ted, true);
-	if (!filename) return;
+	if (!filename) return NULL;
 	FILE *file = fopen(filename, "rb");
-	if (!file) return;
+	if (!file) return NULL;
 	
-	arr_clear(ted->tag_selector_entries);
+	SelectorEntry *entries = NULL;
+	u32 color = ted_color(ted, COLOR_TEXT);
 	if (file) {
 		char line[1024];
 		while (fgets(line, sizeof line, file)) {
 			if (line[0] != '!') { // tag metadata is formatted as tag names beginning with !	
 				size_t len = strcspn(line, "\t");
-				arr_add(ted->tag_selector_entries, strn_dup(line, len));
+				SelectorEntry *entry = arr_addp(entries);
+				entry->name = strn_dup(line, len);
+				entry->color = color;
 			}
 		}
-		ted_switch_to_buffer(ted, &ted->line_buffer);
-		buffer_select_all(ted->active_buffer);
-
-		ted->tag_selector.cursor = 0;
-
 		fclose(file);
 	}
-}
-
-static void tag_selector_close(Ted *ted) {
-	Selector *sel = &ted->tag_selector;
-	arr_clear(sel->entries);
-	sel->n_entries = 0;
-	arr_foreach_ptr(ted->tag_selector_entries, char *, entry) {
-		free(*entry);
-	}
-	arr_clear(ted->tag_selector_entries);
-}
-
-// returns tag selected (should be free'd), or NULL if none was.
-static char *tag_selector_update(Ted *ted) {
-	Selector *sel = &ted->tag_selector;
-	u32 color = ted_color(ted, COLOR_TEXT);
-	sel->enable_cursor = true;
-	
-	// create selector entries based on search term
-	char *search_term = str32_to_utf8_cstr(buffer_get_line(&ted->line_buffer, 0));
-
-	arr_clear(sel->entries);
-
-	arr_foreach_ptr(ted->tag_selector_entries, char *, tagp) {
-		char const *tag = *tagp;
-		if (!search_term || stristr(tag, search_term)) {
-			SelectorEntry entry = {
-				.name = tag,
-				.color = color
-			};
-			arr_add(sel->entries, entry);
-		}
-	}
-
-	sel->n_entries = arr_len(sel->entries);
-
-	return selector_update(ted, sel);
-}
-
-static void tag_selector_render(Ted *ted, Rect bounds) {
-	Selector *sel = &ted->tag_selector;
-	sel->bounds = bounds;
-	selector_render(ted, sel);
+	return entries;
 }

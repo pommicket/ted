@@ -569,7 +569,7 @@ static bool parse_symbol_information(LSP *lsp, const JSON *json, JSONValue value
 
 static bool parse_workspace_symbols(LSP *lsp, const JSON *json, LSPResponse *response) {
 	LSPResponseWorkspaceSymbols *syms = &response->data.workspace_symbols;
-	JSONArray result = json_force_array(json_root(json));
+	JSONArray result = json_force_array(json_get(json, "result"));
 	arr_set_len(syms->symbols, result.len);
 	for (size_t i = 0; i < result.len; ++i) {
 		LSPSymbolInformation *info = &syms->symbols[i];

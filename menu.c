@@ -23,7 +23,7 @@ static void menu_close_with_next(Ted *ted, Menu next) {
 		*ted->ask_reload = 0;
 		break;
 	case MENU_GOTO_DEFINITION:
-		tag_selector_close(ted);
+		definitions_selector_close(ted);
 		break;
 	case MENU_GOTO_LINE:
 		buffer_clear(&ted->line_buffer);
@@ -77,7 +77,7 @@ void menu_open(Ted *ted, Menu menu) {
 		assert(*ted->ask_reload);
 		break;
 	case MENU_GOTO_DEFINITION:
-		tag_selector_open(ted);
+		definitions_selector_open(ted);
 		break;
 	case MENU_GOTO_LINE:
 		ted_switch_to_buffer(ted, &ted->line_buffer);
@@ -238,7 +238,7 @@ static void menu_update(Ted *ted) {
 		}
 		break;
 	case MENU_GOTO_DEFINITION: {
-		char *chosen_tag = tag_selector_update(ted);
+		char *chosen_tag = definitions_selector_update(ted);
 		if (chosen_tag) {
 			menu_close(ted);
 			tag_goto(ted, chosen_tag);
@@ -394,7 +394,7 @@ static void menu_render(Ted *ted) {
 		file_selector_render(ted, fs);
 	} break;
 	case MENU_GOTO_DEFINITION: {
-		tag_selector_render(ted, rect4(x1, y1, x2, y2));
+		definitions_selector_render(ted, rect4(x1, y1, x2, y2));
 	} break;
 	case MENU_GOTO_LINE: {
 		float menu_height = char_height + 2 * padding;
