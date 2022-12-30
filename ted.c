@@ -535,6 +535,7 @@ void ted_go_to_position(Ted *ted, const char *path, u32 line, u32 index, bool is
 }
 
 void ted_go_to_lsp_document_position(Ted *ted, LSP *lsp, LSPDocumentPosition position) {
+	if (!lsp) lsp = ted_active_lsp(ted);
 	const char *path = lsp_document_path(lsp, position.document);
 	u32 line = position.pos.line;
 	u32 character = position.pos.character;

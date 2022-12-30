@@ -347,26 +347,26 @@ top:;
 	return success;
 }
 
-SelectorEntry *tags_get_entries(Ted *ted) {
+SymbolInfo *tags_get_symbols(Ted *ted) {
 	// read tags file and extract tag names
 	char const *filename = tags_filename(ted, true);
 	if (!filename) return NULL;
 	FILE *file = fopen(filename, "rb");
 	if (!file) return NULL;
 	
-	SelectorEntry *entries = NULL;
+	SymbolInfo *infos = NULL;
 	u32 color = ted_color(ted, COLOR_TEXT);
 	if (file) {
 		char line[1024];
 		while (fgets(line, sizeof line, file)) {
 			if (line[0] != '!') { // tag metadata is formatted as tag names beginning with !	
 				size_t len = strcspn(line, "\t");
-				SelectorEntry *entry = arr_addp(entries);
-				entry->name = strn_dup(line, len);
-				entry->color = color;
+				SymbolInfo *info = arr_addp(infos);
+				info->name = strn_dup(line, len);
+				info->color = color;
 			}
 		}
 		fclose(file);
 	}
-	return entries;
+	return infos;
 }

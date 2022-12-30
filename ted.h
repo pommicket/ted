@@ -414,6 +414,13 @@ typedef struct {
 } Hover;
 
 typedef struct {
+	char *name;
+	u32 color;
+	bool from_lsp;
+	LSPDocumentPosition position; // only set if from_lsp = true
+} SymbolInfo;
+
+typedef struct {
 	// ID of the last request which was sent out.
 	// used to process responses in chronological order (= ID order).
 	// if we got a response for the last request, or no requests have been made,
@@ -421,8 +428,9 @@ typedef struct {
 	LSPRequestID last_request_id;
 	struct timespec last_request_time;
 	
+	char *last_request_query; // last query string which we sent a request for
 	Selector selector; // for "go to definition of..." menu
-	SelectorEntry *selector_all_entries; // an array of all definitions
+	SymbolInfo *selector_all_definitions; // an array of all definitions
 } Definitions;
 
 
@@ -583,8 +591,6 @@ void signature_help_retrigger(Ted *ted);
 // alone isn't sufficient)
 void definition_goto(Ted *ted, LSP *lsp, const char *name, LSPDocumentPosition pos);
 void definitions_selector_open(Ted *ted);
-// returns tag selected (should be free'd), or NULL if none was.
-// if this is an LSP-based menu, this function will always return NULL.
-char *definitions_selector_update(Ted *ted);
+void definitions_selector_update(Ted *ted);
 void definitions_selector_render(Ted *ted, Rect bounds);
 void definitions_selector_close(Ted *ted);

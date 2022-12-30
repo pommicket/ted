@@ -238,12 +238,7 @@ static void menu_update(Ted *ted) {
 		}
 		break;
 	case MENU_GOTO_DEFINITION: {
-		char *chosen_tag = definitions_selector_update(ted);
-		if (chosen_tag) {
-			menu_close(ted);
-			tag_goto(ted, chosen_tag);
-			free(chosen_tag);
-		}
+		definitions_selector_update(ted);
 	} break;
 	case MENU_GOTO_LINE: {
 		char *contents = str32_to_utf8_cstr(buffer_get_line(line_buffer, 0));

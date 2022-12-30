@@ -74,12 +74,46 @@ void definitions_frame(Ted *ted) {
 }
 
 static void definitions_clear_entries(Definitions *defs) {
-	arr_foreach_ptr(defs->selector_all_entries, SelectorEntry, entry) {
-		free((char*)entry->name);
+	arr_foreach_ptr(defs->selector_all_definitions, SymbolInfo, def) {
+		free(def->name);
 	}
-	arr_clear(defs->selector_all_entries);
+	arr_clear(defs->selector_all_definitions);
 	arr_clear(defs->selector.entries);
 	defs->selector.n_entries = 0;
+}
+
+static int definition_entry_qsort_cmp(const void *av, const void *bv) {
+	const SymbolInfo *a = av, *b = bv;
+	// first, sort by length
+	size_t a_len = strlen(a->name), b_len = strlen(b->name);
+	if (a_len < b_len) return -1;
+	if (a_len > b_len) return 1;
+	// then sort alphabetically
+	return strcmp(a->name, b->name);
+}
+
+// put the entries matching the search term into the selector.
+static void definitions_selector_filter_entries(Ted *ted) {
+	Definitions *defs = &ted->definitions;
+	Selector *sel = &defs->selector;
+	
+	// create selector entries based on search term
+	char *search_term = str32_to_utf8_cstr(buffer_get_line(&ted->line_buffer, 0));
+
+	arr_clear(sel->entries);
+
+	arr_foreach_ptr(defs->selector_all_definitions, SymbolInfo, info) {
+		if (!search_term || stristr(info->name, search_term)) {
+			SelectorEntry *entry = arr_addp(sel->entries);
+			entry->name = info->name;
+			entry->color = info->color;
+		}
+	}
+	free(search_term);
+	
+	arr_qsort(sel->entries, definition_entry_qsort_cmp);
+	
+	sel->n_entries = arr_len(sel->entries);
 }
 
 
@@ -117,15 +151,19 @@ void definitions_process_lsp_response(Ted *ted, LSP *lsp, const LSPResponse *res
 		const u32 *colors = settings->colors;
 		
 		definitions_clear_entries(defs);
-		arr_set_len(defs->selector_all_entries, arr_len(symbols));
+		arr_set_len(defs->selector_all_definitions, arr_len(symbols));
 		for (size_t i = 0; i < arr_len(symbols); ++i) {
 			const LSPSymbolInformation *symbol = &symbols[i];
-			SelectorEntry *entry = &defs->selector_all_entries[i];
+			SymbolInfo *def = &defs->selector_all_definitions[i];
 			
-			entry->name = str_dup(lsp_response_string(response, symbol->name));
+			def->name = str_dup(lsp_response_string(response, symbol->name));
 			SymbolKind kind = symbol_kind_to_ted(symbol->kind);
-			entry->color = colors[color_for_symbol_kind(kind)];
+			def->color = colors[color_for_symbol_kind(kind)];
+			def->from_lsp = true;
+			def->position = lsp_location_start_position(symbol->location);
 		}
+		
+		definitions_selector_filter_entries(ted);
 		
 		} break;
 	default:
@@ -134,18 +172,33 @@ void definitions_process_lsp_response(Ted *ted, LSP *lsp, const LSPResponse *res
 	}
 }
 
+void definitions_send_request_if_needed(Ted *ted) {
+	LSP *lsp = buffer_lsp(ted->prev_active_buffer);
+	if (!lsp)
+		return;
+	Definitions *defs = &ted->definitions;
+	char *query = buffer_contents_utf8_alloc(&ted->line_buffer);
+	if (defs->last_request_query && strcmp(defs->last_request_query, query) == 0) {
+		free(query);
+		return; // no need to update symbols
+	}
+	LSPRequest request = {.type = LSP_REQUEST_WORKSPACE_SYMBOLS};
+	LSPRequestWorkspaceSymbols *syms = &request.data.workspace_symbols;
+	syms->query = str_dup(query);
+	defs->last_request_id = lsp_send_request(lsp, &request);
+	defs->last_request_time = ted->frame_time;
+	free(defs->last_request_query);
+	defs->last_request_query = query;
+}
+
 void definitions_selector_open(Ted *ted) {
 	Definitions *defs = &ted->definitions;
 	definitions_clear_entries(defs);
 	LSP *lsp = buffer_lsp(ted->prev_active_buffer);
 	if (lsp) {
-		LSPRequest request = {.type = LSP_REQUEST_WORKSPACE_SYMBOLS};
-		LSPRequestWorkspaceSymbols *syms = &request.data.workspace_symbols;
-		syms->query = str_dup("");
-		defs->last_request_id = lsp_send_request(lsp, &request);
-		defs->last_request_time = ted->frame_time;
+		definitions_send_request_if_needed(ted);
 	} else {
-		defs->selector_all_entries = tags_get_entries(ted);
+		defs->selector_all_definitions = tags_get_symbols(ted);
 	}
 	ted_switch_to_buffer(ted, &ted->line_buffer);
 	buffer_select_all(ted->active_buffer);
@@ -158,27 +211,37 @@ void definitions_selector_close(Ted *ted) {
 	definitions_clear_entries(defs);
 	// @TODO : cancel
 	defs->last_request_id = 0;
+	free(defs->last_request_query);
+	defs->last_request_query = NULL;
 }
 
-char *definitions_selector_update(Ted *ted) {
+void definitions_selector_update(Ted *ted) {
 	Definitions *defs = &ted->definitions;
 	Selector *sel = &defs->selector;
 	sel->enable_cursor = true;
 	
-	// create selector entries based on search term
-	char *search_term = str32_to_utf8_cstr(buffer_get_line(&ted->line_buffer, 0));
+	definitions_selector_filter_entries(ted);
 
-	arr_clear(sel->entries);
-
-	arr_foreach_ptr(defs->selector_all_entries, SelectorEntry, entry) {
-		if (!search_term || stristr(entry->name, search_term)) {
-			arr_add(sel->entries, *entry);
+	// send new request if search term has changed.
+	// this is needed because e.g. clangd gives an incomplete list
+	definitions_send_request_if_needed(ted);
+	
+	char *chosen = selector_update(ted, sel);
+	if (chosen) {
+		arr_foreach_ptr(defs->selector_all_definitions, SymbolInfo, info) {
+			if (strcmp(info->name, chosen) == 0) {
+				if (info->from_lsp) {
+					menu_close(ted);
+					ted_go_to_lsp_document_position(ted, NULL, info->position);
+				} else {
+					menu_close(ted);
+					tag_goto(ted, chosen);
+				}
+			}
 		}
+		
+		free(chosen);
 	}
-
-	sel->n_entries = arr_len(sel->entries);
-
-	return selector_update(ted, sel);
 }
 
 void definitions_selector_render(Ted *ted, Rect bounds) {
