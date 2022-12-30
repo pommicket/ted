@@ -8,20 +8,16 @@ void hover_close(Ted *ted) {
 }
 
 static bool get_hover_position(Ted *ted, LSPDocumentPosition *pos, TextBuffer **pbuffer, LSP **lsp) {
-	// find the buffer where the mouse is
-	for (int i = 0; i < TED_MAX_BUFFERS; ++i) {
-		TextBuffer *buffer = &ted->buffers[i];
-		if (!buffer->filename) continue;
+	BufferPos mouse_pos = {0};
+	TextBuffer *buffer = NULL;
+	if (ted_get_mouse_buffer_pos(ted, &buffer, &mouse_pos)) {
 		LSP *l = buffer_lsp(buffer);
-		if (!l) continue;
-		BufferPos mouse_pos = {0};
-		if (buffer_pixels_to_pos(buffer, ted->mouse_pos, &mouse_pos)) {
-			if (pos) *pos = buffer_pos_to_lsp_document_position(buffer, mouse_pos);
-			if (pbuffer) *pbuffer = buffer;
-			if (lsp) *lsp = l;
-			return true;
-		}
+		if (pos) *pos = buffer_pos_to_lsp_document_position(buffer, mouse_pos);
+		if (pbuffer) *pbuffer = buffer;
+		if (lsp) *lsp = l;
+		return true;
 	}
+	
 	return false;
 }
 

@@ -2,6 +2,8 @@
 // provides FAST(ish) parsing but SLOW lookup
 // this is especially fast for small objects
 // this actually supports "extended json", where objects can have arbitrary values as keys.
+
+// a string
 typedef struct {
 	u32 pos;
 	u32 len;

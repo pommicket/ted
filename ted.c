@@ -516,6 +516,24 @@ void ted_press_key(Ted *ted, SDL_Scancode scancode, SDL_Keymod modifier) {
 	}
 }
 
+bool ted_get_mouse_buffer_pos(Ted *ted, TextBuffer **pbuffer, BufferPos *ppos) {
+	for (u32 i = 0; i < TED_MAX_NODES; ++i) {
+		if (ted->nodes_used[i]) {
+			Node *node = &ted->nodes[i];
+			if (node->tabs) {
+				TextBuffer *buffer = &ted->buffers[node->tabs[node->active_tab]];
+				BufferPos pos = {0};
+				if (buffer_pixels_to_pos(buffer, ted->mouse_pos, &pos)) {
+					if (ppos) *ppos = pos;
+					if (pbuffer) *pbuffer = buffer;
+					return true;
+				}
+			}
+		}
+	}
+	return false;
+}
+
 // make the cursor red for a bit to indicate an error (e.g. no autocompletions)
 void ted_flash_error_cursor(Ted *ted) {
 	ted->cursor_error_time = time_get_seconds();
