@@ -111,9 +111,10 @@ static char *selector_update(Ted *ted, Selector *s) {
 
 // NOTE: also renders the line buffer
 static void selector_render(Ted *ted, Selector *s) {
-	Settings const *settings = ted_active_settings(ted);
-	u32 const *colors = settings->colors;
+	const Settings *settings = ted_active_settings(ted);
+	const u32 *colors = settings->colors;
 	Font *font = ted->font;
+	float padding = settings->padding;
 
 	Rect bounds = s->bounds;
 
@@ -149,10 +150,23 @@ static void selector_render(Ted *ted, Selector *s) {
 	for (u32 i = 0; i < s->n_entries; ++i) {
 		Rect r;
 		if (selector_entry_pos(ted, s, i, &r)) {
+			SelectorEntry *entry = &entries[i];
 			float x = r.pos.x, y = r.pos.y;
 			text_state.x = x; text_state.y = y;
-			rgba_u32_to_floats(entries[i].color, text_state.color);
-			text_utf8_with_state(font, &text_state, entries[i].name);
+			
+			// draw name
+			rgba_u32_to_floats(entry->color, text_state.color);
+			text_utf8_with_state(font, &text_state, entry->name);
+			
+			if (entry->detail) {
+				// draw detail
+				float detail_size = text_get_size_v2(font, entry->detail).x;
+				TextRenderState detail_state = text_state;
+				detail_state.x = maxd(text_state.x + 2 * padding, x2 - detail_size);
+				
+				rgba_u32_to_floats(colors[COLOR_COMMENT], detail_state.color);
+				text_utf8_with_state(font, &detail_state, entry->detail);
+			}
 		}
 	}
 	text_render(font);

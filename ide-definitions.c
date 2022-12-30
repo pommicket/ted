@@ -76,6 +76,7 @@ void definitions_frame(Ted *ted) {
 static void definitions_clear_entries(Definitions *defs) {
 	arr_foreach_ptr(defs->selector_all_definitions, SymbolInfo, def) {
 		free(def->name);
+		free(def->detail);
 	}
 	arr_clear(defs->selector_all_definitions);
 	arr_clear(defs->selector.entries);
@@ -107,6 +108,7 @@ static void definitions_selector_filter_entries(Ted *ted) {
 			SelectorEntry *entry = arr_addp(sel->entries);
 			entry->name = info->name;
 			entry->color = info->color;
+			entry->detail = info->detail;
 		}
 	}
 	free(search_term);
@@ -128,6 +130,7 @@ void definitions_process_lsp_response(Ted *ted, LSP *lsp, const LSPResponse *res
 	
 	switch (response->request.type) {
 	case LSP_REQUEST_DEFINITION: {
+		// handle textDocument/definition response
 		const LSPResponseDefinition *response_def = &response->data.definition;
 		
 		if (!arr_len(response_def->locations)) {
@@ -145,6 +148,7 @@ void definitions_process_lsp_response(Ted *ted, LSP *lsp, const LSPResponse *res
 		ted_go_to_lsp_document_position(ted, lsp, position);
 		} break;
 	case LSP_REQUEST_WORKSPACE_SYMBOLS: {
+		// handle workspace/symbol response
 		const LSPResponseWorkspaceSymbols *response_syms = &response->data.workspace_symbols;
 		const LSPSymbolInformation *symbols = response_syms->symbols;
 		const Settings *settings = ted_active_settings(ted);
@@ -161,6 +165,9 @@ void definitions_process_lsp_response(Ted *ted, LSP *lsp, const LSPResponse *res
 			def->color = colors[color_for_symbol_kind(kind)];
 			def->from_lsp = true;
 			def->position = lsp_location_start_position(symbol->location);
+			def->detail = a_sprintf("%s:%" PRIu32,
+				path_filename(lsp_document_path(lsp, def->position.document)),
+				def->position.pos.line + 1);
 		}
 		
 		definitions_selector_filter_entries(ted);

@@ -222,6 +222,26 @@ static void str_cpy(char *dst, size_t dst_sz, char const *src) {
 #define strbuf_cpy(dst, src) str_cpy(dst, sizeof dst, src)
 #define strbuf_cat(dst, src) str_cat(dst, sizeof dst, src)
 
+
+char *a_sprintf(PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRINTF(1, 2);
+char *a_sprintf(const char *fmt, ...) {
+	// idk if you can always just pass NULL to vsnprintf
+	va_list args;
+	char fakebuf[2] = {0};
+	va_start(args, fmt);
+	int ret = vsnprintf(fakebuf, 1, fmt, args);
+	va_end(args);
+	
+	if (ret < 0) return NULL; // bad format or something
+	u32 n = (u32)ret;
+	char *str = calloc(1, n + 1);
+	va_start(args, fmt);
+	vsnprintf(str, n + 1, fmt, args);
+	va_end(args);
+	return str;
+}
+
+
 // advances str to the start of the next UTF8 character
 static void utf8_next_char_const(char const **str) {
 	if (**str) {

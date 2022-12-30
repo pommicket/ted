@@ -502,6 +502,7 @@ static void autocomplete_frame(Ted *ted) {
 			
 			const char *detail = completion->detail;
 			if (detail) {
+				// draw detail
 				double label_end_x = state.x;
 				
 				char show_text[128] = {0};
@@ -524,7 +525,6 @@ static void autocomplete_frame(Ted *ted) {
 					if (!detail[amount_detail]) break;
 				}
 				if (amount_detail >= 3) {
-					//rgba_u32_to_floats(colors[COLOR_COMMENT], state.color);
 					text_utf8_anchored(font, show_text, state.max_x, state.y,
 						colors[COLOR_COMMENT], ANCHOR_TOP_RIGHT);
 				}

@@ -1,6 +1,5 @@
 /*
 @TODO:
-- show location in definitions menu
 - handle multiple symbols with same name
 - cancelling requests e.g. in ide-definitions.c
 - more LSP stuff:
@@ -20,7 +19,7 @@
 - TESTING: make rust-analyzer-slow (waits 10s before sending response)
 - run everything through valgrind ideally with leak checking
 - grep -i -n TODO *.[ch]
-- when searching files/definitions, sort by length? or put exact matches at the top? 
+- when searching files, put exact matches at the top
 --- LSP MERGE ---
 - improve structure of ted source code to make LSP completions better
       (make every c file a valid translation unit)

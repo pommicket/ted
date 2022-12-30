@@ -272,7 +272,9 @@ ENUM_U16 {
 } ENUM_U16_END(Menu);
 
 typedef struct {
-	char const *name;
+	const char *name;
+	// if not NULL, this will show on the right side of the entry.
+	const char *detail;
 	u32 color;
 } SelectorEntry;
 
@@ -415,6 +417,7 @@ typedef struct {
 
 typedef struct {
 	char *name;
+	char *detail;
 	u32 color;
 	bool from_lsp;
 	LSPDocumentPosition position; // only set if from_lsp = true
