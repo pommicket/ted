@@ -394,6 +394,7 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		break;
 	
 	case CMD_ESCAPE:
+		definition_cancel_lookup(ted);
 		if (*ted->error_shown) {
 			// dismiss error box
 			*ted->error_shown = '\0';

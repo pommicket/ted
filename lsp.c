@@ -162,15 +162,48 @@ void lsp_send_message(LSP *lsp, LSPMessage *message) {
 	SDL_UnlockMutex(lsp->messages_mutex);
 }
 
-bool lsp_send_request(LSP *lsp, LSPRequest *request) {
+static bool request_type_is_notification(LSPRequestType type) {
+	switch (type) {
+	case LSP_REQUEST_NONE: break;
+	case LSP_REQUEST_INITIALIZED:
+	case LSP_REQUEST_EXIT:
+	case LSP_REQUEST_DID_OPEN:
+	case LSP_REQUEST_DID_CLOSE:
+	case LSP_REQUEST_DID_CHANGE:
+	case LSP_REQUEST_DID_CHANGE_WORKSPACE_FOLDERS:
+	case LSP_REQUEST_JDTLS_CONFIGURATION:
+		return true;
+	case LSP_REQUEST_INITIALIZE:
+	case LSP_REQUEST_SHUTDOWN:
+	case LSP_REQUEST_SHOW_MESSAGE:
+	case LSP_REQUEST_LOG_MESSAGE:
+	case LSP_REQUEST_COMPLETION:
+	case LSP_REQUEST_SIGNATURE_HELP:
+	case LSP_REQUEST_HOVER:
+	case LSP_REQUEST_DEFINITION:
+	case LSP_REQUEST_WORKSPACE_FOLDERS:
+		return false;
+	}
+	assert(0);
+	return false;
+}
+
+LSPRequestID lsp_send_request(LSP *lsp, LSPRequest *request) {
 	if (!lsp_supports_request(lsp, request)) {
 		lsp_request_free(request);
-		return false;
+		return 0;
+	}
+	
+	bool is_notification = request_type_is_notification(request->type);
+	LSPRequestID id = 0;
+	if (!is_notification) {
+		id = ++lsp->request_id;
+		request->id = id;
 	}
 	LSPMessage message = {.type = LSP_REQUEST};
 	message.u.request = *request;
 	lsp_send_message(lsp, &message);
-	return true;
+	return id;
 }
 
 void lsp_send_response(LSP *lsp, LSPResponse *response) {
@@ -395,6 +428,7 @@ LSP *lsp_create(const char *root_dir, Language language, const char *analyzer_co
 	LSPRequest initialize = {
 		.type = LSP_REQUEST_INITIALIZE
 	};
+	initialize.id = ++lsp->request_id;
 	// immediately send the request rather than queueing it.
 	// this is a small request, so it shouldn't be a problem.
 	write_request(lsp, &initialize);

@@ -1,5 +1,6 @@
 typedef u32 LSPDocumentID;
 typedef u32 LSPID;
+typedef u32 LSPRequestID;
 
 typedef struct {
 	u32 line;
@@ -350,8 +351,8 @@ typedef struct LSP {
 	Process process;
 	
 	// Which ID number the next request will get
-	// thread-safety: only accessed in communication thread
-	u32 request_id;
+	// thread-safety: atomic, all that matters is `LSPRequestID id = ++lsp->request_id;` works
+	_Atomic LSPRequestID request_id;
 	
 	SDL_mutex *document_mutex;
 		// for our purposes, folders are "documents"
@@ -402,9 +403,9 @@ void lsp_message_free(LSPMessage *message);
 u32 lsp_document_id(LSP *lsp, const char *path);
 // returned pointer lives exactly as long as lsp.
 const char *lsp_document_path(LSP *lsp, LSPDocumentID id);
-// returns false if the request is not supported by the LSP
+// returns the ID of the sent request, or 0 if the request is not supported by the LSP
 // don't free the contents of this request (even on failure)! let me handle it!
-bool lsp_send_request(LSP *lsp, LSPRequest *request);
+LSPRequestID lsp_send_request(LSP *lsp, LSPRequest *request);
 // don't free the contents of this response! let me handle it!
 void lsp_send_response(LSP *lsp, LSPResponse *response);
 const char *lsp_response_string(const LSPResponse *response, LSPString string);

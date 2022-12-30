@@ -414,11 +414,13 @@ typedef struct {
 } Hover;
 
 typedef struct {
-	
-	// LSPID and ID of the last response which was processed.
-	// used to process responses in chronological order (= ID order)
-	LSPID last_response_lsp;
-	u32 last_response_id;
+	// LSPID and ID of the last request which was sent out.
+	// used to process responses in chronological order (= ID order).
+	// if we got a response for the last request, or no requests have been made,
+	// last_request_lsp is set to 0.
+	LSPID last_request_lsp;
+	u32 last_request_id;
+	struct timespec last_request_time;
 } Definitions;
 
 
@@ -488,7 +490,8 @@ typedef struct Ted {
 	// used by menus to keep track of the scroll position so we can return to it.
 	v2d prev_active_buffer_scroll;
 	
-	SDL_Cursor *cursor_arrow, *cursor_ibeam, *cursor_resize_h, *cursor_resize_v, *cursor_hand, *cursor_move;
+	SDL_Cursor *cursor_arrow, *cursor_ibeam, *cursor_wait,
+		*cursor_resize_h, *cursor_resize_v, *cursor_hand, *cursor_move;
 	SDL_Cursor *cursor; // which cursor to use this frame (NULL for no cursor)
 	
 	// node containing tab user is dragging around, NULL if user is not dragging a tab

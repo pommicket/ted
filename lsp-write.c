@@ -282,31 +282,6 @@ static const char *lsp_request_method(LSPRequest *request) {
 	return "$/ignore";
 }
 
-static bool request_type_is_notification(LSPRequestType type) {
-	switch (type) {
-	case LSP_REQUEST_NONE: break;
-	case LSP_REQUEST_INITIALIZED:
-	case LSP_REQUEST_EXIT:
-	case LSP_REQUEST_DID_OPEN:
-	case LSP_REQUEST_DID_CLOSE:
-	case LSP_REQUEST_DID_CHANGE:
-	case LSP_REQUEST_DID_CHANGE_WORKSPACE_FOLDERS:
-	case LSP_REQUEST_JDTLS_CONFIGURATION:
-		return true;
-	case LSP_REQUEST_INITIALIZE:
-	case LSP_REQUEST_SHUTDOWN:
-	case LSP_REQUEST_SHOW_MESSAGE:
-	case LSP_REQUEST_LOG_MESSAGE:
-	case LSP_REQUEST_COMPLETION:
-	case LSP_REQUEST_SIGNATURE_HELP:
-	case LSP_REQUEST_HOVER:
-	case LSP_REQUEST_DEFINITION:
-	case LSP_REQUEST_WORKSPACE_FOLDERS:
-		return false;
-	}
-	assert(0);
-	return false;
-}
 
 
 static const size_t max_header_size = 64;
@@ -352,11 +327,8 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 	write_obj_start(o);
 	write_key_string(o, "jsonrpc", "2.0");
 	
-	bool is_notification = request_type_is_notification(request->type);
-	if (!is_notification) {
-		u32 id = lsp->request_id++;
-		request->id = id;
-		write_key_number(o, "id", id);
+	if (request->id) { // i.e. if this is a request as opposed to a notification
+		write_key_number(o, "id", request->id);
 	}
 	write_key_string(o, "method", lsp_request_method(request));
 	
@@ -564,12 +536,12 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 	
 	message_writer_write_and_free(lsp, o);
 	
-	if (is_notification) {
-		lsp_request_free(request);
-	} else {
+	if (request->id) {
 		SDL_LockMutex(lsp->messages_mutex);
 		arr_add(lsp->requests_sent, *request);
 		SDL_UnlockMutex(lsp->messages_mutex);
+	} else {
+		lsp_request_free(request);
 	}
 }
 

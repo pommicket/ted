@@ -1,6 +1,5 @@
 /*
 @TODO:
-- some way of showing that we're currently loading the definition location (different cursor color?)
 - more LSP stuff:
      - go to definition using LSP
      - find usages
@@ -587,6 +586,7 @@ int main(int argc, char **argv) {
 
 
 	ted->cursor_ibeam = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_IBEAM);
+	ted->cursor_wait = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_WAIT);
 	ted->cursor_arrow = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
 	ted->cursor_resize_h = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEWE);
 	ted->cursor_resize_v = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENS);
@@ -1009,6 +1009,7 @@ int main(int argc, char **argv) {
 				autocomplete_frame(ted);
 				signature_help_frame(ted);
 				hover_frame(ted, frame_dt);
+				definitions_frame(ted);
 			} else {
 				autocomplete_close(ted);
 				text_utf8_anchored(font, "Press Ctrl+O to open a file or Ctrl+N to create a new one.",
@@ -1161,6 +1162,7 @@ int main(int argc, char **argv) {
 
 	SDL_FreeCursor(ted->cursor_arrow);
 	SDL_FreeCursor(ted->cursor_ibeam);
+	SDL_FreeCursor(ted->cursor_wait);
 	SDL_FreeCursor(ted->cursor_resize_h);
 	SDL_FreeCursor(ted->cursor_resize_v);
 	SDL_FreeCursor(ted->cursor_hand);
