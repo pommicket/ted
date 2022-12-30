@@ -194,7 +194,10 @@ void definitions_send_request_if_needed(Ted *ted) {
 void definitions_selector_open(Ted *ted) {
 	Definitions *defs = &ted->definitions;
 	definitions_clear_entries(defs);
-	LSP *lsp = buffer_lsp(ted->prev_active_buffer);
+	LSP *lsp = ted->prev_active_buffer
+		? buffer_lsp(ted->prev_active_buffer)
+		: ted_active_lsp(ted);
+	
 	if (lsp) {
 		definitions_send_request_if_needed(ted);
 	} else {
@@ -231,12 +234,17 @@ void definitions_selector_update(Ted *ted) {
 		arr_foreach_ptr(defs->selector_all_definitions, SymbolInfo, info) {
 			if (strcmp(info->name, chosen) == 0) {
 				if (info->from_lsp) {
+					// NOTE: we need to get this before calling menu_close,
+					// since that clears selector_all_definitions
+					LSPDocumentPosition position = info->position;
+					
 					menu_close(ted);
-					ted_go_to_lsp_document_position(ted, NULL, info->position);
+					ted_go_to_lsp_document_position(ted, NULL, position);
 				} else {
 					menu_close(ted);
 					tag_goto(ted, chosen);
 				}
+				break;
 			}
 		}
 		

@@ -440,6 +440,8 @@ LSP *lsp_create(const char *root_dir, Language language, const char *analyzer_co
 bool lsp_try_add_root_dir(LSP *lsp, const char *new_root_dir);
 // report that this document has changed
 void lsp_document_changed(LSP *lsp, const char *document, LSPDocumentChangeEvent change);
+// is this path in the LSP's workspace folders?
+bool lsp_covers_path(LSP *lsp, const char *path);
 bool lsp_next_message(LSP *lsp, LSPMessage *message);
 bool lsp_position_eq(LSPPosition a, LSPPosition b);
 bool lsp_document_position_eq(LSPDocumentPosition a, LSPDocumentPosition b);

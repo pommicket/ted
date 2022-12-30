@@ -563,3 +563,15 @@ LSPDocumentPosition lsp_location_end_position(LSPLocation location) {
 	};
 }
 
+bool lsp_covers_path(LSP *lsp, const char *path) {
+	bool ret = false;
+	SDL_LockMutex(lsp->workspace_folders_mutex);
+	arr_foreach_ptr(lsp->workspace_folders, LSPDocumentID, folder) {
+		if (str_has_path_prefix(path, lsp_document_path(lsp, *folder))) {
+			ret = true;
+			break;
+		}
+	}
+	SDL_UnlockMutex(lsp->workspace_folders_mutex);
+	return ret;
+}

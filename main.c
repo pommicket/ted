@@ -3,13 +3,9 @@
 - show location in definitions menu
 - handle multiple symbols with same name
 - cancelling requests e.g. in ide-definitions.c
-- sort symbols by score (clangd extension?)
 - more LSP stuff:
-     - go to definition using LSP
      - find usages
      - refactoring?
-- ted_active_lsp should return something even when buffer isn't open
-- some way of opening + closing all C files in directory for clangd workspace/symbols to work
 - test full unicode position handling
 - check if there are any other non-optional/nice-to-have-support-for server-to-client requests
 - better non-error window/showMessage(Request)
@@ -28,6 +24,8 @@
 --- LSP MERGE ---
 - improve structure of ted source code to make LSP completions better
       (make every c file a valid translation unit)
+   - some way of opening + closing all C files in directory for clangd workspace/symbols to work?
+     is this still necessary?
 - CSS highlighting
 - styles ([color] sections)
 - more documentation generally (development.md or something?)

@@ -144,8 +144,16 @@ LSP *ted_get_lsp(Ted *ted, const char *path, Language language) {
 }
 
 LSP *ted_active_lsp(Ted *ted) {
-	if (!ted->active_buffer)
+	if (!ted->active_buffer) {
+		char *root = ted_get_root_dir(ted);
+		for (int i = 0; ted->lsps[i]; ++i) {
+			LSP *lsp = ted->lsps[i];
+			if (lsp_covers_path(lsp, root))
+				return lsp;
+		}
+		free(root);
 		return NULL;
+	}
 	return buffer_lsp(ted->active_buffer);
 }
 
