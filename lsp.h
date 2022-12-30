@@ -249,29 +249,19 @@ typedef enum {
 	#define LSP_COMPLETION_KIND_MAX 25
 } LSPCompletionKind;
 
+typedef struct {	
+	LSPRange range;
+	LSPString new_text;
+} LSPTextEdit;
 
 // see InsertTextFormat in the LSP spec.
 typedef enum {
 	// plain text
-	LSP_TEXT_EDIT_PLAIN = 1,
+	LSP_COMPLETION_EDIT_PLAIN = 1,
 	// snippet   e.g. "some_method($1, $2)$0"
-	LSP_TEXT_EDIT_SNIPPET = 2
-} LSPTextEditType;
+	LSP_COMPLETION_EDIT_SNIPPET = 2
+} LSPCompletionEditType;
 
-typedef struct {
-	LSPTextEditType type;
-
-	// if set to true, `range` should be ignored
-	//  -- this is a completion which uses insertText.
-	// how to handle this:
-	// "VS Code when code complete is requested in this example
-	// `con<cursor position>` and a completion item with an `insertText` of
-	// `console` is provided it will only insert `sole`"
-	bool at_cursor;
-	
-	LSPRange range;
-	LSPString new_text;
-} LSPTextEdit;
 
 typedef struct {
 	// display text for this completion
@@ -284,6 +274,15 @@ typedef struct {
 	LSPString documentation;
 	// the edit to be applied when this completion is selected.
 	LSPTextEdit text_edit;
+	// type for text_edit
+	LSPCompletionEditType edit_type;
+	// if set to true, `text_edit.range` should be ignored
+	//  -- this is a completion which uses insertText.
+	// how to handle this:
+	// "VS Code when code complete is requested in this example
+	// `con<cursor position>` and a completion item with an `insertText` of
+	// `console` is provided it will only insert `sole`"
+	bool at_cursor;
 	// note: the items are sorted here in this file,
 	// so you probably don't need to access this.
 	LSPString sort_text;
@@ -346,7 +345,25 @@ typedef struct {
 	LSPSymbolInformation *symbols;
 } LSPResponseWorkspaceSymbols;
 
-typedef LSPRequestType LSPResponseType;
+typedef enum {
+	LSP_CHANGE_EDIT = 1
+} LSPWorkspaceChangeType;
+
+typedef struct {
+	LSPWorkspaceChangeType type;
+	union {
+		struct {
+			LSPDocumentID document;
+			LSPTextEdit edit;
+		} edit;
+	} data;
+} LSPWorkspaceChange;
+
+typedef struct {
+	LSPWorkspaceChange *changes;
+} LSPWorkspaceEdit;
+typedef LSPWorkspaceEdit LSPResponseRename;
+
 typedef struct {
 	LSPRequest request; // the request which this is a response to
 	char *error; // if not NULL, the data field will just be zeroed
@@ -361,6 +378,7 @@ typedef struct {
 		LSPResponseHover hover;
 		LSPResponseDefinition definition;
 		LSPResponseWorkspaceSymbols workspace_symbols;
+		LSPResponseRename rename;
 	} data;
 } LSPResponse;
 

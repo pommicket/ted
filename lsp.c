@@ -100,6 +100,9 @@ static void lsp_response_free(LSPResponse *r) {
 	case LSP_REQUEST_WORKSPACE_SYMBOLS:
 		arr_free(r->data.workspace_symbols.symbols);
 		break;
+	case LSP_REQUEST_RENAME:
+		arr_free(r->data.rename.changes);
+		break;
 	default:
 		break;
 	}

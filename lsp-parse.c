@@ -190,6 +190,19 @@ static JSONString get_markup_content(const JSON *json, JSONValue markup_value) {
 	}
 }
 
+static bool parse_text_edit(LSP *lsp, LSPResponse *response, const JSON *json, JSONValue value, LSPTextEdit *edit) {
+	JSONObject object = json_force_object(value);
+	JSONValue range = json_object_get(json, object, "range");
+	if (!parse_range(lsp, json, range, &edit->range))
+		return false;
+	JSONValue new_text_value = json_object_get(json, object, "newText");
+	if (!lsp_expect_string(lsp, new_text_value, "completion newText"))
+		return false;
+	edit->new_text = lsp_response_add_json_string(response,
+		json, new_text_value.val.string);
+	return true;
+}
+
 static bool parse_completion(LSP *lsp, const JSON *json, LSPResponse *response) {
 	// deal with textDocument/completion response.
 	// result: CompletionItem[] | CompletionList | null
@@ -239,9 +252,9 @@ static bool parse_completion(LSP *lsp, const JSON *json, LSPResponse *response) 
 		// defaults
 		item->sort_text = item->label;
 		item->filter_text = item->label;
+		item->edit_type = LSP_COMPLETION_EDIT_PLAIN;
+		item->at_cursor = true;
 		item->text_edit = (LSPTextEdit) {
-			.type = LSP_TEXT_EDIT_PLAIN,
-			.at_cursor = true,
 			.range = {{0}, {0}},
 			.new_text = item->label
 		};
@@ -278,13 +291,13 @@ static bool parse_completion(LSP *lsp, const JSON *json, LSPResponse *response) 
 		
 		double edit_type = json_object_get_number(json, item_object, "insertTextFormat");
 		if (!isnan(edit_type)) {
-			if (edit_type != LSP_TEXT_EDIT_PLAIN && edit_type != LSP_TEXT_EDIT_SNIPPET) {
+			if (edit_type != LSP_COMPLETION_EDIT_PLAIN && edit_type != LSP_COMPLETION_EDIT_SNIPPET) {
 				// maybe in the future more edit types will be added.
 				// probably they'll have associated capabilities, but I think it's best to just ignore unrecognized types
 				debug_println("Bad InsertTextFormat: %g", edit_type);
-				edit_type = LSP_TEXT_EDIT_PLAIN;
+				edit_type = LSP_COMPLETION_EDIT_PLAIN;
 			}
-			item->text_edit.type = (LSPTextEditType)edit_type;
+			item->edit_type = (LSPCompletionEditType)edit_type;
 		}
 		
 		JSONValue documentation_value = json_object_get(json, item_object, "documentation");
@@ -312,18 +325,9 @@ static bool parse_completion(LSP *lsp, const JSON *json, LSPResponse *response) 
 		// what should happen when this completion is selected?
 		JSONValue text_edit_value = json_object_get(json, item_object, "textEdit");
 		if (text_edit_value.type == JSON_OBJECT) {
-			JSONObject text_edit = text_edit_value.val.object;
-			item->text_edit.at_cursor = false;
-			
-			JSONValue range = json_object_get(json, text_edit, "range");
-			if (!parse_range(lsp, json, range, &item->text_edit.range))
+			item->at_cursor = false;
+			if (!parse_text_edit(lsp, response, json, text_edit_value, &item->text_edit))
 				return false;
-				
-			JSONValue new_text_value = json_object_get(json, text_edit, "newText");
-			if (!lsp_expect_string(lsp, new_text_value, "completion newText"))
-				return false;
-			item->text_edit.new_text = lsp_response_add_json_string(response,
-				json, new_text_value.val.string);
 		} else {
 			// not using textEdit. check insertText.
 			JSONValue insert_text_value = json_object_get(json, item_object, "insertText");
@@ -676,6 +680,31 @@ static bool parse_server2client_request(LSP *lsp, JSON *json, LSPRequest *reques
 	return false;
 }
 
+static bool parse_workspace_edit(LSP *lsp, LSPResponse *response, const JSON *json, JSONObject object, LSPWorkspaceEdit *edit) {
+	JSONObject changes = json_object_get_object(json, object, "changes");
+	for (u32 c = 0; c < changes.len; ++c) {
+		JSONValue uri = json_object_key(json, changes, c);
+		JSONArray edits = json_force_array(json_object_value(json, changes, c));
+		LSPDocumentID document = 0;
+		if (!parse_document_uri(lsp, json, uri, &document))
+			return false;
+		for (u32 e = 0; e < edits.len; ++e) {
+			LSPWorkspaceChange *change = arr_addp(edit->changes);
+			change->type = LSP_CHANGE_EDIT;
+			change->data.edit.document = document;
+			JSONValue text_edit = json_array_get(json, edits, e);
+			if (!parse_text_edit(lsp, response, json, text_edit, &change->data.edit.edit))
+				return false;
+		}
+	}
+	todo : the other thing
+	return true;
+}
+
+static bool parse_rename(LSP *lsp, const JSON *json, LSPResponse *response) {
+	JSONObject result = json_force_object(json_get(json, "result"));
+	return parse_workspace_edit(lsp, response, json, result, &response->data.rename);
+}
 
 
 static void process_message(LSP *lsp, JSON *json) {
@@ -732,6 +761,9 @@ static void process_message(LSP *lsp, JSON *json) {
 			break;
 		case LSP_REQUEST_WORKSPACE_SYMBOLS:
 			add_to_messages = parse_workspace_symbols(lsp, json, &response);
+			break;
+		case LSP_REQUEST_RENAME:
+			add_to_messages = parse_rename(lsp, json, &response);
 			break;
 		case LSP_REQUEST_INITIALIZE: {
 			// it's the response to our initialize request!

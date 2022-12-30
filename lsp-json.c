@@ -465,6 +465,20 @@ JSONValue json_array_get(const JSON *json, JSONArray array, u64 i) {
 	return (JSONValue){0};
 }
 
+// returns the `i`th key in `object`.
+JSONValue json_object_key(const JSON *json, JSONObject object, u64 i) {
+	if (i < object.len)
+		return json->values[object.items + i];
+	return (JSONValue){0};
+}
+
+// returns the `i`th value in `object`.
+JSONValue json_object_value(const JSON *json, JSONObject object, u64 i) {
+	if (i < object.len)
+		return json->values[object.items + object.len + i];
+	return (JSONValue){0};
+}
+
 // returns NaN if `x` is not a number (ha ha).
 double json_force_number(JSONValue x) {
 	if (x.type == JSON_NUMBER) {

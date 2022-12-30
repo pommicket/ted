@@ -1,13 +1,12 @@
 /*
 @TODO:
 - more LSP stuff:
-     - find usages
-     - rename
-     - check for others
+     - document highlight (textDocument/documentHighlight)
+     - find usages (textDocument/references)
+     - rename (textDocument/rename)
 - handle multiple symbols with same name in go-to-definition menu
 - :go-to-cursor-definition
 - test full unicode position handling
-- check if there are any other non-optional/nice-to-have-support-for server-to-client requests
 - better non-error window/showMessage(Request)
 - document lsp.h and lsp.c.
 - add last_request_id checking to autocomplete_process_lsp_response
@@ -39,6 +38,7 @@ FUTURE FEATURES:
 - robust find (results shouldn't move around when you type things)
 - multiple files with command line arguments
 - :set-build-command
+- document links using LSP textDocument/documentLink request
 - add numlock as a key modifier? (but make sure "Ctrl+S" handles both "No NumLock+Ctrl+S" and "NumLock+Ctrl+S")
 - better undo chaining (dechain on backspace?)
 - allow multiple fonts (fonts directory?)

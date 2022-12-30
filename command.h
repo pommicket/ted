@@ -59,6 +59,7 @@ ENUM_U16 {
 	CMD_RELOAD_ALL, // reload all buffers from file
 	CMD_QUIT,
 	
+	// IDE features
 	CMD_SET_LANGUAGE,
 	CMD_AUTOCOMPLETE,
 	CMD_AUTOCOMPLETE_BACK,
