@@ -1,5 +1,6 @@
 /*
 @TODO:
+- cancelling requests e.g. in ide-definitions.c
 - more LSP stuff:
      - go to definition using LSP
      - find usages

@@ -301,6 +301,12 @@ typedef struct {
 	LSPLocation *locations;
 } LSPResponseDefinition;
 
+typedef enum {
+	#define LSP_SYMBOL_TAG_MIN 1
+	LSP_SYMBOL_TAG_DEPRECATED = 1
+	#define LSP_SYMBOL_TAG_MAX 1
+} LSPSymbolTag;
+
 // SymbolInformation in the LSP spec
 typedef struct {
 	LSPString name;
@@ -327,6 +333,7 @@ typedef struct {
 		LSPResponseSignatureHelp signature_help;
 		LSPResponseHover hover;
 		LSPResponseDefinition definition;
+		LSPResponseWorkspaceSymbols workspace_symbols;
 	} data;
 } LSPResponse;
 

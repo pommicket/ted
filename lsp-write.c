@@ -318,6 +318,41 @@ static void message_writer_write_and_free(LSP *lsp, JSONWriter *o) {
 	str_builder_free(&builder);
 }
 
+static void write_symbol_tag_support(JSONWriter *o) {
+	write_key_obj_start(o, "tagSupport");
+		write_key_arr_start(o, "valueSet");
+			for (int i = LSP_SYMBOL_TAG_MIN; i <= LSP_SYMBOL_TAG_MAX; ++i)
+				write_arr_elem_number(o, i);
+		write_arr_end(o);
+	write_obj_end(o);
+}
+
+
+static void write_completion_item_kind_support(JSONWriter *o) {
+	// "completion item kinds" supported by ted
+	// (these are the little icons displayed for function/variable/etc.)
+	write_key_obj_start(o, "completionItemKind");
+		write_key_arr_start(o, "valueSet");
+			for (int i = LSP_COMPLETION_KIND_MIN;
+				i <= LSP_COMPLETION_KIND_MAX; ++i) {
+				write_arr_elem_number(o, i);
+			}
+		write_arr_end(o);
+	write_obj_end(o);
+}
+
+static void write_symbol_kind_support(JSONWriter *o) {
+	write_key_obj_start(o, "symbolKind");
+		write_key_arr_start(o, "valueSet");
+			for (int i = LSP_SYMBOL_KIND_MIN;
+				i <= LSP_SYMBOL_KIND_MAX;
+				++i) {
+				write_arr_elem_number(o, i);
+			}
+		write_arr_end(o);
+	write_obj_end(o);
+}
+
 // NOTE: don't call lsp_request_free after calling this function.
 //  I will do it for you.
 static void write_request(LSP *lsp, LSPRequest *request) {
@@ -365,24 +400,10 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 							write_arr_end(o);
 							write_key_bool(o, "deprecatedSupport", true);
 							write_key_bool(o, "preselectSupport", false);
-							write_key_obj_start(o, "tagSupport");
-								write_key_arr_start(o, "valueSet");
-									// currently the only tag in the spec
-									write_arr_elem_number(o, 1);
-								write_arr_end(o);
-							write_obj_end(o);
+							write_symbol_tag_support(o);
 							write_key_bool(o, "insertReplaceSupport", false);
 						write_obj_end(o);
-						// "completion item kinds" supported by ted
-						// (these are the little icons displayed for function/variable/etc.)
-						write_key_obj_start(o, "completionItemKind");
-							write_key_arr_start(o, "valueSet");
-								for (int i = LSP_COMPLETION_KIND_MIN;
-									i <= LSP_COMPLETION_KIND_MAX; ++i) {
-									write_arr_elem_number(o, i);
-								}
-							write_arr_end(o);
-						write_obj_end(o);
+						write_completion_item_kind_support(o);
 						write_key_bool(o, "contextSupport", true);
 					write_obj_end(o);
 					
@@ -412,6 +433,12 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 				write_obj_end(o);
 				write_key_obj_start(o, "workspace");
 					write_key_bool(o, "workspaceFolders", true);
+					
+					write_key_obj_start(o, "symbol");
+						write_symbol_kind_support(o);
+						write_symbol_tag_support(o);
+						// resolve is kind of a pain to implement. i'm not doing it yet.
+					write_obj_end(o);
 				write_obj_end(o);
 			write_obj_end(o);
 			SDL_LockMutex(lsp->workspace_folders_mutex);

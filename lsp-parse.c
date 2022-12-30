@@ -82,11 +82,8 @@ static bool parse_range(LSP *lsp, const JSON *json, JSONValue range_value, LSPRa
 }
 
 static bool parse_document_uri(LSP *lsp, const JSON *json, JSONValue value, LSPDocumentID *id) {
-	if (value.type != JSON_STRING) {
-		lsp_set_error(lsp, "Expected string for URI, got %s",
-			json_type_to_str(value.type));
+	if (!lsp_expect_string(lsp, value, "URI"))
 		return false;
-	}
 	char *string = json_string_get_alloc(json, value.val.string);
 	if (!str_has_prefix(string, "file://")) {
 		lsp_set_error(lsp, "Can't process non-local URI %s",
@@ -262,7 +259,7 @@ static bool parse_completion(LSP *lsp, const JSON *json, LSPResponse *response) 
 		JSONArray tags = json_object_get_array(json, item_object, "tags");
 		for (u32 i = 0; i < tags.len; ++i) {
 			double tag = json_array_get_number(json, tags, i);
-			if (tag == 1 /* deprecated */) {
+			if (tag == LSP_SYMBOL_TAG_DEPRECATED) {
 				item->deprecated = true;
 			}
 		}
@@ -495,11 +492,8 @@ static bool parse_hover(LSP *lsp, const JSON *json, LSPResponse *response) {
 
 // parse a Location:  {uri: DocumentUri, range: Range}
 static bool parse_location(LSP *lsp, const JSON *json, JSONValue value, LSPLocation *location) {
-	if (value.type != JSON_OBJECT) {
-		lsp_set_error(lsp, "Expected object for location but got %s",
-			json_type_to_str(value.type));
+	if (!lsp_expect_object(lsp, value, "Location"))
 		return false;
-	}
 	JSONObject object = value.val.object;
 	JSONValue uri = json_object_get(json, object, "uri");
 	if (!parse_document_uri(lsp, json, uri, &location->document))
@@ -534,9 +528,61 @@ static bool parse_definition(LSP *lsp, const JSON *json, LSPResponse *response) 
 	}
 }
 
+// parses SymbolInformation or WorkspaceSymbol
+static bool parse_symbol_information(LSP *lsp, const JSON *json, JSONValue value,
+	LSPResponse *response, LSPSymbolInformation *info) {
+	if (!lsp_expect_object(lsp, value, "SymbolInformation"))
+		return false;
+	JSONObject object = value.val.object;
+	
+	// parse name
+	JSONValue name_value = json_object_get(json, object, "name");
+	if (!lsp_expect_string(lsp, name_value, "SymbolInformation.name"))
+		return false;
+	JSONString name = name_value.val.string;
+	info->name = lsp_response_add_json_string(response, json, name);
+	
+	// parse kind
+	JSONValue kind_value = json_object_get(json, object, "kind");
+	if (!lsp_expect_number(lsp, kind_value, "SymbolInformation.kind"))
+		return false;
+	double kind = kind_value.val.number;
+	if (isfinite(kind) && kind >= LSP_SYMBOL_KIND_MIN && kind <= LSP_SYMBOL_KIND_MAX)
+		info->kind = (LSPSymbolKind)kind;
+	
+	// check if deprecated
+	bool deprecated = json_object_get(json, object, "deprecated").type == JSON_TRUE;
+	JSONArray tags = json_object_get_array(json, object, "tags");
+	for (size_t i = 0; i < tags.len; ++i) {
+		if (json_array_get_number(json, tags, i) == LSP_SYMBOL_TAG_DEPRECATED)
+			deprecated = true;
+	}
+	info->deprecated = deprecated;
+	
+	// parse location
+	JSONValue location = json_object_get(json, object, "location");
+	if (!parse_location(lsp, json, location, &info->location))
+		return false;
+	
+	return true;
+}
+
+static bool parse_workspace_symbols(LSP *lsp, const JSON *json, LSPResponse *response) {
+	LSPResponseWorkspaceSymbols *syms = &response->data.workspace_symbols;
+	JSONArray result = json_force_array(json_root(json));
+	arr_set_len(syms->symbols, result.len);
+	for (size_t i = 0; i < result.len; ++i) {
+		LSPSymbolInformation *info = &syms->symbols[i];
+		JSONValue value = json_array_get(json, result, i);
+		if (!parse_symbol_information(lsp, json, value, response, info))
+			return false;
+	}
+	return true;
+}
+
 // fills request->id/id_string appropriately given the request's json
 // returns true on success
-static WarnUnusedResult bool parse_id(JSON *json, LSPRequest *request) {
+static WarnUnusedResult bool parse_id(const JSON *json, LSPRequest *request) {
 	JSONValue id_value = json_get(json, "id");
 	switch (id_value.type) {
 	case JSON_NUMBER: {
@@ -676,6 +722,9 @@ static void process_message(LSP *lsp, JSON *json) {
 			break;
 		case LSP_REQUEST_DEFINITION:
 			add_to_messages = parse_definition(lsp, json, &response);
+			break;
+		case LSP_REQUEST_WORKSPACE_SYMBOLS:
+			add_to_messages = parse_workspace_symbols(lsp, json, &response);
 			break;
 		case LSP_REQUEST_INITIALIZE: {
 			// it's the response to our initialize request!

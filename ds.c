@@ -100,6 +100,8 @@ static void arr_reserve_(void **arr, size_t member_size, size_t n) {
 		if (*arr) free(arr_hdr_(*arr));
 		*arr = NULL;
 	}
+	
+	if (n == 0) return;
 
 	if (!*arr) {
 		// create a new array with capacity n+1

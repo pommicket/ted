@@ -1,3 +1,49 @@
+
+static SymbolKind symbol_kind_to_ted(LSPSymbolKind kind) {
+	switch (kind) {
+	case LSP_SYMBOL_OTHER:
+	case LSP_SYMBOL_FILE:
+	case LSP_SYMBOL_MODULE:
+	case LSB_SYMBOL_NAMESPACE:
+	case LSP_SYMBOL_PACKAGE:
+		return SYMBOL_OTHER;
+	
+	case LSP_SYMBOL_CLASS:
+	case LSP_SYMBOL_TYPEPARAMETER:
+	case LSP_SYMBOL_ENUM:
+	case LSP_SYMBOL_INTERFACE:
+	case LSP_SYMBOL_STRUCT:
+	case LSP_SYMBOL_EVENT: // i have no clue what this is. let's say it's a type.
+		return SYMBOL_TYPE;
+	
+	case LSP_SYMBOL_PROPERTY:
+	case LSP_SYMBOL_FIELD:
+	case LSP_SYMBOL_KEY:
+		return SYMBOL_FIELD;
+	
+	case LSP_SYMBOL_CONSTRUCTOR:
+	case LSP_SYMBOL_FUNCTION:
+	case LSP_SYMBOL_OPERATOR:
+	case LSP_SYMBOL_METHOD:
+		return SYMBOL_FUNCTION;
+	
+	case LSP_SYMBOL_VARIABLE:
+		return SYMBOL_VARIABLE;
+	
+	case LSP_SYMBOL_CONSTANT:
+	case LSP_SYMBOL_STRING:
+	case LSP_SYMBOL_NUMBER:
+	case LSP_SYMBOL_BOOLEAN:
+	case LSP_SYMBOL_ARRAY:
+	case LSP_SYMBOL_OBJECT:
+	case LSP_SYMBOL_ENUMMEMBER:
+	case LSP_SYMBOL_NULL:
+		return SYMBOL_CONSTANT;
+	}
+	
+	return SYMBOL_OTHER;
+}
+
 void definition_goto(Ted *ted, LSP *lsp, const char *name, LSPDocumentPosition position) {
 	Definitions *defs = &ted->definitions;
 	if (lsp) {
