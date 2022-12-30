@@ -1,5 +1,6 @@
 /*
 @TODO:
+- if you hover, open a new file, then hover, you get results for the old file
 - handle multiple symbols with same name
 - more LSP stuff:
      - find usages
