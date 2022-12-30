@@ -87,6 +87,7 @@ static void lsp_response_free(LSPResponse *r) {
 		break;
 	}
 	lsp_request_free(&r->request);
+	free(r->error);
 	memset(r, 0, sizeof *r);
 }
 

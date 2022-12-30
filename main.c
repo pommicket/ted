@@ -1,6 +1,5 @@
 /*
 @TODO:
-- LSPResponse is_error member (and make sure ide-*.c handles it)
 - some way of showing that we're currently loading the definition location (different cursor color?)
 - more LSP stuff:
      - go to definition using LSP
@@ -892,6 +891,13 @@ int main(int argc, char **argv) {
 						} break;
 					case LSP_RESPONSE: {
 						LSPResponse *r = &message.u.response;
+						if (r->error) {
+							// not displaying this right now
+							// idk it might be spammy
+							//ted_seterr(ted, "%s", r->error);
+						}
+						// it's important that we send error responses here too.
+						// we don't want to be waiting around for a response that's never coming.
 						autocomplete_process_lsp_response(ted, r);
 						signature_help_process_lsp_response(ted, r);
 						hover_process_lsp_response(ted, r);

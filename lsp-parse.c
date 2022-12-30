@@ -643,15 +643,8 @@ static void process_message(LSP *lsp, JSON *json) {
 	}
 	
 	JSONValue error = json_get(json, "error.message");
-	if (error.type == JSON_STRING) {
-		char err[256] = {0};
-		json_string_get(json, error.val.string, err, sizeof err);
-		printf("%s\n",err);
-		goto ret;
-	}
-	
 	JSONValue result = json_get(json, "result");
-	if (result.type != JSON_UNDEFINED) {
+	if (result.type != JSON_UNDEFINED || error.type == JSON_STRING) {
 		// server-to-client response
 		LSPResponse response = {0};
 		bool add_to_messages = false;
@@ -659,7 +652,13 @@ static void process_message(LSP *lsp, JSON *json) {
 		// make sure (LSPString){0} gets treated as an empty string
 		arr_add(response.string_data, '\0');
 		
-		switch (response_to.type) {
+		if (error.type == JSON_STRING) {
+			response.error = json_string_get_alloc(json, error.val.string);
+		}
+		
+		if (response.error) {
+			add_to_messages = true;
+		} else switch (response_to.type) {
 		case LSP_REQUEST_COMPLETION:
 			add_to_messages = parse_completion(lsp, json, &response);
 			break;
@@ -700,13 +699,14 @@ static void process_message(LSP *lsp, JSON *json) {
 			// it's some response we don't care about
 			break;
 		}
+		
 		if (add_to_messages) {
 			SDL_LockMutex(lsp->messages_mutex);
 			LSPMessage *message = arr_addp(lsp->messages_server2client);
 			message->type = LSP_RESPONSE;
 			message->u.response = response;
 			SDL_UnlockMutex(lsp->messages_mutex);
-			response_to.type = 0; // don't free
+			memset(&response_to, 0, sizeof response_to); // don't free
 		} else {
 			lsp_response_free(&response);
 		}
@@ -725,7 +725,6 @@ static void process_message(LSP *lsp, JSON *json) {
 	} else {
 		lsp_set_error(lsp, "Bad message from server (no result, no method).");
 	}
-	ret:
 	lsp_request_free(&response_to);
 	json_free(json);
 	

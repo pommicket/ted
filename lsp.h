@@ -298,6 +298,7 @@ typedef struct {
 typedef LSPRequestType LSPResponseType;
 typedef struct {
 	LSPRequest request; // the request which this is a response to
+	char *error; // if not NULL, the data field will just be zeroed
 	// LSP responses tend to have a lot of strings.
 	// to avoid doing a ton of allocations+frees,
 	// they're all stored here.
