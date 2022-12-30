@@ -15,6 +15,13 @@ static void lsp_response_free(LSPResponse *r);
 #include "lsp-write.c"
 #include "lsp-parse.c"
 
+// it's nice to have request IDs be totally unique, including across LSP servers.
+static LSPRequestID get_request_id(void) {
+	static _Atomic LSPRequestID last_request_id;
+	// it's important that this never returns 0, since that's reserved for "no ID"
+	return ++last_request_id;
+}
+
 bool lsp_get_error(LSP *lsp, char *error, size_t error_size, bool clear) {
 	bool has_err = false;
 	SDL_LockMutex(lsp->error_mutex);
@@ -201,15 +208,12 @@ LSPRequestID lsp_send_request(LSP *lsp, LSPRequest *request) {
 	}
 	
 	bool is_notification = request_type_is_notification(request->type);
-	LSPRequestID id = 0;
-	if (!is_notification) {
-		id = ++lsp->request_id;
-		request->id = id;
-	}
+	if (!is_notification)
+		request->id = get_request_id();
 	LSPMessage message = {.type = LSP_REQUEST};
 	message.u.request = *request;
 	lsp_send_message(lsp, &message);
-	return id;
+	return request->id;
 }
 
 void lsp_send_response(LSP *lsp, LSPResponse *response) {
@@ -434,7 +438,7 @@ LSP *lsp_create(const char *root_dir, Language language, const char *analyzer_co
 	LSPRequest initialize = {
 		.type = LSP_REQUEST_INITIALIZE
 	};
-	initialize.id = ++lsp->request_id;
+	initialize.id = get_request_id();
 	// immediately send the request rather than queueing it.
 	// this is a small request, so it shouldn't be a problem.
 	write_request(lsp, &initialize);

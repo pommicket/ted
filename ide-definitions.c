@@ -5,7 +5,6 @@ void definition_goto(Ted *ted, LSP *lsp, const char *name, LSPDocumentPosition p
 		LSPRequest request = {.type = LSP_REQUEST_DEFINITION};
 		request.data.definition.position = position;
 		LSPRequestID id = lsp_send_request(lsp, &request);
-		defs->last_request_lsp = lsp->id;
 		defs->last_request_id = id;
 		defs->last_request_time = ted->frame_time;
 	} else {
@@ -16,7 +15,6 @@ void definition_goto(Ted *ted, LSP *lsp, const char *name, LSPDocumentPosition p
 
 void definition_cancel_lookup(Ted *ted) {
 	Definitions *defs = &ted->definitions;
-	defs->last_request_lsp = 0;
 	defs->last_request_id = 0;
 }
 
@@ -27,13 +25,11 @@ void definitions_process_lsp_response(Ted *ted, LSP *lsp, const LSPResponse *res
 	const LSPResponseDefinition *response_def = &response->data.definition;
 	Definitions *defs = &ted->definitions;
 	
-	if (defs->last_request_lsp != lsp->id
-		|| response->request.id != defs->last_request_id) {
+	if (response->request.id != defs->last_request_id) {
 		// response to an old request
 		return;
 	}
 	
-	defs->last_request_lsp = 0;
 	defs->last_request_id = 0;
 	
 	if (!arr_len(response_def->locations)) {
@@ -53,7 +49,7 @@ void definitions_process_lsp_response(Ted *ted, LSP *lsp, const LSPResponse *res
 
 void definitions_frame(Ted *ted) {
 	Definitions *defs = &ted->definitions;
-	if (defs->last_request_lsp && timespec_sub(ted->frame_time, defs->last_request_time) > 0.2) {
+	if (defs->last_request_id && timespec_sub(ted->frame_time, defs->last_request_time) > 0.2) {
 		ted->cursor = ted->cursor_wait;
 	}
 }

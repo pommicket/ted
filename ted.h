@@ -242,8 +242,8 @@ typedef struct {
 	u32 nlines;
 	u32 lines_capacity;
 	
-	// which LSP this document is open in (this is a LSPID)
-	u32 lsp_opened_in;
+	// which LSP this document is open in
+	LSPID lsp_opened_in;
 
 	u32 undo_history_write_pos; // where in the undo history was the last write? used by buffer_unsaved_changes
 	u32 first_line_on_screen, last_line_on_screen; // which lines are on screen? updated when buffer_render is called.
@@ -414,12 +414,11 @@ typedef struct {
 } Hover;
 
 typedef struct {
-	// LSPID and ID of the last request which was sent out.
+	// ID of the last request which was sent out.
 	// used to process responses in chronological order (= ID order).
 	// if we got a response for the last request, or no requests have been made,
-	// last_request_lsp is set to 0.
-	LSPID last_request_lsp;
-	u32 last_request_id;
+	// last_request_id is set to 0.
+	LSPRequestID last_request_id;
 	struct timespec last_request_time;
 } Definitions;
 

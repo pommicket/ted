@@ -301,6 +301,18 @@ typedef struct {
 	LSPLocation *locations;
 } LSPResponseDefinition;
 
+// SymbolInformation in the LSP spec
+typedef struct {
+	LSPString name;
+	LSPSymbolKind kind;
+	bool deprecated;
+	LSPLocation location;
+} LSPSymbolInformation;
+
+typedef struct {
+	LSPSymbolInformation *symbols;
+} LSPResponseWorkspaceSymbols;
+
 typedef LSPRequestType LSPResponseType;
 typedef struct {
 	LSPRequest request; // the request which this is a response to
@@ -355,10 +367,6 @@ typedef struct LSP {
 	// The server process
 	// thread-safety: created in lsp_create, then only accessed by the communication thread
 	Process process;
-	
-	// Which ID number the next request will get
-	// thread-safety: atomic, all that matters is `LSPRequestID id = ++lsp->request_id;` works
-	_Atomic LSPRequestID request_id;
 	
 	SDL_mutex *document_mutex;
 		// for our purposes, folders are "documents"
