@@ -694,6 +694,7 @@ static void process_message(LSP *lsp, JSON *json) {
 		}
 	}
 	
+	double error_code = json_force_number(json_get(json, "error.code"));
 	JSONValue error = json_get(json, "error.message");
 	JSONValue result = json_get(json, "result");
 	if (result.type != JSON_UNDEFINED || error.type == JSON_STRING) {
@@ -708,7 +709,7 @@ static void process_message(LSP *lsp, JSON *json) {
 			response.error = json_string_get_alloc(json, error.val.string);
 		}
 		
-		if (response.error) {
+		if (response.error && error_code != LSP_ERROR_REQUEST_CANCELLED) {
 			add_to_messages = true;
 		} else switch (response_to.type) {
 		case LSP_REQUEST_COMPLETION:

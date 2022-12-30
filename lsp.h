@@ -38,6 +38,7 @@ typedef enum {
 	// client-to-server
 	LSP_REQUEST_INITIALIZE, // initialize
 	LSP_REQUEST_INITIALIZED, // initialized
+	LSP_REQUEST_CANCEL, // $/cancelRequest
 	// workspace/didChangeConfiguration with parameters specifically for jdtls.
 	// we need this because annoyingly jdtls refuses to give signature help
 	// unless you specifically configure it to do that
@@ -59,6 +60,24 @@ typedef enum {
 	LSP_REQUEST_LOG_MESSAGE, // window/logMessage
 	LSP_REQUEST_WORKSPACE_FOLDERS, // workspace/workspaceFolders - NOTE: this is handled directly in lsp-parse.c (because it only needs information from the LSP struct)
 } LSPRequestType;
+
+typedef enum {
+	LSP_ERROR_PARSE = -32700,
+	LSP_ERROR_INVALID_REQUEST = -32600,
+	LSP_ERROR_METHOD_NOT_FOUND = -32601,
+	LSP_ERROR_INVALID_PARAMS = -32602,
+	LSP_ERROR_INTERNAL = -32603,
+	LSP_ERROR_SERVER_NOT_INITIALIZED = -32002,
+	LSP_ERROR_UNKNOWN_CODE = -32001,
+	LSP_ERROR_REQUEST_FAILED = -32803,
+	LSP_ERROR_SERVER_CANCELLED = -32802,
+	LSP_ERROR_CONTENT_MODIFIED = -32801,
+	LSP_ERROR_REQUEST_CANCELLED = -32800,
+} LSPError;
+
+typedef struct {
+	LSPRequestID id;
+} LSPRequestCancel;
 
 typedef struct {
 	Language language;
@@ -138,11 +157,12 @@ typedef struct {
 } LSPRequestDidChangeWorkspaceFolders;
 
 typedef struct {
-	u32 id;
+	LSPRequestID id;
 	LSPRequestType type;
 	char *id_string; // if not NULL, this is the ID (only for server-to-client messages; we always use integer IDs)
 	// one member of this union is set depending on `type`.
 	union {	
+		LSPRequestCancel cancel;
 		LSPRequestDidOpen open;
 		LSPRequestDidClose close;
 		LSPRequestDidChange change;
@@ -427,6 +447,9 @@ const char *lsp_document_path(LSP *lsp, LSPDocumentID id);
 // returns the ID of the sent request, or 0 if the request is not supported by the LSP
 // don't free the contents of this request (even on failure)! let me handle it!
 LSPRequestID lsp_send_request(LSP *lsp, LSPRequest *request);
+// send a $/cancelRequest notification
+// if id = 0, nothing will happen.
+void lsp_cancel_request(LSP *lsp, LSPRequestID id);
 // don't free the contents of this response! let me handle it!
 void lsp_send_response(LSP *lsp, LSPResponse *response);
 const char *lsp_response_string(const LSPResponse *response, LSPString string);

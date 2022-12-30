@@ -424,6 +424,7 @@ typedef struct {
 } SymbolInfo;
 
 typedef struct {
+	LSPID last_request_lsp; // used for cancellation
 	// ID of the last request which was sent out.
 	// used to process responses in chronological order (= ID order).
 	// if we got a response for the last request, or no requests have been made,

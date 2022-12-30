@@ -1,7 +1,6 @@
 /*
 @TODO:
 - handle multiple symbols with same name
-- cancelling requests e.g. in ide-definitions.c
 - more LSP stuff:
      - find usages
      - refactoring?
@@ -9,6 +8,7 @@
 - check if there are any other non-optional/nice-to-have-support-for server-to-client requests
 - better non-error window/showMessage(Request)
 - document lsp.h and lsp.c.
+- add last_request_id checking to autocomplete_process_lsp_response
 - maximum queue size for requests/responses just in case?
    - idea: configurable timeout
    -  what to do if initialize request takes a long time?

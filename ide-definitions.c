@@ -1,3 +1,8 @@
+void definition_cancel_lookup(Ted *ted) {
+	Definitions *defs = &ted->definitions;
+	lsp_cancel_request(ted_get_lsp_by_id(ted, defs->last_request_lsp), defs->last_request_id);
+	defs->last_request_id = 0;
+}
 
 static SymbolKind symbol_kind_to_ted(LSPSymbolKind kind) {
 	switch (kind) {
@@ -51,20 +56,15 @@ void definition_goto(Ted *ted, LSP *lsp, const char *name, LSPDocumentPosition p
 		LSPRequest request = {.type = LSP_REQUEST_DEFINITION};
 		request.data.definition.position = position;
 		LSPRequestID id = lsp_send_request(lsp, &request);
-		// @TODO : cancel old request
+		lsp_cancel_request(lsp, defs->last_request_id); // cancel old request
 		defs->last_request_id = id;
+		defs->last_request_lsp = lsp->id;
 		defs->last_request_time = ted->frame_time;
 	} else {
 		// just go to the tag
 		tag_goto(ted, name);
 	}
 }
-
-void definition_cancel_lookup(Ted *ted) {
-	Definitions *defs = &ted->definitions;
-	defs->last_request_id = 0;
-}
-
 
 void definitions_frame(Ted *ted) {
 	Definitions *defs = &ted->definitions;
@@ -193,6 +193,7 @@ void definitions_send_request_if_needed(Ted *ted) {
 	LSPRequestWorkspaceSymbols *syms = &request.data.workspace_symbols;
 	syms->query = str_dup(query);
 	defs->last_request_id = lsp_send_request(lsp, &request);
+	defs->last_request_lsp = lsp->id;
 	defs->last_request_time = ted->frame_time;
 	free(defs->last_request_query);
 	defs->last_request_query = query;
@@ -219,7 +220,7 @@ void definitions_selector_open(Ted *ted) {
 void definitions_selector_close(Ted *ted) {
 	Definitions *defs = &ted->definitions;
 	definitions_clear_entries(defs);
-	// @TODO : cancel
+	lsp_cancel_request(ted_get_lsp_by_id(ted, defs->last_request_lsp), defs->last_request_id);
 	defs->last_request_id = 0;
 	free(defs->last_request_query);
 	defs->last_request_query = NULL;

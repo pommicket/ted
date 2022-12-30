@@ -253,6 +253,8 @@ static const char *lsp_request_method(LSPRequest *request) {
 		return "shutdown";
 	case LSP_REQUEST_EXIT:
 		return "exit";
+	case LSP_REQUEST_CANCEL:
+		return "$/cancelRequest";
 	case LSP_REQUEST_SHOW_MESSAGE:
 		return "window/showMessage";
 	case LSP_REQUEST_LOG_MESSAGE:
@@ -449,6 +451,12 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 			write_key_obj_start(o, "clientInfo");
 				write_key_string(o, "name", "ted");
 			write_obj_end(o);
+		write_obj_end(o);
+	} break;
+	case LSP_REQUEST_CANCEL: {
+		const LSPRequestCancel *cancel = &request->data.cancel;
+		write_key_obj_start(o, "params");
+			write_key_number(o, "id", cancel->id);
 		write_obj_end(o);
 	} break;
 	case LSP_REQUEST_DID_OPEN: {

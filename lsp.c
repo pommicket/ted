@@ -46,6 +46,7 @@ static void lsp_request_free(LSPRequest *r) {
 	case LSP_REQUEST_INITIALIZE:
 	case LSP_REQUEST_INITIALIZED:
 	case LSP_REQUEST_SHUTDOWN:
+	case LSP_REQUEST_CANCEL:
 	case LSP_REQUEST_EXIT:
 	case LSP_REQUEST_COMPLETION:
 	case LSP_REQUEST_SIGNATURE_HELP:
@@ -145,6 +146,7 @@ static bool lsp_supports_request(LSP *lsp, const LSPRequest *request) {
 		return false;
 	case LSP_REQUEST_INITIALIZE:
 	case LSP_REQUEST_INITIALIZED:
+	case LSP_REQUEST_CANCEL:
 	case LSP_REQUEST_DID_OPEN:
 	case LSP_REQUEST_DID_CLOSE:
 	case LSP_REQUEST_DID_CHANGE:
@@ -182,6 +184,7 @@ static bool request_type_is_notification(LSPRequestType type) {
 	case LSP_REQUEST_NONE: break;
 	case LSP_REQUEST_INITIALIZED:
 	case LSP_REQUEST_EXIT:
+	case LSP_REQUEST_CANCEL:
 	case LSP_REQUEST_DID_OPEN:
 	case LSP_REQUEST_DID_CLOSE:
 	case LSP_REQUEST_DID_CHANGE:
@@ -574,4 +577,12 @@ bool lsp_covers_path(LSP *lsp, const char *path) {
 	}
 	SDL_UnlockMutex(lsp->workspace_folders_mutex);
 	return ret;
+}
+
+void lsp_cancel_request(LSP *lsp, LSPRequestID id) {
+	if (!id) return;
+	
+	LSPRequest request = {.type = LSP_REQUEST_CANCEL};
+	request.data.cancel.id = id;
+	lsp_send_request(lsp, &request);
 }
