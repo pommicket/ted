@@ -1,3 +1,5 @@
+#define TED_VERSION "2.0"
+#define TED_VERSION_FULL "ted v. " TED_VERSION
 #define TED_PATH_MAX 256
 #define TED_UNTITLED "Untitled" // what to call untitled buffers
 #define TED_CFG "ted.cfg" // config filename

@@ -17,8 +17,12 @@ sudo apt install universal-ctags
 ## Why?
 
 There are a lot of text editors out there. ted doesn't do anything new.
-I made ted because I wanted a text editor that starts up practically instantaneously,
-and performs well on reasonably-sized files.
+Here are some benefits of ted:
+
+- Starts up immediately.
+- Doesn't lag for reasonably-sized files.
+- VERY small - a full ted installation is &lt; 5 MB.
+
 ted isn't incredibly complicated, but it does have some nice features you might not find
 in other editors.
 
@@ -33,9 +37,9 @@ in other editors.
 - Find and replace (with regular expressions!)
 - Run build command, go to errors
 - Run any shell command
+- Autocomplete
 - Go to definition
 - Go to line number
-- Autocomplete
 - Indent/dedent selection, comment/uncomment selection
 
 ## Getting started with ted
@@ -208,11 +212,12 @@ To install `ted` from source on Linux, you will also need:
 - A C compiler
 - The SDL2 development libraries
 - cmake (for PCRE2)
+- imagemagick convert (for creating the .deb installer)
 
 These can be installed on Ubuntu/Debian with:
 
 ```bash
-sudo apt install clang libsdl2-dev cmake
+sudo apt install clang libsdl2-dev cmake imagemagick
 ```
 
 Then run `make -j4 release` to build or `sudo make install -j4` to build and install.

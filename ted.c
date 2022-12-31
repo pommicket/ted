@@ -569,6 +569,7 @@ void ted_go_to_lsp_document_position(Ted *ted, LSP *lsp, LSPDocumentPosition pos
 }
 
 void ted_highlight_lsp_range(Ted *ted, TextBuffer *buffer, LSPRange range) {
+	(void)ted;
 	Font *font = buffer_font(buffer);
 	const u32 *colors = buffer_settings(buffer)->colors;
 	float char_height = font->char_height;

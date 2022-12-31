@@ -368,6 +368,14 @@ int main(int argc, char **argv) {
 	switch (argc) {
 	case 0: case 1: break;
 	case 2:
+		if (streq(argv[1], "--help")) {
+			printf("%s\n", TED_VERSION_FULL);
+			printf("Usage: ted [file name]\n");
+			exit(0);
+		} else if (streq(argv[1], "--version")) {
+			printf("%s\n", TED_VERSION_FULL);
+			exit(0);
+		}
 		// essentially, replace / with \ on windows.
 		for (char *p = argv[1]; *p; ++p)
 			if (strchr(ALL_PATH_SEPARATORS, *p))
