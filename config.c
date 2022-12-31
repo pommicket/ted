@@ -263,6 +263,8 @@ static OptionBool const options_bool[] = {
 	{"lsp-enabled", &options_zero.lsp_enabled, true},
 	{"hover-enabled", &options_zero.hover_enabled, true},
 	{"vsync", &options_zero.vsync, false},
+	{"highlight-enabled", &options_zero.highlight_enabled, true},
+	{"highlight-auto", &options_zero.highlight_auto, true},
 };
 static OptionU8 const options_u8[] = {
 	{"tab-width", &options_zero.tab_width, 1, 100, true},

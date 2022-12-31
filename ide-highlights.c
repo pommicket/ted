@@ -1,30 +1,33 @@
-static void highlights_clear(Highlights *hls) {
+void highlights_close(Ted *ted) {
+	Highlights *hls = &ted->highlights;
 	arr_clear(hls->highlights);
+	ted_cancel_lsp_request(ted, hls->last_request_lsp, hls->last_request_id);
+	hls->last_request_id = 0;
+	hls->requested_position = (LSPDocumentPosition){0};
 }
 
 void highlights_send_request(Ted *ted) {
 	TextBuffer *buffer = ted->active_buffer;
 	Highlights *hls = &ted->highlights;
 	if (!buffer) {
-		highlights_clear(hls);
+		highlights_close(ted);
 		return;
 	}
 	LSP *lsp = buffer_lsp(buffer);
 	if (!lsp) {
-		highlights_clear(hls);
+		highlights_close(ted);
 		return;
 	}
 	LSPDocumentPosition pos = buffer_cursor_pos_as_lsp_document_position(buffer);
 	LSPRequest request = {.type = LSP_REQUEST_HIGHLIGHT};
 	request.data.highlight.position = pos;
+	
+	ted_cancel_lsp_request(ted, hls->last_request_lsp, hls->last_request_id);
 	hls->last_request_id = lsp_send_request(lsp, &request);
 	hls->last_request_lsp = lsp->id;
 	hls->requested_position = pos;
 }
 
-void highlights_close(Ted *ted) {
-	highlights_clear(&ted->highlights);
-}
 
 void highlights_process_lsp_response(Ted *ted, LSPResponse *response) {
 	Highlights *hls = &ted->highlights;
@@ -43,13 +46,21 @@ void highlights_frame(Ted *ted) {
 	Highlights *hls = &ted->highlights;
 	TextBuffer *buffer = ted->active_buffer;
 	if (!buffer) {
-		highlights_clear(hls);
+		highlights_close(ted);
 		return;
 	}
+	const Settings *settings = buffer_settings(buffer);
+	bool ctrl_down = SDL_GetKeyboardState(NULL)[SDL_SCANCODE_LCTRL]
+		|| SDL_GetKeyboardState(NULL)[SDL_SCANCODE_RCTRL];
+	if (!settings->highlight_enabled
+		|| (!settings->highlight_auto && !ctrl_down)) {
+		highlights_close(ted);
+		return;
+	}
+	
 	LSPDocumentPosition pos = buffer_cursor_pos_as_lsp_document_position(buffer);
 	if (!lsp_document_position_eq(pos, hls->requested_position)) {
 		// cursor moved or something. let's resend the request.
-		highlights_clear(hls);
 		highlights_send_request(ted);
 	}
 	

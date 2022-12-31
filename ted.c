@@ -568,3 +568,6 @@ void ted_go_to_lsp_document_position(Ted *ted, LSP *lsp, LSPDocumentPosition pos
 	ted_go_to_position(ted, path, line, character, true);
 }
 
+void ted_cancel_lsp_request(Ted *ted, LSPID lsp, LSPRequestID request) {
+	lsp_cancel_request(ted_get_lsp_by_id(ted, lsp), request);
+}

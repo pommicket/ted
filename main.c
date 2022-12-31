@@ -1,7 +1,8 @@
 /*
 @TODO:
+- use ted_cancel_request more
 - show line containing usage
-- highlight-enabled, and highlight-auto
+- hover-auto
 - handle multiple symbols with same name in go-to-definition menu
 - :go-to-cursor-definition
 - test full unicode position handling

@@ -158,6 +158,8 @@ typedef struct {
 	bool signature_help_enabled;
 	bool lsp_enabled;
 	bool hover_enabled;
+	bool highlight_enabled;
+	bool highlight_auto;
 	bool vsync;
 	u8 tab_width;
 	u8 cursor_width;
