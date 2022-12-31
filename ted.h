@@ -411,8 +411,7 @@ typedef struct {
 	// we use this to check if we need to refresh it.
 	LSPDocumentPosition requested_position;
 	LSPID requested_lsp;
-	BufferPos range_start;
-	BufferPos range_end;
+	LSPRange range;
 } Hover;
 
 typedef struct {
@@ -440,6 +439,8 @@ typedef struct {
 typedef struct {
 	LSPHighlight *highlights;
 	LSPRequestID last_request_id;
+	LSPID last_request_lsp;
+	LSPDocumentPosition requested_position;
 } Highlights;
 
 typedef struct Ted {

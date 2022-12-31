@@ -1430,7 +1430,7 @@ static Status buffer_insert_lines(TextBuffer *buffer, u32 where, u32 number) {
 
 LSPDocumentID buffer_lsp_document_id(TextBuffer *buffer) {
 	LSP *lsp = buffer_lsp(buffer);
-	return lsp_document_id(lsp, buffer->filename);
+	return lsp ? lsp_document_id(lsp, buffer->filename) : 0;
 }
 
 // LSP uses UTF-16 indices because Microsoft fucking loves UTF-16 and won't let it die

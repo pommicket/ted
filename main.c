@@ -1,7 +1,9 @@
 /*
 @TODO:
+- clip highlight to buffer rect
+- different highlight colors
+- highlight-enabled, and highlight-auto
 - more LSP stuff:
-     - document highlight (textDocument/documentHighlight)
      - find usages (textDocument/references)
 - handle multiple symbols with same name in go-to-definition menu
 - :go-to-cursor-definition
@@ -910,6 +912,7 @@ int main(int argc, char **argv) {
 					signature_help_process_lsp_response(ted, r);
 					hover_process_lsp_response(ted, r);
 					definitions_process_lsp_response(ted, lsp, r);
+					highlights_process_lsp_response(ted, r);
 					} break;
 				}
 				lsp_message_free(&message);
@@ -1017,6 +1020,7 @@ int main(int argc, char **argv) {
 				signature_help_frame(ted);
 				hover_frame(ted, frame_dt);
 				definitions_frame(ted);
+				highlights_frame(ted);
 			} else {
 				autocomplete_close(ted);
 				text_utf8_anchored(font, "Press Ctrl+O to open a file or Ctrl+N to create a new one.",
