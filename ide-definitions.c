@@ -1,6 +1,6 @@
 void definition_cancel_lookup(Ted *ted) {
 	Definitions *defs = &ted->definitions;
-	lsp_cancel_request(ted_get_lsp_by_id(ted, defs->last_request_lsp), defs->last_request_id);
+	ted_cancel_lsp_request(ted, defs->last_request_lsp, defs->last_request_id);
 	defs->last_request_id = 0;
 }
 
@@ -52,11 +52,12 @@ static SymbolKind symbol_kind_to_ted(LSPSymbolKind kind) {
 void definition_goto(Ted *ted, LSP *lsp, const char *name, LSPDocumentPosition position) {
 	Definitions *defs = &ted->definitions;
 	if (lsp) {
+		// cancel old request
+		ted_cancel_lsp_request(ted, defs->last_request_lsp, defs->last_request_id);
 		// send that request
 		LSPRequest request = {.type = LSP_REQUEST_DEFINITION};
 		request.data.definition.position = position;
 		LSPRequestID id = lsp_send_request(lsp, &request);
-		lsp_cancel_request(lsp, defs->last_request_id); // cancel old request
 		defs->last_request_id = id;
 		defs->last_request_lsp = lsp->id;
 		defs->last_request_time = ted->frame_time;
@@ -220,7 +221,7 @@ void definitions_selector_open(Ted *ted) {
 void definitions_selector_close(Ted *ted) {
 	Definitions *defs = &ted->definitions;
 	definitions_clear_entries(defs);
-	lsp_cancel_request(ted_get_lsp_by_id(ted, defs->last_request_lsp), defs->last_request_id);
+	ted_cancel_lsp_request(ted, defs->last_request_lsp, defs->last_request_id);
 	defs->last_request_id = 0;
 	free(defs->last_request_query);
 	defs->last_request_query = NULL;

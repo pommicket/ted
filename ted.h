@@ -367,7 +367,6 @@ enum {
 
 typedef struct {
 	bool open; // is the autocomplete window open?
-	bool waiting_for_lsp;
 	bool is_list_complete; // should the completions array be updated when more characters are typed?
 	
 	// what trigger caused the last request for completions:
@@ -375,9 +374,11 @@ typedef struct {
 	// or one of the TRIGGER_* constants above
 	uint32_t trigger;
 	
+	LSPID last_request_lsp;
+	LSPRequestID last_request_id;
 	// when we sent the request to the LSP for completions
 	//  (this is used to figure out when we should display "Loading...")
-	double lsp_request_time;
+	double last_request_time;
 	
 	Autocompletion *completions; // dynamic array of all completions
 	u32 *suggested; // dynamic array of completions to be suggested (indices into completions)

@@ -1,8 +1,7 @@
 void usages_cancel_lookup(Ted *ted) {
 	Usages *usages = &ted->usages;
 	if (usages->last_request_id) {
-		LSP *lsp = ted_get_lsp_by_id(ted, usages->last_request_lsp);
-		lsp_cancel_request(lsp, usages->last_request_id);
+		ted_cancel_lsp_request(ted, usages->last_request_lsp, usages->last_request_id);
 		usages->last_request_id = 0;
 	}
 }

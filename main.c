@@ -1,6 +1,6 @@
 /*
 @TODO:
-- use ted_cancel_request more
+- highlighting stuff in README
 - show line containing usage
 - hover-auto
 - handle multiple symbols with same name in go-to-definition menu
@@ -17,6 +17,7 @@
 - make tags_dir the root folder
 - check that tags still works
 - TESTING: make rust-analyzer-slow (waits 10s before sending response)
+- TESTING: check all IDE features with different servers
 - run everything through valgrind ideally with leak checking
 - grep -i -n TODO *.[ch]
 - when searching files, put exact matches at the top
