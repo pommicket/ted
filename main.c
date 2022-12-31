@@ -3,11 +3,6 @@
 - handle multiple symbols with same name in go-to-definition menu
 - better non-error window/showMessage(Request)
 - document lsp.h and lsp.c.
-- maximum queue size for requests/responses just in case?
-   - idea: configurable timeout
-   -  what to do if initialize request takes a long time?
-- delete old sent requests? but make sure requests that just take a long time are okay.
-    (if the server never sends a response)
 - check LSP process status (TEST: what happens if LSP server is not installed)
 - make tags_dir the root folder
 - check that tags still works
@@ -47,7 +42,7 @@ FUTURE FEATURES:
 - keyboard macros
     -  ctrl+9/0 to inc/dec number would be useful here
     - with macros we can really test performance of buffer_insert_text_at_pos, etc. (which should ideally be fast)
-- real typescript highlighting (?)
+- LSP request timeout
 */
 
 #include "base.h"
