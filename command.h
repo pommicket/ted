@@ -64,6 +64,8 @@ ENUM_U16 {
 	CMD_AUTOCOMPLETE,
 	CMD_AUTOCOMPLETE_BACK,
 	CMD_FIND_USAGES,
+	CMD_GOTO_DEFINITION, // "go to definition of..." menu
+	CMD_GOTO_DEFINITION_AT_CURSOR,
 	
 	CMD_COPY,
 	CMD_CUT,
@@ -89,7 +91,6 @@ ENUM_U16 {
 	CMD_SHELL,
 	CMD_GENERATE_TAGS,
 
-	CMD_GOTO_DEFINITION, // "go to definition of..."
 	CMD_GOTO_LINE, // open "goto line..." menu
 
 	CMD_SPLIT_HORIZONTAL,
@@ -163,6 +164,8 @@ static CommandName const command_names[] = {
 	{"autocomplete", CMD_AUTOCOMPLETE},
 	{"autocomplete-back", CMD_AUTOCOMPLETE_BACK},
 	{"find-usages", CMD_FIND_USAGES},
+	{"goto-definition", CMD_GOTO_DEFINITION},
+	{"goto-definition-at-cursor", CMD_GOTO_DEFINITION_AT_CURSOR},
 	{"find", CMD_FIND},
 	{"find-replace", CMD_FIND_REPLACE},
 	{"tab-close", CMD_TAB_CLOSE},
@@ -179,7 +182,6 @@ static CommandName const command_names[] = {
 	{"build-next-error", CMD_BUILD_NEXT_ERROR},
 	{"shell", CMD_SHELL},
 	{"generate-tags", CMD_GENERATE_TAGS},
-	{"goto-definition", CMD_GOTO_DEFINITION},
 	{"goto-line", CMD_GOTO_LINE},
 	{"split-horizontal", CMD_SPLIT_HORIZONTAL},
 	{"split-vertical", CMD_SPLIT_VERTICAL},

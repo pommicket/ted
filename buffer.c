@@ -1366,6 +1366,10 @@ String32 buffer_word_at_cursor(TextBuffer *buffer) {
 	return buffer_word_at_pos(buffer, buffer->cursor_pos);
 }
 
+char *buffer_word_at_cursor_utf8(TextBuffer *buffer) {
+	return str32_to_utf8_cstr(buffer_word_at_cursor(buffer));
+}
+
 // Returns the position corresponding to the start of the given line.
 BufferPos buffer_pos_start_of_line(TextBuffer *buffer, u32 line) {
 	(void)buffer;
@@ -2471,6 +2475,15 @@ u32 buffer_last_rendered_line(TextBuffer *buffer) {
 	return clamp_u32(line, 0, buffer->nlines);
 }
 
+void buffer_goto_word_at_cursor(TextBuffer *buffer) {
+	char *word = buffer_word_at_cursor_utf8(buffer);
+	if (*word) {
+		LSPDocumentPosition pos = buffer_pos_to_lsp_document_position(buffer, buffer->cursor_pos);
+		definition_goto(buffer->ted, buffer_lsp(buffer), word, pos);
+	}
+	free(word);
+}
+
 // returns true if the buffer "used" this event
 bool buffer_handle_click(Ted *ted, TextBuffer *buffer, v2 click, u8 times) {
 	BufferPos buffer_pos;
@@ -2495,15 +2508,7 @@ bool buffer_handle_click(Ted *ted, TextBuffer *buffer, v2 click, u8 times) {
 				if (!buffer->is_line_buffer) {
 					// go to definition
 					buffer_cursor_move_to_pos(buffer, buffer_pos);
-					String32 word = buffer_word_at_cursor(buffer);
-					if (word.len) {
-						char *tag = str32_to_utf8_cstr(word);
-						if (tag) {
-							LSPDocumentPosition pos = buffer_pos_to_lsp_document_position(buffer, buffer_pos);
-							definition_goto(buffer->ted, buffer_lsp(buffer), tag, pos);
-							free(tag);
-						}
-					}
+					buffer_goto_word_at_cursor(buffer);
 				}
 				break;
 			case 0:

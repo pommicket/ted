@@ -292,7 +292,15 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 	case CMD_AUTOCOMPLETE_BACK:
 		if (ted->autocomplete.open)
 			autocomplete_prev(ted);
-		break;
+		break;	
+	case CMD_GOTO_DEFINITION:
+		menu_open(ted, MENU_GOTO_DEFINITION);
+		break;	
+	case CMD_GOTO_DEFINITION_AT_CURSOR: {
+		if (buffer && buffer_is_named_file(buffer)) {
+			buffer_goto_word_at_cursor(buffer);
+		}
+		} break;
 	case CMD_FIND_USAGES:
 		usages_find(ted);
 		break;
@@ -439,10 +447,7 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 	case CMD_GENERATE_TAGS:
 		tags_generate(ted, true);
 		break;
-			
-	case CMD_GOTO_DEFINITION:
-		menu_open(ted, MENU_GOTO_DEFINITION);
-		break;
+		
 	case CMD_GOTO_LINE:
 		menu_open(ted, MENU_GOTO_LINE);
 		break;
