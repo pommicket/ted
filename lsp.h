@@ -52,6 +52,7 @@ typedef enum {
 	LSP_REQUEST_SIGNATURE_HELP, // textDocument/signatureHelp
 	LSP_REQUEST_HOVER, // textDocument/hover
 	LSP_REQUEST_DEFINITION, // textDocument/definition
+	//LSP_REQUEST_HIGHLIGHT,
 	LSP_REQUEST_RENAME, // textDocument/rename
 	LSP_REQUEST_WORKSPACE_SYMBOLS, // workspace/symbol
 	LSP_REQUEST_DID_CHANGE_WORKSPACE_FOLDERS, // workspace/didChangeWorkspaceFolders
