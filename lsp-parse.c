@@ -798,6 +798,20 @@ static bool parse_highlight(LSP *lsp, const JSON *json, LSPResponse *response) {
 	return true;
 }
 
+static int references_location_cmp(void *context, const void *av, const void *bv) {
+	LSP *lsp = context;
+	const LSPLocation *a = av, *b = bv;
+	const char *a_path = lsp_document_path(lsp, a->document);
+	const char *b_path = lsp_document_path(lsp, b->document);
+	int cmp = strcmp(a_path, b_path);
+	if (cmp) return cmp;
+	u32 a_line = a->range.start.line;
+	u32 b_line = b->range.start.line;
+	if (a_line < b_line) return -1;
+	if (a_line > b_line) return +1;
+	return 0;
+}
+
 static bool parse_references(LSP *lsp, const JSON *json, LSPResponse *response) {
 	LSPResponseReferences *refs = &response->data.references;
 	JSONArray result = json_force_array(json_get(json, "result"));
@@ -807,6 +821,7 @@ static bool parse_references(LSP *lsp, const JSON *json, LSPResponse *response) 
 		if (!parse_location(lsp, json, location_in, location_out))
 			return false;
 	}
+	qsort_with_context(refs->locations, arr_len(refs->locations), sizeof *refs->locations, references_location_cmp, lsp);
 	return true;
 }
 

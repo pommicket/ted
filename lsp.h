@@ -359,6 +359,7 @@ typedef struct {
 } LSPResponseHighlight;
 
 typedef struct {
+	// these will be sorted by path (alphabetically), then by line number
 	LSPLocation *locations;
 } LSPResponseReferences;
 

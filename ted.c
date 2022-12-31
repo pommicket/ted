@@ -361,6 +361,20 @@ static Status ted_open_buffer(Ted *ted, u16 *buffer_idx, u16 *tab) {
 	}
 }
 
+// Returns the buffer containing the file at `path`, or NULL if there is none.
+static TextBuffer *ted_get_buffer_with_file(Ted *ted, const char *path) {
+	bool *buffers_used = ted->buffers_used;
+	TextBuffer *buffers = ted->buffers;
+	for (u16 i = 0; i < TED_MAX_BUFFERS; ++i) {
+		if (buffers_used[i]) {
+			if (buffers[i].filename && paths_eq(path, buffers[i].filename)) {
+				return &buffers[i];
+			}
+		}
+	}
+	return NULL;
+}
+
 
 // Returns true on success
 static bool ted_open_file(Ted *ted, char const *filename) {
@@ -368,15 +382,10 @@ static bool ted_open_file(Ted *ted, char const *filename) {
 	ted_path_full(ted, filename, path, sizeof path);
 
 	// first, check if file is already open
-	bool *buffers_used = ted->buffers_used;
-	TextBuffer *buffers = ted->buffers;
-	for (u16 i = 0; i < TED_MAX_BUFFERS; ++i) {
-		if (buffers_used[i]) {
-			if (buffers[i].filename && paths_eq(path, buffers[i].filename)) {
-				ted_switch_to_buffer(ted, &buffers[i]);
-				return true;
-			}
-		}
+	TextBuffer *already_open = ted_get_buffer_with_file(ted, path);
+	if (already_open) {
+		ted_switch_to_buffer(ted, already_open);
+		return true;
 	}
 	
 	// not open; we need to load it
