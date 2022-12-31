@@ -79,13 +79,16 @@ void hover_frame(Ted *ted, double dt) {
 	bool shift_down = SDL_GetKeyboardState(NULL)[SDL_SCANCODE_LSHIFT]
 		|| SDL_GetKeyboardState(NULL)[SDL_SCANCODE_RSHIFT];
 	
-	if (!shift_down) {
+	bool open_hover = shift_down || hover->time >= settings->hover_time;
+	
+	hover->time += dt;
+	
+	if (!open_hover)
 		hover_close(ted);
-	}
 	
 	(void)dt;
 	if (!hover->open) {
-		if (shift_down) {
+		if (open_hover) {
 			hover_send_request(ted);
 			hover->open = true;
 		}

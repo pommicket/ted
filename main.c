@@ -1,6 +1,5 @@
 /*
 @TODO:
-- hover-auto
 - handle multiple symbols with same name in go-to-definition menu
 - :go-to-cursor-definition
 - test full unicode position handling
@@ -12,6 +11,7 @@
    -  what to do if initialize request takes a long time?
 - delete old sent requests? but make sure requests that just take a long time are okay.
     (if the server never sends a response)
+- check LSP process status (TEST: what happens if LSP server is not installed)
 - make tags_dir the root folder
 - check that tags still works
 - TESTING: make rust-analyzer-slow (waits 10s before sending response)
@@ -769,6 +769,7 @@ int main(int argc, char **argv) {
 					buffer_pixels_to_pos(ted->drag_buffer, V2(x, y), &pos);
 					buffer_select_to_pos(ted->drag_buffer, pos);
 				}
+				ted->hover.time = 0.0;
 			} break;
 			case SDL_KEYDOWN: {
 				SDL_Scancode scancode = event.key.keysym.scancode;

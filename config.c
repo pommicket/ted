@@ -288,6 +288,7 @@ static OptionU32 const options_u32[] = {
 static OptionFloat const options_float[] = {
 	{"cursor-blink-time-on", &options_zero.cursor_blink_time_on, 0, 1000, true},
 	{"cursor-blink-time-off", &options_zero.cursor_blink_time_off, 0, 1000, true},
+	{"hover-time", &options_zero.hover_time, 0, INFINITY, true},
 };
 static OptionString const options_string[] = {
 	{"build-default-command", options_zero.build_default_command, sizeof options_zero.build_default_command, true},

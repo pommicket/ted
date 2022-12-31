@@ -136,8 +136,9 @@ typedef struct {
 	// and change the options_<type> global constant in config.c
 	
 	SettingsContext context;
-	float cursor_blink_time_on, cursor_blink_time_off;
 	u32 colors[COLOR_COUNT];
+	float cursor_blink_time_on, cursor_blink_time_off;
+	float hover_time;
 	u32 max_file_size;
 	u32 max_file_size_view_only;
 	u16 framerate_cap;
@@ -425,6 +426,7 @@ typedef struct {
 	LSPDocumentPosition requested_position;
 	LSPID requested_lsp;
 	LSPRange range;
+	double time; // how long the cursor has been hovering for
 } Hover;
 
 typedef struct {
