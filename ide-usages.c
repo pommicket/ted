@@ -56,7 +56,7 @@ void usages_process_lsp_response(Ted *ted, LSPResponse *response) {
 		
 		build_check_for_errors(ted);
 	} else {
-		ted->cursor_error_time = time_get_seconds();
+		ted_flash_error_cursor(ted);
 	}
 	usages->last_request_id = 0;
 }

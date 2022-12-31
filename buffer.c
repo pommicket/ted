@@ -606,7 +606,7 @@ void buffer_check_valid(TextBuffer *buffer) {
 #endif
 
 static Status buffer_edit_create(TextBuffer *buffer, BufferEdit *edit, BufferPos start, u32 prev_len, u32 new_len) {
-	edit->time = time_get_seconds();
+	edit->time = buffer->ted->frame_time;
 	if (prev_len == 0)
 		edit->prev_text = NULL; // if there's no previous text, don't allocate anything
 	else
@@ -699,7 +699,7 @@ static bool buffer_edit_split(TextBuffer *buffer) {
 	if (!last_edit) return true;
 	if (buffer->will_chain_edits) return true;
 	if (buffer->chaining_edits) return false;
-	double curr_time = time_get_seconds();
+	double curr_time = buffer->ted->frame_time;
 	double undo_time_cutoff = buffer_settings(buffer)->undo_save_time; // only keep around edits for this long (in seconds).
 	return last_edit->time <= buffer->last_write_time // last edit happened before buffer write (we need to split this so that undo_history_write_pos works)
 		|| curr_time - last_edit->time > undo_time_cutoff;
@@ -2815,12 +2815,12 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 		float time_on = settings->cursor_blink_time_on;
 		float time_off = settings->cursor_blink_time_off;
 		double error_animation_duration = 1.0;
-		double error_animation_dt = time_get_seconds() - ted->cursor_error_time;
+		double error_animation_dt = ted->frame_time - ted->cursor_error_time;
 		bool error_animation = ted->cursor_error_time > 0 && error_animation_dt < error_animation_duration;
 		
 		bool is_on = true;
 		if (!error_animation && time_off > 0) {
-			double absolute_time = time_get_seconds();
+			double absolute_time = ted->frame_time;
 			float period = time_on + time_off;
 			// time in period
 			double t = fmod(absolute_time, period);

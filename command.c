@@ -224,7 +224,7 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		ted_new_file(ted, NULL);
 		break;
 	case CMD_SAVE:
-		ted->last_save_time = time_get_seconds();
+		ted->last_save_time = ted->frame_time;
 		if (buffer) {
 			if (buffer_is_untitled(buffer)) {
 				command_execute(ted, CMD_SAVE_AS, 1);
@@ -234,13 +234,13 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		}
 		break;
 	case CMD_SAVE_AS:
-		ted->last_save_time = time_get_seconds();
+		ted->last_save_time = ted->frame_time;
 		if (buffer && !buffer->is_line_buffer) {
 			menu_open(ted, MENU_SAVE_AS);
 		}
 		break;
 	case CMD_SAVE_ALL:
-		ted->last_save_time = time_get_seconds();
+		ted->last_save_time = ted->frame_time;
 		ted_save_all(ted);
 		break;
 	case CMD_RELOAD_ALL:

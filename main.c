@@ -1,7 +1,6 @@
 /*
 @TODO:
 - show line containing usage
-- change frame_time to a double
 - highlight-enabled, and highlight-auto
 - handle multiple symbols with same name in go-to-definition menu
 - :go-to-cursor-definition
@@ -951,7 +950,7 @@ int main(int argc, char **argv) {
 				
 				glUseProgram(shader);
 				if (array) glBindVertexArray(array);
-				double t = time_get_seconds();
+				double t = ted->frame_time;
 				glUniform1f(glGetUniformLocation(shader, "t_time"), (float)fmod(t - start_time, 3600));
 				glUniform2f(glGetUniformLocation(shader, "t_aspect"), (float)window_width / (float)window_height, 1);
 				glUniform1f(glGetUniformLocation(shader, "t_save_time"), (float)(t - ted->last_save_time));
@@ -1065,7 +1064,7 @@ int main(int argc, char **argv) {
 
 		// check if there's a new error
 		if (ted_haserr(ted)) {
-			ted->error_time = time_get_seconds();
+			ted->error_time = ted->frame_time;
 			str_cpy(ted->error_shown, sizeof ted->error_shown, ted->error);
 
 			{ // output error to log file
@@ -1083,8 +1082,7 @@ int main(int argc, char **argv) {
 
 		// error box
 		if (*ted->error_shown) {
-			double t = time_get_seconds();
-			double time_passed = t - ted->error_time;
+			double time_passed = ted->frame_time - ted->error_time;
 			Settings *settings = ted_active_settings(ted);
 			if (time_passed > settings->error_display_time) {
 				// stop showing error

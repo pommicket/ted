@@ -102,7 +102,7 @@ static bool autocomplete_using_lsp(Ted *ted) {
 static void autocomplete_no_suggestions(Ted *ted) {
 	Autocomplete *ac = &ted->autocomplete;
 	if (ac->trigger == TRIGGER_INVOKED)
-		ted->cursor_error_time = time_get_seconds();
+		ted_flash_error_cursor(ted);
 	autocomplete_close(ted);
 }
 

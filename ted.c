@@ -536,7 +536,7 @@ bool ted_get_mouse_buffer_pos(Ted *ted, TextBuffer **pbuffer, BufferPos *ppos) {
 
 // make the cursor red for a bit to indicate an error (e.g. no autocompletions)
 void ted_flash_error_cursor(Ted *ted) {
-	ted->cursor_error_time = time_get_seconds();
+	ted->cursor_error_time = ted->frame_time;
 }
 
 void ted_go_to_position(Ted *ted, const char *path, u32 line, u32 index, bool is_lsp) {
