@@ -1,8 +1,8 @@
 /*
 @TODO:
-- find usages (textDocument/references)
-- different highlight colors
+- show line containing usage
 - framerate-cap setting
+- change frame_time to a double
 - highlight-enabled, and highlight-auto
 - handle multiple symbols with same name in go-to-definition menu
 - :go-to-cursor-definition
@@ -156,6 +156,7 @@ bool tag_goto(Ted *ted, char const *tag);
 #include "ide-hover.c"
 #include "ide-definitions.c"
 #include "ide-highlights.c"
+#include "ide-usages.c"
 #include "command.c"
 #include "config.c"
 #include "session.c"
@@ -920,6 +921,7 @@ int main(int argc, char **argv) {
 					hover_process_lsp_response(ted, r);
 					definitions_process_lsp_response(ted, lsp, r);
 					highlights_process_lsp_response(ted, r);
+					usages_process_lsp_response(ted, r);
 					} break;
 				}
 				lsp_message_free(&message);
@@ -1028,6 +1030,7 @@ int main(int argc, char **argv) {
 				hover_frame(ted, frame_dt);
 				definitions_frame(ted);
 				highlights_frame(ted);
+				usages_frame(ted);
 			} else {
 				autocomplete_close(ted);
 				text_utf8_anchored(font, "Press Ctrl+O to open a file or Ctrl+N to create a new one.",

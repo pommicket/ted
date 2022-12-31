@@ -385,6 +385,12 @@ typedef struct {
 } Autocomplete;
 
 typedef struct {
+	LSPID last_request_lsp;
+	LSPRequestID last_request_id;
+	struct timespec last_request_time;
+} Usages;
+
+typedef struct {
 	// displayed normal
 	char *label_pre;
 	// displayed bold
@@ -502,6 +508,7 @@ typedef struct Ted {
 	Hover hover;
 	Definitions definitions;
 	Highlights highlights;
+	Usages usages;
 	
 	FILE *log;
 	

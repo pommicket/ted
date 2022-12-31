@@ -63,6 +63,7 @@ ENUM_U16 {
 	CMD_SET_LANGUAGE,
 	CMD_AUTOCOMPLETE,
 	CMD_AUTOCOMPLETE_BACK,
+	CMD_FIND_USAGES,
 	
 	CMD_COPY,
 	CMD_CUT,
@@ -161,6 +162,7 @@ static CommandName const command_names[] = {
 	{"paste", CMD_PASTE},
 	{"autocomplete", CMD_AUTOCOMPLETE},
 	{"autocomplete-back", CMD_AUTOCOMPLETE_BACK},
+	{"find-usages", CMD_FIND_USAGES},
 	{"find", CMD_FIND},
 	{"find-replace", CMD_FIND_REPLACE},
 	{"tab-close", CMD_TAB_CLOSE},

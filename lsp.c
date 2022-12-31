@@ -604,6 +604,7 @@ bool lsp_covers_path(LSP *lsp, const char *path) {
 
 void lsp_cancel_request(LSP *lsp, LSPRequestID id) {
 	if (!id) return;
+	if (!lsp) return;
 	
 	LSPRequest request = {.type = LSP_REQUEST_CANCEL};
 	request.data.cancel.id = id;
