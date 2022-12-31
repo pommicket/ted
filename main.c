@@ -1,6 +1,5 @@
 /*
 @TODO:
-- highlighting stuff in README
 - show line containing usage
 - hover-auto
 - handle multiple symbols with same name in go-to-definition menu

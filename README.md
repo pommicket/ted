@@ -105,6 +105,8 @@ the current directory or one of its parents, depending on where `Makefile` is. O
 If a `Cargo.toml` file exists in this directory or one of its parents, F4 will run `cargo build`. You can set the default build command
 in the `[core]` section of the config file.
 
+You can press Ctrl+\[ and Ctrl+\] to navigate between build errors.
+
 ### ctags vs LSP
 
 `ted` has support for two separate systems for IDE features. `ctags`
@@ -134,7 +136,14 @@ Press Ctrl+space to autocomplete. If there is only one possible completion from 
 Otherwise, you'll get a popup showing all possible completions. You can press tab to select a completion (or click on it), and press
 Ctrl+space/Ctrl+shift+space to cycle between suggestions.
 
-Hover over a variable or function and press Shift to see its type and documentation ("hover information").
+Hover over an identifier and press Shift to see its type and documentation ("hover information").
+
+While your cursor is over an identifier, you can press Ctrl to highlight where it is used
+("document highlights"). If you turn on `highlight-auto` in the settings, the highlights
+will appear even if you don't press Ctrl.
+
+Press Ctrl+U to see usages of the identifier under the cursor. You can use Ctrl+\[ and Ctrl+\]
+to navigate between them, just like build errors.
 
 If these features aren't working properly and you don't know why, try running ted in a terminal (non-Windows) or a debugger (Windows)
 so you can see the stderr output from the server.
