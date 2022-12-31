@@ -1,10 +1,11 @@
 /*
 @TODO:
+- find usages (textDocument/references)
 - clip highlight to buffer rect
 - different highlight colors
+- --help, --version
+- framerate-cap setting
 - highlight-enabled, and highlight-auto
-- more LSP stuff:
-     - find usages (textDocument/references)
 - handle multiple symbols with same name in go-to-definition menu
 - :go-to-cursor-definition
 - test full unicode position handling

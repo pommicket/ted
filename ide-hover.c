@@ -12,6 +12,7 @@ static bool get_hover_position(Ted *ted, LSPDocumentPosition *pos, TextBuffer **
 	TextBuffer *buffer = NULL;
 	if (ted_get_mouse_buffer_pos(ted, &buffer, &mouse_pos)) {
 		LSP *l = buffer_lsp(buffer);
+		if (!l) return false;
 		if (pos) *pos = buffer_pos_to_lsp_document_position(buffer, mouse_pos);
 		if (pbuffer) *pbuffer = buffer;
 		if (lsp) *lsp = l;

@@ -164,6 +164,12 @@ static void parse_capabilities(LSP *lsp, const JSON *json, JSONObject capabiliti
 		cap->highlight_support = true;
 	}
 	
+	// check for textDocument/references support
+	JSONValue references_value = json_object_get(json, capabilities, "referencesProvider");
+	if (references_value.type != JSON_UNDEFINED && references_value.type != JSON_FALSE) {
+		cap->references_support = true;
+	}
+	
 	// check for textDocument/rename support
 	JSONValue rename_value = json_object_get(json, capabilities, "renameProvider");
 	if (rename_value.type != JSON_UNDEFINED && rename_value.type != JSON_FALSE) {
@@ -792,6 +798,18 @@ static bool parse_highlight(LSP *lsp, const JSON *json, LSPResponse *response) {
 	return true;
 }
 
+static bool parse_references(LSP *lsp, const JSON *json, LSPResponse *response) {
+	LSPResponseReferences *refs = &response->data.references;
+	JSONArray result = json_force_array(json_get(json, "result"));
+	for (u32 r = 0; r < result.len; ++r) {
+		JSONValue location_in = json_array_get(json, result, r);
+		LSPLocation *location_out = arr_addp(refs->locations);
+		if (!parse_location(lsp, json, location_in, location_out))
+			return false;
+	}
+	return true;
+}
+
 static void process_message(LSP *lsp, JSON *json) {
 		
 	#if 0
@@ -846,6 +864,9 @@ static void process_message(LSP *lsp, JSON *json) {
 			break;
 		case LSP_REQUEST_HIGHLIGHT:
 			add_to_messages = parse_highlight(lsp, json, &response);
+			break;
+		case LSP_REQUEST_REFERENCES:
+			add_to_messages = parse_references(lsp, json, &response);
 			break;
 		case LSP_REQUEST_WORKSPACE_SYMBOLS:
 			add_to_messages = parse_workspace_symbols(lsp, json, &response);

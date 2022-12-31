@@ -271,6 +271,8 @@ static const char *lsp_request_method(LSPRequest *request) {
 		return "textDocument/signatureHelp";
 	case LSP_REQUEST_HOVER:
 		return "textDocument/hover";
+	case LSP_REQUEST_REFERENCES:
+		return "textDocument/references";
 	case LSP_REQUEST_DEFINITION:
 		return "textDocument/definition";
 	case LSP_REQUEST_HIGHLIGHT:
@@ -550,6 +552,19 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 		const LSPRequestHighlight *hl = &request->data.highlight;
 		write_key_obj_start(o, "params");
 			write_document_position(o, hl->position);
+		write_obj_end(o);
+	} break;
+	case LSP_REQUEST_REFERENCES: {
+		const LSPRequestReferences *refs = &request->data.references;
+		write_key_obj_start(o, "params");
+			write_document_position(o, refs->position);
+			write_key_obj_start(o, "context");
+				// why is this includeDeclaration thing which has nothing to do with context
+				// why is it in an object called context
+				// there's no other members of the ReferenceContext interface. just this.
+				// why, LSP, why
+				write_key_bool(o, "includeDeclaration", refs->include_declaration);
+			write_obj_end(o);
 		write_obj_end(o);
 	} break;
 	case LSP_REQUEST_RENAME: {

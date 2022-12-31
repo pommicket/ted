@@ -53,6 +53,7 @@ typedef enum {
 	LSP_REQUEST_HOVER, // textDocument/hover
 	LSP_REQUEST_DEFINITION, // textDocument/definition
 	LSP_REQUEST_HIGHLIGHT, // textDocument/documentHighlight
+	LSP_REQUEST_REFERENCES, // textDocument/references
 	LSP_REQUEST_RENAME, // textDocument/rename
 	LSP_REQUEST_WORKSPACE_SYMBOLS, // workspace/symbol
 	LSP_REQUEST_DID_CHANGE_WORKSPACE_FOLDERS, // workspace/didChangeWorkspaceFolders
@@ -154,6 +155,11 @@ typedef struct {
 } LSPRequestHighlight;
 
 typedef struct {
+	LSPDocumentPosition position;
+	bool include_declaration;
+} LSPRequestReferences;
+
+typedef struct {
 	char *query;
 } LSPRequestWorkspaceSymbols;
 
@@ -161,6 +167,7 @@ typedef struct {
 	LSPDocumentPosition position;
 	char *new_name;
 } LSPRequestRename;
+
 
 typedef struct {
 	LSPDocumentID *removed; // dynamic array
@@ -182,6 +189,7 @@ typedef struct {
 		LSPRequestHover hover;
 		LSPRequestDefinition definition;
 		LSPRequestHighlight highlight;
+		LSPRequestReferences references;
 		LSPRequestWorkspaceSymbols workspace_symbols;
 		// LSP_REQUEST_SHOW_MESSAGE or LSP_REQUEST_LOG_MESSAGE
 		LSPRequestMessage message;
@@ -350,6 +358,10 @@ typedef struct {
 	LSPHighlight *highlights;
 } LSPResponseHighlight;
 
+typedef struct {
+	LSPLocation *locations;
+} LSPResponseReferences;
+
 typedef enum {
 	#define LSP_SYMBOL_TAG_MIN 1
 	LSP_SYMBOL_TAG_DEPRECATED = 1
@@ -432,6 +444,7 @@ typedef struct {
 		LSPResponseWorkspaceSymbols workspace_symbols;
 		LSPResponseRename rename;
 		LSPResponseHighlight highlight;
+		LSPResponseReferences references;
 	} data;
 } LSPResponse;
 
@@ -460,6 +473,7 @@ typedef struct {
 	// (but jdtls and gopls do)
 	bool workspace_folders_support;
 	bool rename_support;
+	bool references_support;
 } LSPCapabilities;
 
 typedef struct LSP {

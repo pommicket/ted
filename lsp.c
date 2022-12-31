@@ -52,6 +52,7 @@ static void lsp_request_free(LSPRequest *r) {
 	case LSP_REQUEST_SIGNATURE_HELP:
 	case LSP_REQUEST_HOVER:
 	case LSP_REQUEST_DEFINITION:
+	case LSP_REQUEST_REFERENCES:
 	case LSP_REQUEST_HIGHLIGHT:
 	case LSP_REQUEST_DID_CLOSE:
 	case LSP_REQUEST_WORKSPACE_FOLDERS:
@@ -106,6 +107,9 @@ static void lsp_response_free(LSPResponse *r) {
 		break;
 	case LSP_REQUEST_HIGHLIGHT:
 		arr_free(r->data.highlight.highlights);
+		break;
+	case LSP_REQUEST_REFERENCES:
+		arr_free(r->data.references.locations);
 		break;
 	default:
 		break;
@@ -182,6 +186,8 @@ static bool lsp_supports_request(LSP *lsp, const LSPRequest *request) {
 		return cap->rename_support;
 	case LSP_REQUEST_HIGHLIGHT:
 		return cap->highlight_support;
+	case LSP_REQUEST_REFERENCES:
+		return cap->references_support;
 	}
 	assert(0);
 	return false;
@@ -214,6 +220,7 @@ static bool request_type_is_notification(LSPRequestType type) {
 	case LSP_REQUEST_SIGNATURE_HELP:
 	case LSP_REQUEST_HOVER:
 	case LSP_REQUEST_DEFINITION:
+	case LSP_REQUEST_REFERENCES:
 	case LSP_REQUEST_RENAME:
 	case LSP_REQUEST_WORKSPACE_SYMBOLS:
 	case LSP_REQUEST_WORKSPACE_FOLDERS:
