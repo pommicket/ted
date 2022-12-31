@@ -262,6 +262,7 @@ static OptionBool const options_bool[] = {
 	{"signature-help-enabled", &options_zero.signature_help_enabled, true},
 	{"lsp-enabled", &options_zero.lsp_enabled, true},
 	{"hover-enabled", &options_zero.hover_enabled, true},
+	{"vsync", &options_zero.vsync, false},
 };
 static OptionU8 const options_u8[] = {
 	{"tab-width", &options_zero.tab_width, 1, 100, true},
@@ -276,6 +277,7 @@ static OptionU16 const options_u16[] = {
 	{"text-size", &options_zero.text_size, TEXT_SIZE_MIN, TEXT_SIZE_MAX, false},
 	{"max-menu-width", &options_zero.max_menu_width, 10, U16_MAX, false},
 	{"error-display-time", &options_zero.error_display_time, 0, U16_MAX, false},
+	{"framerate-cap", &options_zero.framerate_cap, 3, 1000, false},
 };
 static OptionU32 const options_u32[] = {
 	{"max-file-size", &options_zero.max_file_size, 100, 2000000000, false},

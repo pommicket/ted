@@ -140,6 +140,7 @@ typedef struct {
 	u32 colors[COLOR_COUNT];
 	u32 max_file_size;
 	u32 max_file_size_view_only;
+	u16 framerate_cap;
 	u16 text_size;
 	u16 max_menu_width;
 	u16 error_display_time;
@@ -157,6 +158,7 @@ typedef struct {
 	bool signature_help_enabled;
 	bool lsp_enabled;
 	bool hover_enabled;
+	bool vsync;
 	u8 tab_width;
 	u8 cursor_width;
 	u8 undo_save_time;

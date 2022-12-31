@@ -1,7 +1,6 @@
 /*
 @TODO:
 - show line containing usage
-- framerate-cap setting
 - change frame_time to a double
 - highlight-enabled, and highlight-auto
 - handle multiple symbols with same name in go-to-definition menu
@@ -1139,17 +1138,20 @@ int main(int argc, char **argv) {
 			SDL_ShowCursor(SDL_DISABLE);
 		}
 		
-		// annoyingly, SDL_GL_SwapWindow seems to be a busy loop on my laptop for some reason...
-		// enforce a framerate of 60. this isn't ideal but SDL_GetDisplayMode is *extremely slow* (250ms), so we don't really have a choice.
-		int refresh_rate = 60;
-		if (refresh_rate) {
-			i32 ms_wait = 1000 / refresh_rate - (i32)((frame_end_noswap - frame_start) * 1000);
-			if (ms_wait > 0) {
+		{
+			// annoyingly, SDL_GL_SwapWindow seems to be a busy loop on my laptop for some reason...
+			// this is why the framerate-cap settings exists
+			const Settings *settings = ted->default_settings;
+			if (settings->framerate_cap) {
+				i32 ms_wait = 1000 / (i32)settings->framerate_cap - (i32)((frame_end_noswap - frame_start) * 1000);
 				ms_wait -= 1; // give swap an extra ms to make sure it's actually vsynced
-				SDL_Delay((u32)ms_wait);
+				if (ms_wait > 0) {
+					SDL_Delay((u32)ms_wait);
+				}
 			}
+			SDL_GL_SetSwapInterval(settings->vsync ? 1 : 0);
+			SDL_GL_SwapWindow(window);
 		}
-		SDL_GL_SwapWindow(window);
 		PROFILE_TIME(frame_end)
 
 		assert(glGetError() == 0);
