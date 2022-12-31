@@ -799,6 +799,8 @@ static bool parse_highlight(LSP *lsp, const JSON *json, LSPResponse *response) {
 }
 
 static int references_location_cmp(void *context, const void *av, const void *bv) {
+	// IMPORTANT: don't change this comparison function.
+	// it matters in ide-usages.c
 	LSP *lsp = context;
 	const LSPLocation *a = av, *b = bv;
 	const char *a_path = lsp_document_path(lsp, a->document);
