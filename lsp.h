@@ -52,7 +52,7 @@ typedef enum {
 	LSP_REQUEST_SIGNATURE_HELP, // textDocument/signatureHelp
 	LSP_REQUEST_HOVER, // textDocument/hover
 	LSP_REQUEST_DEFINITION, // textDocument/definition
-	//LSP_REQUEST_HIGHLIGHT,
+	LSP_REQUEST_HIGHLIGHT, // textDocument/documentHighlight
 	LSP_REQUEST_RENAME, // textDocument/rename
 	LSP_REQUEST_WORKSPACE_SYMBOLS, // workspace/symbol
 	LSP_REQUEST_DID_CHANGE_WORKSPACE_FOLDERS, // workspace/didChangeWorkspaceFolders
@@ -150,6 +150,10 @@ typedef struct {
 } LSPRequestDefinition;
 
 typedef struct {
+	LSPDocumentPosition position;
+} LSPRequestHighlight;
+
+typedef struct {
 	char *query;
 } LSPRequestWorkspaceSymbols;
 
@@ -177,6 +181,7 @@ typedef struct {
 		LSPRequestSignatureHelp signature_help;
 		LSPRequestHover hover;
 		LSPRequestDefinition definition;
+		LSPRequestHighlight highlight;
 		LSPRequestWorkspaceSymbols workspace_symbols;
 		// LSP_REQUEST_SHOW_MESSAGE or LSP_REQUEST_LOG_MESSAGE
 		LSPRequestMessage message;
@@ -329,6 +334,23 @@ typedef struct {
 } LSPResponseDefinition;
 
 typedef enum {
+#define LSP_HIGHLIGHT_MIN 1
+	LSP_HIGHLIGHT_TEXT = 1,
+	LSP_HIGHLIGHT_READ = 2,
+	LSP_HIGHLIGHT_WRITE = 3,
+#define LSP_HIGHLIGHT_MAX 3
+} LSPHighlightKind;
+
+typedef struct {
+	LSPRange range;
+	LSPHighlightKind kind;
+} LSPHighlight;
+
+typedef struct {
+	LSPHighlight *highlights;
+} LSPResponseHighlight;
+
+typedef enum {
 	#define LSP_SYMBOL_TAG_MIN 1
 	LSP_SYMBOL_TAG_DEPRECATED = 1
 	#define LSP_SYMBOL_TAG_MAX 1
@@ -409,6 +431,7 @@ typedef struct {
 		LSPResponseDefinition definition;
 		LSPResponseWorkspaceSymbols workspace_symbols;
 		LSPResponseRename rename;
+		LSPResponseHighlight highlight;
 	} data;
 } LSPResponse;
 
@@ -431,6 +454,7 @@ typedef struct {
 	bool hover_support;
 	bool definition_support;
 	bool workspace_symbols_support;
+	bool highlight_support;
 	// support for multiple root folders
 	// sadly, as of me writing this, clangd and rust-analyzer don't support this
 	// (but jdtls and gopls do)

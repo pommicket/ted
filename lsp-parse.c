@@ -124,7 +124,7 @@ static void parse_capabilities(LSP *lsp, const JSON *json, JSONObject capabiliti
 	
 	// check CompletionOptions
 	JSONValue completion_value = json_object_get(json, capabilities, "completionProvider");
-	if (completion_value.type == JSON_OBJECT) {
+	if (completion_value.type == JSON_OBJECT && completion_value.type != JSON_FALSE) {
 		cap->completion_support = true;
 		JSONObject completion = completion_value.val.object;
 		
@@ -134,7 +134,7 @@ static void parse_capabilities(LSP *lsp, const JSON *json, JSONObject capabiliti
 	
 	// check SignatureHelpOptions
 	JSONValue signature_help_value = json_object_get(json, capabilities, "signatureHelpProvider");
-	if (signature_help_value.type == JSON_OBJECT) {
+	if (signature_help_value.type == JSON_OBJECT && signature_help_value.type != JSON_FALSE) {
 		cap->signature_help_support = true;
 		JSONObject signature_help = signature_help_value.val.object;
 		JSONArray trigger_chars = json_object_get_array(json, signature_help, "triggerCharacters");
@@ -148,25 +148,31 @@ static void parse_capabilities(LSP *lsp, const JSON *json, JSONObject capabiliti
 	
 	// check for hover support
 	JSONValue hover_value = json_object_get(json, capabilities, "hoverProvider");
-	if (hover_value.type != JSON_UNDEFINED) {
+	if (hover_value.type != JSON_UNDEFINED && hover_value.type != JSON_FALSE) {
 		cap->hover_support = true;
 	}
 	
 	// check for definition support
 	JSONValue definition_value = json_object_get(json, capabilities, "definitionProvider");
-	if (definition_value.type != JSON_UNDEFINED) {
+	if (definition_value.type != JSON_UNDEFINED && definition_value.type != JSON_FALSE) {
 		cap->definition_support = true;
+	}
+	
+	// check for textDocument/documentHighlight support
+	JSONValue highlight_value = json_object_get(json, capabilities, "documentHighlightProvider");
+	if (highlight_value.type != JSON_UNDEFINED && highlight_value.type != JSON_FALSE) {
+		cap->highlight_support = true;
 	}
 	
 	// check for textDocument/rename support
 	JSONValue rename_value = json_object_get(json, capabilities, "renameProvider");
-	if (rename_value.type != JSON_UNDEFINED) {
+	if (rename_value.type != JSON_UNDEFINED && rename_value.type != JSON_FALSE) {
 		cap->rename_support = true;
 	}
 	
 	// check for workspace/symbol support
 	JSONValue workspace_symbol_value = json_object_get(json, capabilities, "workspaceSymbolProvider");
-	if (workspace_symbol_value.type != JSON_UNDEFINED) {
+	if (workspace_symbol_value.type != JSON_UNDEFINED && workspace_symbol_value.type != JSON_FALSE) {
 		cap->workspace_symbols_support = true;
 	}
 	
@@ -767,6 +773,24 @@ static bool parse_rename(LSP *lsp, const JSON *json, LSPResponse *response) {
 	return parse_workspace_edit(lsp, response, json, result, &response->data.rename);
 }
 
+static bool parse_highlight(LSP *lsp, const JSON *json, LSPResponse *response) {
+	LSPResponseHighlight *hl = &response->data.highlight;
+	JSONArray result = json_force_array(json_get(json, "result"));
+	for (u32 h = 0; h < result.len; ++h) {
+		JSONObject highlight_in = json_array_get_object(json, result, h);
+		LSPHighlight *highlight_out = arr_addp(hl->highlights);
+		double kind = json_object_get_number(json, highlight_in, "kind");
+		if (isfinite(kind) && kind >= LSP_HIGHLIGHT_MAX && kind <= LSP_HIGHLIGHT_MAX) {
+			highlight_out->kind = (LSPHighlightKind)kind;
+		} else {
+			highlight_out->kind = LSP_HIGHLIGHT_TEXT;
+		}
+		JSONValue range = json_object_get(json, highlight_in, "range");
+		if (!parse_range(lsp, json, range, &highlight_out->range))
+			return false;
+	}
+	return true;
+}
 
 static void process_message(LSP *lsp, JSON *json) {
 		
@@ -819,6 +843,9 @@ static void process_message(LSP *lsp, JSON *json) {
 			break;
 		case LSP_REQUEST_DEFINITION:
 			add_to_messages = parse_definition(lsp, json, &response);
+			break;
+		case LSP_REQUEST_HIGHLIGHT:
+			add_to_messages = parse_highlight(lsp, json, &response);
 			break;
 		case LSP_REQUEST_WORKSPACE_SYMBOLS:
 			add_to_messages = parse_workspace_symbols(lsp, json, &response);

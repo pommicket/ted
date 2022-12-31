@@ -437,6 +437,10 @@ typedef struct {
 	SymbolInfo *selector_all_definitions; // an array of all definitions
 } Definitions;
 
+typedef struct {
+	LSPHighlight *highlights;
+	LSPRequestID last_request_id;
+} Highlights;
 
 typedef struct Ted {
 	LSP *lsps[TED_LSP_MAX + 1];
@@ -494,6 +498,7 @@ typedef struct Ted {
 	SignatureHelp signature_help;
 	Hover hover;
 	Definitions definitions;
+	Highlights highlights;
 	
 	FILE *log;
 	

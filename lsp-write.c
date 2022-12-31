@@ -273,6 +273,8 @@ static const char *lsp_request_method(LSPRequest *request) {
 		return "textDocument/hover";
 	case LSP_REQUEST_DEFINITION:
 		return "textDocument/definition";
+	case LSP_REQUEST_HIGHLIGHT:
+		return "textDocument/documentHighlight";
 	case LSP_REQUEST_RENAME:
 		return "textDocument/rename";
 	case LSP_REQUEST_WORKSPACE_FOLDERS:
@@ -542,6 +544,12 @@ static void write_request(LSP *lsp, LSPRequest *request) {
 		const LSPRequestDefinition *def = &request->data.definition;
 		write_key_obj_start(o, "params");
 			write_document_position(o, def->position);
+		write_obj_end(o);
+	} break;
+	case LSP_REQUEST_HIGHLIGHT: {
+		const LSPRequestHighlight *hl = &request->data.highlight;
+		write_key_obj_start(o, "params");
+			write_document_position(o, hl->position);
 		write_obj_end(o);
 	} break;
 	case LSP_REQUEST_RENAME: {

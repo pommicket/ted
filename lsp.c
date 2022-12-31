@@ -52,6 +52,7 @@ static void lsp_request_free(LSPRequest *r) {
 	case LSP_REQUEST_SIGNATURE_HELP:
 	case LSP_REQUEST_HOVER:
 	case LSP_REQUEST_DEFINITION:
+	case LSP_REQUEST_HIGHLIGHT:
 	case LSP_REQUEST_DID_CLOSE:
 	case LSP_REQUEST_WORKSPACE_FOLDERS:
 	case LSP_REQUEST_JDTLS_CONFIGURATION:
@@ -102,6 +103,9 @@ static void lsp_response_free(LSPResponse *r) {
 		break;
 	case LSP_REQUEST_RENAME:
 		arr_free(r->data.rename.changes);
+		break;
+	case LSP_REQUEST_HIGHLIGHT:
+		arr_free(r->data.highlight.highlights);
 		break;
 	default:
 		break;
@@ -176,6 +180,8 @@ static bool lsp_supports_request(LSP *lsp, const LSPRequest *request) {
 		return cap->workspace_symbols_support;
 	case LSP_REQUEST_RENAME:
 		return cap->rename_support;
+	case LSP_REQUEST_HIGHLIGHT:
+		return cap->highlight_support;
 	}
 	assert(0);
 	return false;
@@ -204,6 +210,7 @@ static bool request_type_is_notification(LSPRequestType type) {
 	case LSP_REQUEST_SHOW_MESSAGE:
 	case LSP_REQUEST_LOG_MESSAGE:
 	case LSP_REQUEST_COMPLETION:
+	case LSP_REQUEST_HIGHLIGHT:
 	case LSP_REQUEST_SIGNATURE_HELP:
 	case LSP_REQUEST_HOVER:
 	case LSP_REQUEST_DEFINITION:

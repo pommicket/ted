@@ -39,6 +39,7 @@ FUTURE FEATURES:
 - :set-build-command
 - document links using LSP textDocument/documentLink request
 - rename using LSP (textDocument/rename)
+       - we have request writing & response parsing support for it, but that hasn't been tested yet
        - i'm putting this off for now since it seems hard to have undo support for it.
 - add numlock as a key modifier? (but make sure "Ctrl+S" handles both "No NumLock+Ctrl+S" and "NumLock+Ctrl+S")
 - better undo chaining (dechain on backspace?)
@@ -153,6 +154,7 @@ bool tag_goto(Ted *ted, char const *tag);
 #include "ide-signature-help.c"
 #include "ide-hover.c"
 #include "ide-definitions.c"
+#include "ide-highlights.c"
 #include "command.c"
 #include "config.c"
 #include "session.c"
@@ -1152,7 +1154,9 @@ int main(int argc, char **argv) {
 	if (ted->menu)
 		menu_close(ted);
 	hover_close(ted);
+	signature_help_close(ted);
 	autocomplete_close(ted);
+	highlights_close(ted);
 	session_write(ted);
 	
 	for (int i = 0; i < TED_LSP_MAX; ++i) {
