@@ -346,16 +346,45 @@ typedef struct {
 } LSPResponseWorkspaceSymbols;
 
 typedef enum {
-	LSP_CHANGE_EDIT = 1
+	LSP_CHANGE_EDIT = 1,
+	LSP_CHANGE_CREATE,
+	LSP_CHANGE_RENAME,
+	LSP_CHANGE_DELETE
 } LSPWorkspaceChangeType;
 
 typedef struct {
+	LSPDocumentID document;
+	LSPTextEdit edit;
+} LSPWorkspaceChangeEdit;
+
+typedef struct {
+	LSPDocumentID document;
+	bool overwrite;
+	bool ignore_if_exists;
+} LSPWorkspaceChangeCreate;
+
+typedef struct {
+	LSPDocumentID old;
+	LSPDocumentID new;
+	bool overwrite;
+	bool ignore_if_exists;
+} LSPWorkspaceChangeRename;
+
+typedef struct {
+	LSPDocumentID document;
+	bool recursive;
+	bool ignore_if_not_exists;
+} LSPWorkspaceChangeDelete;
+
+// this doesn't exist in the LSP spec. it represents
+// a single change from a WorkspaceEdit.
+typedef struct {
 	LSPWorkspaceChangeType type;
 	union {
-		struct {
-			LSPDocumentID document;
-			LSPTextEdit edit;
-		} edit;
+		LSPWorkspaceChangeEdit edit;
+		LSPWorkspaceChangeCreate create;
+		LSPWorkspaceChangeRename rename;
+		LSPWorkspaceChangeDelete delete;
 	} data;
 } LSPWorkspaceChange;
 

@@ -681,23 +681,84 @@ static bool parse_server2client_request(LSP *lsp, JSON *json, LSPRequest *reques
 }
 
 static bool parse_workspace_edit(LSP *lsp, LSPResponse *response, const JSON *json, JSONObject object, LSPWorkspaceEdit *edit) {
-	JSONObject changes = json_object_get_object(json, object, "changes");
-	for (u32 c = 0; c < changes.len; ++c) {
-		JSONValue uri = json_object_key(json, changes, c);
-		JSONArray edits = json_force_array(json_object_value(json, changes, c));
-		LSPDocumentID document = 0;
-		if (!parse_document_uri(lsp, json, uri, &document))
-			return false;
-		for (u32 e = 0; e < edits.len; ++e) {
-			LSPWorkspaceChange *change = arr_addp(edit->changes);
-			change->type = LSP_CHANGE_EDIT;
-			change->data.edit.document = document;
-			JSONValue text_edit = json_array_get(json, edits, e);
-			if (!parse_text_edit(lsp, response, json, text_edit, &change->data.edit.edit))
+	// the `changes` member is for changes to already-open documents
+	{
+		JSONObject changes = json_object_get_object(json, object, "changes");
+		for (u32 c = 0; c < changes.len; ++c) {
+			JSONValue uri = json_object_key(json, changes, c);
+			JSONArray edits = json_force_array(json_object_value(json, changes, c));
+			LSPDocumentID document = 0;
+			if (!parse_document_uri(lsp, json, uri, &document))
 				return false;
+			for (u32 e = 0; e < edits.len; ++e) {
+				LSPWorkspaceChange *change = arr_addp(edit->changes);
+				change->type = LSP_CHANGE_EDIT;
+				change->data.edit.document = document;
+				JSONValue text_edit = json_array_get(json, edits, e);
+				if (!parse_text_edit(lsp, response, json, text_edit, &change->data.edit.edit))
+					return false;
+			}
 		}
 	}
-	todo : the other thing
+	// the `documentChanges` member is for changes to other documents
+	JSONArray changes = json_object_get_array(json, object, "documentChanges");
+	for (u32 c = 0; c < changes.len; ++c) {
+		JSONObject change = json_array_get_object(json, changes, c);
+		JSONValue kind = json_object_get(json, change, "kind");
+		if (kind.type == JSON_UNDEFINED) {
+			// change is a TextDocumentEdit
+			JSONObject text_document = json_object_get_object(json, change, "textDocument");
+			LSPDocumentID document=0;
+			if (!parse_document_uri(lsp, json, json_object_get(json, text_document, "uri"), &document))
+				return false;
+			JSONArray edits = json_object_get_array(json, change, "edits");
+			for (u32 e = 0; e < edits.len; ++e) {
+				LSPWorkspaceChange *out = arr_addp(edit->changes);
+				out->type = LSP_CHANGE_EDIT;
+				out->data.edit.document = document;
+				JSONValue text_edit = json_array_get(json, edits, e);
+				if (!parse_text_edit(lsp, response, json, text_edit, &out->data.edit.edit))
+					return false;
+			}
+		} else if (kind.type == JSON_STRING) {
+			char kind_str[32]={0};
+			json_string_get(json, kind.val.string, kind_str, sizeof kind_str);
+			LSPWorkspaceChange *out = arr_addp(edit->changes);
+			if (streq(kind_str, "create")) {
+				out->type = LSP_CHANGE_CREATE;
+				LSPWorkspaceChangeCreate *create = &out->data.create;
+				if (!parse_document_uri(lsp, json, json_object_get(json, change, "uri"), &create->document))
+					return false;
+				JSONObject options = json_object_get_object(json, change, "options");
+				create->ignore_if_exists = json_object_get_bool(json, options, "ignoreIfExists", false);
+				create->overwrite = json_object_get_bool(json, options, "overwrite", false);
+			} else if (streq(kind_str, "rename")) {
+				out->type = LSP_CHANGE_RENAME;
+				LSPWorkspaceChangeRename *rename = &out->data.rename;
+				if (!parse_document_uri(lsp, json, json_object_get(json, change, "oldUri"), &rename->old))
+					return false;
+				if (!parse_document_uri(lsp, json, json_object_get(json, change, "newUri"), &rename->new))
+					return false;
+				JSONObject options = json_object_get_object(json, change, "options");
+				rename->ignore_if_exists = json_object_get_bool(json, options, "ignoreIfExists", false);
+				rename->overwrite = json_object_get_bool(json, options, "overwrite", false);
+			} else if (streq(kind_str, "delete")) {
+				out->type = LSP_CHANGE_DELETE;
+				LSPWorkspaceChangeDelete *delete = &out->data.delete;
+				if (!parse_document_uri(lsp, json, json_object_get(json, change, "uri"), &delete->document))
+					return false;
+				JSONObject options = json_object_get_object(json, change, "options");
+				delete->ignore_if_not_exists = json_object_get_bool(json, options, "ignoreIfNotExists", false);
+				delete->recursive = json_object_get_bool(json, options, "recursive", false);
+			} else {
+				lsp_set_error(lsp, "Bad kind of workspace operation: '%s'", kind_str);
+			}
+		} else {
+			lsp_set_error(lsp, "Bad type for (TextDocumentEdit | CreateFile | RenameFile | DeleteFile).kind: %s",
+				json_type_to_str(kind.type));
+		}
+	}
+	
 	return true;
 }
 

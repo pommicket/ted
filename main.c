@@ -3,7 +3,6 @@
 - more LSP stuff:
      - document highlight (textDocument/documentHighlight)
      - find usages (textDocument/references)
-     - rename (textDocument/rename)
 - handle multiple symbols with same name in go-to-definition menu
 - :go-to-cursor-definition
 - test full unicode position handling
@@ -39,6 +38,8 @@ FUTURE FEATURES:
 - multiple files with command line arguments
 - :set-build-command
 - document links using LSP textDocument/documentLink request
+- rename using LSP (textDocument/rename)
+       - i'm putting this off for now since it seems hard to have undo support for it.
 - add numlock as a key modifier? (but make sure "Ctrl+S" handles both "No NumLock+Ctrl+S" and "NumLock+Ctrl+S")
 - better undo chaining (dechain on backspace?)
 - allow multiple fonts (fonts directory?)
