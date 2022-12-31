@@ -1147,7 +1147,15 @@ int main(int argc, char **argv) {
 					SDL_Delay((u32)ms_wait);
 				}
 			}
-			SDL_GL_SetSwapInterval(settings->vsync ? 1 : 0);
+			
+			// i don't know if SDL_GL_SetSwapInterval is slow on any platform
+			// (if you're not actually changing it). just in case, let's make sure
+			// we only call it when the vsync setting actually changes.
+			static int prev_vsync = -1;
+			if (settings->vsync != prev_vsync) {
+				prev_vsync = settings->vsync;
+				SDL_GL_SetSwapInterval(settings->vsync ? 1 : 0);
+			}
 			SDL_GL_SwapWindow(window);
 		}
 		PROFILE_TIME(frame_end)
