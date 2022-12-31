@@ -54,7 +54,7 @@ void highlights_frame(Ted *ted) {
 	}
 	
 	arr_foreach_ptr(hls->highlights, LSPHighlight, hl) {
-		ted_highlight_lsp_range(ted, buffer, hl->range);
+		buffer_highlight_lsp_range(buffer, hl->range);
 	}
 	gl_geometry_draw();
 }

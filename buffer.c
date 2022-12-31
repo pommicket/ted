@@ -3019,3 +3019,46 @@ void buffer_toggle_comment_selection(TextBuffer *buffer) {
 	}
 	buffer_toggle_comment_lines(buffer, l1, l2);
 }
+
+
+// make sure to call gl_geometry_draw after this
+void buffer_highlight_lsp_range(TextBuffer *buffer, LSPRange range) {
+	Font *font = buffer_font(buffer);
+	const u32 *colors = buffer_settings(buffer)->colors;
+	float char_height = font->char_height;
+	BufferPos range_start = buffer_pos_from_lsp(buffer, range.start);
+	BufferPos range_end = buffer_pos_from_lsp(buffer, range.end);
+	// draw the highlight
+	if (range_start.line == range_end.line) {
+		v2 a = buffer_pos_to_pixels(buffer, range_start);
+		v2 b = buffer_pos_to_pixels(buffer, range_end);
+		b.y += char_height;
+		Rect r = rect_endpoints(a, b); buffer_clip_rect(buffer, &r);
+		gl_geometry_rect(r, colors[COLOR_HOVER_HL]);
+	} else if (range_end.line - range_start.line < 1000) { // prevent gigantic highlights from slowing things down
+		// multiple lines.
+		v2 a = buffer_pos_to_pixels(buffer, range_start);
+		v2 b = buffer_pos_to_pixels(buffer, buffer_pos_end_of_line(buffer, range_start.line));
+		b.y += char_height;
+		Rect r1 = rect_endpoints(a, b); buffer_clip_rect(buffer, &r1);
+		gl_geometry_rect(r1, colors[COLOR_HOVER_HL]);
+		
+		for (u32 line = range_start.line + 1; line < range_end.line; ++line) {
+			// these lines are fully contained in the range.
+			BufferPos start = buffer_pos_start_of_line(buffer, line);
+			BufferPos end = buffer_pos_end_of_line(buffer, line);
+			a = buffer_pos_to_pixels(buffer, start);
+			b = buffer_pos_to_pixels(buffer, end);
+			b.y += char_height;
+			Rect r = rect_endpoints(a, b); buffer_clip_rect(buffer, &r);
+			gl_geometry_rect(r, colors[COLOR_HOVER_HL]);
+		}
+		
+		// last line
+		a = buffer_pos_to_pixels(buffer, buffer_pos_start_of_line(buffer, range_end.line));
+		b = buffer_pos_to_pixels(buffer, range_end);
+		b.y += char_height;
+		Rect r2 = rect_endpoints(a, b); buffer_clip_rect(buffer, &r2);
+		gl_geometry_rect(r2, colors[COLOR_HOVER_HL]);
+	}
+}
