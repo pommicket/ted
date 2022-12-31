@@ -243,14 +243,17 @@ static GLSimpleTriangle *gl_geometry_triangles;
 static GLuint gl_geometry_program;
 static GLuint gl_geometry_v_pos;
 static GLuint gl_geometry_v_color;
+static GLint gl_geometry_u_window_size;
 static GLuint gl_geometry_vbo, gl_geometry_vao;
 
 static void gl_geometry_init(void) {
 	char const *vshader_code = "attribute vec2 v_pos;\n\
 	attribute vec4 v_color;\n\
+	uniform vec2 u_window_size;\n\
 	OUT vec4 color;\n\
 	void main() {\n\
-		gl_Position = vec4(v_pos, 0.0, 1.0);\n\
+		vec2 p = v_pos * (2.0 / u_window_size);\n\
+		gl_Position = vec4(p.x - 1.0, 1.0 - p.y, 0.0, 1.0);\n\
 		color = v_color;\n\
 	}\n\
 	";
@@ -263,6 +266,7 @@ static void gl_geometry_init(void) {
 	gl_geometry_program = gl_compile_and_link_shaders(NULL, vshader_code, fshader_code);
 	gl_geometry_v_pos = gl_attrib_loc(gl_geometry_program, "v_pos");
 	gl_geometry_v_color = gl_attrib_loc(gl_geometry_program, "v_color");
+	gl_geometry_u_window_size = gl_uniform_loc(gl_geometry_program, "u_window_size");
 
 	glGenBuffers(1, &gl_geometry_vbo);
 	if (gl_version_major >= 3)
@@ -270,11 +274,6 @@ static void gl_geometry_init(void) {
 }
 
 static float gl_window_width, gl_window_height;
-
-static void gl_convert_to_ndc(v2 *pos) {
-	pos->x = pos->x / gl_window_width * 2.0f - 1.0f;
-	pos->y = 1.0f - pos->y / gl_window_height * 2.0f;
-}
 
 static void gl_geometry_rect(Rect r, u32 color_rgba) {
 	v4 color = rgba_u32_to_v4(color_rgba);
@@ -313,14 +312,6 @@ static void gl_geometry_draw(void) {
 	size_t ntriangles = arr_len(gl_geometry_triangles);
 	
 	if (ntriangles == 0) return;
-	
-	// convert coordinates to NDC
-	for (size_t i = 0; i < ntriangles; ++i) {
-		GLSimpleTriangle *triangle = &gl_geometry_triangles[i];
-		gl_convert_to_ndc(&triangle->v1.pos);
-		gl_convert_to_ndc(&triangle->v2.pos);
-		gl_convert_to_ndc(&triangle->v3.pos);
-	}
 
 	if (gl_version_major >= 3)
 		glBindVertexArray(gl_geometry_vao);
@@ -333,6 +324,7 @@ static void gl_geometry_draw(void) {
 	glEnableVertexAttribArray(gl_geometry_v_color);
 
 	glUseProgram(gl_geometry_program);
+	glUniform2f(gl_geometry_u_window_size, gl_window_width, gl_window_height);
 	glDrawArrays(GL_TRIANGLES, 0, (GLsizei)(3 * ntriangles));
 	
 	arr_clear(gl_geometry_triangles);

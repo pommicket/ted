@@ -88,17 +88,20 @@ static GLuint text_program;
 static GLuint text_vbo, text_vao;
 static GLuint text_v_pos, text_v_color, text_v_tex_coord;
 static GLint  text_u_sampler;
+static GLint  text_u_window_size;
 
 static bool text_init(void) {
 	char const *vshader_code = "attribute vec4 v_color;\n\
 attribute vec2 v_pos;\n\
 attribute vec2 v_tex_coord;\n\
+uniform vec2 u_window_size;\n\
 OUT vec4 color;\n\
 OUT vec2 tex_coord;\n\
 void main() {\n\
 	color = v_color;\n\
 	tex_coord = v_tex_coord;\n\
-	gl_Position = vec4(v_pos, 0.0, 1.0);\n\
+	vec2 p = v_pos * (2.0 / u_window_size);\n\
+	gl_Position = vec4(p.x - 1.0, 1.0 - p.y, 0.0, 1.0);\n\
 }\n\
 ";
 	char const *fshader_code = "IN vec4 color;\n\
@@ -115,6 +118,7 @@ void main() {\n\
 	text_v_color = gl_attrib_loc(text_program, "v_color");
 	text_v_tex_coord = gl_attrib_loc(text_program, "v_tex_coord");
 	text_u_sampler = gl_uniform_loc(text_program, "sampler");
+	text_u_window_size = gl_uniform_loc(text_program, "u_window_size");
 	glGenBuffers(1, &text_vbo);
 	glGenVertexArrays(1, &text_vao);
 
@@ -239,14 +243,6 @@ void text_render(Font *font) {
 		if (font->triangles[i]) {
 			// render these triangles
 			size_t ntriangles = arr_len(font->triangles[i]);
-
-			// convert coordinates to NDC
-			for (size_t t = 0; t < ntriangles; ++t) {
-				TextTriangle *triangle = &font->triangles[i][t];
-				gl_convert_to_ndc(&triangle->v1.pos);
-				gl_convert_to_ndc(&triangle->v2.pos);
-				gl_convert_to_ndc(&triangle->v3.pos);
-			}
 		
 			if (gl_version_major >= 3)
 				glBindVertexArray(text_vao);
@@ -262,6 +258,7 @@ void text_render(Font *font) {
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, font->textures[i]);
 			glUniform1i(text_u_sampler, 0);
+			glUniform2f(text_u_window_size, gl_window_width, gl_window_height);
 			glDrawArrays(GL_TRIANGLES, 0, (GLsizei)(3 * ntriangles));
 			arr_clear(font->triangles[i]);
 		}
