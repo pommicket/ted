@@ -63,6 +63,6 @@ void usages_process_lsp_response(Ted *ted, LSPResponse *response) {
 
 void usages_frame(Ted *ted) {
 	Usages *usages = &ted->usages;
-	if (usages->last_request_id && timespec_sub(ted->frame_time, usages->last_request_time) > 0.2)
+	if (usages->last_request_id && ted->frame_time - usages->last_request_time > 0.2)
 		ted->cursor = ted->cursor_wait; // this request is takin a while
 }

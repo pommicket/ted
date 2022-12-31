@@ -225,7 +225,7 @@ typedef struct {
 	char *filename; // NULL if this buffer doesn't correspond to a file (e.g. line buffers)
 	struct Ted *ted; // we keep a back-pointer to the ted instance so we don't have to pass it in to every buffer function
 	double scroll_x, scroll_y; // number of characters scrolled in the x/y direction
-	struct timespec last_write_time; // last write time to filename.
+	double last_write_time; // last write time to filename.
 	i16 manual_language; // 1 + the language the buffer has been manually set to, or 0 if it hasn't been manually set to anything
 	BufferPos cursor_pos;
 	BufferPos selection_pos; // if selection is true, the text between selection_pos and cursor_pos is selected.
@@ -375,7 +375,7 @@ typedef struct {
 	
 	// when we sent the request to the LSP for completions
 	//  (this is used to figure out when we should display "Loading...")
-	struct timespec lsp_request_time;
+	double lsp_request_time;
 	
 	Autocompletion *completions; // dynamic array of all completions
 	u32 *suggested; // dynamic array of completions to be suggested (indices into completions)
@@ -389,7 +389,7 @@ typedef struct {
 typedef struct {
 	LSPID last_request_lsp;
 	LSPRequestID last_request_id;
-	struct timespec last_request_time;
+	double last_request_time;
 } Usages;
 
 typedef struct {
@@ -439,7 +439,7 @@ typedef struct {
 	// if we got a response for the last request, or no requests have been made,
 	// last_request_id is set to 0.
 	LSPRequestID last_request_id;
-	struct timespec last_request_time;
+	double last_request_time;
 	
 	char *last_request_query; // last query string which we sent a request for
 	Selector selector; // for "go to definition of..." menu
@@ -455,8 +455,8 @@ typedef struct {
 
 typedef struct Ted {
 	LSP *lsps[TED_LSP_MAX + 1];
-	// current time, as of the start of this frame
-	struct timespec frame_time;
+	// current time (see time_get_seconds), as of the start of this frame
+	double frame_time;
 	
 	SDL_Window *window;
 	Font *font_bold;

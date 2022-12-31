@@ -68,7 +68,7 @@ void definition_goto(Ted *ted, LSP *lsp, const char *name, LSPDocumentPosition p
 
 void definitions_frame(Ted *ted) {
 	Definitions *defs = &ted->definitions;
-	if (defs->last_request_id && timespec_sub(ted->frame_time, defs->last_request_time) > 0.2) {
+	if (defs->last_request_id && ted->frame_time - defs->last_request_time > 0.2) {
 		ted->cursor = ted->cursor_wait;
 	}
 }

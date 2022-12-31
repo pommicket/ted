@@ -701,7 +701,7 @@ static bool buffer_edit_split(TextBuffer *buffer) {
 	if (buffer->chaining_edits) return false;
 	double curr_time = time_get_seconds();
 	double undo_time_cutoff = buffer_settings(buffer)->undo_save_time; // only keep around edits for this long (in seconds).
-	return last_edit->time <= timespec_to_seconds(buffer->last_write_time) // last edit happened before buffer write (we need to split this so that undo_history_write_pos works)
+	return last_edit->time <= buffer->last_write_time // last edit happened before buffer write (we need to split this so that undo_history_write_pos works)
 		|| curr_time - last_edit->time > undo_time_cutoff;
 }
 
@@ -2307,7 +2307,7 @@ Status buffer_load_file(TextBuffer *buffer, char const *filename) {
 					buffer->frame_latest_line_modified = nlines - 1;
 					buffer->lines_capacity = lines_capacity;
 					buffer->filename = filename_copy;
-					buffer->last_write_time = time_last_modified(buffer->filename);
+					buffer->last_write_time = timespec_to_seconds(time_last_modified(buffer->filename));
 					if (!(fs_path_permission(filename) & FS_PERMISSION_WRITE)) {
 						// can't write to this file; make the buffer view only.
 						buffer->view_only = true;
@@ -2358,7 +2358,7 @@ void buffer_reload(TextBuffer *buffer) {
 bool buffer_externally_changed(TextBuffer *buffer) {
 	if (!buffer->filename || buffer_is_untitled(buffer))
 		return false;
-	return !timespec_eq(buffer->last_write_time, time_last_modified(buffer->filename));
+	return buffer->last_write_time != timespec_to_seconds(time_last_modified(buffer->filename));
 }
 
 void buffer_new_file(TextBuffer *buffer, char const *filename) {
@@ -2418,7 +2418,7 @@ bool buffer_save(TextBuffer *buffer) {
 				if (!buffer_haserr(buffer))
 					buffer_seterr(buffer, "Couldn't close file %s.", buffer->filename);
 			}
-			buffer->last_write_time = time_last_modified(buffer->filename);
+			buffer->last_write_time = timespec_to_seconds(time_last_modified(buffer->filename));
 			bool success = !buffer_haserr(buffer);
 			if (success) {
 				buffer->undo_history_write_pos = arr_len(buffer->undo_history);

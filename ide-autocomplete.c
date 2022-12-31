@@ -352,8 +352,8 @@ static void autocomplete_frame(Ted *ted) {
 	size_t ncompletions = arr_len(ac->suggested);
 	
 	if (ac->waiting_for_lsp && ncompletions == 0) {
-		struct timespec now = ted->frame_time;
-		if (timespec_sub(now, ac->lsp_request_time) < 0.2) {
+		double now = ted->frame_time;
+		if (now - ac->lsp_request_time < 0.2) {
 			// don't show "Loading..." unless we've actually been loading for a bit of time
 			return;
 		}

@@ -651,7 +651,7 @@ int main(int argc, char **argv) {
 	
 	while (!ted->quit) {
 		double frame_start = time_get_seconds();
-		ted->frame_time = time_get();
+		ted->frame_time = frame_start;
 
 		SDL_Event event;
 		Uint8 const *keyboard_state = SDL_GetKeyboardState(NULL);

@@ -196,7 +196,7 @@ static void menu_update(Ted *ted) {
 		case POPUP_NO:
 			menu_close(ted);
 			if (buffer)
-				buffer->last_write_time = time_last_modified(buffer->filename);
+				buffer->last_write_time = timespec_to_seconds(time_last_modified(buffer->filename));
 			break;
 		case POPUP_CANCEL: assert(0); break;
 		}
