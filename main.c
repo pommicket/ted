@@ -74,7 +74,7 @@ no_warn_end
 #include <pcre2.h>
 
 #if DEBUG
-extern unsigned char *stbi_load(char const *filename, int *x, int *y, int *comp, int req_comp);
+extern unsigned char *stbi_load(const char *filename, int *x, int *y, int *comp, int req_comp);
 #else
 #define STB_IMAGE_STATIC
 no_warn_start
@@ -82,7 +82,6 @@ no_warn_start
 no_warn_end
 #endif
 
-#include "ds.c"
 #include "util.c"
 
 #if _WIN32
@@ -102,33 +101,14 @@ no_warn_end
 #error "Unrecognized operating system."
 #endif
 
-static void die(char const *fmt, ...) {
-	char buf[256] = {0};
-	
-	va_list args;
-	va_start(args, fmt);
-	vsnprintf(buf, sizeof buf - 1, fmt, args);
-	va_end(args);
-	
-	// show a message box, and if that fails, print it
-	if (SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", buf, NULL) < 0) {
-		debug_println("%s\n", buf);
-	}
-	
-	exit(EXIT_FAILURE);
-}
-
 #include "io.c"
-
 #include "time.c"
 #include "ted.h"
 #include "gl.c"
 #include "text.c"
-
 #include "string32.c"
 #include "colors.c"
 #include "syntax.c"
-bool tag_goto(Ted *ted, char const *tag);
 #include "buffer.c"
 #include "ted.c"
 #include "ui.c"

@@ -271,7 +271,7 @@ static void menu_update(Ted *ted) {
 			SelectorEntry *entry = entries;
 			for (Command c = 0; c < CMD_COUNT; ++c) {
 				char const *name = command_to_str(c);
-				if (c != CMD_UNKNOWN && *name && stristr(name, search_term)) {
+				if (c != CMD_UNKNOWN && *name && strstr_case_insensitive(name, search_term)) {
 					entry->name = name;
 					entry->color = colors[COLOR_TEXT];
 					++entry;

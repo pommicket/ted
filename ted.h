@@ -1,6 +1,8 @@
 #ifndef TED_H_
 #define TED_H_
 
+#include "util.h"
+#include "ds.h"
 #include "lsp.h"
 #include "base.h"
 #include "text.h"
@@ -585,8 +587,9 @@ typedef struct Ted {
 	char error[512];
 	char error_shown[512]; // error display in box on screen
 } Ted;
+
 char *buffer_contents_utf8_alloc(TextBuffer *buffer);
-Command command_from_str(char const *str);
+Command command_from_str(const char *str);
 const char *command_to_str(Command command);
 // Returns string representation of command
 const char *command_to_str(Command c);

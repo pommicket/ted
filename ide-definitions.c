@@ -105,7 +105,7 @@ static void definitions_selector_filter_entries(Ted *ted) {
 	arr_clear(sel->entries);
 
 	arr_foreach_ptr(defs->selector_all_definitions, SymbolInfo, info) {
-		if (!search_term || stristr(info->name, search_term)) {
+		if (!search_term || strstr_case_insensitive(info->name, search_term)) {
 			SelectorEntry *entry = arr_addp(sel->entries);
 			entry->name = info->name;
 			entry->color = info->color;

@@ -2,6 +2,22 @@
 #define ted_seterr(ted, ...) \
 	snprintf((ted)->error, sizeof (ted)->error - 1, __VA_ARGS__)
 
+static void die(char const *fmt, ...) {
+	char buf[256] = {0};
+	
+	va_list args;
+	va_start(args, fmt);
+	vsnprintf(buf, sizeof buf - 1, fmt, args);
+	va_end(args);
+	
+	// show a message box, and if that fails, print it
+	if (SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", buf, NULL) < 0) {
+		debug_println("%s\n", buf);
+	}
+	
+	exit(EXIT_FAILURE);
+}
+
 void ted_seterr_to_buferr(Ted *ted, TextBuffer *buffer) {
 	size_t size = sizeof ted->error;
 	if (sizeof buffer->error < size) size = sizeof buffer->error;

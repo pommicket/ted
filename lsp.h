@@ -1,6 +1,9 @@
 #ifndef LSP_H_
 #define LSP_H_
 
+#include "base.h"
+#include "ds.h"
+
 typedef u32 LSPDocumentID;
 typedef u32 LSPID;
 typedef u32 LSPRequestID;

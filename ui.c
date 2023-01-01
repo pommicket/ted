@@ -447,7 +447,7 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 		bool increment = true;
 		for (u32 i = 0; i < nfiles; i += increment, increment = true) {
 			// remove if the file name does not contain the search term,
-			bool remove = search_term && *search_term && !stristr(files[i]->name, search_term);
+			bool remove = search_term && *search_term && !strstr_case_insensitive(files[i]->name, search_term);
 			// or if this is just the current directory
 			remove |= streq(files[i]->name, ".");
 			if (remove) {
