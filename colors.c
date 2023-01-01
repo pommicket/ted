@@ -1,3 +1,59 @@
+typedef struct {
+	ColorSetting setting;
+	char const *name;
+} ColorName;
+
+static ColorName const color_names[] = {
+	{COLOR_UNKNOWN, "unknown"},
+	{COLOR_TEXT, "text"},
+	{COLOR_TEXT_SECONDARY, "text-secondary"},
+	{COLOR_BG, "bg"},
+	{COLOR_HL, "hl"},
+	{COLOR_CURSOR, "cursor"},
+	{COLOR_CURSOR_ERROR, "cursor-error"},
+	{COLOR_CURSOR_LINE_BG, "cursor-line-bg"},
+	{COLOR_VIEW_ONLY_CURSOR, "view-only-cursor"},
+	{COLOR_VIEW_ONLY_SELECTION_BG, "view-only-selection-bg"},
+	{COLOR_MATCHING_BRACKET_HL, "matching-bracket-hl"},
+	{COLOR_BORDER, "border"},
+	{COLOR_TEXT_FOLDER, "text-folder"},
+	{COLOR_TEXT_OTHER, "text-other"},
+	{COLOR_SELECTION_BG, "selection-bg"},
+	{COLOR_MENU_BACKDROP, "menu-backdrop"},
+	{COLOR_MENU_BG, "menu-bg"},
+	{COLOR_MENU_HL, "menu-hl"},
+	{COLOR_ERROR_TEXT, "error-text"},
+	{COLOR_ERROR_BG, "error-bg"},
+	{COLOR_ERROR_BORDER, "error-border"},
+	{COLOR_ACTIVE_TAB_HL, "active-tab-hl"},
+	{COLOR_SELECTED_TAB_HL, "selected-tab-hl"},
+	{COLOR_FIND_HL, "find-hl"},
+	{COLOR_KEYWORD, "keyword"},
+	{COLOR_BUILTIN, "builtin"},
+	{COLOR_COMMENT, "comment"},
+	{COLOR_PREPROCESSOR, "preprocessor"},
+	{COLOR_STRING, "string"},
+	{COLOR_CHARACTER, "character"},
+	{COLOR_CONSTANT, "constant"},
+	{COLOR_AUTOCOMPLETE_BG, "autocomplete-bg"},
+	{COLOR_AUTOCOMPLETE_HL, "autocomplete-hl"},
+	{COLOR_AUTOCOMPLETE_BORDER, "autocomplete-border"},
+	{COLOR_AUTOCOMPLETE_VARIABLE, "autocomplete-variable"},
+	{COLOR_AUTOCOMPLETE_FUNCTION, "autocomplete-function"},
+	{COLOR_AUTOCOMPLETE_TYPE, "autocomplete-type"},
+	{COLOR_HOVER_BORDER, "hover-border"},
+	{COLOR_HOVER_BG, "hover-bg"},
+	{COLOR_HOVER_TEXT, "hover-text"},
+	{COLOR_HOVER_HL, "hover-hl"},
+	{COLOR_YES, "yes"},
+	{COLOR_NO, "no"},
+	{COLOR_CANCEL, "cancel"},
+	{COLOR_LINE_NUMBERS, "line-numbers"},
+	{COLOR_CURSOR_LINE_NUMBER, "cursor-line-number"},
+	{COLOR_LINE_NUMBERS_SEPARATOR, "line-numbers-separator"},
+};
+
+static_assert_if_possible(arr_count(color_names) == COLOR_COUNT)
 
 static ColorSetting color_setting_from_str(char const *str) {
 	// @OPTIMIZE: sort color_names, binary search

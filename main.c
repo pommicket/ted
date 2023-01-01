@@ -46,6 +46,7 @@ FUTURE FEATURES:
 */
 
 #include "base.h"
+#include "unicode.h"
 no_warn_start
 #if _WIN32
 #include <SDL.h>
@@ -81,7 +82,6 @@ no_warn_start
 no_warn_end
 #endif
 
-#include "unicode.h"
 #include "ds.c"
 #include "util.c"
 
@@ -120,11 +120,7 @@ static void die(char const *fmt, ...) {
 
 #include "io.c"
 
-#include "text.h"
-#include "command.h"
-#include "colors.h"
 #include "time.c"
-#include "lsp.h"
 #include "ted.h"
 #include "gl.c"
 #include "text.c"

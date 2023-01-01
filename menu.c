@@ -265,13 +265,13 @@ static void menu_update(Ted *ted) {
 	} break;
 	case MENU_COMMAND_SELECTOR: {
 		Selector *selector = &ted->command_selector;
-		SelectorEntry *entries = selector->entries = calloc(arr_count(command_names), sizeof *selector->entries);
+		SelectorEntry *entries = selector->entries = calloc(CMD_COUNT, sizeof *selector->entries);
 		char *search_term = str32_to_utf8_cstr(buffer_get_line(line_buffer, 0));
 		if (entries) {
 			SelectorEntry *entry = entries;
-			for (size_t i = 0; i < arr_count(command_names); ++i) {
-				char const *name = command_names[i].name;
-				if (command_names[i].cmd != CMD_UNKNOWN && stristr(name, search_term)) {
+			for (Command c = 0; c < CMD_COUNT; ++c) {
+				char const *name = command_to_str(c);
+				if (c != CMD_UNKNOWN && *name && stristr(name, search_term)) {
 					entry->name = name;
 					entry->color = colors[COLOR_TEXT];
 					++entry;

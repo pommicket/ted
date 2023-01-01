@@ -1,3 +1,12 @@
+#ifndef TED_H_
+#define TED_H_
+
+#include "lsp.h"
+#include "base.h"
+#include "text.h"
+#include "colors.h"
+#include "command.h"
+
 #define TED_VERSION "2.0"
 #define TED_VERSION_FULL "ted v. " TED_VERSION
 #define TED_PATH_MAX 256
@@ -578,6 +587,9 @@ typedef struct Ted {
 } Ted;
 char *buffer_contents_utf8_alloc(TextBuffer *buffer);
 Command command_from_str(char const *str);
+const char *command_to_str(Command command);
+// Returns string representation of command
+const char *command_to_str(Command c);
 void command_execute(Ted *ted, Command c, i64 argument);
 void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer);
 // the settings of the active buffer, or the default settings if there is no active buffer
@@ -620,3 +632,5 @@ void definitions_selector_open(Ted *ted);
 void definitions_selector_update(Ted *ted);
 void definitions_selector_render(Ted *ted, Rect bounds);
 void definitions_selector_close(Ted *ted);
+
+#endif

@@ -200,32 +200,4 @@ typedef enum {
 	LANG_COUNT
 } Language;
 
-typedef struct {
-	Language lang;
-	char const *name;
-} LanguageName;
-
-static LanguageName const language_names[] = {
-	{LANG_NONE, "None"},
-	{LANG_C, "C"},
-	{LANG_CPP, "C++"},
-	{LANG_RUST, "Rust"},
-	{LANG_PYTHON, "Python"},
-	{LANG_TEX, "Tex"},
-	{LANG_MARKDOWN, "Markdown"},
-	{LANG_HTML, "HTML"},
-	{LANG_CONFIG, "Config"},
-	{LANG_JAVASCRIPT, "JavaScript"},
-	{LANG_JAVA, "Java"},
-	{LANG_GO, "Go"},
-	{LANG_TED_CFG, "TedCfg"},
-	{LANG_TYPESCRIPT, "TypeScript"},
-	{LANG_JSON, "JSON"},
-	{LANG_XML, "XML"},
-	{LANG_GLSL, "GLSL"},
-};
-
-static_assert_if_possible(arr_count(language_names) == LANG_COUNT)
-
-
-#endif
+#endif // BASE_H_

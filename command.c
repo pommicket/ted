@@ -1,3 +1,92 @@
+typedef struct {
+	char const *name;
+	Command cmd;
+} CommandName;
+static CommandName const command_names[] = {
+	{"unknown", CMD_UNKNOWN},
+	{"noop", CMD_NOOP},
+	{"left", CMD_LEFT},
+	{"right", CMD_RIGHT},
+	{"up", CMD_UP},
+	{"down", CMD_DOWN},
+	{"select-left", CMD_SELECT_LEFT},
+	{"select-right", CMD_SELECT_RIGHT},
+	{"select-up", CMD_SELECT_UP},
+	{"select-down", CMD_SELECT_DOWN},
+	{"left-word", CMD_LEFT_WORD},
+	{"right-word", CMD_RIGHT_WORD},
+	{"select-left-word", CMD_SELECT_LEFT_WORD},
+	{"select-right-word", CMD_SELECT_RIGHT_WORD},
+	{"start-of-line", CMD_START_OF_LINE},
+	{"end-of-line", CMD_END_OF_LINE},
+	{"select-start-of-line", CMD_SELECT_START_OF_LINE},
+	{"select-end-of-line", CMD_SELECT_END_OF_LINE},
+	{"start-of-file", CMD_START_OF_FILE},
+	{"end-of-file", CMD_END_OF_FILE},
+	{"select-start-of-file", CMD_SELECT_START_OF_FILE},
+	{"select-end-of-file", CMD_SELECT_END_OF_FILE},
+	{"select-page-up", CMD_SELECT_PAGE_UP},
+	{"select-page-down", CMD_SELECT_PAGE_DOWN},
+	{"select-all", CMD_SELECT_ALL},
+	{"page-up", CMD_PAGE_UP},
+	{"page-down", CMD_PAGE_DOWN},
+	{"tab", CMD_TAB},
+	{"backtab", CMD_BACKTAB},
+	{"insert-text", CMD_INSERT_TEXT},
+	{"newline", CMD_NEWLINE},
+	{"newline-back", CMD_NEWLINE_BACK},
+	{"comment-selection", CMD_COMMENT_SELECTION},
+	{"backspace", CMD_BACKSPACE},
+	{"delete", CMD_DELETE},
+	{"backspace-word", CMD_BACKSPACE_WORD},
+	{"delete-word", CMD_DELETE_WORD},
+	{"open", CMD_OPEN},
+	{"new", CMD_NEW},
+	{"save", CMD_SAVE},
+	{"save-as", CMD_SAVE_AS},
+	{"save-all", CMD_SAVE_ALL},
+	{"reload-all", CMD_RELOAD_ALL},
+	{"quit", CMD_QUIT},
+	{"set-language", CMD_SET_LANGUAGE},
+	{"command-selector", CMD_COMMAND_SELECTOR},
+	{"open-config", CMD_OPEN_CONFIG},
+	{"undo", CMD_UNDO},
+	{"redo", CMD_REDO},
+	{"copy", CMD_COPY},
+	{"cut", CMD_CUT},
+	{"paste", CMD_PASTE},
+	{"autocomplete", CMD_AUTOCOMPLETE},
+	{"autocomplete-back", CMD_AUTOCOMPLETE_BACK},
+	{"find-usages", CMD_FIND_USAGES},
+	{"goto-definition", CMD_GOTO_DEFINITION},
+	{"goto-definition-at-cursor", CMD_GOTO_DEFINITION_AT_CURSOR},
+	{"find", CMD_FIND},
+	{"find-replace", CMD_FIND_REPLACE},
+	{"tab-close", CMD_TAB_CLOSE},
+	{"tab-switch", CMD_TAB_SWITCH},
+	{"tab-next", CMD_TAB_NEXT},
+	{"tab-prev", CMD_TAB_PREV},
+	{"tab-move-left", CMD_TAB_MOVE_LEFT},
+	{"tab-move-right", CMD_TAB_MOVE_RIGHT},
+	{"increase-text-size", CMD_TEXT_SIZE_INCREASE},
+	{"decrease-text-size", CMD_TEXT_SIZE_DECREASE},
+	{"view-only", CMD_VIEW_ONLY},
+	{"build", CMD_BUILD},
+	{"build-prev-error", CMD_BUILD_PREV_ERROR},
+	{"build-next-error", CMD_BUILD_NEXT_ERROR},
+	{"shell", CMD_SHELL},
+	{"generate-tags", CMD_GENERATE_TAGS},
+	{"goto-line", CMD_GOTO_LINE},
+	{"split-horizontal", CMD_SPLIT_HORIZONTAL},
+	{"split-vertical", CMD_SPLIT_VERTICAL},
+	{"split-join", CMD_SPLIT_JOIN},
+	{"split-switch", CMD_SPLIT_SWITCH},
+	{"split-swap", CMD_SPLIT_SWAP},
+	{"escape", CMD_ESCAPE},
+};
+
+static_assert_if_possible(arr_count(command_names) == CMD_COUNT)
+
 Command command_from_str(char const *str) {
 	// @OPTIMIZE: sort command_names, do a binary search
 	for (int i = 0; i < CMD_COUNT; ++i) {
@@ -7,8 +96,7 @@ Command command_from_str(char const *str) {
 	return CMD_UNKNOWN;
 }
 
-// Returns string representation of command
-char const *command_to_str(Command c) {
+const char *command_to_str(Command c) {
 	// NOTE: this probably won't need to be optimized.
 	for (int i = 0; i < CMD_COUNT; ++i) {
 		if (command_names[i].cmd == c)

@@ -7,6 +7,7 @@
 #error "Unrecognized operating system."
 #endif
 
+#include "base.h"
 
 // Is this character a "word" character?
 static bool is_word(char32_t c) {

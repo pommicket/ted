@@ -5,9 +5,9 @@
 // Example usage:
 // Font *font = text_font_load("font.ttf", 18);
 // if (font) {
-//   text_utf8(font, "Hello", 5, 5, 0xFF0000FF);
-//   text_utf8(font, "Goodbye", 5, 100, 0x00FF00FF);
-//   text_render(font);
+//     text_utf8(font, "Hello", 5, 5, 0xFF0000FF);
+//     text_utf8(font, "Goodbye", 5, 100, 0x00FF00FF);
+//     text_render(font);
 // }
 
 
@@ -41,37 +41,37 @@ typedef enum {
 	ANCHOR_BOTTOM_RIGHT,
 } Anchor;
 
-extern bool text_has_err(void);
+bool text_has_err(void);
 // Get the current error. Errors will NOT be overwritten with newer errors.
-extern char const *text_get_err(void);
+char const *text_get_err(void);
 // Clear the current error.
-extern void text_clear_err(void);
+void text_clear_err(void);
 // Load a TTF font found in ttf_filename with the given font size (character pixel height)
-extern Font *text_font_load(char const *ttf_filename, float font_size);
+Font *text_font_load(char const *ttf_filename, float font_size);
 // Height of a character of this font in pixels.
-extern float text_font_char_height(Font *font);
+float text_font_char_height(Font *font);
 // Width of the character 'a' of this font in pixels.
 // This is meant to be only used for monospace fonts.
-extern float text_font_char_width(Font *font);
+float text_font_char_width(Font *font);
 // Force text to advance by text_font_char_width(font) pixels per character (actually, per code point).
-extern void text_font_set_force_monospace(Font *font, bool force);
+void text_font_set_force_monospace(Font *font, bool force);
 // Get the dimensions of some text.
-extern void text_get_size(Font *font, char const *text, float *width, float *height);
-extern v2 text_get_size_v2(Font *font, char const *text);
-extern void text_get_size32(Font *font, char32_t const *text, u64 len, float *width, float *height);
-extern void text_utf8(Font *font, char const *text, double x, double y, u32 color);
-extern void text_utf8_anchored(Font *font, char const *text, double x, double y, u32 color, Anchor anchor);
-extern void text_char_with_state(Font *font, TextRenderState *state, char32_t c);
-extern void text_utf8_with_state(Font *font, TextRenderState *state, char const *str);
+void text_get_size(Font *font, char const *text, float *width, float *height);
+v2 text_get_size_v2(Font *font, char const *text);
+void text_get_size32(Font *font, char32_t const *text, u64 len, float *width, float *height);
+void text_utf8(Font *font, char const *text, double x, double y, u32 color);
+void text_utf8_anchored(Font *font, char const *text, double x, double y, u32 color, Anchor anchor);
+void text_char_with_state(Font *font, TextRenderState *state, char32_t c);
+void text_utf8_with_state(Font *font, TextRenderState *state, char const *str);
 // Free memory used by font.
-extern void text_font_free(Font *font);
-extern void text_render(Font *font);
+void text_font_free(Font *font);
+void text_render(Font *font);
 
 // The "default" text rendering state - everything you need to just render text normally.
 // This lets you do stuff like:
 // TextRenderState state = text_render_state_default;
 //    (set a few options)
 // text_render_with_state(font, &state, ...)
-extern TextRenderState const text_render_state_default;
+const TextRenderState text_render_state_default;
 
 #endif

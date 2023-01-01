@@ -1,3 +1,6 @@
+#ifndef LSP_H_
+#define LSP_H_
+
 typedef u32 LSPDocumentID;
 typedef u32 LSPID;
 typedef u32 LSPRequestID;
@@ -566,3 +569,5 @@ bool lsp_document_position_eq(LSPDocumentPosition a, LSPDocumentPosition b);
 LSPDocumentPosition lsp_location_start_position(LSPLocation location);
 LSPDocumentPosition lsp_location_end_position(LSPLocation location);
 void lsp_free(LSP *lsp);
+
+#endif // LSP_H_
