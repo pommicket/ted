@@ -1,5 +1,6 @@
-// clear build errors and stop
-static void build_stop(Ted *ted) {
+#include "ted.h"
+
+void build_stop(Ted *ted) {
 	if (ted->building)
 		process_kill(&ted->build_process);
 	ted->building = false;
@@ -18,13 +19,11 @@ static void build_stop(Ted *ted) {
 	}
 }
 
-// call before adding anything to the build queue
-static void build_queue_start(Ted *ted) {
+void build_queue_start(Ted *ted) {
 	build_stop(ted);
 }
 
-// add a command to the build queue
-static void build_queue_command(Ted *ted, const char *command) {
+void build_queue_command(Ted *ted, const char *command) {
 	char *copy = str_dup(command);
 	if (copy)
 		arr_add(ted->build_queue, copy);
@@ -68,20 +67,18 @@ void build_setup_buffer(Ted *ted) {
 	build_buffer->store_undo_events = false; // don't need undo events for build output buffer
 }
 
-// make sure you set ted->build_dir before running this!
-static void build_queue_finish(Ted *ted) {
+void build_queue_finish(Ted *ted) {
 	build_setup_buffer(ted);
 	build_run_next_command_in_queue(ted); // run the first command
 }
 
-// make sure you set ted->build_dir before running this!
-static void build_start_with_command(Ted *ted, const char *command) {
+void build_start_with_command(Ted *ted, const char *command) {
 	build_queue_start(ted);
 	build_queue_command(ted, command);
 	build_queue_finish(ted);
 }
 
-static void build_start(Ted *ted) {
+void build_start(Ted *ted) {
 	Settings *settings = ted_active_settings(ted);
 	char *command = settings->build_default_command;
 	char *root = ted_get_root_dir(ted);
@@ -125,7 +122,7 @@ static void build_go_to_error(Ted *ted) {
 	}
 }
 
-static void build_next_error(Ted *ted) {
+void build_next_error(Ted *ted) {
 	if (ted->build_errors) {
 		ted->build_error += 1;
 		ted->build_error %= arr_len(ted->build_errors);
@@ -133,7 +130,7 @@ static void build_next_error(Ted *ted) {
 	}
 }
 
-static void build_prev_error(Ted *ted) {
+void build_prev_error(Ted *ted) {
 	if (ted->build_errors) {
 		ted->build_error += arr_len(ted->build_errors) - 1;
 		ted->build_error %= arr_len(ted->build_errors);

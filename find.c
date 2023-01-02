@@ -1,3 +1,5 @@
+#include "ted.h"
+
 #define PCRE2_STATIC
 #define PCRE2_CODE_UNIT_WIDTH 32
 #include <pcre2.h>
@@ -71,7 +73,7 @@ static void find_free_pattern(Ted *ted) {
 	arr_clear(ted->find_results);
 }
 
-static float find_menu_height(Ted *ted) {
+float find_menu_height(Ted *ted) {
 	Font *font = ted->font;
 	float char_height = text_font_char_height(font);
 	const Settings *settings = ted_active_settings(ted);
@@ -266,7 +268,7 @@ static bool find_replace_match(Ted *ted, u32 match_idx) {
 }
 
 // replace the match we are currently highlighting, or do nothing if there is no highlighted match
-static void find_replace(Ted *ted) {
+void find_replace(Ted *ted) {
 	TextBuffer *buffer = find_search_buffer(ted);
 	if (!buffer) return;
 	u32 match_idx = find_match_idx(ted);
@@ -278,18 +280,18 @@ static void find_replace(Ted *ted) {
 }
 	
 // go to next find result
-static void find_next(Ted *ted) {
+void find_next(Ted *ted) {
 	if (ted->replace) {
 		find_replace(ted);
 	}
 	find_next_in_direction(ted, +1);
 }
 
-static void find_prev(Ted *ted) {
+void find_prev(Ted *ted) {
 	find_next_in_direction(ted, -1);
 }
 
-static void find_replace_all(Ted *ted) {
+void find_replace_all(Ted *ted) {
 	TextBuffer *buffer = find_search_buffer(ted);
 	if (!buffer) return;
 	if (ted->replace) {
@@ -315,7 +317,7 @@ static void find_replace_all(Ted *ted) {
 	}
 }
 
-static void find_menu_frame(Ted *ted, Rect menu_bounds) {
+void find_menu_frame(Ted *ted, Rect menu_bounds) {
 	Font *font = ted->font, *font_bold = ted->font_bold;
 	const float char_height = text_font_char_height(font);
 
@@ -454,7 +456,7 @@ static void find_menu_frame(Ted *ted, Rect menu_bounds) {
 
 }
 
-static void find_open(Ted *ted, bool replace) {
+void find_open(Ted *ted, bool replace) {
 	if (ted->menu) return;
 	if (ted->active_buffer == &ted->build_buffer) return; 
 	if (!ted->find)
@@ -466,7 +468,7 @@ static void find_open(Ted *ted, bool replace) {
 	find_update(ted, true);
 }
 
-static void find_close(Ted *ted) {
+void find_close(Ted *ted) {
 	ted->find = false;
 	ted_switch_to_buffer(ted, find_search_buffer(ted));
 	find_free_pattern(ted);

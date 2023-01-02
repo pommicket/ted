@@ -21,6 +21,7 @@
       (make every c file a valid translation unit)
    - some way of opening + closing all C files in directory for clangd workspace/symbols to work?
      is this still necessary?
+        - maybe it can be done with the clangd config instead.s
 - CSS highlighting
 - styles ([color] sections)
 - more documentation generally (development.md or something?)

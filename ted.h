@@ -742,6 +742,31 @@ void buffer_toggle_comment_selection(TextBuffer *buffer);
 // make sure to call gl_geometry_draw after this
 void buffer_highlight_lsp_range(TextBuffer *buffer, LSPRange range);
 
+// === build.c ===
+// clear build errors and stop
+void build_stop(Ted *ted);
+// call before adding anything to the build queue
+void build_queue_start(Ted *ted);
+// add a command to the build queue. call build_queue_start before this.
+void build_queue_command(Ted *ted, const char *command);
+// call this after calling build_queue_start, build_queue_command.
+// make sure you set ted->build_dir before running this!
+void build_queue_finish(Ted *ted);
+// set up the build output buffer.
+void build_setup_buffer(Ted *ted);
+// run a single command in the build window.
+// make sure you set ted->build_dir before running this!
+void build_start_with_command(Ted *ted, const char *command);
+// figure out which build command to run, and run it.
+void build_start(Ted *ted);
+// go to next build error
+void build_next_error(Ted *ted);
+// go to previous build error
+void build_prev_error(Ted *ted);
+// find build errors in build buffer.
+void build_check_for_errors(Ted *ted);
+void build_frame(Ted *ted, float x1, float y1, float x2, float y2);
+
 // === colors.c ===
 ColorSetting color_setting_from_str(const char *str);
 const char *color_setting_to_str(ColorSetting s);
@@ -752,6 +777,18 @@ ColorSetting color_for_symbol_kind(SymbolKind kind);
 Command command_from_str(const char *str);
 const char *command_to_str(Command c);
 void command_execute(Ted *ted, Command c, i64 argument);
+
+// === find.c ===
+TextBuffer *find_search_buffer(Ted *ted);
+float find_menu_height(Ted *ted);
+void find_update(Ted *ted, bool force);
+void find_replace(Ted *ted);
+void find_next(Ted *ted);
+void find_prev(Ted *ted);
+void find_replace_all(Ted *ted);
+void find_menu_frame(Ted *ted, Rect menu_bounds);
+void find_open(Ted *ted, bool replace);
+void find_close(Ted *ted);
 
 // === gl.c ===
 GlRcSAB *gl_rc_sab_new(GLuint shader, GLuint array, GLuint buffer);
