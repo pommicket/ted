@@ -13,7 +13,7 @@ INSTALL_BIN_DIR=/usr/bin
 ted: *.[ch] libpcre2-32.a stb_truetype.o stb_image.o
 	$(CC) main.c stb_truetype.o stb_image.o -o ted $(DEBUG_CFLAGS) $(LIBS)
 %.o: %.c
-	$(CC) -Wall $< -c -o $@
+	$(CC) -O3 -Wall $< -c -o $@
 release: *.[ch] libpcre2-32.a
 	$(CC) main.c -o ted $(RELEASE_CFLAGS) $(LIBS)
 profile: *.[ch] libpcre2-32.a

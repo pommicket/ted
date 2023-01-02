@@ -616,6 +616,15 @@ void gl_geometry_rect(Rect r, u32 color_rgba);
 void gl_geometry_rect_border(Rect r, float border_thickness, u32 color);
 void gl_geometry_draw(void);
 GLuint gl_load_texture_from_image(const char *path);
+// === syntax.c ===
+Language language_from_str(const char *str);
+const char *language_to_str(Language language);
+const char *language_comment_start(Language l);
+const char *language_comment_end(Language l);
+ColorSetting syntax_char_type_to_color_setting(SyntaxCharType t);
+char32_t syntax_matching_bracket(Language lang, char32_t c);
+bool syntax_is_opening_bracket(Language lang, char32_t c);
+void syntax_highlight(SyntaxState *state, Language lang, const char32_t *line, u32 line_len, SyntaxCharType *char_types);
 
 
 char *buffer_contents_utf8_alloc(TextBuffer *buffer);

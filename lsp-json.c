@@ -89,7 +89,7 @@ void json_debug_print_value(const JSON *json, JSONValue value);
 
 // defining this instead of using isspace seems to be faster
 // probably because isspace depends on the locale.
-static inline bool json_is_space(char c) {
+static bool json_is_space(char c) {
 	return c == ' ' || c == '\n' || c == '\r' || c == '\t';
 }
 

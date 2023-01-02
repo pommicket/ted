@@ -439,7 +439,7 @@ v2 text_get_size_v2(Font *font, const char *text) {
 }
 
 
-void text_get_size32(Font *font, char32_t const *text, u64 len, float *width, float *height) {
+void text_get_size32(Font *font, const char32_t *text, u64 len, float *width, float *height) {
 	TextRenderState render_state = text_render_state_default;
 	render_state.render = false;
 	for (u64 i = 0; i < len; ++i) {

@@ -142,7 +142,7 @@ static void buffer_validate_cursor(TextBuffer *buffer) {
 }
 
 // ensure *line points to a line in buffer.
-static inline void buffer_validate_line(TextBuffer *buffer, u32 *line) {
+static void buffer_validate_line(TextBuffer *buffer, u32 *line) {
 	if (*line >= buffer->nlines)
 		*line = buffer->nlines - 1;
 }
@@ -228,7 +228,7 @@ BufferPos buffer_pos_end_of_file(TextBuffer *buffer) {
 }
 
 // Get the font used for this buffer.
-static inline Font *buffer_font(TextBuffer *buffer) {
+static Font *buffer_font(TextBuffer *buffer) {
 	return buffer->ted->font;
 }
 
@@ -1241,7 +1241,7 @@ i64 buffer_pos_move_words(TextBuffer *buffer, BufferPos *pos, i64 nwords) {
 		for (i64 i = 0; i < nwords; ++i) { // move forward one word `nwords` times
 			Line *line = &buffer->lines[pos->line];
 			u32 index = pos->index;
-			char32_t const *str = line->str;
+			const char32_t *str = line->str;
 			if (index == line->len) {
 				if (pos->line >= buffer->nlines - 1) {
 					// end of file reached
@@ -1271,7 +1271,7 @@ i64 buffer_pos_move_words(TextBuffer *buffer, BufferPos *pos, i64 nwords) {
 		for (i64 i = 0; i < nwords; ++i) {
 			Line *line = &buffer->lines[pos->line];
 			u32 index = pos->index;
-			char32_t const *str = line->str;
+			const char32_t *str = line->str;
 			if (index == 0) {
 				if (pos->line == 0) {
 					// start of file reached
@@ -2737,7 +2737,8 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 			char32_t c = line->str[i];
 			if (syntax_highlighting) {
 				SyntaxCharType type = char_types[i];
-				rgba_u32_to_floats(colors[syntax_char_type_to_color(type)], text_state.color);
+				ColorSetting color = syntax_char_type_to_color_setting(type);
+				rgba_u32_to_floats(colors[color], text_state.color);
 			}
 			switch (c) {
 			case '\n': assert(0); break;

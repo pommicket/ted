@@ -7,9 +7,17 @@ in `util.c` even if they use OS-specific library functions.)
 
 ## Header files
 
+## Unicode
+
+- UTF-32
+- codepoints are characters
+- stuff outside BMP on windows
+
 ## Drawing
 
 ## Adding settings
+
+## Adding commands
 
 ## Adding languages
 
