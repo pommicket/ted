@@ -100,7 +100,6 @@ no_warn_end
 #include "ted.h"
 #include "gl.c"
 #include "text.c"
-#include "string32.c"
 #include "colors.c"
 #include "syntax.c"
 #include "buffer.c"
@@ -766,8 +765,9 @@ int main(int argc, char **argv) {
 						// characters because currently we ask for signature
 						// help any time a character is inserted.
 						
-						if (settings->identifier_trigger_characters && is_word(last_char)
-							&& !is_digit(last_char))
+						if (settings->identifier_trigger_characters
+							&& is32_word(last_char)
+							&& !is32_digit(last_char))
 							autocomplete_open(ted, last_char);
 					}
 					 

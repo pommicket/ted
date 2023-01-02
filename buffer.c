@@ -1252,9 +1252,9 @@ i64 buffer_pos_move_words(TextBuffer *buffer, BufferPos *pos, i64 nwords) {
 					pos->index = 0;
 				}
 			} else {
-				bool starting_isword = is_word(str[index]) != 0;
+				bool starting_isword = is32_word(str[index]) != 0;
 				for (; index < line->len; ++index) {
-					bool this_isword = is_word(str[index]) != 0;
+					bool this_isword = is32_word(str[index]) != 0;
 					if (this_isword != starting_isword) {
 						// either the position *was* on an alphanumeric character and now it's not
 						// or it wasn't and now it is.
@@ -1284,9 +1284,9 @@ i64 buffer_pos_move_words(TextBuffer *buffer, BufferPos *pos, i64 nwords) {
 			} else {
 				--index;
 				if (index > 0) {
-					bool starting_isword = is_word(str[index]) != 0;
+					bool starting_isword = is32_word(str[index]) != 0;
 					while (true) {
-						bool this_isword = is_word(str[index]) != 0;
+						bool this_isword = is32_word(str[index]) != 0;
 						if (this_isword != starting_isword) {
 							++index;
 							break;
@@ -1333,11 +1333,11 @@ String32 buffer_word_at_pos(TextBuffer *buffer, BufferPos pos) {
 	char32_t *str = line->str;
 	i64 word_start, word_end;
 	for (word_start = pos.index; word_start > 0; --word_start) {
-		if (!is_word(str[word_start - 1]))
+		if (!is32_word(str[word_start - 1]))
 			break;
 	}
 	for (word_end = pos.index; word_end < line->len; ++word_end) {
-		if (!is_word(str[word_end]))
+		if (!is32_word(str[word_end]))
 			break;
 	}
 	u32 len = (u32)(word_end - word_start);
@@ -1527,7 +1527,7 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 		// close completions if a non-word character is typed
 		bool close_completions = false;
 		for (u32 i = 0; i < str.len; ++i) {
-			if (!is_word(str.str[i])) {
+			if (!is32_word(str.str[i])) {
 				close_completions = true;
 				break;
 			}
@@ -1801,7 +1801,7 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 			(void)n;
 			assert(n == nchars);
 			for (u32 i = 0; i < nchars; ++i) {
-				if (!is_word(text[i])) {
+				if (!is32_word(text[i])) {
 					close_completions = true;
 					break;
 				}

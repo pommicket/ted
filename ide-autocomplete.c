@@ -18,7 +18,7 @@ static void autocomplete_clear_completions(Ted *ted) {
 static void autocomplete_complete(Ted *ted, Autocompletion completion) {
 	TextBuffer *buffer = ted->active_buffer;
 	buffer_start_edit_chain(buffer); // don't merge with other edits
-	if (is_word(buffer_char_before_cursor(buffer)))
+	if (is32_word(buffer_char_before_cursor(buffer)))
 		buffer_backspace_words_at_cursor(buffer, 1); // delete whatever text was already typed
 	buffer_insert_utf8_at_cursor(buffer, completion.text);
 	buffer_end_edit_chain(buffer);

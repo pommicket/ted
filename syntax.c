@@ -182,7 +182,7 @@ static inline bool syntax_number_continues(Language lang, char32_t const *line, 
 
 static bool is_keyword(Language lang, char32_t c) {
 	if (c == '_' && lang == LANG_TEX) return false;
-	if (is32_ident(c)) return true;
+	if (is32_word(c)) return true;
 	switch (lang) {
 	case LANG_RUST:
 		// Rust builtin macros
@@ -297,7 +297,7 @@ static void syntax_highlight_c_cpp(SyntaxState *state_ptr, char32_t const *line,
 					if (line[i - 1] == '.') {
 						// support .6, for example
 						char_types[i - 1] = SYNTAX_CONSTANT;
-					} else if (is32_ident(line[i - 1])) {
+					} else if (is32_word(line[i - 1])) {
 						// actually, this isn't a number. it's something like a*6* or u3*2*.
 						in_number = false;
 					}
@@ -305,7 +305,7 @@ static void syntax_highlight_c_cpp(SyntaxState *state_ptr, char32_t const *line,
 			}
 			break;
 		default: {
-			if ((i && is32_ident(line[i - 1])) || !is32_ident(c))
+			if ((i && is32_word(line[i - 1])) || !is32_word(c))
 				break; // can't be a keyword on its own.
 			
 			if (!in_single_line_comment && !in_multi_line_comment && !in_string && c == 'R' && has_2_chars && line[i + 1] == '"' && line[i + 2] == '(') {
@@ -507,7 +507,7 @@ static void syntax_highlight_rust(SyntaxState *state, char32_t const *line, u32 
 			// a number!
 			if (char_types && !comment_depth && !in_string && !in_number) {
 				in_number = true;
-				if (i && (is32_ident(line[i - 1])
+				if (i && (is32_word(line[i - 1])
 					|| (line[i-1] == '.' && !(i >= 2 && line[i-2] == '.')))
 				) {
 					// actually, this isn't a number. it's something like a*6* or u3*2*.
@@ -550,7 +550,7 @@ static void syntax_highlight_rust(SyntaxState *state, char32_t const *line, u32 
 			break;
 		default:
 		keyword_check: {
-			if ((i && is32_ident(line[i - 1])) || !is32_ident(c))
+			if ((i && is32_word(line[i - 1])) || !is32_word(c))
 				break; // can't be a keyword on its own.
 			if (i >= 2 && line[i-2] == 'r' && line[i-1] == '#') {
 				// raw identifier
@@ -669,7 +669,7 @@ static void syntax_highlight_python(SyntaxState *state, char32_t const *line, u3
 					if (line[i - 1] == '.') {
 						// support .6, for example
 						char_types[i - 1] = SYNTAX_CONSTANT;
-					} else if (is32_ident(line[i - 1])) {
+					} else if (is32_word(line[i - 1])) {
 						// actually, this isn't a number. it's something like a*6* or u3*2*.
 						in_number = false;
 					}
@@ -681,7 +681,7 @@ static void syntax_highlight_python(SyntaxState *state, char32_t const *line, u3
 			break;
 		default:
 		keyword_check:
-			if ((i && is32_ident(line[i - 1])) || !is32_ident(c))
+			if ((i && is32_word(line[i - 1])) || !is32_word(c))
 				break; // can't be a keyword on its own.
 			
 			if (char_types && !in_string && !in_number) {
@@ -723,7 +723,7 @@ static void syntax_highlight_python(SyntaxState *state, char32_t const *line, u3
 
 static bool is_tex_ident(char32_t c) {
 	// digits and underscores cannot appear in tex identifiers
-	return is32_ident(c) && !is32_digit(c) && c != '_';
+	return is32_word(c) && !is32_digit(c) && c != '_';
 }
 
 static void syntax_highlight_tex(SyntaxState *state, char32_t const *line, u32 line_len, SyntaxCharType *char_types) {
@@ -1098,7 +1098,7 @@ static void syntax_highlight_xml(SyntaxState *state, char32_t const *line, u32 l
 			default:
 				if (char_types) {
 				
-					if ((i && is32_ident(line[i - 1])) || !is32_ident(line[i]))
+					if ((i && is32_word(line[i - 1])) || !is32_word(line[i]))
 						break; // can't be a keyword on its own.
 					
 					if (lang == LANG_XML)
@@ -1170,7 +1170,7 @@ static void syntax_highlight_config(SyntaxState *state, char32_t const *line, u3
 			break;
 		case ANY_DIGIT:
 			if (char_types && i > 0 && !string) {
-				if (is32_ident(line[i-1]) // something like e5
+				if (is32_word(line[i-1]) // something like e5
 					|| line[i-1] == '+') // key combinations, e.g. Alt+0
 					break;
 				while (i < line_len && syntax_number_continues(LANG_CONFIG, line, line_len, i)) {
@@ -1183,7 +1183,7 @@ static void syntax_highlight_config(SyntaxState *state, char32_t const *line, u3
 				break; // don't care
 			if (i == 0) // none of the keywords in syntax_all_keywords_config should appear at the start of the line
 				break;
-			if (is32_ident(line[i-1]) || line[i-1] == '-' || !is32_ident(line[i]))
+			if (is32_word(line[i-1]) || line[i-1] == '-' || !is32_word(line[i]))
 				break; // can't be a keyword on its own.
 			u32 keyword_len = syntax_keyword_len(LANG_CONFIG, line, i, line_len);
 			Keyword const *keyword = syntax_keyword_lookup(syntax_all_keywords_config, &line[i], keyword_len);
@@ -1309,7 +1309,7 @@ static void syntax_highlight_javascript_like(
 					if (line[i - 1] == '.') {
 						// support .6, for example
 						char_types[i - 1] = SYNTAX_CONSTANT;
-					} else if (is32_ident(line[i - 1])) {
+					} else if (is32_word(line[i - 1])) {
 						// actually, this isn't a number. it's something like a*6* or u3*2*.
 						in_number = false;
 					}
@@ -1320,7 +1320,7 @@ static void syntax_highlight_javascript_like(
 			++backslashes;
 			break;
 		default:
-			if ((i && is32_ident(line[i - 1])) || !is32_ident(c))
+			if ((i && is32_word(line[i - 1])) || !is32_word(c))
 				break; // can't be a keyword on its own.
 			
 			if (char_types && !in_string && !in_number && !in_multiline_comment) {
@@ -1445,7 +1445,7 @@ static void syntax_highlight_java(SyntaxState *state_ptr, char32_t const *line, 
 					if (line[i - 1] == '.') {
 						// support .6, for example
 						char_types[i - 1] = SYNTAX_CONSTANT;
-					} else if (is32_ident(line[i - 1])) {
+					} else if (is32_word(line[i - 1])) {
 						// actually, this isn't a number. it's something like a*6* or u3*2*.
 						in_number = false;
 					}
@@ -1453,7 +1453,7 @@ static void syntax_highlight_java(SyntaxState *state_ptr, char32_t const *line, 
 			}
 			break;
 		default: {
-			if ((i && is32_ident(line[i - 1])) || !is32_ident(c))
+			if ((i && is32_word(line[i - 1])) || !is32_word(c))
 				break; // can't be a keyword on its own.
 			
 			// keywords don't matter for advancing the state
@@ -1585,7 +1585,7 @@ static void syntax_highlight_go(SyntaxState *state_ptr, char32_t const *line, u3
 					if (line[i - 1] == '.') {
 						// support .6, for example
 						char_types[i - 1] = SYNTAX_CONSTANT;
-					} else if (is32_ident(line[i - 1])) {
+					} else if (is32_word(line[i - 1])) {
 						// actually, this isn't a number. it's something like a*6* or u3*2*.
 						in_number = false;
 					}
@@ -1593,7 +1593,7 @@ static void syntax_highlight_go(SyntaxState *state_ptr, char32_t const *line, u3
 			}
 			break;
 		default: {
-			if ((i && is32_ident(line[i - 1])) || !is32_ident(c))
+			if ((i && is32_word(line[i - 1])) || !is32_word(c))
 				break; // can't be a keyword on its own.
 			
 			// keywords don't matter for advancing the state
