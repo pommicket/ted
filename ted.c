@@ -2,7 +2,7 @@
 #define ted_seterr(ted, ...) \
 	snprintf((ted)->error, sizeof (ted)->error - 1, __VA_ARGS__)
 
-static void die(char const *fmt, ...) {
+static void die(const char *fmt, ...) {
 	char buf[256] = {0};
 	
 	va_list args;
@@ -28,7 +28,7 @@ bool ted_haserr(Ted *ted) {
 	return ted->error[0] != '\0';
 }
 
-char const *ted_geterr(Ted *ted) {
+const char *ted_geterr(Ted *ted) {
 	return ted->error;
 }
 
@@ -177,7 +177,7 @@ u32 ted_color(Ted *ted, ColorSetting color) {
 	return ted_active_settings(ted)->colors[color];
 }
 
-static void ted_path_full(Ted *ted, char const *relpath, char *abspath, size_t abspath_size) {
+static void ted_path_full(Ted *ted, const char *relpath, char *abspath, size_t abspath_size) {
 	path_full(ted->cwd, relpath, abspath, abspath_size);
 }
 
@@ -186,7 +186,7 @@ static bool ted_is_regular_buffer(Ted *ted, TextBuffer *buffer) {
 }
 
 // Check the various places a file could be, and return the full path.
-static Status ted_get_file(Ted const *ted, char const *name, char *out, size_t outsz) {
+static Status ted_get_file(Ted const *ted, const char *name, char *out, size_t outsz) {
 	if (ted->search_start_cwd && fs_file_exists(name)) {
 		// check in start_cwd
 		path_full(ted->start_cwd, name, out, outsz);
@@ -207,7 +207,7 @@ static Status ted_get_file(Ted const *ted, char const *name, char *out, size_t o
 
 // Loads font from filename into *out, freeing any font that was previously there.
 // *out is left unchanged on failure.
-static void ted_load_font(Ted *ted, char const *filename, Font **out) {
+static void ted_load_font(Ted *ted, const char *filename, Font **out) {
 	char font_filename[TED_PATH_MAX];
 	if (ted_get_file(ted, filename, font_filename, sizeof font_filename)) {
 		Font *font = text_font_load(font_filename, ted_active_settings(ted)->text_size);
@@ -330,7 +330,7 @@ static i32 ted_new_node(Ted *ted) {
 
 // how tall is a line buffer?
 static float ted_line_buffer_height(Ted *ted) {
-	float const char_height = text_font_char_height(ted->font);
+	const float char_height = text_font_char_height(ted->font);
 	return char_height + 2 * ted_active_settings(ted)->border_thickness;
 }
 
@@ -393,7 +393,7 @@ static TextBuffer *ted_get_buffer_with_file(Ted *ted, const char *path) {
 
 
 // Returns true on success
-static bool ted_open_file(Ted *ted, char const *filename) {
+static bool ted_open_file(Ted *ted, const char *filename) {
 	char path[TED_PATH_MAX];
 	ted_path_full(ted, filename, path, sizeof path);
 
@@ -424,7 +424,7 @@ static bool ted_open_file(Ted *ted, char const *filename) {
 	}
 }
 
-static bool ted_new_file(Ted *ted, char const *filename) {
+static bool ted_new_file(Ted *ted, const char *filename) {
 	u16 buffer_idx, tab_idx;
 	char path[TED_PATH_MAX];
 	if (filename)

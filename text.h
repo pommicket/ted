@@ -43,11 +43,11 @@ typedef enum {
 
 bool text_has_err(void);
 // Get the current error. Errors will NOT be overwritten with newer errors.
-char const *text_get_err(void);
+const char *text_get_err(void);
 // Clear the current error.
 void text_clear_err(void);
 // Load a TTF font found in ttf_filename with the given font size (character pixel height)
-Font *text_font_load(char const *ttf_filename, float font_size);
+Font *text_font_load(const char *ttf_filename, float font_size);
 // Height of a character of this font in pixels.
 float text_font_char_height(Font *font);
 // Width of the character 'a' of this font in pixels.
@@ -56,13 +56,13 @@ float text_font_char_width(Font *font);
 // Force text to advance by text_font_char_width(font) pixels per character (actually, per code point).
 void text_font_set_force_monospace(Font *font, bool force);
 // Get the dimensions of some text.
-void text_get_size(Font *font, char const *text, float *width, float *height);
-v2 text_get_size_v2(Font *font, char const *text);
+void text_get_size(Font *font, const char *text, float *width, float *height);
+v2 text_get_size_v2(Font *font, const char *text);
 void text_get_size32(Font *font, char32_t const *text, u64 len, float *width, float *height);
-void text_utf8(Font *font, char const *text, double x, double y, u32 color);
-void text_utf8_anchored(Font *font, char const *text, double x, double y, u32 color, Anchor anchor);
+void text_utf8(Font *font, const char *text, double x, double y, u32 color);
+void text_utf8_anchored(Font *font, const char *text, double x, double y, u32 color, Anchor anchor);
 void text_char_with_state(Font *font, TextRenderState *state, char32_t c);
-void text_utf8_with_state(Font *font, TextRenderState *state, char const *str);
+void text_utf8_with_state(Font *font, TextRenderState *state, const char *str);
 // Free memory used by font.
 void text_font_free(Font *font);
 void text_render(Font *font);

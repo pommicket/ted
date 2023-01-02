@@ -347,9 +347,9 @@ static void autocomplete_frame(Ted *ted) {
 	TextBuffer *buffer = ted->active_buffer;
 	Font *font = ted->font;
 	float char_height = text_font_char_height(font);
-	Settings const *settings = buffer_settings(buffer);
-	u32 const *colors = settings->colors;
-	float const padding = settings->padding;
+	const Settings *settings = buffer_settings(buffer);
+	const u32 *colors = settings->colors;
+	const float padding = settings->padding;
 
 	autocomplete_find_completions(ted, TRIGGER_INCOMPLETE);
 	

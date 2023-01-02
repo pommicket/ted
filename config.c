@@ -9,36 +9,36 @@
 
 // all the "control" pointers here are relative to a NULL Settings object.
 typedef struct {
-	char const *name;
+	const char *name;
 	const bool *control;
 	bool per_language; // allow per-language control
 } SettingBool;
 typedef struct {
-	char const *name;
+	const char *name;
 	const u8 *control;
 	u8 min, max;
 	bool per_language;
 } SettingU8;
 typedef struct {
-	char const *name;
+	const char *name;
 	const float *control;
 	float min, max;
 	bool per_language;
 } SettingFloat;
 typedef struct {
-	char const *name;
+	const char *name;
 	const u16 *control;
 	u16 min, max;
 	bool per_language;
 } SettingU16;
 typedef struct {
-	char const *name;
+	const char *name;
 	const u32 *control;
 	u32 min, max;
 	bool per_language;
 } SettingU32;
 typedef struct {
-	char const *name;
+	const char *name;
 	const char *control;
 	size_t buf_size;
 	bool per_language;
@@ -67,7 +67,7 @@ typedef struct {
 } SettingAny;
 
 // core settings
-static Settings const settings_zero = {0};
+static const Settings settings_zero = {0};
 static SettingBool const settings_bool[] = {
 	{"auto-indent", &settings_zero.auto_indent, true},
 	{"auto-add-newline", &settings_zero.auto_add_newline, true},
@@ -157,7 +157,7 @@ static void setting_string_set(Settings *settings, const SettingString *set, con
 
 typedef struct {
 	Ted *ted;
-	char const *filename;
+	const char *filename;
 	u32 line_number; // currently processing this line number
 	bool error;
 } ConfigReader;
@@ -209,7 +209,7 @@ static void config_part_free(ConfigPart *part) {
 }
 
 // Returns the key combination described by str.
-static u32 config_parse_key_combo(ConfigReader *cfg, char const *str) {
+static u32 config_parse_key_combo(ConfigReader *cfg, const char *str) {
 	u32 modifier = 0;
 	// read modifier
 	while (true) {
@@ -241,8 +241,8 @@ static u32 config_parse_key_combo(ConfigReader *cfg, char const *str) {
 	SDL_Scancode scancode = SDL_GetScancodeFromName(str);
 	if (scancode == SDL_SCANCODE_UNKNOWN) {
 		typedef struct {
-			char const *keyname1;
-			char const *keyname2; // alternate key name
+			const char *keyname1;
+			const char *keyname2; // alternate key name
 			SDL_Scancode scancode;
 			bool shift;
 		} KeyName;
@@ -440,7 +440,7 @@ static void config_init_settings(void) {
 	settings_initialized = true;
 }
 
-void config_read(Ted *ted, ConfigPart **parts, char const *filename) {
+void config_read(Ted *ted, ConfigPart **parts, const char *filename) {
 	FILE *fp = fopen(filename, "rb");
 	if (!fp) {
 		ted_seterr(ted, "Couldn't open config file %s: %s.", filename, strerror(errno));
@@ -795,7 +795,7 @@ static void config_parse_line(ConfigReader *cfg, Settings *settings, const Confi
 			} else {
 				char *dst = new_str;
 				// get rid of whitespace in extension list
-				for (char const *src = value; *src; ++src)
+				for (const char *src = value; *src; ++src)
 					if (!isspace(*src))
 						*dst++ = *src;
 				*dst = 0;
@@ -806,7 +806,7 @@ static void config_parse_line(ConfigReader *cfg, Settings *settings, const Confi
 		}
 	} break;
 	case SECTION_CORE: {
-		char const *endptr;
+		const char *endptr;
 		long long const integer = strtoll(value, (char **)&endptr, 10);
 		bool const is_integer = *endptr == '\0';
 		double const floating = strtod(value, (char **)&endptr);

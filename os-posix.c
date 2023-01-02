@@ -17,25 +17,25 @@ static FsType statbuf_path_type(const struct stat *statbuf) {
 	return FS_OTHER;	
 }
 
-FsType fs_path_type(char const *path) {
+FsType fs_path_type(const char *path) {
 	struct stat statbuf = {0};
 	if (stat(path, &statbuf) != 0)
 		return FS_NON_EXISTENT;
 	return statbuf_path_type(&statbuf);
 }
 
-FsPermission fs_path_permission(char const *path) {
+FsPermission fs_path_permission(const char *path) {
 	FsPermission perm = 0;
 	if (access(path, R_OK) == 0) perm |= FS_PERMISSION_READ;
 	if (access(path, W_OK) == 0) perm |= FS_PERMISSION_WRITE;
 	return perm;
 }
 
-bool fs_file_exists(char const *path) {
+bool fs_file_exists(const char *path) {
 	return fs_path_type(path) == FS_FILE;
 }
 
-FsDirectoryEntry **fs_list_directory(char const *dirname) {
+FsDirectoryEntry **fs_list_directory(const char *dirname) {
 	FsDirectoryEntry **entries = NULL;
 	DIR *dir = opendir(dirname);
 	if (dir) {
@@ -49,7 +49,7 @@ FsDirectoryEntry **fs_list_directory(char const *dirname) {
 			if (entries) {
 				size_t idx = 0;
 				while ((ent = readdir(dir))) {
-					char const *filename = ent->d_name;
+					const char *filename = ent->d_name;
 					size_t len = strlen(filename);
 					FsDirectoryEntry *entry = (FsDirectoryEntry *)calloc(1, sizeof *entry + len + 1);
 					if (!entry) break;
@@ -80,7 +80,7 @@ FsDirectoryEntry **fs_list_directory(char const *dirname) {
 	return entries;
 }
 
-int fs_mkdir(char const *path) {
+int fs_mkdir(const char *path) {
 	if (mkdir(path, 0755) == 0) {
 		// directory created successfully 
 		return 1;
@@ -113,7 +113,7 @@ int fs_get_cwd(char *buf, size_t buflen) {
 	}
 }
 
-struct timespec time_last_modified(char const *filename) {
+struct timespec time_last_modified(const char *filename) {
 	struct stat statbuf = {0};
 	stat(filename, &statbuf);
 	return statbuf.st_mtim;
@@ -237,13 +237,13 @@ bool process_run_ex(Process *proc, const char *command, const ProcessSettings *s
 	return success;
 }
 
-bool process_run(Process *proc, char const *command) {
+bool process_run(Process *proc, const char *command) {
 	const ProcessSettings settings = {0};
 	return process_run_ex(proc, command, &settings);
 }
 
 
-char const *process_geterr(Process *p) {
+const char *process_geterr(Process *p) {
 	return *p->error ? p->error : NULL;
 }
 

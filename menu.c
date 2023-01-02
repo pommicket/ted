@@ -107,7 +107,7 @@ static void menu_escape(Ted *ted) {
 }
 
 static float menu_get_width(Ted *ted) {
-	Settings const *settings = ted_active_settings(ted);
+	const Settings *settings = ted_active_settings(ted);
 	return minf(settings->max_menu_width, ted->window_width - 2.0f * settings->padding);
 }
 
@@ -125,8 +125,8 @@ static Rect menu_rect(Ted *ted) {
 
 static void menu_update(Ted *ted) {
 	Menu menu = ted->menu;
-	Settings const *settings = ted_active_settings(ted);
-	u32 const *colors = settings->colors;
+	const Settings *settings = ted_active_settings(ted);
+	const u32 *colors = settings->colors;
 	TextBuffer *line_buffer = &ted->line_buffer;
 
 	assert(menu);
@@ -270,7 +270,7 @@ static void menu_update(Ted *ted) {
 		if (entries) {
 			SelectorEntry *entry = entries;
 			for (Command c = 0; c < CMD_COUNT; ++c) {
-				char const *name = command_to_str(c);
+				const char *name = command_to_str(c);
 				if (c != CMD_UNKNOWN && *name && strstr_case_insensitive(name, search_term)) {
 					entry->name = name;
 					entry->color = colors[COLOR_TEXT];
@@ -317,21 +317,21 @@ static void menu_update(Ted *ted) {
 static void menu_render(Ted *ted) {
 	Menu menu = ted->menu;
 	assert(menu);
-	Settings const *settings = ted_active_settings(ted);
-	u32 const *colors = settings->colors;
-	float const window_width = ted->window_width, window_height = ted->window_height;
+	const Settings *settings = ted_active_settings(ted);
+	const u32 *colors = settings->colors;
+	const float window_width = ted->window_width, window_height = ted->window_height;
 	Font *font_bold = ted->font_bold, *font = ted->font;
-	float const char_height = text_font_char_height(font);
-	float const char_height_bold = text_font_char_height(font_bold);
-	float const line_buffer_height = ted_line_buffer_height(ted);
+	const float char_height = text_font_char_height(font);
+	const float char_height_bold = text_font_char_height(font_bold);
+	const float line_buffer_height = ted_line_buffer_height(ted);
 	
 	// render backdrop
 	gl_geometry_rect(rect(V2(0, 0), V2(window_width, window_height)), colors[COLOR_MENU_BACKDROP]);
 	gl_geometry_draw();
 
 	if (*ted->warn_overwrite) {
-		char const *path = ted->warn_overwrite;
-		char const *filename = path_filename(path);
+		const char *path = ted->warn_overwrite;
+		const char *filename = path_filename(path);
 		char title[64] = {0}, body[1024] = {0};
 		strbuf_printf(title, "Overwrite %s?", filename);
 		strbuf_printf(body, "Are you sure you want to overwrite %s?", path);
@@ -396,7 +396,7 @@ static void menu_render(Ted *ted) {
 		Rect r = rect(V2(padding, window_height - menu_height - padding), V2(window_width - 2 * padding, menu_height));
 		gl_geometry_rect(r, colors[COLOR_MENU_BG]);
 		gl_geometry_rect_border(r, settings->border_thickness, colors[COLOR_BORDER]);
-		char const *text = "Go to line...";
+		const char *text = "Go to line...";
 		v2 text_size = text_get_size_v2(font_bold, text);
 		rect_coords(r, &x1, &y1, &x2, &y2);
 		x1 += padding;
@@ -414,7 +414,7 @@ static void menu_render(Ted *ted) {
 	} break;
 	case MENU_COMMAND_SELECTOR: {
 		// argument field
-		char const *text = "Argument";
+		const char *text = "Argument";
 		text_utf8(font_bold, text, x1, y1, colors[COLOR_TEXT]);
 		float x = x1 + text_get_size_v2(font_bold, text).x + padding;
 		buffer_render(&ted->argument_buffer, rect4(x, y1, x2, y1 + line_buffer_height));
@@ -440,7 +440,7 @@ static void menu_render(Ted *ted) {
 		x2 -= padding;
 		y2 -= padding;
 		
-		char const *text = "Run";
+		const char *text = "Run";
 		text_utf8(font_bold, text, x1, y1, colors[COLOR_TEXT]);
 		x1 += text_get_size_v2(font_bold, text).x + padding;
 		text_render(font_bold);

@@ -129,7 +129,7 @@ no_warn_end
 
 static Rect error_box_rect(Ted *ted) {
 	Font *font = ted->font;
-	Settings const *settings = ted_active_settings(ted);
+	const Settings *settings = ted_active_settings(ted);
 	float padding = settings->padding;
 	float window_width = ted->window_width, window_height = ted->window_height;
 	float char_height = text_font_char_height(font);
@@ -191,7 +191,7 @@ static void error_signal_handler(int signum, siginfo_t *info, void *context) {
 	}
 }
 #elif _WIN32
-static char const *windows_exception_to_str(DWORD exception_code) {
+static const char *windows_exception_to_str(DWORD exception_code) {
 	switch (exception_code) {
 	case EXCEPTION_ACCESS_VIOLATION: return "Access violation";
 	case EXCEPTION_ARRAY_BOUNDS_EXCEEDED: return "Array out of bounds";
@@ -322,7 +322,7 @@ int main(int argc, char **argv) {
 	#endif
 	
 	// read command-line arguments
-	char const *starting_filename = NULL;
+	const char *starting_filename = NULL;
 	switch (argc) {
 	case 0: case 1: break;
 	case 2:
@@ -421,7 +421,7 @@ int main(int argc, char **argv) {
 		// never search cwd; we'll search the executable directory anyways
 	#else
 		char executable_path[TED_PATH_MAX] = {0};
-		char const *cwd = ted->cwd;
+		const char *cwd = ted->cwd;
 		ssize_t len = readlink("/proc/self/exe", executable_path, sizeof executable_path - 1);
 		if (len == -1) {
 			// some posix systems don't have /proc/self/exe. oh well.
@@ -792,7 +792,7 @@ int main(int argc, char **argv) {
 		{ // ted->cwd should be the directory containing the last active buffer
 			TextBuffer *buffer = ted->active_buffer;
 			if (buffer) {
-				char const *buffer_path = buffer_get_filename(buffer);
+				const char *buffer_path = buffer_get_filename(buffer);
 				if (buffer_path && !buffer_is_untitled(buffer)) {
 					assert(*buffer_path);
 					char *last_sep = strrchr(buffer_path, PATH_SEPARATOR);
@@ -942,7 +942,7 @@ int main(int argc, char **argv) {
 		strcpy(ted->window_title, "ted");
 		
 		{
-			float const padding = ted_active_settings(ted)->padding;
+			const float padding = ted_active_settings(ted)->padding;
 			float x1 = padding, y = window_height-padding, x2 = window_width-padding;
 			Node *node = &ted->nodes[0];
 			if (ted->find) {

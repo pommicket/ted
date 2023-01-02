@@ -13,7 +13,7 @@ static FsType windows_file_attributes_to_type(DWORD attrs) {
 		return FS_FILE;
 }
 
-FsType fs_path_type(char const *path) {
+FsType fs_path_type(const char *path) {
 	WCHAR wide_path[4100];
 	if (MultiByteToWideChar(CP_UTF8, 0, path, -1, wide_path, sizeof wide_path) == 0) {
 		return FS_NON_EXISTENT;
@@ -21,18 +21,18 @@ FsType fs_path_type(char const *path) {
 	return windows_file_attributes_to_type(GetFileAttributesW(wide_path));
 }
 
-FsPermission fs_path_permission(char const *path) {
+FsPermission fs_path_permission(const char *path) {
 	FsPermission permission = 0;
 	if (_access(path, 04) == 0) permission |= FS_PERMISSION_READ;
 	if (_access(path, 02) == 0) permission |= FS_PERMISSION_WRITE;
 	return permission;
 }
 
-bool fs_file_exists(char const *path) {
+bool fs_file_exists(const char *path) {
 	return fs_path_type(path) == FS_FILE;
 }
 
-FsDirectoryEntry **fs_list_directory(char const *dirname) {
+FsDirectoryEntry **fs_list_directory(const char *dirname) {
 	char file_pattern[1000] = {0};
 	FsDirectoryEntry **files = NULL;
 	WIN32_FIND_DATAW find_data;
@@ -80,7 +80,7 @@ FsDirectoryEntry **fs_list_directory(char const *dirname) {
 	return files;
 }
 
-int fs_mkdir(char const *path) {
+int fs_mkdir(const char *path) {
 	WCHAR wide_path[4100];
 	if (MultiByteToWideChar(CP_UTF8, 0, path, -1, wide_path, sizeof wide_path) == 0)
 		return -1;
@@ -106,7 +106,7 @@ int fs_get_cwd(char *buf, size_t buflen) {
 	return 1;
 }
 
-struct timespec time_last_modified(char const *filename) {
+struct timespec time_last_modified(const char *filename) {
 	// windows' _stat does not have st_mtim
 	struct _stat statbuf = {0};
 	struct timespec ts = {0};
@@ -146,7 +146,7 @@ static void get_last_error_str(char *out, size_t out_sz) {
 	if (cr) *cr = '\0'; // get rid of carriage return+newline at end of error
 }
 
-bool process_run(Process *process, char const *command) {
+bool process_run(Process *process, const char *command) {
 	// thanks to https://stackoverflow.com/a/35658917 for the pipe code
 	// thanks to https://devblogs.microsoft.com/oldnewthing/20131209-00/?p=2433 for the job code
 
@@ -212,7 +212,7 @@ bool process_run(Process *process, char const *command) {
 	return success;
 }
 
-char const *process_geterr(Process *p) {
+const char *process_geterr(Process *p) {
 	return *p->error ? p->error : NULL;
 }
 

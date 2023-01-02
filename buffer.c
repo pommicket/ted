@@ -11,7 +11,7 @@ bool buffer_haserr(TextBuffer *buffer) {
 }
 
 // returns the buffer's last error
-char const *buffer_geterr(TextBuffer *buffer) {
+const char *buffer_geterr(TextBuffer *buffer) {
 	return buffer->error;
 }
 
@@ -56,7 +56,7 @@ bool buffer_empty(TextBuffer *buffer) {
 	return buffer->nlines == 1 && buffer->lines[0].len == 0;
 }
 
-char const *buffer_get_filename(TextBuffer *buffer) {
+const char *buffer_get_filename(TextBuffer *buffer) {
 	return buffer->filename;
 }
 
@@ -104,7 +104,7 @@ static void *buffer_realloc(TextBuffer *buffer, void *p, size_t new_size) {
 	return ret;
 }
 
-static char *buffer_strdup(TextBuffer *buffer, char const *src) {
+static char *buffer_strdup(TextBuffer *buffer, const char *src) {
 	char *dup = str_dup(src);
 	if (!dup) buffer_out_of_mem(buffer);
 	return dup;
@@ -238,8 +238,8 @@ Language buffer_language(TextBuffer *buffer) {
 	//         (we're calling buffer_lsp on every edit and that calls this)
 	if (buffer->manual_language >= 1 && buffer->manual_language <= LANG_COUNT)
 		return (Language)(buffer->manual_language - 1);
-	Settings const *settings = buffer->ted->default_settings; // important we don't use buffer_settings here since that would cause a loop!
-	char const *filename = buffer->filename;
+	const Settings *settings = buffer->ted->default_settings; // important we don't use buffer_settings here since that would cause a loop!
+	const char *filename = buffer->filename;
 	if (!filename)
 		return LANG_NONE;
 	size_t filename_len = strlen(filename);
@@ -248,12 +248,12 @@ Language buffer_language(TextBuffer *buffer) {
 	Language match = LANG_NONE;
 	
 	for (u16 l = 0; l < LANG_COUNT; ++l) {
-		char const *extensions = settings->language_extensions[l];
+		const char *extensions = settings->language_extensions[l];
 		
 		if (extensions) {
 			// extensions is a string with commas separating each extension.
 			size_t len = 0;
-			for (char const *p = extensions; *p; p += len) {
+			for (const char *p = extensions; *p; p += len) {
 				if (*p == ',') ++p; // move past comma
 				len = strcspn(p, ",");
 				if (filename_len >= len && strncmp(&filename[filename_len - len], p, len) == 0) {
@@ -1006,7 +1006,7 @@ static bool buffer_clip_rect(TextBuffer *buffer, Rect *r) {
 
 
 void buffer_scroll_to_pos(TextBuffer *buffer, BufferPos pos) {
-	Settings const *settings = buffer_settings(buffer);
+	const Settings *settings = buffer_settings(buffer);
 	double line = pos.line;
 	double col = buffer_index_to_column(buffer, pos.line, pos.index);
 	double display_lines = buffer_display_lines(buffer);
@@ -1967,7 +1967,7 @@ void buffer_insert_char_at_cursor(TextBuffer *buffer, char32_t c) {
 	buffer_insert_text_at_cursor(buffer, s);
 }
 
-void buffer_insert_utf8_at_cursor(TextBuffer *buffer, char const *utf8) {
+void buffer_insert_utf8_at_cursor(TextBuffer *buffer, const char *utf8) {
 	String32 s32 = str32_from_utf8(utf8);
 	if (s32.str) {
 		buffer_insert_text_at_cursor(buffer, s32);
@@ -1976,7 +1976,7 @@ void buffer_insert_utf8_at_cursor(TextBuffer *buffer, char const *utf8) {
 }
 
 void buffer_insert_tab_at_cursor(TextBuffer *buffer) {
-	Settings const *settings = buffer_settings(buffer);
+	const Settings *settings = buffer_settings(buffer);
 	
 	if (settings->indent_with_spaces) {
 		for (int i = 0; i < settings->tab_width; ++i)
@@ -1992,7 +1992,7 @@ void buffer_newline(TextBuffer *buffer) {
 		buffer->line_buffer_submitted = true;
 		return;
 	}
-	Settings const *settings = buffer_settings(buffer);
+	const Settings *settings = buffer_settings(buffer);
 	BufferPos cursor_pos = buffer->cursor_pos;
 	String32 line = buffer_get_line(buffer, cursor_pos.line);
 	u32 whitespace_len;
@@ -2211,7 +2211,7 @@ void buffer_paste(TextBuffer *buffer) {
 }
 
 // if an error occurs, buffer is left untouched (except for the error field) and the function returns false.
-Status buffer_load_file(TextBuffer *buffer, char const *filename) {
+Status buffer_load_file(TextBuffer *buffer, const char *filename) {
 	FILE *fp = fopen(filename, "rb");
 	bool success = true;
 	Line *lines = NULL;
@@ -2351,7 +2351,7 @@ bool buffer_externally_changed(TextBuffer *buffer) {
 	return buffer->last_write_time != timespec_to_seconds(time_last_modified(buffer->filename));
 }
 
-void buffer_new_file(TextBuffer *buffer, char const *filename) {
+void buffer_new_file(TextBuffer *buffer, const char *filename) {
 	buffer_clear(buffer);
 
 	if (filename)
@@ -2364,7 +2364,7 @@ void buffer_new_file(TextBuffer *buffer, char const *filename) {
 // Save the buffer to its current filename. This will rewrite the entire file, regardless of
 // whether there are any unsaved changes.
 bool buffer_save(TextBuffer *buffer) {
-	Settings const *settings = buffer_settings(buffer);
+	const Settings *settings = buffer_settings(buffer);
 	
 	if (!buffer->is_line_buffer && buffer->filename) {
 		if (buffer->view_only) {
@@ -2412,7 +2412,7 @@ bool buffer_save(TextBuffer *buffer) {
 			bool success = !buffer_haserr(buffer);
 			if (success) {
 				buffer->undo_history_write_pos = arr_len(buffer->undo_history);
-				char const *name = buffer->filename ? path_filename(buffer->filename) : TED_UNTITLED;
+				const char *name = buffer->filename ? path_filename(buffer->filename) : TED_UNTITLED;
 				if (streq(name, "ted.cfg") && buffer_settings(buffer)->auto_reload_config) {
 					ted_load_configs(buffer->ted, true);
 				}
@@ -2429,7 +2429,7 @@ bool buffer_save(TextBuffer *buffer) {
 }
 
 // save, but with a different file name
-bool buffer_save_as(TextBuffer *buffer, char const *new_filename) {
+bool buffer_save_as(TextBuffer *buffer, const char *new_filename) {
 	LSP *lsp = buffer_lsp(buffer);
 	char *prev_filename = buffer->filename;
 	buffer->filename = buffer_strdup(buffer, new_filename);
@@ -2542,10 +2542,10 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 		char_height = text_font_char_height(font);
 
 	Ted *ted = buffer->ted;
-	Settings const *settings = buffer_settings(buffer);
-	u32 const *colors = settings->colors;
-	float const padding = settings->padding;
-	float const border_thickness = settings->border_thickness;
+	const Settings *settings = buffer_settings(buffer);
+	const u32 *colors = settings->colors;
+	const float padding = settings->padding;
+	const float border_thickness = settings->border_thickness;
 
 	u32 start_line = buffer_first_rendered_line(buffer); // line to start rendering from
 	
@@ -2838,7 +2838,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 
 void buffer_indent_lines(TextBuffer *buffer, u32 first_line, u32 last_line) {
 	assert(first_line <= last_line);
-	Settings const *settings = buffer_settings(buffer);
+	const Settings *settings = buffer_settings(buffer);
 	
 	buffer_start_edit_chain(buffer);
 	for (u32 l = first_line; l <= last_line; ++l) {
@@ -2859,8 +2859,8 @@ void buffer_dedent_lines(TextBuffer *buffer, u32 first_line, u32 last_line) {
 	buffer_validate_line(buffer, &last_line);
 	
 	buffer_start_edit_chain(buffer);
-	Settings const *settings = buffer_settings(buffer);
-	u8 const tab_width = settings->tab_width;
+	const Settings *settings = buffer_settings(buffer);
+	const u8 tab_width = settings->tab_width;
 	
 	for (u32 line_idx = first_line; line_idx <= last_line; ++line_idx) {
 		Line *line = &buffer->lines[line_idx];
@@ -2939,7 +2939,7 @@ void buffer_comment_lines(TextBuffer *buffer, u32 first_line, u32 last_line) {
 	buffer_end_edit_chain(buffer);
 }
 
-static bool buffer_line_starts_with_ascii(TextBuffer *buffer, u32 line_idx, char const *prefix) {
+static bool buffer_line_starts_with_ascii(TextBuffer *buffer, u32 line_idx, const char *prefix) {
 	buffer_validate_line(buffer, &line_idx);
 	Line *line = &buffer->lines[line_idx];
 	size_t prefix_len = strlen(prefix);
@@ -2952,7 +2952,7 @@ static bool buffer_line_starts_with_ascii(TextBuffer *buffer, u32 line_idx, char
 	}
 	return true;
 }
-static bool buffer_line_ends_with_ascii(TextBuffer *buffer, u32 line_idx, char const *suffix) {
+static bool buffer_line_ends_with_ascii(TextBuffer *buffer, u32 line_idx, const char *suffix) {
 	buffer_validate_line(buffer, &line_idx);
 	Line *line = &buffer->lines[line_idx];
 	size_t suffix_len = strlen(suffix), line_len = line->len;

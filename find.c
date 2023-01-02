@@ -70,10 +70,10 @@ static void find_free_pattern(Ted *ted) {
 static float find_menu_height(Ted *ted) {
 	Font *font = ted->font;
 	float char_height = text_font_char_height(font);
-	Settings const *settings = ted_active_settings(ted);
-	float const padding = settings->padding;
-	float const border_thickness = settings->border_thickness;
-	float const line_buffer_height = ted_line_buffer_height(ted);
+	const Settings *settings = ted_active_settings(ted);
+	const float padding = settings->padding;
+	const float border_thickness = settings->border_thickness;
+	const float line_buffer_height = ted_line_buffer_height(ted);
 
 	return 3 * char_height + 4 * border_thickness + (padding + line_buffer_height) * ted->replace + 6 * padding;
 }
@@ -313,14 +313,14 @@ static void find_replace_all(Ted *ted) {
 
 static void find_menu_frame(Ted *ted, Rect menu_bounds) {
 	Font *font = ted->font, *font_bold = ted->font_bold;
-	float const char_height = text_font_char_height(font);
+	const float char_height = text_font_char_height(font);
 
-	Settings const *settings = ted_active_settings(ted);
-	float const padding = settings->padding;
-	float const border_thickness = settings->border_thickness;
-	u32 const *colors = settings->colors;
+	const Settings *settings = ted_active_settings(ted);
+	const float padding = settings->padding;
+	const float border_thickness = settings->border_thickness;
+	const u32 *colors = settings->colors;
 	bool const replace = ted->replace;
-	float const line_buffer_height = ted_line_buffer_height(ted);
+	const float line_buffer_height = ted_line_buffer_height(ted);
 	
 	TextBuffer *buffer = find_search_buffer(ted), *find_buffer = &ted->find_buffer, *replace_buffer = &ted->replace_buffer;
 	if (!buffer) return;
@@ -341,8 +341,8 @@ static void find_menu_frame(Ted *ted, Rect menu_bounds) {
 	x2 -= padding;
 	y2 -= padding;
 	
-	char const *prev_text = "Previous", *next_text = "Next";
-	char const *replace_text = "Replace", *replace_find_text = "Replace+find", *replace_all_text = "Replace all";
+	const char *prev_text = "Previous", *next_text = "Next";
+	const char *replace_text = "Replace", *replace_find_text = "Replace+find", *replace_all_text = "Replace all";
 	v2 prev_size = button_get_size(ted, prev_text);
 	v2 next_size = button_get_size(ted, next_text);
 	v2 replace_size = button_get_size(ted, replace_text);
@@ -390,7 +390,7 @@ static void find_menu_frame(Ted *ted, Rect menu_bounds) {
 		}
 	}
 	
-	char const *find_text = "Find...", *replace_with_text = "Replace with";
+	const char *find_text = "Find...", *replace_with_text = "Replace with";
 	float text_width = 0;
 	text_get_size(font_bold, replace ? replace_with_text : find_text, &text_width, NULL);
 	

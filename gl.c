@@ -143,7 +143,7 @@ static int glsl_version(void) {
 }
 
 // compile a GLSL shader
-GLuint gl_compile_shader(char error_buf[256], char const *code, GLenum shader_type) {
+GLuint gl_compile_shader(char error_buf[256], const char *code, GLenum shader_type) {
 	GLuint shader = glCreateShader(shader_type);
 	char header[128];
 	int glsl = glsl_version();
@@ -201,7 +201,7 @@ GLuint gl_link_program(char error_buf[256], GLuint *shaders, size_t count) {
 	return program;
 }
 
-GLuint gl_compile_and_link_shaders(char error_buf[256], char const *vshader_code, char const *fshader_code) {
+GLuint gl_compile_and_link_shaders(char error_buf[256], const char *vshader_code, const char *fshader_code) {
 	GLuint shaders[2];
 	shaders[0] = gl_compile_shader(error_buf, vshader_code, GL_VERTEX_SHADER);
 	shaders[1] = gl_compile_shader(error_buf, fshader_code, GL_FRAGMENT_SHADER);
@@ -214,7 +214,7 @@ GLuint gl_compile_and_link_shaders(char error_buf[256], char const *vshader_code
 	return program;
 }
 
-GLuint gl_attrib_loc(GLuint program, char const *attrib) {
+GLuint gl_attrib_loc(GLuint program, const char *attrib) {
 	GLint loc = glGetAttribLocation(program, attrib);
 	if (loc == -1) {
 		debug_print("Couldn't find vertex attribute %s.\n", attrib);
@@ -223,7 +223,7 @@ GLuint gl_attrib_loc(GLuint program, char const *attrib) {
 	return (GLuint)loc;
 }
 
-GLint gl_uniform_loc(GLuint program, char const *uniform) {
+GLint gl_uniform_loc(GLuint program, const char *uniform) {
 	GLint loc = glGetUniformLocation(program, uniform);
 	if (loc == -1) {
 		debug_print("Couldn't find uniform: %s.\n", uniform);
@@ -248,7 +248,7 @@ static GLint gl_geometry_u_window_size;
 static GLuint gl_geometry_vbo, gl_geometry_vao;
 
 void gl_geometry_init(void) {
-	char const *vshader_code = "attribute vec2 v_pos;\n\
+	const char *vshader_code = "attribute vec2 v_pos;\n\
 	attribute vec4 v_color;\n\
 	uniform vec2 u_window_size;\n\
 	OUT vec4 color;\n\
@@ -258,7 +258,7 @@ void gl_geometry_init(void) {
 		color = v_color;\n\
 	}\n\
 	";
-	char const *fshader_code = "IN vec4 color;\n\
+	const char *fshader_code = "IN vec4 color;\n\
 	void main() {\n\
 		gl_FragColor = color;\n\
 	}\n\

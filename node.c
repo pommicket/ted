@@ -187,13 +187,13 @@ static bool node_tab_close(Ted *ted, Node *node, u16 index) {
 }
 
 static void node_frame(Ted *ted, Node *node, Rect r) {
-	Settings const *settings = ted_active_settings(ted);
+	const Settings *settings = ted_active_settings(ted);
 	if (node->tabs) {
 		bool is_active = node == ted->active_node;
-		u32 const *colors = settings->colors;
+		const u32 *colors = settings->colors;
 		Font *font = ted->font;
-		float const border_thickness = settings->border_thickness;
-		float const char_height = text_font_char_height(font);
+		const float border_thickness = settings->border_thickness;
+		const float char_height = text_font_char_height(font);
 		float tab_bar_height = char_height + 2 * border_thickness;
 		
 		Rect tab_bar_rect = r;
@@ -281,8 +281,8 @@ static void node_frame(Ted *ted, Node *node, Rect r) {
 			for (u16 i = 0; i < ntabs; ++i) {
 				TextBuffer *buffer = &ted->buffers[node->tabs[i]];
 				char tab_title[256];
-				char const *path = buffer_get_filename(buffer);
-				char const *filename = path ? path_filename(path) : TED_UNTITLED;
+				const char *path = buffer_get_filename(buffer);
+				const char *filename = path ? path_filename(path) : TED_UNTITLED;
 				Rect tab_rect = rect(V2(r.pos.x + tab_width * i, r.pos.y), V2(tab_width, tab_bar_height));
 				
 				if (i > 0) {

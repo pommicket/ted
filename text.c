@@ -71,11 +71,11 @@ bool text_has_err(void) {
 	return text_err[0] != '\0';
 }
 
-char const *text_get_err(void) {
+const char *text_get_err(void) {
 	return text_err;
 }
 
-static void text_set_err(char const *fmt, ...) {
+static void text_set_err(const char *fmt, ...) {
 	if (!text_has_err()) {
 		va_list args;
 		va_start(args, fmt);
@@ -91,7 +91,7 @@ static GLint  text_u_sampler;
 static GLint  text_u_window_size;
 
 static bool text_init(void) {
-	char const *vshader_code = "attribute vec4 v_color;\n\
+	const char *vshader_code = "attribute vec4 v_color;\n\
 attribute vec2 v_pos;\n\
 attribute vec2 v_tex_coord;\n\
 uniform vec2 u_window_size;\n\
@@ -104,7 +104,7 @@ void main() {\n\
 	gl_Position = vec4(p.x - 1.0, 1.0 - p.y, 0.0, 1.0);\n\
 }\n\
 ";
-	char const *fshader_code = "IN vec4 color;\n\
+	const char *fshader_code = "IN vec4 color;\n\
 IN vec2 tex_coord;\n\
 uniform sampler2D sampler;\n\
 void main() {\n\
@@ -179,7 +179,7 @@ static Status text_load_char_page(Font *font, int page) {
 	return true;
 }
 
-Font *text_font_load(char const *ttf_filename, float font_size) {
+Font *text_font_load(const char *ttf_filename, float font_size) {
 	Font *font = NULL;
 	FILE *ttf_file = fopen(ttf_filename, "rb");
 	
@@ -284,8 +284,8 @@ top:
 				return;
 	}
 	stbtt_bakedchar *char_data = font->char_pages[page];
-	float const char_height = font->char_height;
-	float const char_width = font->char_width;
+	const float char_height = font->char_height;
+	const float char_width = font->char_width;
 	
 	if (char_data) { // if page was successfully loaded
 		stbtt_aligned_quad q = {0};
@@ -322,8 +322,8 @@ top:
 		float s1 = q.s1, t1 = q.t1;
 		float x0 = q.x0, y0 = q.y0;
 		float x1 = q.x1, y1 = q.y1;
-		float const min_x = state->min_x, max_x = state->max_x;
-		float const min_y = state->min_y, max_y = state->max_y;
+		const float min_x = state->min_x, max_x = state->max_x;
+		const float min_y = state->min_y, max_y = state->max_y;
 		
 		if (state->wrap && x1 >= max_x) {
 			state->x = min_x;
@@ -372,8 +372,8 @@ top:
 		state->y_largest = state->y;
 }
 
-void text_utf8_with_state(Font *font, TextRenderState *state, char const *str) {
-	char const *end = str + strlen(str);
+void text_utf8_with_state(Font *font, TextRenderState *state, const char *str) {
+	const char *end = str + strlen(str);
 	while (str != end) {
 		char32_t c = 0;
 		size_t ret = unicode_utf8_to_utf32(&c, str, (size_t)(end - str));
@@ -390,7 +390,7 @@ void text_utf8_with_state(Font *font, TextRenderState *state, char const *str) {
 	}
 }
 
-static v2 text_render_utf8_internal(Font *font, char const *text, double x, double y, u32 color, bool render) {
+static v2 text_render_utf8_internal(Font *font, const char *text, double x, double y, u32 color, bool render) {
 	TextRenderState render_state = text_render_state_default;
 	render_state.render = render;
 	render_state.x = x;
@@ -403,11 +403,11 @@ static v2 text_render_utf8_internal(Font *font, char const *text, double x, doub
 	);
 }
 
-void text_utf8(Font *font, char const *text, double x, double y, u32 color) {
+void text_utf8(Font *font, const char *text, double x, double y, u32 color) {
 	text_render_utf8_internal(font, text, x, y, color, true);
 }
 
-void text_utf8_anchored(Font *font, char const *text, double x, double y, u32 color, Anchor anchor) {
+void text_utf8_anchored(Font *font, const char *text, double x, double y, u32 color, Anchor anchor) {
 	float w = 0, h = 0; // width, height of text
 	text_get_size(font, text, &w, &h);
 	float hw = w * 0.5f, hh = h * 0.5f; // half-width, half-height
@@ -425,14 +425,14 @@ void text_utf8_anchored(Font *font, char const *text, double x, double y, u32 co
 	text_utf8(font, text, x, y, color);
 }
 
-void text_get_size(Font *font, char const *text, float *width, float *height) {
+void text_get_size(Font *font, const char *text, float *width, float *height) {
 	double x = 0, y = 0;
 	v2 size = text_render_utf8_internal(font, text, x, y, 0, false);
 	if (width)  *width = size.x;
 	if (height) *height = size.y + font->char_height;
 }
 
-v2 text_get_size_v2(Font *font, char const *text) {
+v2 text_get_size_v2(Font *font, const char *text) {
 	v2 v;
 	text_get_size(font, text, &v.x, &v.y);
 	return v;

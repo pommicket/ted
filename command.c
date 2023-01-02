@@ -1,5 +1,5 @@
 typedef struct {
-	char const *name;
+	const char *name;
 	Command cmd;
 } CommandName;
 static CommandName const command_names[] = {
@@ -87,7 +87,7 @@ static CommandName const command_names[] = {
 
 static_assert_if_possible(arr_count(command_names) == CMD_COUNT)
 
-Command command_from_str(char const *str) {
+Command command_from_str(const char *str) {
 	// @TODO(optimize): sort command_names, do a binary search
 	for (int i = 0; i < CMD_COUNT; ++i) {
 		if (streq(command_names[i].name, str))
@@ -106,7 +106,7 @@ const char *command_to_str(Command c) {
 }
 
 // get the string corresponding to this argument; returns NULL if it's not a string argument
-char const *arg_get_string(Ted *ted, i64 argument) {
+const char *arg_get_string(Ted *ted, i64 argument) {
 	if (argument < 0) return NULL;
 	if (argument & ARG_STRING) {
 		argument -= ARG_STRING;
@@ -524,7 +524,7 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		build_prev_error(ted);
 		break;
 	case CMD_SHELL: {
-		char const *str = arg_get_string(ted, argument);
+		const char *str = arg_get_string(ted, argument);
 		if (str) {
 			strbuf_cpy(ted->build_dir, ted->cwd);
 			build_start_with_command(ted, str);

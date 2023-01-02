@@ -593,7 +593,7 @@ typedef struct Ted {
 } Ted;
 
 // === colors.c ===
-ColorSetting color_setting_from_str(char const *str);
+ColorSetting color_setting_from_str(const char *str);
 const char *color_setting_to_str(ColorSetting s);
 Status color_from_str(const char *str, u32 *color);
 ColorSetting color_for_symbol_kind(SymbolKind kind);
@@ -604,13 +604,13 @@ void gl_rc_sab_decref(GlRcSAB **ps);
 GlRcTexture *gl_rc_texture_new(GLuint texture);
 void gl_rc_texture_incref(GlRcTexture *t);
 void gl_rc_texture_decref(GlRcTexture **pt);
-GLuint gl_compile_shader(char error_buf[256], char const *code, GLenum shader_type);
+GLuint gl_compile_shader(char error_buf[256], const char *code, GLenum shader_type);
 GLuint gl_link_program(char error_buf[256], GLuint *shaders, size_t count);
-GLuint gl_compile_and_link_shaders(char error_buf[256], char const *vshader_code, char const *fshader_code);
+GLuint gl_compile_and_link_shaders(char error_buf[256], const char *vshader_code, const char *fshader_code);
 // prints a debug message if `attrib` is not found
-GLuint gl_attrib_location(GLuint program, char const *attrib);
+GLuint gl_attrib_location(GLuint program, const char *attrib);
 // prints a debug message if `uniform` is not found
-GLint gl_uniform_location(GLuint program, char const *uniform);
+GLint gl_uniform_location(GLuint program, const char *uniform);
 void gl_geometry_init(void);
 void gl_geometry_rect(Rect r, u32 color_rgba);
 void gl_geometry_rect_border(Rect r, float border_thickness, u32 color);

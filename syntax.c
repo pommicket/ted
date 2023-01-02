@@ -5,7 +5,7 @@
 
 typedef struct {
 	Language lang;
-	char const *name;
+	const char *name;
 } LanguageName;
 
 static const LanguageName language_names[] = {
@@ -32,7 +32,7 @@ static_assert_if_possible(arr_count(language_names) == LANG_COUNT)
 
 
 // returns the language this string is referring to, or LANG_NONE if it's invalid.
-Language language_from_str(char const *str) {
+Language language_from_str(const char *str) {
 	for (int i = 0; i < LANG_COUNT; ++i) {
 		if (strcmp_case_insensitive(language_names[i].name, str) == 0)
 			return language_names[i].lang;
@@ -50,7 +50,7 @@ const char *language_to_str(Language language) {
 }
 
 // start of single line comment for language l -- used for comment/uncomment selection
-char const *language_comment_start(Language l) {
+const char *language_comment_start(Language l) {
 	switch (l) {
 	case LANG_C:
 	case LANG_RUST:
@@ -80,7 +80,7 @@ char const *language_comment_start(Language l) {
 }
 
 // end of single line comment for language l
-char const *language_comment_end(Language l) {
+const char *language_comment_end(Language l) {
 	switch (l) {
 	case LANG_HTML:
 		return " -->";
@@ -104,12 +104,12 @@ ColorSetting syntax_char_type_to_color(SyntaxCharType t) {
 	return COLOR_TEXT;
 }
 
-static inline bool syntax_keyword_matches(char32_t const *text, size_t len, char const *keyword) {
+static inline bool syntax_keyword_matches(char32_t const *text, size_t len, const char *keyword) {
 	if (len == strlen(keyword)) {
 		bool matches = true;
 		char32_t const *p = text;
 		// check if `p` starts with `keyword`
-		for (char const *q = keyword; *q; ++p, ++q) {
+		for (const char *q = keyword; *q; ++p, ++q) {
 			if (*p != (char32_t)*q) {
 				matches = false;
 				break;
@@ -853,7 +853,7 @@ static void syntax_highlight_markdown(SyntaxState *state, char32_t const *line, 
 	
 	bool start_of_line = true; // is this the start of the line (not counting whitespace)
 	int backslashes = 0;
-	char const *format_ending = NULL; // "**" if we are inside **bold**, etc.
+	const char *format_ending = NULL; // "**" if we are inside **bold**, etc.
 	
 	for (u32 i = 0; i < line_len; ++i) {
 		char32_t c = line[i];
@@ -908,7 +908,7 @@ static void syntax_highlight_markdown(SyntaxState *state, char32_t const *line, 
 				// \* or \_
 			} else if (has_1_char && line[i+1] == c) {
 				// **bold** or __bold__
-				char const *end = c == '*' ? "**" : "__";
+				const char *end = c == '*' ? "**" : "__";
 				if (format_ending) {
 					if (streq(format_ending, end)) {
 						char_types[i++] = SYNTAX_STRING;
@@ -922,7 +922,7 @@ static void syntax_highlight_markdown(SyntaxState *state, char32_t const *line, 
 				}
 			} else {
 				// *italics* or _italics_
-				char const *end = c == '*' ? "*" : "_";
+				const char *end = c == '*' ? "*" : "_";
 				if (format_ending) {
 					if (streq(format_ending, end))
 						format_ending = NULL;

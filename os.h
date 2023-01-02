@@ -21,27 +21,27 @@ typedef struct {
 } FsDirectoryEntry;
 
 // returns what kind of thing this is.
-FsType fs_path_type(char const *path);
-FsPermission fs_path_permission(char const *path);
+FsType fs_path_type(const char *path);
+FsPermission fs_path_permission(const char *path);
 // Does this file exist? Returns false for directories.
-bool fs_file_exists(char const *path);
+bool fs_file_exists(const char *path);
 // Returns a NULL-terminated array of the files/directories in this directory, or NULL if the directory does not exist/out of memory.
 // When you're done with the entries, call fs_dir_entries_free (or call free on each entry, then on the whole array).
 // NOTE: The files/directories aren't returned in any particular order!
-FsDirectoryEntry **fs_list_directory(char const *dirname);
+FsDirectoryEntry **fs_list_directory(const char *dirname);
 // Create the directory specified by `path`
 // Returns:
 // 1  if the directory was created successfully
 // 0  if the directory already exists
 // -1 if the path already exists, but it's not a directory, or if there's another error (e.g. don't have permission to create directory).
-int fs_mkdir(char const *path);
+int fs_mkdir(const char *path);
 // Puts the current working directory into buf, including a null-terminator, writing at most buflen bytes.
 // Returns:
 // 1  if the working directory was inserted into buf successfully
 // 0  if buf is too short to hold the cwd
 // -1 if we can't get the cwd for whatever reason.
 int fs_get_cwd(char *buf, size_t buflen);
-struct timespec time_last_modified(char const *filename);
+struct timespec time_last_modified(const char *filename);
 struct timespec time_get(void);
 // sleep for a certain number of nanoseconds
 void time_sleep_ns(u64 ns);
@@ -93,9 +93,9 @@ int process_get_id(void);
 // returns false on failure
 bool process_run_ex(Process *proc, const char *command, const ProcessSettings *props);
 // like process_run_ex, but with the default settings
-bool process_run(Process *process, char const *command);
+bool process_run(Process *process, const char *command);
 // returns the error last error produced, or NULL if there was no error.
-char const *process_geterr(Process *process);
+const char *process_geterr(Process *process);
 // write to stdin
 // returns:
 // -2 on error

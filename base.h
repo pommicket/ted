@@ -150,7 +150,7 @@ typedef unsigned long long ullong;
 #endif
 
 #if _WIN32
-static void print(char const *fmt, ...) {
+static void print(const char *fmt, ...) {
 	char buf[2048];
 	buf[2047] = '\0';
 	va_list args;

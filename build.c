@@ -24,7 +24,7 @@ static void build_queue_start(Ted *ted) {
 }
 
 // add a command to the build queue
-static void build_queue_command(Ted *ted, char const *command) {
+static void build_queue_command(Ted *ted, const char *command) {
 	char *copy = str_dup(command);
 	if (copy)
 		arr_add(ted->build_queue, copy);
@@ -75,7 +75,7 @@ static void build_queue_finish(Ted *ted) {
 }
 
 // make sure you set ted->build_dir before running this!
-static void build_start_with_command(Ted *ted, char const *command) {
+static void build_start_with_command(Ted *ted, const char *command) {
 	build_queue_start(ted);
 	build_queue_command(ted, command);
 	build_queue_finish(ted);
@@ -159,7 +159,7 @@ static int parse_nonnegative_integer(char32_t **str, char32_t *end) {
 
 // could this character (reasonably) appear in a source file path?
 static bool is_source_path(char32_t c) {
-	char const *allowed_ascii_symbols_in_path = "./\\-_:";
+	const char *allowed_ascii_symbols_in_path = "./\\-_:";
 	return c > CHAR_MAX || isalnum((char)c)
 		|| strchr(allowed_ascii_symbols_in_path, (char)c);
 }

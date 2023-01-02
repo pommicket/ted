@@ -19,9 +19,9 @@ static const char *tags_filename(Ted *ted, bool error_if_does_not_exist) {
 }
 
 // is this a file we can generate tags for?
-static bool is_source_file(char const *filename) {
-	char const *dot = strchr(filename, '.');
-	char const *const extensions[] = {
+static bool is_source_file(const char *filename) {
+	const char *dot = strchr(filename, '.');
+	const char *const extensions[] = {
 		"py", "c", "h", "cpp", "hpp", "cc", "hh", "cxx", "hxx", "C", "H",
 		"rb", "rs", "go", "lua", "s", "asm", "js", "pl", "cs", "sh", "java", "php"
 	};
@@ -36,7 +36,7 @@ static bool is_source_file(char const *filename) {
 
 
 static void tags_generate_at_dir(Ted *ted, bool run_in_build_window, const char *dir, int depth) {
-	Settings const *settings = ted_active_settings(ted);
+	const Settings *settings = ted_active_settings(ted);
 	if (depth >= settings->tags_max_depth) {
 		return;
 	}
@@ -47,9 +47,9 @@ static void tags_generate_at_dir(Ted *ted, bool run_in_build_window, const char 
 	#if __unix__
 		// ctags.emacs's sorting depends on the locale 
 		// (ctags-universal doesn't)
-		char const *cmd_prefix = "LC_ALL=C ctags --append";
+		const char *cmd_prefix = "LC_ALL=C ctags --append";
 	#else
-		char const *cmd_prefix = "ctags --append";
+		const char *cmd_prefix = "ctags --append";
 	#endif
 		bool any_files = false;
 		strcpy(command, cmd_prefix);
@@ -94,7 +94,7 @@ static void tags_generate_at_dir(Ted *ted, bool run_in_build_window, const char 
 
 // generate/re-generate tags.
 static void tags_generate(Ted *ted, bool run_in_build_window) {
-	char const *filename = tags_filename(ted, false);
+	const char *filename = tags_filename(ted, false);
 	if (!filename) {
 		strcpy(ted->tags_dir, ted->cwd);
 	}
@@ -107,7 +107,7 @@ static void tags_generate(Ted *ted, bool run_in_build_window) {
 	change_directory(ted->cwd);
 }
 
-static int tag_try(FILE *fp, char const *tag) {
+static int tag_try(FILE *fp, const char *tag) {
 	if (ftell(fp) != 0) {
 		while (1) {
 			int c = getc(fp);
@@ -134,9 +134,9 @@ static int tag_try(FILE *fp, char const *tag) {
 // finds all tags beginning with the given prefix, returning them into *out, writing at most out_size entries.
 // you may pass NULL for out, in which case just the number of matching tags is returned (still maxing out at out_size)
 // each element in out should be freed when you're done with them
-size_t tags_beginning_with(Ted *ted, char const *prefix, char **out, size_t out_size) {
+size_t tags_beginning_with(Ted *ted, const char *prefix, char **out, size_t out_size) {
 	assert(out_size);
-	char const *tags_name = tags_filename(ted, true);
+	const char *tags_name = tags_filename(ted, true);
 	if (!tags_name) return 0;
 	FILE *file = fopen(tags_name, "rb");
 	if (!file) return 0;
@@ -195,13 +195,13 @@ size_t tags_beginning_with(Ted *ted, char const *prefix, char **out, size_t out_
 }
 
 // returns true if the tag exists.
-bool tag_goto(Ted *ted, char const *tag) {
+bool tag_goto(Ted *ted, const char *tag) {
 	bool already_regenerated_tags;
 	already_regenerated_tags = false;
 top:;
-	Settings const *settings = ted_active_settings(ted);
+	const Settings *settings = ted_active_settings(ted);
 	
-	char const *tags_name = tags_filename(ted, true);
+	const char *tags_name = tags_filename(ted, true);
 	if (!tags_name) return false;
 	FILE *file = fopen(tags_name, "rb");
 	if (!file) return false;
@@ -349,7 +349,7 @@ top:;
 
 SymbolInfo *tags_get_symbols(Ted *ted) {
 	// read tags file and extract tag names
-	char const *filename = tags_filename(ted, true);
+	const char *filename = tags_filename(ted, true);
 	if (!filename) return NULL;
 	FILE *file = fopen(filename, "rb");
 	if (!file) return NULL;

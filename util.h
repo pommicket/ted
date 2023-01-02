@@ -425,13 +425,13 @@ double timespec_to_seconds(struct timespec ts);
 String32 str32(char32_t *str, size_t len);
 String32 str32_substr(String32 s, size_t from, size_t len);
 void str32_free(String32 *s);
-String32 str32_from_utf8(char const *utf8);
+String32 str32_from_utf8(const char *utf8);
 char *str32_to_utf8_cstr(String32 s);
-int str32_cmp_ascii(String32 s, char const *ascii);
-bool str32_has_ascii_prefix(String32 s, char const *ascii);
+int str32_cmp_ascii(String32 s, const char *ascii);
+bool str32_has_ascii_prefix(String32 s, const char *ascii);
 size_t str32chr(String32 s, char32_t c);
 size_t str32_count_char(String32 s, char32_t c);
 size_t str32_remove_all_instances_of_char(String32 *s, char32_t c);
-size_t str32_ascii_spn(String32 s, char const *charset);
+size_t str32_ascii_spn(String32 s, const char *charset);
 
 #endif // UTIL_H_

@@ -2,7 +2,7 @@
 #include <fcntl.h>
 #endif
 
-static float selector_entries_start_y(Ted *ted, Selector const *s) {
+static float selector_entries_start_y(Ted *ted, const Selector *s) {
 	float padding = ted_active_settings(ted)->padding;
 
 	return s->bounds.pos.y
@@ -10,7 +10,7 @@ static float selector_entries_start_y(Ted *ted, Selector const *s) {
 }
 
 // number of entries that can be displayed on the screen
-static u32 selector_n_display_entries(Ted *ted, Selector const *s) {
+static u32 selector_n_display_entries(Ted *ted, const Selector *s) {
 	float char_height = text_font_char_height(ted->font);
 	float entries_h = rect_y2(s->bounds) - selector_entries_start_y(ted, s);
 	return (u32)(entries_h / char_height);
@@ -33,7 +33,7 @@ static void selector_scroll_to_cursor(Ted *ted, Selector *s) {
 
 // where is the ith entry in the selector on the screen?
 // returns false if it's completely offscreen
-static bool selector_entry_pos(Ted *ted, Selector const *s, u32 i, Rect *r) {
+static bool selector_entry_pos(Ted *ted, const Selector *s, u32 i, Rect *r) {
 	Rect bounds = s->bounds;
 	float char_height = text_font_char_height(ted->font);
 	*r = rect(V2(bounds.pos.x, selector_entries_start_y(ted, s)
@@ -56,7 +56,7 @@ static void selector_down(Ted *ted, Selector *s, i64 n) {
 	selector_up(ted, s, -n);
 }
 
-static int selectory_entry_cmp_name(void const *av, void const *bv) {
+static int selectory_entry_cmp_name(const void *av, const void *bv) {
 	SelectorEntry const *a = av, *b = bv;
 	return strcmp(a->name, b->name);
 }
@@ -186,8 +186,8 @@ static void file_selector_clear_entries(FileSelector *fs) {
 }
 
 // returns true if there are any directory entries
-static bool file_selector_any_directories(FileSelector const *fs) {
-	FileEntry const *entries = fs->entries;
+static bool file_selector_any_directories(const FileSelector *fs) {
+	const FileEntry *entries = fs->entries;
 	for (u32 i = 0, n_entries = fs->n_entries; i < n_entries; ++i) {
 		if (entries[i].type == FS_DIRECTORY)
 			return true;
@@ -200,9 +200,9 @@ static void file_selector_free(FileSelector *fs) {
 	memset(fs, 0, sizeof *fs);
 }
 
-static int qsort_file_entry_cmp(void *search_termv, void const *av, void const *bv) {
-	char const *search_term = search_termv;
-	FileEntry const *a = av, *b = bv;
+static int qsort_file_entry_cmp(void *search_termv, const void *av, const void *bv) {
+	const char *search_term = search_termv;
+	const FileEntry *a = av, *b = bv;
 	// put directories first
 	if (a->type == FS_DIRECTORY && b->type != FS_DIRECTORY) {
 		return -1;
@@ -224,10 +224,10 @@ static int qsort_file_entry_cmp(void *search_termv, void const *av, void const *
 	return strcmp_case_insensitive(a->name, b->name);
 }
 
-static Status file_selector_cd_(Ted *ted, FileSelector *fs, char const *path, int symlink_depth);
+static Status file_selector_cd_(Ted *ted, FileSelector *fs, const char *path, int symlink_depth);
 
 // cd to the directory `name`. `name` cannot include any path separators.
-static Status file_selector_cd1(Ted *ted, FileSelector *fs, char const *name, size_t name_len, int symlink_depth) {
+static Status file_selector_cd1(Ted *ted, FileSelector *fs, const char *name, size_t name_len, int symlink_depth) {
 	char *const cwd = fs->cwd;
 
 	if (name_len == 0 || (name_len == 1 && name[0] == '.')) {
@@ -297,7 +297,7 @@ static Status file_selector_cd1(Ted *ted, FileSelector *fs, char const *name, si
 	
 }
 
-static Status file_selector_cd_(Ted *ted, FileSelector *fs, char const *path, int symlink_depth) {
+static Status file_selector_cd_(Ted *ted, FileSelector *fs, const char *path, int symlink_depth) {
 	char *const cwd = fs->cwd;
 	if (path[0] == '\0') return true;
 
@@ -320,7 +320,7 @@ static Status file_selector_cd_(Ted *ted, FileSelector *fs, char const *path, in
 		#endif
 	}
 
-	char const *p = path;
+	const char *p = path;
 
 	while (*p) {
 		size_t len = strcspn(p, PATH_SEPARATOR_STR);
@@ -336,7 +336,7 @@ static Status file_selector_cd_(Ted *ted, FileSelector *fs, char const *path, in
 // go to the directory `path`. make sure `path` only contains path separators like PATH_SEPARATOR, not any
 // other members of ALL_PATH_SEPARATORS
 // returns false if this path doesn't exist or isn't a directory
-static bool file_selector_cd(Ted *ted, FileSelector *fs, char const *path) {
+static bool file_selector_cd(Ted *ted, FileSelector *fs, const char *path) {
 	fs->sel.cursor = 0;
 	fs->sel.scroll = 0;
 	return file_selector_cd_(ted, fs, path, 0);
@@ -499,8 +499,8 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 }
 
 static void file_selector_render(Ted *ted, FileSelector *fs) {
-	Settings const *settings = ted_active_settings(ted);
-	u32 const *colors = settings->colors;
+	const Settings *settings = ted_active_settings(ted);
+	const u32 *colors = settings->colors;
 	Rect bounds = fs->bounds;
 	Font *font = ted->font;
 	float padding = settings->padding;
@@ -538,13 +538,13 @@ static void file_selector_render(Ted *ted, FileSelector *fs) {
 	selector_render(ted, sel);
 }
 
-static v2 button_get_size(Ted *ted, char const *text) {
+static v2 button_get_size(Ted *ted, const char *text) {
 	float border_thickness = ted_active_settings(ted)->border_thickness;
 	return v2_add_const(text_get_size_v2(ted->font, text), 2 * border_thickness);
 }
 
-static void button_render(Ted *ted, Rect button, char const *text, u32 color) {
-	u32 const *colors = ted_active_settings(ted)->colors;
+static void button_render(Ted *ted, Rect button, const char *text, u32 color) {
+	const u32 *colors = ted_active_settings(ted)->colors;
 	
 	if (rect_contains_point(button, ted->mouse_pos)) {
 		// highlight button when hovering over it
@@ -615,16 +615,16 @@ static PopupOption popup_update(Ted *ted, u32 options) {
 	return POPUP_NONE;
 }
 
-static void popup_render(Ted *ted, u32 options, char const *title, char const *body) {
+static void popup_render(Ted *ted, u32 options, const char *title, const char *body) {
 	float window_width = ted->window_width;
 	Font *font = ted->font;
 	Font *font_bold = ted->font_bold;
 	Rect r, button_yes, button_no, button_cancel;
-	Settings const *settings = ted_active_settings(ted);
-	u32 const *colors = settings->colors;
-	float const char_height_bold = text_font_char_height(font_bold);
-	float const padding = settings->padding;
-	float const border_thickness = settings->border_thickness;
+	const Settings *settings = ted_active_settings(ted);
+	const u32 *colors = settings->colors;
+	const float char_height_bold = text_font_char_height(font_bold);
+	const float padding = settings->padding;
+	const float border_thickness = settings->border_thickness;
 	
 	popup_get_rects(ted, options, &r, &button_yes, &button_no, &button_cancel);
 	
@@ -665,12 +665,12 @@ static void popup_render(Ted *ted, u32 options, char const *title, char const *b
 }
 
 // returns the size of the checkbox, including the label
-static v2 checkbox_frame(Ted *ted, bool *value, char const *label, v2 pos) {
+static v2 checkbox_frame(Ted *ted, bool *value, const char *label, v2 pos) {
 	Font *font = ted->font;
 	float char_height = text_font_char_height(font);
 	float checkbox_size = char_height;
-	Settings const *settings = ted_active_settings(ted);
-	u32 const *colors = settings->colors;
+	const Settings *settings = ted_active_settings(ted);
+	const u32 *colors = settings->colors;
 	float padding = settings->padding;
 	float border_thickness = settings->border_thickness;
 	

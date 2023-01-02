@@ -1282,7 +1282,7 @@ void str32_free(String32 *s) {
 
 // the string returned should be str32_free'd.
 // this will return an empty string if the allocation failed or the string is invalid UTF-8
-String32 str32_from_utf8(char const *utf8) {
+String32 str32_from_utf8(const char *utf8) {
 	String32 string = {NULL, 0};
 	size_t len = strlen(utf8);
 	if (len) {
@@ -1290,8 +1290,8 @@ String32 str32_from_utf8(char const *utf8) {
 		char32_t *widestr = calloc(len, sizeof *widestr);
 		if (widestr) {
 			char32_t *wide_p = widestr;
-			char const *utf8_p = utf8;
-			char const *utf8_end = utf8_p + len;
+			const char *utf8_p = utf8;
+			const char *utf8_end = utf8_p + len;
 			while (utf8_p < utf8_end) {
 				char32_t c = 0;
 				size_t n = unicode_utf8_to_utf32(&c, utf8_p, (size_t)(utf8_end - utf8_p));
@@ -1337,7 +1337,7 @@ char *str32_to_utf8_cstr(String32 s) {
 }
 
 // compare s to the ASCII string `ascii`
-int str32_cmp_ascii(String32 s, char const *ascii) {
+int str32_cmp_ascii(String32 s, const char *ascii) {
 	for (size_t i = 0; i < s.len; ++i) {
 		assert((char32_t)ascii[i] < 128);
 		if ((char32_t)ascii[i] == '\0')
@@ -1355,7 +1355,7 @@ int str32_cmp_ascii(String32 s, char const *ascii) {
 }
 
 // check if s starts with the ASCII string `ascii`
-bool str32_has_ascii_prefix(String32 s, char const *ascii) {
+bool str32_has_ascii_prefix(String32 s, const char *ascii) {
 	for (size_t i = 0; i < s.len; ++i) {
 		assert((char32_t)ascii[i] < 128);
 		if ((char32_t)ascii[i] == '\0')
@@ -1410,12 +1410,12 @@ size_t str32_remove_all_instances_of_char(String32 *s, char32_t c) {
 
 // returns the length of the longest prefix of `s` containing only
 // ASCII characters in the C-string `charset`.
-size_t str32_ascii_spn(String32 s, char const *charset) {
+size_t str32_ascii_spn(String32 s, const char *charset) {
 	for (u32 i = 0; i < s.len; ++i) {
 		if (s.str[i] >= 128)
 			return i; // non-ASCII character in s, so that can't be in charset.
 		bool found = false;
-		for (char const *p = charset; *p; ++p) {
+		for (const char *p = charset; *p; ++p) {
 			assert((char32_t)*p < 128);
 			if ((char32_t)*p == s.str[i]) {
 				found = true;
