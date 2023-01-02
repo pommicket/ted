@@ -1,3 +1,5 @@
+#include "ted.h"
+
 // Text buffers - These store the contents of a file.
 // NOTE: All text editing should be done through the two functions
 // buffer_insert_text_at_pos and buffer_delete_chars_at_pos
@@ -3013,7 +3015,6 @@ void buffer_toggle_comment_selection(TextBuffer *buffer) {
 }
 
 
-// make sure to call gl_geometry_draw after this
 void buffer_highlight_lsp_range(TextBuffer *buffer, LSPRange range) {
 	Font *font = buffer_font(buffer);
 	const u32 *colors = buffer_settings(buffer)->colors;

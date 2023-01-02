@@ -51,7 +51,6 @@ FUTURE FEATURES:
 */
 
 #include "base.h"
-#include "unicode.h"
 no_warn_start
 #if _WIN32
 #include <SDL.h>

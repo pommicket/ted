@@ -9,6 +9,7 @@
 
 #include "base.h"
 #include "util.h"
+#include "unicode.h"
 
 // on 16-bit systems, this is 16383. on 32/64-bit systems, this is 1073741823
 // it is unusual to have a string that long.
