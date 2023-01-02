@@ -7,8 +7,146 @@
 // [section2]
 // asdf = 123
 
+// all the "control" pointers here are relative to a NULL Settings object.
+typedef struct {
+	char const *name;
+	const bool *control;
+	bool per_language; // allow per-language control
+} SettingBool;
+typedef struct {
+	char const *name;
+	const u8 *control;
+	u8 min, max;
+	bool per_language;
+} SettingU8;
+typedef struct {
+	char const *name;
+	const float *control;
+	float min, max;
+	bool per_language;
+} SettingFloat;
+typedef struct {
+	char const *name;
+	const u16 *control;
+	u16 min, max;
+	bool per_language;
+} SettingU16;
+typedef struct {
+	char const *name;
+	const u32 *control;
+	u32 min, max;
+	bool per_language;
+} SettingU32;
+typedef struct {
+	char const *name;
+	const char *control;
+	size_t buf_size;
+	bool per_language;
+} SettingString;
 
-#include "settings.h"
+typedef enum {
+	SETTING_BOOL = 1,
+	SETTING_U8,
+	SETTING_U16,
+	SETTING_U32,
+	SETTING_FLOAT,
+	SETTING_STRING
+} SettingType;
+typedef struct {
+	SettingType type;
+	const char *name;
+	bool per_language;
+	union {
+		SettingU8 _u8;
+		SettingBool _bool;
+		SettingU16 _u16;
+		SettingU32 _u32;
+		SettingFloat _float;
+		SettingString _string;
+	} u;
+} SettingAny;
+
+// core settings
+static Settings const settings_zero = {0};
+static SettingBool const settings_bool[] = {
+	{"auto-indent", &settings_zero.auto_indent, true},
+	{"auto-add-newline", &settings_zero.auto_add_newline, true},
+	{"auto-reload", &settings_zero.auto_reload, true},
+	{"auto-reload-config", &settings_zero.auto_reload_config, false},
+	{"syntax-highlighting", &settings_zero.syntax_highlighting, true},
+	{"line-numbers", &settings_zero.line_numbers, true},
+	{"restore-session", &settings_zero.restore_session, false},
+	{"regenerate-tags-if-not-found", &settings_zero.regenerate_tags_if_not_found, true},
+	{"indent-with-spaces", &settings_zero.indent_with_spaces, true},
+	{"trigger-characters", &settings_zero.trigger_characters, true},
+	{"identifier-trigger-characters", &settings_zero.identifier_trigger_characters, true},
+	{"signature-help-enabled", &settings_zero.signature_help_enabled, true},
+	{"lsp-enabled", &settings_zero.lsp_enabled, true},
+	{"hover-enabled", &settings_zero.hover_enabled, true},
+	{"vsync", &settings_zero.vsync, false},
+	{"highlight-enabled", &settings_zero.highlight_enabled, true},
+	{"highlight-auto", &settings_zero.highlight_auto, true},
+};
+static SettingU8 const settings_u8[] = {
+	{"tab-width", &settings_zero.tab_width, 1, 100, true},
+	{"cursor-width", &settings_zero.cursor_width, 1, 100, true},
+	{"undo-save-time", &settings_zero.undo_save_time, 1, 200, true},
+	{"border-thickness", &settings_zero.border_thickness, 1, 30, false},
+	{"padding", &settings_zero.padding, 0, 100, false},
+	{"scrolloff", &settings_zero.scrolloff, 1, 100, true},
+	{"tags-max-depth", &settings_zero.tags_max_depth, 1, 100, false},
+};
+static SettingU16 const settings_u16[] = {
+	{"text-size", &settings_zero.text_size, TEXT_SIZE_MIN, TEXT_SIZE_MAX, false},
+	{"max-menu-width", &settings_zero.max_menu_width, 10, U16_MAX, false},
+	{"error-display-time", &settings_zero.error_display_time, 0, U16_MAX, false},
+	{"framerate-cap", &settings_zero.framerate_cap, 3, 1000, false},
+};
+static SettingU32 const settings_u32[] = {
+	{"max-file-size", &settings_zero.max_file_size, 100, 2000000000, false},
+	{"max-file-size-view-only", &settings_zero.max_file_size_view_only, 100, 2000000000, false},
+};
+static SettingFloat const settings_float[] = {
+	{"cursor-blink-time-on", &settings_zero.cursor_blink_time_on, 0, 1000, true},
+	{"cursor-blink-time-off", &settings_zero.cursor_blink_time_off, 0, 1000, true},
+	{"hover-time", &settings_zero.hover_time, 0, INFINITY, true},
+};
+static SettingString const settings_string[] = {
+	{"build-default-command", settings_zero.build_default_command, sizeof settings_zero.build_default_command, true},
+	{"bg-shader", settings_zero.bg_shader_text, sizeof settings_zero.bg_shader_text, true},
+	{"bg-texture", settings_zero.bg_shader_image, sizeof settings_zero.bg_shader_image, true},
+	{"root-identifiers", settings_zero.root_identifiers, sizeof settings_zero.root_identifiers, true},
+	{"lsp", settings_zero.lsp, sizeof settings_zero.lsp, true},
+};
+
+
+static void setting_bool_set(Settings *settings, const SettingBool *set, bool value) {
+	*(bool *)((char *)settings + ((char*)set->control - (char*)&settings_zero)) = value;
+}
+static void setting_u8_set(Settings *settings, const SettingU8 *set, u8 value) {
+	if (value >= set->min && value <= set->max)
+		*(u8 *)((char *)settings + ((char*)set->control - (char*)&settings_zero)) = value;
+}
+static void setting_u16_set(Settings *settings, const SettingU16 *set, u16 value) {
+	if (value >= set->min && value <= set->max)
+		*(u16 *)((char *)settings + ((char*)set->control - (char*)&settings_zero)) = value;
+}
+static void setting_u32_set(Settings *settings, const SettingU32 *set, u32 value) {
+	if (value >= set->min && value <= set->max)
+		*(u32 *)((char *)settings + ((char*)set->control - (char*)&settings_zero)) = value;
+}
+static void setting_float_set(Settings *settings, const SettingFloat *set, float value) {
+	if (value >= set->min && value <= set->max)
+		*(float *)((char *)settings + ((char*)set->control - (char*)&settings_zero)) = value;
+}
+static void setting_string_set(Settings *settings, const SettingString *set, const char *value) {
+	char *control = (char *)settings + (set->control - (char*)&settings_zero);
+	str_cpy(control, set->buf_size, value);
+}
+
+
+
+
 
 // all worth it for the -Wformat warnings
 #define config_err(cfg, ...) do {\
@@ -189,31 +327,6 @@ static u32 config_parse_key_combo(ConfigReader *cfg, char const *str) {
 }
 
 
-static void option_bool_set(Settings *settings, const SettingBool *opt, bool value) {
-	*(bool *)((char *)settings + ((char*)opt->control - (char*)&settings_zero)) = value;
-}
-static void option_u8_set(Settings *settings, const SettingU8 *opt, u8 value) {
-	if (value >= opt->min && value <= opt->max)
-		*(u8 *)((char *)settings + ((char*)opt->control - (char*)&settings_zero)) = value;
-}
-static void option_u16_set(Settings *settings, const SettingU16 *opt, u16 value) {
-	if (value >= opt->min && value <= opt->max)
-		*(u16 *)((char *)settings + ((char*)opt->control - (char*)&settings_zero)) = value;
-}
-static void option_u32_set(Settings *settings, const SettingU32 *opt, u32 value) {
-	if (value >= opt->min && value <= opt->max)
-		*(u32 *)((char *)settings + ((char*)opt->control - (char*)&settings_zero)) = value;
-}
-static void option_float_set(Settings *settings, const SettingFloat *opt, float value) {
-	if (value >= opt->min && value <= opt->max)
-		*(float *)((char *)settings + ((char*)opt->control - (char*)&settings_zero)) = value;
-}
-static void option_string_set(Settings *settings, const SettingString *opt, const char *value) {
-	char *control = (char *)settings + (opt->control - (char*)&settings_zero);
-	str_cpy(control, opt->buf_size, value);
-}
-
-
 static void parse_section_header(ConfigReader *cfg, char *line, ConfigPart *part) {
 	#define SECTION_HEADER_HELP "Section headers should look like this: [(path//)(language.)section-name]"
 	Ted *ted = cfg->ted;
@@ -275,13 +388,13 @@ static void parse_section_header(ConfigReader *cfg, char *line, ConfigPart *part
 	}
 }
 
-static bool initialized_options = false;
-static OptionAny all_options[1000] = {0};
+static bool settings_initialized = false;
+static SettingAny settings_all[1000] = {0};
 
-static void config_init_options(void) {
-	if (initialized_options) return;
+static void config_init_settings(void) {
+	if (settings_initialized) return;
 	
-	OptionAny *opt = all_options;
+	SettingAny *opt = settings_all;
 	for (size_t i = 0; i < arr_count(settings_bool); ++i) {
 		opt->type = SETTING_BOOL;
 		opt->name = settings_bool[i].name;
@@ -324,7 +437,7 @@ static void config_init_options(void) {
 		opt->u._string = settings_string[i];
 		++opt;
 	}
-	initialized_options = true;
+	settings_initialized = true;
 }
 
 void config_read(Ted *ted, ConfigPart **parts, char const *filename) {
@@ -625,7 +738,7 @@ static void config_parse_line(ConfigReader *cfg, Settings *settings, const Confi
 			}
 		} else {
 		#if DEBUG
-			config_err(cfg, "No such color option: %s", key);
+			config_err(cfg, "No such color setting: %s", key);
 		#endif
 		}
 	} break;
@@ -729,62 +842,62 @@ static void config_parse_line(ConfigReader *cfg, Settings *settings, const Confi
 			}
 		}
 
-		// go through all options
+		// go through all settings
 		bool recognized = false;
-		for (size_t i = 0; i < arr_count(all_options) && !recognized; ++i) {
-			OptionAny const *any = &all_options[i];
+		for (size_t i = 0; i < arr_count(settings_all) && !recognized; ++i) {
+			SettingAny const *any = &settings_all[i];
 			if (any->type == 0) break;
 			if (streq(key, any->name)) {
 				recognized = true;
 				
 				if (part->context.language != 0 && !any->per_language) {
-					config_err(cfg, "Option %s cannot be controlled for individual languages.", key);
+					config_err(cfg, "Setting %s cannot be controlled for individual languages.", key);
 					break;
 				}
 				
 				switch (any->type) {
 				case SETTING_BOOL: {
-					SettingBool const *option = &any->u._bool;
+					const SettingBool *setting = &any->u._bool;
 					if (is_bool)
-						option_bool_set(settings, option, boolean);
+						setting_bool_set(settings, setting, boolean);
 					else
-						config_err(cfg, "Invalid %s: %s. This should be yes, no, on, or off.", option->name, value);
+						config_err(cfg, "Invalid %s: %s. This should be yes, no, on, or off.", setting->name, value);
 				} break;
 				case SETTING_U8: {
-					SettingU8 const *option = &any->u._u8;
-					if (is_integer && integer >= option->min && integer <= option->max)
-						option_u8_set(settings, option, (u8)integer);
+					const SettingU8 *setting = &any->u._u8;
+					if (is_integer && integer >= setting->min && integer <= setting->max)
+						setting_u8_set(settings, setting, (u8)integer);
 					else
-						config_err(cfg, "Invalid %s: %s. This should be an integer from %u to %u.", option->name, value, option->min, option->max);
+						config_err(cfg, "Invalid %s: %s. This should be an integer from %u to %u.", setting->name, value, setting->min, setting->max);
 				} break;
 				case SETTING_U16: {
-					SettingU16 const *option = &any->u._u16;
-					if (is_integer && integer >= option->min && integer <= option->max)
-						option_u16_set(settings, option, (u16)integer);
+					const SettingU16 *setting = &any->u._u16;
+					if (is_integer && integer >= setting->min && integer <= setting->max)
+						setting_u16_set(settings, setting, (u16)integer);
 					else
-						config_err(cfg, "Invalid %s: %s. This should be an integer from %u to %u.", option->name, value, option->min, option->max);
+						config_err(cfg, "Invalid %s: %s. This should be an integer from %u to %u.", setting->name, value, setting->min, setting->max);
 				} break;
 				case SETTING_U32: {
-					SettingU32 const *option = &any->u._u32;
-					if (is_integer && integer >= option->min && integer <= option->max)
-						option_u32_set(settings, option, (u32)integer);
+					const SettingU32 *setting = &any->u._u32;
+					if (is_integer && integer >= setting->min && integer <= setting->max)
+						setting_u32_set(settings, setting, (u32)integer);
 					else
 						config_err(cfg, "Invalid %s: %s. This should be an integer from %" PRIu32 " to %" PRIu32 ".",
-							option->name, value, option->min, option->max);
+							setting->name, value, setting->min, setting->max);
 				} break;
 				case SETTING_FLOAT: {
-					SettingFloat const *option = &any->u._float;
-					if (is_floating && floating >= option->min && floating <= option->max)
-						option_float_set(settings, option, (float)floating);
+					const SettingFloat *setting = &any->u._float;
+					if (is_floating && floating >= setting->min && floating <= setting->max)
+						setting_float_set(settings, setting, (float)floating);
 					else
-						config_err(cfg, "Invalid %s: %s. This should be a number from %g to %g.", option->name, value, option->min, option->max);
+						config_err(cfg, "Invalid %s: %s. This should be a number from %g to %g.", setting->name, value, setting->min, setting->max);
 				} break;
 				case SETTING_STRING: {
-					SettingString const *option = &any->u._string;
-					if (strlen(value) >= option->buf_size) {
-						config_err(cfg, "%s is too long (length: %zu, maximum length: %zu).", key, strlen(value), option->buf_size - 1);
+					const SettingString *setting = &any->u._string;
+					if (strlen(value) >= setting->buf_size) {
+						config_err(cfg, "%s is too long (length: %zu, maximum length: %zu).", key, strlen(value), setting->buf_size - 1);
 					} else {
-						option_string_set(settings, option, value);
+						setting_string_set(settings, setting, value);
 					}
 				} break;
 				}
@@ -798,15 +911,15 @@ static void config_parse_line(ConfigReader *cfg, Settings *settings, const Confi
 		
 		// this is probably a bad idea:
 		//if (!recognized)
-		//	config_err(cfg, "Unrecognized option: %s", key);
-		// because if we ever remove an option in the future
+		//	config_err(cfg, "Unrecognized setting: %s", key);
+		// because if we ever remove a setting qin the future
 		// everyone will get errors
 	} break;
 	}
 }
 
 void config_parse(Ted *ted, ConfigPart **pparts) {
-	config_init_options();
+	config_init_settings();
 	
 	ConfigReader cfg_reader = {
 		.ted = ted,
