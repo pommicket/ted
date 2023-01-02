@@ -104,7 +104,6 @@ no_warn_end
 #error "Unrecognized operating system."
 #endif
 
-#include "io.c"
 #include "time.c"
 #include "ted.h"
 #include "gl.c"
