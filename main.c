@@ -86,7 +86,6 @@ no_warn_end
 #error "Unrecognized operating system."
 #endif
 
-#include "ted.h"
 #include "gl.c"
 #include "text.c"
 #include "colors.c"

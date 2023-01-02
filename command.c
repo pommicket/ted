@@ -1,3 +1,5 @@
+#include "ted.h"
+
 typedef struct {
 	const char *name;
 	Command cmd;
@@ -106,7 +108,7 @@ const char *command_to_str(Command c) {
 }
 
 // get the string corresponding to this argument; returns NULL if it's not a string argument
-const char *arg_get_string(Ted *ted, i64 argument) {
+static const char *arg_get_string(Ted *ted, i64 argument) {
 	if (argument < 0) return NULL;
 	if (argument & ARG_STRING) {
 		argument -= ARG_STRING;

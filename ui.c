@@ -1,6 +1,10 @@
+#include "ted.h"
+
 #if __unix__
 #include <fcntl.h>
 #endif
+
+static Status file_selector_cd_(Ted *ted, FileSelector *fs, const char *path, int symlink_depth);
 
 static float selector_entries_start_y(Ted *ted, const Selector *s) {
 	float padding = ted_active_settings(ted)->padding;
@@ -43,7 +47,7 @@ static bool selector_entry_pos(Ted *ted, const Selector *s, u32 i, Rect *r) {
 	return rect_clip_to_rect(r, bounds);
 }
 
-static void selector_up(Ted *ted, Selector *s, i64 n) {
+void selector_up(Ted *ted, Selector *s, i64 n) {
 	if (!s->enable_cursor || s->n_entries == 0) {
 		// can't do anything
 		return;
@@ -52,23 +56,20 @@ static void selector_up(Ted *ted, Selector *s, i64 n) {
 	selector_scroll_to_cursor(ted, s);
 }
 
-static void selector_down(Ted *ted, Selector *s, i64 n) {
+void selector_down(Ted *ted, Selector *s, i64 n) {
 	selector_up(ted, s, -n);
 }
 
 static int selectory_entry_cmp_name(const void *av, const void *bv) {
 	SelectorEntry const *a = av, *b = bv;
-	return strcmp(a->name, b->name);
+	return strcoll(a->name, b->name);
 }
 
-// sort entries alphabetically
-static void selector_sort_entries_by_name(Selector *s) {
+void selector_sort_entries_by_name(Selector *s) {
 	qsort(s->entries, s->n_entries, sizeof *s->entries, selectory_entry_cmp_name);
 }
 
-// returns a null-terminated UTF-8 string of the option selected, or NULL if none was.
-// you should call free() on the return value.
-static char *selector_update(Ted *ted, Selector *s) {
+char *selector_update(Ted *ted, Selector *s) {
 	char *ret = NULL;
 	TextBuffer *line_buffer = &ted->line_buffer;
 
@@ -109,8 +110,7 @@ static char *selector_update(Ted *ted, Selector *s) {
 	return ret;
 }
 
-// NOTE: also renders the line buffer
-static void selector_render(Ted *ted, Selector *s) {
+void selector_render(Ted *ted, Selector *s) {
 	const Settings *settings = ted_active_settings(ted);
 	const u32 *colors = settings->colors;
 	Font *font = ted->font;
@@ -185,17 +185,7 @@ static void file_selector_clear_entries(FileSelector *fs) {
 	fs->n_entries = fs->sel.n_entries = 0;
 }
 
-// returns true if there are any directory entries
-static bool file_selector_any_directories(const FileSelector *fs) {
-	const FileEntry *entries = fs->entries;
-	for (u32 i = 0, n_entries = fs->n_entries; i < n_entries; ++i) {
-		if (entries[i].type == FS_DIRECTORY)
-			return true;
-	}
-	return false;
-}
-
-static void file_selector_free(FileSelector *fs) {
+void file_selector_free(FileSelector *fs) {
 	file_selector_clear_entries(fs);
 	memset(fs, 0, sizeof *fs);
 }
@@ -223,8 +213,6 @@ static int qsort_file_entry_cmp(void *search_termv, const void *av, const void *
 	
 	return strcmp_case_insensitive(a->name, b->name);
 }
-
-static Status file_selector_cd_(Ted *ted, FileSelector *fs, const char *path, int symlink_depth);
 
 // cd to the directory `name`. `name` cannot include any path separators.
 static Status file_selector_cd1(Ted *ted, FileSelector *fs, const char *name, size_t name_len, int symlink_depth) {
@@ -342,9 +330,7 @@ static bool file_selector_cd(Ted *ted, FileSelector *fs, const char *path) {
 	return file_selector_cd_(ted, fs, path, 0);
 }
 
-// returns the name of the selected file, or NULL
-// if none was selected. the returned pointer should be freed.
-static char *file_selector_update(Ted *ted, FileSelector *fs) {
+char *file_selector_update(Ted *ted, FileSelector *fs) {
 
 	TextBuffer *line_buffer = &ted->line_buffer;
 	String32 search_term32 = buffer_get_line(line_buffer, 0);
@@ -498,7 +484,7 @@ static char *file_selector_update(Ted *ted, FileSelector *fs) {
 	return NULL;
 }
 
-static void file_selector_render(Ted *ted, FileSelector *fs) {
+void file_selector_render(Ted *ted, FileSelector *fs) {
 	const Settings *settings = ted_active_settings(ted);
 	const u32 *colors = settings->colors;
 	Rect bounds = fs->bounds;
@@ -538,12 +524,12 @@ static void file_selector_render(Ted *ted, FileSelector *fs) {
 	selector_render(ted, sel);
 }
 
-static v2 button_get_size(Ted *ted, const char *text) {
+v2 button_get_size(Ted *ted, const char *text) {
 	float border_thickness = ted_active_settings(ted)->border_thickness;
 	return v2_add_const(text_get_size_v2(ted->font, text), 2 * border_thickness);
 }
 
-static void button_render(Ted *ted, Rect button, const char *text, u32 color) {
+void button_render(Ted *ted, Rect button, const char *text, u32 color) {
 	const u32 *colors = ted_active_settings(ted)->colors;
 	
 	if (rect_contains_point(button, ted->mouse_pos)) {
@@ -560,8 +546,7 @@ static void button_render(Ted *ted, Rect button, const char *text, u32 color) {
 	text_render(ted->font);
 }
 
-// returns true if the button was clicked on.
-static bool button_update(Ted *ted, Rect button) {
+bool button_update(Ted *ted, Rect button) {
 	for (u16 i = 0; i < ted->nmouse_clicks[SDL_BUTTON_LEFT]; ++i) {
 		if (rect_contains_point(button, ted->mouse_clicks[SDL_BUTTON_LEFT][i])) {
 			return true;
@@ -569,16 +554,6 @@ static bool button_update(Ted *ted, Rect button) {
 	}
 	return false;
 }
-
-typedef enum {
-	POPUP_NONE,
-	POPUP_YES = 1<<1,
-	POPUP_NO = 1<<2,
-	POPUP_CANCEL = 1<<3,
-} PopupOption;
-
-#define POPUP_YES_NO (POPUP_YES | POPUP_NO)
-#define POPUP_YES_NO_CANCEL (POPUP_YES | POPUP_NO | POPUP_CANCEL)
 
 static void popup_get_rects(Ted const *ted, u32 options, Rect *popup, Rect *button_yes, Rect *button_no, Rect *button_cancel) {
 	float window_width = ted->window_width, window_height = ted->window_height;
@@ -603,7 +578,7 @@ static void popup_get_rects(Ted const *ted, u32 options, Rect *popup, Rect *butt
 	}	
 }
 
-static PopupOption popup_update(Ted *ted, u32 options) {
+PopupOption popup_update(Ted *ted, u32 options) {
 	Rect r = {0}, button_yes = {0}, button_no = {0}, button_cancel = {0};
 	popup_get_rects(ted, options, &r, &button_yes, &button_no, &button_cancel);
 	if (button_update(ted, button_yes))
@@ -615,7 +590,7 @@ static PopupOption popup_update(Ted *ted, u32 options) {
 	return POPUP_NONE;
 }
 
-static void popup_render(Ted *ted, u32 options, const char *title, const char *body) {
+void popup_render(Ted *ted, u32 options, const char *title, const char *body) {
 	float window_width = ted->window_width;
 	Font *font = ted->font;
 	Font *font_bold = ted->font_bold;
@@ -665,7 +640,7 @@ static void popup_render(Ted *ted, u32 options, const char *title, const char *b
 }
 
 // returns the size of the checkbox, including the label
-static v2 checkbox_frame(Ted *ted, bool *value, const char *label, v2 pos) {
+v2 checkbox_frame(Ted *ted, bool *value, const char *label, v2 pos) {
 	Font *font = ted->font;
 	float char_height = text_font_char_height(font);
 	float checkbox_size = char_height;

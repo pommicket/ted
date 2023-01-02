@@ -326,8 +326,18 @@ typedef struct {
 	bool create_menu; // this is for creating files, not opening files
 } FileSelector;
 
+typedef enum {
+	POPUP_NONE,
+	POPUP_YES = 1<<1,
+	POPUP_NO = 1<<2,
+	POPUP_CANCEL = 1<<3,
+} PopupOption;
+
+#define POPUP_YES_NO (POPUP_YES | POPUP_NO)
+#define POPUP_YES_NO_CANCEL (POPUP_YES | POPUP_NO | POPUP_CANCEL)
+
 // a node is a collection of tabs OR a split of two nodes
-typedef struct Node {
+typedef struct {
 	u16 *tabs; // dynamic array of indices into ted->buffers, or NULL if this is a split
 	float split_pos; // number from 0 to 1 indicating where the split is.
 	u16 active_tab; // index of active tab in tabs.
@@ -738,6 +748,11 @@ const char *color_setting_to_str(ColorSetting s);
 Status color_from_str(const char *str, u32 *color);
 ColorSetting color_for_symbol_kind(SymbolKind kind);
 
+// === command.c ===
+Command command_from_str(const char *str);
+const char *command_to_str(Command c);
+void command_execute(Ted *ted, Command c, i64 argument);
+
 // === gl.c ===
 GlRcSAB *gl_rc_sab_new(GLuint shader, GLuint array, GLuint buffer);
 void gl_rc_sab_incref(GlRcSAB *s);
@@ -796,6 +811,7 @@ const char *ted_geterr(Ted *ted);
 void ted_clearerr(Ted *ted);
 char *ted_get_root_dir_of(Ted *ted, const char *path);
 char *ted_get_root_dir(Ted *ted);
+// the settings of the active buffer, or the default settings if there is no active buffer
 Settings *ted_active_settings(Ted *ted);
 Settings *ted_get_settings(Ted *ted, const char *path, Language language);
 LSP *ted_get_lsp_by_id(Ted *ted, LSPID id);
@@ -813,21 +829,30 @@ void ted_go_to_position(Ted *ted, const char *path, u32 line, u32 index, bool is
 void ted_go_to_lsp_document_position(Ted *ted, LSP *lsp, LSPDocumentPosition position);
 void ted_cancel_lsp_request(Ted *ted, LSPID lsp, LSPRequestID request);
 
+// === ui.c ===
+void selector_up(Ted *ted, Selector *s, i64 n);
+void selector_down(Ted *ted, Selector *s, i64 n);
+// sort entries alphabetically
+void selector_sort_entries_by_name(Selector *s);
+// returns a null-terminated UTF-8 string of the option selected, or NULL if none was.
+// you should call free() on the return value.
+char *selector_update(Ted *ted, Selector *s);
+// NOTE: also renders the line buffer
+void selector_render(Ted *ted, Selector *s);
+void file_selector_free(FileSelector *fs);
+// returns the name of the selected file, or NULL if none was selected.
+// the returned pointer should be freed.
+char *file_selector_update(Ted *ted, FileSelector *fs);
+void file_selector_render(Ted *ted, FileSelector *fs);
+v2 button_get_size(Ted *ted, const char *text);
+void button_render(Ted *ted, Rect button, const char *text, u32 color);
+// returns true if the button was clicked on.
+bool button_update(Ted *ted, Rect button);
+PopupOption popup_update(Ted *ted, u32 options);
+void popup_render(Ted *ted, u32 options, const char *title, const char *body);
+v2 checkbox_frame(Ted *ted, bool *value, const char *label, v2 pos);
 
-char *buffer_contents_utf8_alloc(TextBuffer *buffer);
-Command command_from_str(const char *str);
-const char *command_to_str(Command command);
-// Returns string representation of command
-const char *command_to_str(Command c);
-void command_execute(Ted *ted, Command c, i64 argument);
-void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer);
-// the settings of the active buffer, or the default settings if there is no active buffer
-Settings *ted_active_settings(Ted *ted);
-Settings *ted_get_settings(Ted *ted, const char *path, Language lang);
-void ted_load_configs(Ted *ted, bool reloading);
-LSP *ted_get_lsp(Ted *ted, const char *path, Language lang);
-LSP *ted_active_lsp(Ted *ted);
-LSP *ted_get_lsp_by_id(Ted *ted, u32 id);
+
 TextBuffer *find_search_buffer(Ted *ted);
 // first, we read all config files, then we parse them.
 // this is because we want less specific settings (e.g. settings applied
