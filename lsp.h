@@ -1,3 +1,6 @@
+// functions for dealing with LSP (Language Server Protocol) servers.
+// don't assume any of the public functions defined here are thread-safe.
+
 #ifndef LSP_H_
 #define LSP_H_
 
@@ -515,9 +518,9 @@ typedef struct LSP {
 		// this also lets us re-send requests if that's ever necessary.
 		LSPRequest *requests_sent;
 	// has the response to the initialize request been sent?
-	// thread-safety: this is atomic. it starts out false, and only gets set to true once
+	// thread-safety: this starts out false, and only gets set to true once
 	//                (when the initialize response is received)
-	_Atomic bool initialized;
+	bool initialized;
 	// thread-safety: only set once in lsp_create.
 	Language language;
 	LSPThread communication_thread;
