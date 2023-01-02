@@ -49,7 +49,7 @@ static void buffer_clear_undo_history(TextBuffer *buffer) {
 	buffer->undo_history_write_pos = U32_MAX;
 }
 
-static void buffer_clear_undo_redo(TextBuffer *buffer) {
+void buffer_clear_undo_redo(TextBuffer *buffer) {
 	buffer_clear_undo_history(buffer);
 	buffer_clear_redo_history(buffer);
 }
@@ -127,8 +127,7 @@ void line_buffer_create(TextBuffer *buffer, Ted *ted) {
 	}
 }
 
-// ensures that `p` refers to a valid position.
-static void buffer_pos_validate(TextBuffer *buffer, BufferPos *p) {
+void buffer_pos_validate(TextBuffer *buffer, BufferPos *p) {
 	if (p->line >= buffer->nlines)
 		p->line = buffer->nlines - 1;
 	u32 line_len = buffer->lines[p->line].len;
@@ -167,7 +166,7 @@ static void buffer_pos_handle_inserted_chars(BufferPos *pos, BufferPos ins_pos, 
 	}
 }
 
-static bool buffer_pos_valid(TextBuffer *buffer, BufferPos p) {
+bool buffer_pos_valid(TextBuffer *buffer, BufferPos p) {
 	return p.line < buffer->nlines && p.index <= buffer->lines[p.line].len;
 }
 
@@ -317,40 +316,13 @@ LSP *buffer_lsp(TextBuffer *buffer) {
 }
 
 
-// score is higher if context is closer match.
-static long context_score(const char *path, Language lang, const SettingsContext *context) {
-	long score = 0;
-	
-	if (context->language) {
-		if (lang == context->language) {
-			score += 10000;
-		} else {
-			// dont use this. it's language-specific and for the wrong language.
-			return INT_MIN;
-		}
-	}
-	
-	if (context->path) {
-		if (path && str_has_path_prefix(path, context->path)) {
-			score += (long)strlen(context->path);
-		} else {
-			// dont use this. it's path-specific and for the wrong path.
-			return INT_MIN;
-		}
-	}
-	
-	return score;
-}
 
-// Get the settings used for this buffer.
 Settings *buffer_settings(TextBuffer *buffer) {
 	return ted_get_settings(buffer->ted, buffer->filename, buffer_language(buffer));
 }
 
 
-// NOTE: this string will be invalidated when the line is edited!!!
-// only use it briefly!!
-static String32 buffer_get_line(TextBuffer *buffer, u32 line_number) {
+String32 buffer_get_line(TextBuffer *buffer, u32 line_number) {
 	Line *line = &buffer->lines[line_number];
 	return (String32) {
 		.str = line->str, .len = line->len
@@ -518,12 +490,7 @@ static i64 buffer_pos_diff(TextBuffer *buffer, BufferPos p1, BufferPos p2) {
 	return total * factor;
 }
 
-// returns:
-// -1 if p1 comes before p2
-// +1 if p1 comes after p2
-// 0  if p1 = p2
-// faster than buffer_pos_diff (constant time)
-static int buffer_pos_cmp(BufferPos p1, BufferPos p2) {
+int buffer_pos_cmp(BufferPos p1, BufferPos p2) {
 	if (p1.line < p2.line) {
 		return -1;
 	} else if (p1.line > p2.line) {
@@ -539,7 +506,7 @@ static int buffer_pos_cmp(BufferPos p1, BufferPos p2) {
 	}
 }
 
-static bool buffer_pos_eq(BufferPos p1, BufferPos p2) {
+bool buffer_pos_eq(BufferPos p1, BufferPos p2) {
 	return p1.line == p2.line && p1.index == p2.index;
 }
 
@@ -990,8 +957,7 @@ bool buffer_pixels_to_pos(TextBuffer *buffer, v2 pixel_coords, BufferPos *pos) {
 	return ret;
 }
 
-// clip the rectangle so it's all inside the buffer. returns true if there's any rectangle left.
-static bool buffer_clip_rect(TextBuffer *buffer, Rect *r) {
+bool buffer_clip_rect(TextBuffer *buffer, Rect *r) {
 	float x1, y1, x2, y2;
 	rect_coords(*r, &x1, &y1, &x2, &y2);
 	if (x1 > buffer->x2 || y1 > buffer->y2 || x2 < buffer->x1 || y2 < buffer->y1) {
@@ -3018,7 +2984,7 @@ void buffer_toggle_comment_selection(TextBuffer *buffer) {
 void buffer_highlight_lsp_range(TextBuffer *buffer, LSPRange range) {
 	Font *font = buffer_font(buffer);
 	const u32 *colors = buffer_settings(buffer)->colors;
-	float char_height = font->char_height;
+	const float char_height = text_font_char_height(font);
 	BufferPos range_start = buffer_pos_from_lsp(buffer, range.start);
 	BufferPos range_end = buffer_pos_from_lsp(buffer, range.end);
 	// draw the highlight

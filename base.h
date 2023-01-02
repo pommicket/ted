@@ -40,6 +40,8 @@
 #include <limits.h>
 #include <assert.h>
 #include <time.h>
+#include <math.h>
+#include <errno.h>
 #if __linux__ || _WIN32
 #include <uchar.h>
 #else

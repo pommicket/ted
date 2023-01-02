@@ -1,4 +1,5 @@
 #include "os.h"
+#include "util.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
@@ -178,7 +179,6 @@ Process *process_run_ex(const char *command, const ProcessSettings *settings) {
 		}
 	}
 	
-	bool success = false;
 	pid_t pid = fork();
 	if (pid == 0) {
 		// child process
@@ -295,6 +295,7 @@ void process_kill(Process *proc) {
 	waitpid(proc->pid, NULL, 0);
 	proc->pid = 0;
 	process_close_pipes(proc);
+	free(proc);
 }
 
 int process_check_status(Process *proc, char *message, size_t message_size) {

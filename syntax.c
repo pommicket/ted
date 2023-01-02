@@ -1253,7 +1253,7 @@ static void syntax_highlight_javascript_like(
 					// this is not foolproof for detecting regex literals
 					//  but should handle all "reasonable" uses of regex.
 					bool is_regex = i == 0 // slash is first char in line
-						|| (line[i-1] <= WCHAR_MAX && iswspace((wint_t)line[i-1])) // slash preceded by space
+						|| is32_space(line[i-1]) // slash preceded by space
 						|| (line[i-1] <= 128 && strchr(";({[=,:", (char)line[i-1])); // slash preceded by any of these characters
 					if (is_regex) {
 						in_string = true;

@@ -2,16 +2,7 @@
 #define TED_H_
 
 #include "base.h"
-no_warn_start
-#if _WIN32
-	#include <SDL.h>
-#else
-	#if DEBUG || __TINYC__ // speed up compile time on debug, also tcc doesn't have immintrin.h
-	#define SDL_DISABLE_IMMINTRIN_H
-	#endif
-	#include <SDL2/SDL.h>
-#endif
-no_warn_end
+#include "sdl-inc.h"
 #include "util.h"
 #include "os.h"
 #include "unicode.h"
@@ -615,6 +606,7 @@ typedef struct Ted {
 bool buffer_haserr(TextBuffer *buffer);
 const char *buffer_geterr(TextBuffer *buffer);
 void buffer_clearerr(TextBuffer *buffer);
+void buffer_clear_undo_redo(TextBuffer *buffer);
 bool buffer_empty(TextBuffer *buffer);
 const char *buffer_get_filename(TextBuffer *buffer);
 bool buffer_is_untitled(TextBuffer *buffer);
@@ -629,15 +621,23 @@ char32_t buffer_char_before_cursor(TextBuffer *buffer);
 char32_t buffer_char_after_cursor(TextBuffer *buffer);
 BufferPos buffer_pos_start_of_file(TextBuffer *buffer);
 BufferPos buffer_pos_end_of_file(TextBuffer *buffer);
+// ensures that `p` refers to a valid position, moving it if needed.
+void buffer_pos_validate(TextBuffer *buffer, BufferPos *p);
+bool buffer_pos_valid(TextBuffer *buffer, BufferPos p);
 Language buffer_language(TextBuffer *buffer);
+// clip the rectangle so it's all inside the buffer. returns true if there's any rectangle left.
+bool buffer_clip_rect(TextBuffer *buffer, Rect *r);
 LSP *buffer_lsp(TextBuffer *buffer);
+// Get the settings used for this buffer.
 Settings *buffer_settings(TextBuffer *buffer);
+// NOTE: this string will be invalidated when the line is edited!!!
+// only use it briefly!!
+String32 buffer_get_line(TextBuffer *buffer, u32 line_number);
 size_t buffer_get_text_at_pos(TextBuffer *buffer, BufferPos pos, char32_t *text, size_t nchars);
 String32 buffer_get_str32_text_at_pos(TextBuffer *buffer, BufferPos pos, size_t nchars);
 char *buffer_get_utf8_text_at_pos(TextBuffer *buffer, BufferPos pos, size_t nchars);
 size_t buffer_contents_utf8(TextBuffer *buffer, char *out);
 char *buffer_contents_utf8_alloc(TextBuffer *buffer);
-void buffer_check_valid(TextBuffer *buffer);
 void buffer_check_valid(TextBuffer *buffer);
 void buffer_free(TextBuffer *buffer);
 void buffer_clear(TextBuffer *buffer);
@@ -749,6 +749,14 @@ void buffer_toggle_comment_lines(TextBuffer *buffer, u32 first_line, u32 last_li
 void buffer_toggle_comment_selection(TextBuffer *buffer);
 // make sure to call gl_geometry_draw after this
 void buffer_highlight_lsp_range(TextBuffer *buffer, LSPRange range);
+bool buffer_pos_eq(BufferPos p1, BufferPos p2);
+
+// returns:
+// -1 if p1 comes before p2
+// +1 if p1 comes after p2
+// 0  if p1 = p2
+// faster than buffer_pos_diff (constant time)
+int buffer_pos_cmp(BufferPos p1, BufferPos p2);
 
 // === build.c ===
 // clear build errors and stop
@@ -805,6 +813,7 @@ void config_read(Ted *ted, ConfigPart **parts, const char *filename);
 void config_parse(Ted *ted, ConfigPart **pparts);
 void config_free(Ted *ted);
 char *settings_get_root_dir(Settings *settings, const char *path);
+long context_score(const char *path, Language lang, const SettingsContext *context);
 
 // === find.c ===
 TextBuffer *find_search_buffer(Ted *ted);
@@ -923,6 +932,7 @@ void autocomplete_frame(Ted *ted);
 // Note: the document position is required for LSP requests because of overloading (where the name
 // alone isn't sufficient)
 void definition_goto(Ted *ted, LSP *lsp, const char *name, LSPDocumentPosition pos);
+void definition_cancel_lookup(Ted *ted);
 void definitions_process_lsp_response(Ted *ted, LSP *lsp, const LSPResponse *response);
 void definitions_selector_open(Ted *ted);
 void definitions_selector_update(Ted *ted);
@@ -1021,9 +1031,19 @@ SymbolInfo *tags_get_symbols(Ted *ted);
 	snprintf((ted)->error, sizeof (ted)->error - 1, __VA_ARGS__)
 // for fatal errors
 void die(PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRINTF(1, 2);
+void *ted_malloc(Ted *ted, size_t size);
+void *ted_calloc(Ted *ted, size_t n, size_t size);
+void *ted_realloc(Ted *ted, void *p, size_t new_size);
 Status ted_get_file(Ted const *ted, const char *name, char *out, size_t outsz);
+// get full path relative to ted->cwd.
+void ted_path_full(Ted *ted, const char *relpath, char *abspath, size_t abspath_size);
+void ted_reset_active_buffer(Ted *ted);
 void ted_seterr_to_buferr(Ted *ted, TextBuffer *buffer);
 bool ted_haserr(Ted *ted);
+// Returns the buffer containing the file at `path`, or NULL if there is none.
+TextBuffer *ted_get_buffer_with_file(Ted *ted, const char *path);
+Status ted_save_all(Ted *ted);
+void ted_reload_all(Ted *ted);
 const char *ted_geterr(Ted *ted);
 // Load all the fonts ted will use.
 void ted_load_fonts(Ted *ted);
@@ -1039,11 +1059,20 @@ LSP *ted_active_lsp(Ted *ted);
 u32 ted_color(Ted *ted, ColorSetting color);
 Status ted_open_file(Ted *ted, const char *filename);
 Status ted_new_file(Ted *ted, const char *filename);
+// returns the index of an available buffer, or -1 if none are available 
+i32 ted_new_buffer(Ted *ted);
+// Returns the index of an available node, or -1 if none are available 
+i32 ted_new_node(Ted *ted);
+// Opposite of ted_new_buffer
+// Make sure you set active_buffer to something else if you delete it!
+void ted_delete_buffer(Ted *ted, u16 index);
 // save all changes to all buffers with unsaved changes.
 Status ted_save_all(Ted *ted);
 // sets the active buffer to this buffer, and updates active_node, etc. accordingly
 // you can pass NULL to buffer to make it so no buffer is active.
 void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer);
+// switch to this node
+void ted_node_switch(Ted *ted, Node *node);
 void ted_load_configs(Ted *ted, bool reloading);
 void ted_press_key(Ted *ted, SDL_Scancode scancode, SDL_Keymod modifier);
 bool ted_get_mouse_buffer_pos(Ted *ted, TextBuffer **pbuffer, BufferPos *ppos);
@@ -1051,6 +1080,8 @@ void ted_flash_error_cursor(Ted *ted);
 void ted_go_to_position(Ted *ted, const char *path, u32 line, u32 index, bool is_lsp);
 void ted_go_to_lsp_document_position(Ted *ted, LSP *lsp, LSPDocumentPosition position);
 void ted_cancel_lsp_request(Ted *ted, LSPID lsp, LSPRequestID request);
+// how tall is a line buffer?
+float ted_line_buffer_height(Ted *ted);
 
 // === ui.c ===
 void selector_up(Ted *ted, Selector *s, i64 n);

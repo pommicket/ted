@@ -3,10 +3,14 @@
 
 #include "base.h"
 #include "ds.h"
+#include "os.h"
 
 typedef u32 LSPDocumentID;
 typedef u32 LSPID;
 typedef u32 LSPRequestID;
+typedef struct SDL_mutex *LSPMutex;
+typedef struct SDL_semaphore *LSPSemaphore;
+typedef struct SDL_Thread *LSPThread;
 
 typedef struct {
 	u32 line;
@@ -496,14 +500,14 @@ typedef struct LSP {
 	// thread-safety: created in lsp_create, then only accessed by the communication thread
 	Process *process;
 	
-	SDL_mutex *document_mutex;
+	LSPMutex document_mutex;
 		// for our purposes, folders are "documents"
 		// the spec kinda does this too: WorkspaceFolder has a `uri: DocumentUri` member.
 		StrHashTable document_ids; // values are u32. they are indices into document_data.
 		// this is a dynamic array which just keeps growing.
 		// but the user isn't gonna open millions of files so it's fine.
 		LSPDocumentData *document_data;
-	SDL_mutex *messages_mutex;
+	LSPMutex messages_mutex;
 		LSPMessage *messages_server2client;
 		LSPMessage *messages_client2server;
 		// we keep track of client-to-server requests
@@ -516,8 +520,8 @@ typedef struct LSP {
 	_Atomic bool initialized;
 	// thread-safety: only set once in lsp_create.
 	Language language;
-	SDL_Thread *communication_thread;
-	SDL_sem *quit_sem;
+	LSPThread communication_thread;
+	LSPSemaphore quit_sem;
 	// thread-safety: only accessed in communication thread
 	char *received_data; // dynamic array
 	// thread-safety: in the communication thread, we fill this in, then set `initialized = true`.
@@ -530,9 +534,9 @@ typedef struct LSP {
 	char32_t *signature_help_trigger_chars; // dynamic array
 	// thread-safety: same as `capabilities`
 	char32_t *signature_help_retrigger_chars; // dynamic array
-	SDL_mutex *workspace_folders_mutex;
+	LSPMutex workspace_folders_mutex;
 		LSPDocumentID *workspace_folders; // dynamic array of root directories of LSP workspace folders
-	SDL_mutex *error_mutex;
+	LSPMutex error_mutex;
 		char error[256];
 } LSP;
 
@@ -577,6 +581,8 @@ void lsp_free(LSP *lsp);
 
 #if defined LSP_INTERNAL && !defined LSP_INTERNAL_H_
 #define LSP_INTERNAL_H_
+
+#include "sdl-inc.h"
 
 #define lsp_set_error(lsp, ...) do {\
 		SDL_LockMutex(lsp->error_mutex);\
@@ -679,6 +685,8 @@ JSONValue json_root(const JSON *json);
 JSONValue json_get(const JSON *json, const char *path);
 bool json_has(const JSON *json, const char *path);
 void json_string_get(const JSON *json, JSONString string, char *buf, size_t buf_sz);
+// returns a malloc'd null-terminated string.
+char *json_string_get_alloc(const JSON *json, JSONString string);
 void json_debug_print(const JSON *json);
 size_t json_escape_to(char *out, size_t out_sz, const char *in);
 char *json_escape(const char *str);

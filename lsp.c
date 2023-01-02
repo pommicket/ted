@@ -1,5 +1,8 @@
 #define LSP_INTERNAL 1
 #include "lsp.h"
+#include "util.h"
+
+const char *language_to_str(Language language);
 
 // it's nice to have request IDs be totally unique, including across LSP servers.
 static LSPRequestID get_request_id(void) {
@@ -249,7 +252,7 @@ static void lsp_receive(LSP *lsp, size_t max_size) {
 		// read stderr. if all goes well, we shouldn't get anything over stderr.
 		char stderr_buf[1024] = {0};
 		for (size_t i = 0; i < (max_size + sizeof stderr_buf) / sizeof stderr_buf; ++i) {
-			ssize_t nstderr = process_read_stderr(&lsp->process, stderr_buf, sizeof stderr_buf - 1);
+			ssize_t nstderr = process_read_stderr(lsp->process, stderr_buf, sizeof stderr_buf - 1);
 			if (nstderr > 0) {
 				// uh oh
 				stderr_buf[nstderr] = '\0';
@@ -262,7 +265,7 @@ static void lsp_receive(LSP *lsp, size_t max_size) {
 
 	size_t received_so_far = arr_len(lsp->received_data);
 	arr_reserve(lsp->received_data, received_so_far + max_size + 1);
-	long long bytes_read = process_read(&lsp->process, lsp->received_data + received_so_far, max_size);
+	long long bytes_read = process_read(lsp->process, lsp->received_data + received_so_far, max_size);
 	if (bytes_read <= 0) {
 		// no data
 		return;
@@ -449,7 +452,7 @@ LSP *lsp_create(const char *root_dir, Language language, const char *analyzer_co
 		.separate_stderr = true,
 		.working_directory = root_dir,
 	};
-	process_run_ex(&lsp->process, analyzer_command, &settings);
+	lsp->process = process_run_ex(analyzer_command, &settings);
 	LSPRequest initialize = {
 		.type = LSP_REQUEST_INITIALIZE
 	};
@@ -513,7 +516,7 @@ void lsp_free(LSP *lsp) {
 	SDL_DestroyMutex(lsp->workspace_folders_mutex);
 	SDL_DestroyMutex(lsp->error_mutex);
 	SDL_DestroySemaphore(lsp->quit_sem);
-	process_kill(&lsp->process);
+	process_kill(lsp->process);
 	
 	arr_free(lsp->received_data);
 	

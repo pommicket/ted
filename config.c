@@ -170,6 +170,31 @@ static void context_copy(SettingsContext *dest, const SettingsContext *src) {
 		dest->path = str_dup(src->path);
 }
 
+// score is higher if context is closer match.
+long context_score(const char *path, Language lang, const SettingsContext *context) {
+	long score = 0;
+	
+	if (context->language) {
+		if (lang == context->language) {
+			score += 10000;
+		} else {
+			// dont use this. it's language-specific and for the wrong language.
+			return INT_MIN;
+		}
+	}
+	
+	if (context->path) {
+		if (path && str_has_path_prefix(path, context->path)) {
+			score += (long)strlen(context->path);
+		} else {
+			// dont use this. it's path-specific and for the wrong path.
+			return INT_MIN;
+		}
+	}
+	
+	return score;
+}
+
 /* does being in the context of `parent` imply you are in the context of `child`? */
 static bool context_is_parent(const SettingsContext *parent, const SettingsContext *child) {
 	if (child->language == 0 && parent->language != 0)

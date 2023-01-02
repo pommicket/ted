@@ -120,8 +120,8 @@ void hover_frame(Ted *ted, double dt) {
 	const u32 *colors = settings->colors;
 	const char *text = hover->text;
 	Font *font = ted->font;
-	float x = ted->mouse_pos.x, y = ted->mouse_pos.y + font->char_height;
-	float char_height = font->char_height;
+	float char_height = text_font_char_height(font);
+	float x = ted->mouse_pos.x, y = ted->mouse_pos.y + char_height;
 	
 	buffer_highlight_lsp_range(buffer, hover->range);
 	

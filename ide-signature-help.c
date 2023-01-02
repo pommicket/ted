@@ -117,9 +117,10 @@ void signature_help_frame(Ted *ted) {
 	
 	float width = buffer->x2 - buffer->x1;
 	float height = FLT_MAX;
+	const float char_height = text_font_char_height(font);
 	// make sure signature help doesn't take up too much space
 	while (1) {
-		height = font->char_height * signature_count;
+		height = char_height * signature_count;
 		if (height < (buffer->y2 - buffer->y1) * 0.25f)
 			break;
 		--signature_count;
@@ -146,7 +147,7 @@ void signature_help_frame(Ted *ted) {
 		text_utf8_with_state(font, &state, signature->label_pre);
 		text_utf8_with_state(font_bold, &state, signature->label_active);
 		text_utf8_with_state(font, &state, signature->label_post);
-		y += font->char_height;
+		y += char_height;
 	}
 	
 	gl_geometry_draw();

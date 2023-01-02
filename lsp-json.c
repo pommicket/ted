@@ -4,7 +4,8 @@
 
 #define LSP_INTERNAL 1
 #include "lsp.h"
-
+#include "util.h"
+#include "unicode.h"
 
 #define SKIP_WHITESPACE while (json_is_space(text[index])) ++index;
 
@@ -587,8 +588,7 @@ void json_string_get(const JSON *json, JSONString string, char *buf, size_t buf_
 	*buf = '\0';
 }
 
-// returns a malloc'd null-terminated string.
-static char *json_string_get_alloc(const JSON *json, JSONString string) {
+char *json_string_get_alloc(const JSON *json, JSONString string) {
 	u32 n = string.len + 1;
 	if (n == 0) --n; // extreme edge case
 	char *buf = calloc(1, n);

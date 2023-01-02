@@ -311,7 +311,7 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		menu_open(ted, MENU_OPEN);
 		break;
 	case CMD_NEW:
-		ted_new_file(ted, NULL);
+		(void)ted_new_file(ted, NULL);
 		break;
 	case CMD_SAVE:
 		ted->last_save_time = ted->frame_time;
@@ -331,7 +331,7 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		break;
 	case CMD_SAVE_ALL:
 		ted->last_save_time = ted->frame_time;
-		ted_save_all(ted);
+		(void)ted_save_all(ted);
 		break;
 	case CMD_RELOAD_ALL:
 		ted_reload_all(ted);
@@ -412,7 +412,7 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 	case CMD_OPEN_CONFIG: {
 		char local_config_filename[TED_PATH_MAX];
 		strbuf_printf(local_config_filename, "%s" PATH_SEPARATOR_STR TED_CFG, ted->local_data_dir);
-		ted_open_file(ted, local_config_filename);
+		(void)ted_open_file(ted, local_config_filename);
 	} break;
 	case CMD_COMMAND_SELECTOR:
 		menu_open(ted, MENU_COMMAND_SELECTOR);

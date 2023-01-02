@@ -2,6 +2,7 @@
 
 #if __unix__
 #include <fcntl.h>
+#include <unistd.h>
 #endif
 
 static Status file_selector_cd_(Ted *ted, FileSelector *fs, const char *path, int symlink_depth);

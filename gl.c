@@ -167,7 +167,7 @@ GLuint gl_compile_and_link_shaders(char error_buf[256], const char *vshader_code
 	return program;
 }
 
-GLuint gl_attrib_loc(GLuint program, const char *attrib) {
+GLuint gl_attrib_location(GLuint program, const char *attrib) {
 	GLint loc = glGetAttribLocation(program, attrib);
 	if (loc == -1) {
 		debug_print("Couldn't find vertex attribute %s.\n", attrib);
@@ -176,7 +176,7 @@ GLuint gl_attrib_loc(GLuint program, const char *attrib) {
 	return (GLuint)loc;
 }
 
-GLint gl_uniform_loc(GLuint program, const char *uniform) {
+GLint gl_uniform_location(GLuint program, const char *uniform) {
 	GLint loc = glGetUniformLocation(program, uniform);
 	if (loc == -1) {
 		debug_print("Couldn't find uniform: %s.\n", uniform);
@@ -218,9 +218,9 @@ void gl_geometry_init(void) {
 	";
 
 	gl_geometry_program = gl_compile_and_link_shaders(NULL, vshader_code, fshader_code);
-	gl_geometry_v_pos = gl_attrib_loc(gl_geometry_program, "v_pos");
-	gl_geometry_v_color = gl_attrib_loc(gl_geometry_program, "v_color");
-	gl_geometry_u_window_size = gl_uniform_loc(gl_geometry_program, "u_window_size");
+	gl_geometry_v_pos = gl_attrib_location(gl_geometry_program, "v_pos");
+	gl_geometry_v_color = gl_attrib_location(gl_geometry_program, "v_color");
+	gl_geometry_u_window_size = gl_uniform_location(gl_geometry_program, "u_window_size");
 
 	glGenBuffers(1, &gl_geometry_vbo);
 	if (gl_version_major >= 3)

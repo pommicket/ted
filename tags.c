@@ -1,4 +1,5 @@
 #include "ted.h"
+#include "pcre-inc.h"
 
 static const char *tags_filename(Ted *ted, bool error_if_does_not_exist) {
 	change_directory(ted->cwd);

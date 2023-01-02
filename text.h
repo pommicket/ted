@@ -1,6 +1,9 @@
 #ifndef TEXT_H_
 #define TEXT_H_
 
+#include "base.h"
+#include "util.h"
+
 // A text-rendering interface.
 // Example usage:
 // Font *font = text_font_load("font.ttf", 18);
@@ -73,6 +76,6 @@ void text_render(Font *font);
 // TextRenderState state = text_render_state_default;
 //    (set a few options)
 // text_render_with_state(font, &state, ...)
-const TextRenderState text_render_state_default;
+extern const TextRenderState text_render_state_default;
 
 #endif

@@ -1,5 +1,7 @@
 #define LSP_INTERNAL 1
 #include "lsp.h"
+#include "util.h"
+#include "unicode.h"
 
 static WarnUnusedResult bool lsp_expect_type(LSP *lsp, JSONValue value, JSONValueType type, const char *what) {
 	if (value.type != type) {

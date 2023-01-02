@@ -324,7 +324,7 @@ static void message_writer_write_and_free(LSP *lsp, JSONWriter *o) {
 	#endif
 	
 	// @TODO: does write always write the full amount? probably not. this should be fixed.
-	process_write(&lsp->process, content, strlen(content));
+	process_write(lsp->process, content, strlen(content));
 
 	str_builder_free(&builder);
 }

@@ -10,10 +10,21 @@ PROFILE_CFLAGS=$(ALL_CFLAGS) -O3 -g -DPROFILE=1
 GLOBAL_DATA_DIR=/usr/share/ted
 LOCAL_DATA_DIR=/home/`logname`/.local/share/ted
 INSTALL_BIN_DIR=/usr/bin
-ted: *.[ch] libpcre2-32.a stb_truetype.o stb_image.o
-	$(CC) main.c stb_truetype.o stb_image.o -o ted $(DEBUG_CFLAGS) $(LIBS)
-%.o: %.c
+OBJECTS=obj/buffer.o obj/build.o obj/colors.o obj/command.o\
+	obj/config.o obj/find.o obj/gl.o obj/ide-autocomplete.o\
+	obj/ide-definitions.o obj/ide-highlights.o obj/ide-hover.o\
+	obj/ide-signature-help.o obj/ide-usages.o obj/lsp.o obj/lsp-json.o\
+	obj/lsp-parse.o obj/lsp-write.o obj/main.o obj/menu.o obj/node.o\
+	obj/os-posix.o obj/session.o obj/stb_image.o obj/stb_truetype.o\
+	obj/syntax.o obj/tags.o obj/ted.o obj/text.o obj/ui.o obj/util.o 
+ted: *.[ch] libpcre2-32.a $(OBJECTS)
+	$(CC) $(OBJECTS) -o ted $(DEBUG_CFLAGS) $(LIBS)
+obj/stb_%.o: stb_%.c obj
 	$(CC) -O3 -Wall $< -c -o $@
+obj/%.o: %.c *.h obj
+	$(CC) -Wall $< -c -o $@ $(DEBUG_CFLAGS)
+obj:
+	mkdir obj
 release: *.[ch] libpcre2-32.a
 	$(CC) main.c -o ted $(RELEASE_CFLAGS) $(LIBS)
 profile: *.[ch] libpcre2-32.a

@@ -1,6 +1,5 @@
-#include "base.h"
-#include "text.h"
-#include "unicode.h"
+#include "ted.h"
+
 #if DEBUG
 typedef struct
 {
@@ -22,8 +21,6 @@ no_warn_start
 no_warn_end
 #endif
 
-
-#include <stdlib.h>
 
 // We split up code points into a bunch of pages, so we don't have to load all of the font at
 // once into one texture.
@@ -52,7 +49,7 @@ struct Font {
 	TextTriangle *triangles[CHAR_PAGE_COUNT]; // triangles to render for each page
 };
 
-TextRenderState const text_render_state_default = {
+const TextRenderState text_render_state_default = {
 	.render = true,
 	.wrap = false,
 	.x = 0, .y = 0,
@@ -114,11 +111,11 @@ void main() {\n\
 ";
 
 	text_program = gl_compile_and_link_shaders(NULL, vshader_code, fshader_code);
-	text_v_pos = gl_attrib_loc(text_program, "v_pos");
-	text_v_color = gl_attrib_loc(text_program, "v_color");
-	text_v_tex_coord = gl_attrib_loc(text_program, "v_tex_coord");
-	text_u_sampler = gl_uniform_loc(text_program, "sampler");
-	text_u_window_size = gl_uniform_loc(text_program, "u_window_size");
+	text_v_pos = gl_attrib_location(text_program, "v_pos");
+	text_v_color = gl_attrib_location(text_program, "v_color");
+	text_v_tex_coord = gl_attrib_location(text_program, "v_tex_coord");
+	text_u_sampler = gl_uniform_location(text_program, "sampler");
+	text_u_window_size = gl_uniform_location(text_program, "u_window_size");
 	glGenBuffers(1, &text_vbo);
 	glGenVertexArrays(1, &text_vao);
 

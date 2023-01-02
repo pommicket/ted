@@ -2,6 +2,8 @@
 #ifndef OS_H_
 #define OS_H_
 
+#include "base.h"
+
 typedef enum {
 	FS_NON_EXISTENT,
 	FS_FILE,
@@ -55,7 +57,9 @@ static void fs_dir_entries_free(FsDirectoryEntry **entries) {
 }
 
 static double time_get_seconds(void) {
-	return timespec_to_seconds(time_get());
+	struct timespec t = time_get();
+	return (double)t.tv_sec
+		+ (double)t.tv_nsec * 1e-9;
 }
 
 

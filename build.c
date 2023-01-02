@@ -2,7 +2,7 @@
 
 void build_stop(Ted *ted) {
 	if (ted->building)
-		process_kill(&ted->build_process);
+		process_kill(ted->build_process);
 	ted->building = false;
 	ted->build_shown = false;
 	arr_foreach_ptr(ted->build_errors, BuildError, err) {
@@ -38,7 +38,9 @@ static bool build_run_next_command_in_queue(Ted *ted) {
 	char *command = ted->build_queue[0];
 	arr_remove(ted->build_queue, 0);
 	if (ted_save_all(ted)) {
-		if (process_run(&ted->build_process, command)) {
+		ted->build_process = process_run(command);
+		const char *error = process_geterr(ted->build_process);
+		if (!error) {
 			ted->building = true;
 			ted->build_shown = true;
 			TextBuffer *build_buffer = &ted->build_buffer;
@@ -50,7 +52,7 @@ static bool build_run_next_command_in_queue(Ted *ted) {
 			free(command);
 			return true;
 		} else {
-			ted_seterr(ted, "Couldn't start build: %s", process_geterr(&ted->build_process));
+			ted_seterr(ted, "Couldn't start build: %s", error);
 			build_stop(ted);
 			return false;
 		}
@@ -238,7 +240,7 @@ void build_check_for_errors(Ted *ted) {
 
 void build_frame(Ted *ted, float x1, float y1, float x2, float y2) {
 	TextBuffer *buffer = &ted->build_buffer;
-	Process *process = &ted->build_process;
+	Process *process = ted->build_process;
 	assert(ted->build_shown);
 	char buf[256];
 	if (ted->building) {

@@ -1,5 +1,6 @@
 /*
 @TODO:
+- don't include SDL when possible
 - rename v[234] to vec[234]
 - make ctrl+up/ctrl+down move to next/prev blank line
 - broken session fix: close buffers not in any used node
@@ -17,11 +18,9 @@
 - when searching files, put exact matches at the top
 - auto-set build command for cmake (both for windows and unix)
 --- LSP MERGE ---
-- improve structure of ted source code to make LSP completions better
-      (make every c file a valid translation unit)
-   - some way of opening + closing all C files in directory for clangd workspace/symbols to work?
-     is this still necessary?
-        - maybe it can be done with the clangd config instead.s
+- some way of opening + closing all C files in directory for clangd workspace/symbols to work?
+	is this still necessary?
+	- maybe it can be done with the clangd config instead.
 - CSS highlighting
 - styles ([color] sections)
 - more documentation generally (development.md or something?)
@@ -57,7 +56,6 @@ FUTURE FEATURES:
 #include "ted.h"
 
 #include <locale.h>
-#include <wctype.h>
 #include <signal.h>
 #if __linux__
 #include <execinfo.h>

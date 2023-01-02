@@ -39,19 +39,19 @@ static void ted_out_of_mem(Ted *ted) {
 	ted_seterr(ted, "Out of memory.");
 }
 
-static void *ted_malloc(Ted *ted, size_t size) {
+void *ted_malloc(Ted *ted, size_t size) {
 	void *ret = malloc(size);
 	if (!ret) ted_out_of_mem(ted);
 	return ret;
 }
 
-static void *ted_calloc(Ted *ted, size_t n, size_t size) {
+void *ted_calloc(Ted *ted, size_t n, size_t size) {
 	void *ret = calloc(n, size);
 	if (!ret) ted_out_of_mem(ted);
 	return ret;
 }
 
-static void *ted_realloc(Ted *ted, void *p, size_t new_size) {
+void *ted_realloc(Ted *ted, void *p, size_t new_size) {
 	void *ret = realloc(p, new_size);
 	if (!ret) ted_out_of_mem(ted);
 	return ret;
@@ -175,7 +175,7 @@ u32 ted_color(Ted *ted, ColorSetting color) {
 	return ted_active_settings(ted)->colors[color];
 }
 
-static void ted_path_full(Ted *ted, const char *relpath, char *abspath, size_t abspath_size) {
+void ted_path_full(Ted *ted, const char *relpath, char *abspath, size_t abspath_size) {
 	path_full(ted->cwd, relpath, abspath, abspath_size);
 }
 
@@ -269,7 +269,7 @@ void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer) {
 }
 
 // set ted->active_buffer to something nice
-static void ted_reset_active_buffer(Ted *ted) {
+void ted_reset_active_buffer(Ted *ted) {
 	if (ted->nodes_used[0]) {
 		Node *node = &ted->nodes[0];
 		while (!node->tabs)
@@ -282,8 +282,7 @@ static void ted_reset_active_buffer(Ted *ted) {
 }
 
 
-// returns the index of an available buffer, or -1 if none are available 
-static i32 ted_new_buffer(Ted *ted) {
+i32 ted_new_buffer(Ted *ted) {
 	bool *buffers_used = ted->buffers_used;
 	for (i32 i = 1; // start from 1, so as not to use the null buffer
 		i < TED_MAX_BUFFERS; ++i) {
@@ -296,9 +295,7 @@ static i32 ted_new_buffer(Ted *ted) {
 	return -1;
 }
 
-// Opposite of ted_new_buffer
-// Make sure you set active_buffer to something else if you delete it!
-static void ted_delete_buffer(Ted *ted, u16 index) {
+void ted_delete_buffer(Ted *ted, u16 index) {
 	TextBuffer *buffer = &ted->buffers[index];
 	if (buffer == ted->active_buffer)
 		ted_switch_to_buffer(ted, NULL); // make sure we don't set the active buffer to something invalid
@@ -308,8 +305,7 @@ static void ted_delete_buffer(Ted *ted, u16 index) {
 	ted->buffers_used[index] = false;
 }
 
-// Returns the index of an available node, or -1 if none are available 
-static i32 ted_new_node(Ted *ted) {
+i32 ted_new_node(Ted *ted) {
 	bool *nodes_used = ted->nodes_used;
 	for (i32 i = 0; i < TED_MAX_NODES; ++i) {
 		if (!nodes_used[i]) {
@@ -323,14 +319,12 @@ static i32 ted_new_node(Ted *ted) {
 	
 }
 
-// how tall is a line buffer?
-static float ted_line_buffer_height(Ted *ted) {
+float ted_line_buffer_height(Ted *ted) {
 	const float char_height = text_font_char_height(ted->font);
 	return char_height + 2 * ted_active_settings(ted)->border_thickness;
 }
 
-// switch to this node
-static void ted_node_switch(Ted *ted, Node *node) {
+void ted_node_switch(Ted *ted, Node *node) {
 	assert(node->tabs);
 	ted_switch_to_buffer(ted, &ted->buffers[node->tabs[node->active_tab]]);
 }
@@ -370,8 +364,7 @@ static Status ted_open_buffer(Ted *ted, u16 *buffer_idx, u16 *tab) {
 	}
 }
 
-// Returns the buffer containing the file at `path`, or NULL if there is none.
-static TextBuffer *ted_get_buffer_with_file(Ted *ted, const char *path) {
+TextBuffer *ted_get_buffer_with_file(Ted *ted, const char *path) {
 	bool *buffers_used = ted->buffers_used;
 	TextBuffer *buffers = ted->buffers;
 	for (u16 i = 0; i < TED_MAX_BUFFERS; ++i) {
@@ -440,7 +433,7 @@ Status ted_new_file(Ted *ted, const char *filename) {
 
 
 Status ted_save_all(Ted *ted) {
-	Status success = true;
+	bool success = true;
 	bool *buffers_used = ted->buffers_used;
 	for (u16 i = 0; i < TED_MAX_BUFFERS; ++i) {
 		if (buffers_used[i]) {
@@ -463,7 +456,7 @@ Status ted_save_all(Ted *ted) {
 	return success;
 }
 
-static void ted_reload_all(Ted *ted) {
+void ted_reload_all(Ted *ted) {
 	bool *buffers_used = ted->buffers_used;
 	for (u64 i = 0; i < TED_MAX_BUFFERS; ++i) {
 		if (buffers_used[i]) {
