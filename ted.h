@@ -144,7 +144,7 @@ typedef struct {
 
 typedef struct {
 	// NOTE: to add more options to ted, add fields here,
-	// and change the options_<type> global constant in config.c
+	// and change the settings_<type> global constant in settings.h
 	
 	SettingsContext context;
 	u32 colors[COLOR_COUNT];

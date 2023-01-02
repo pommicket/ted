@@ -11,6 +11,7 @@
 - run everything through valgrind ideally with leak checking
 - grep -i -n TODO *.[ch]
 - when searching files, put exact matches at the top
+- auto-set build command for cmake (both for windows and unix)
 --- LSP MERGE ---
 - improve structure of ted source code to make LSP completions better
       (make every c file a valid translation unit)

@@ -7,6 +7,9 @@
 // [section2]
 // asdf = 123
 
+
+#include "settings.h"
+
 // all worth it for the -Wformat warnings
 #define config_err(cfg, ...) do {\
 	if ((cfg)->error) break;\
@@ -186,139 +189,27 @@ static u32 config_parse_key_combo(ConfigReader *cfg, char const *str) {
 }
 
 
-// all the "control" pointers here are relative to a NULL Settings object.
-typedef struct {
-	char const *name;
-	const bool *control;
-	bool per_language; // allow per-language control
-} OptionBool;
-typedef struct {
-	char const *name;
-	const u8 *control;
-	u8 min, max;
-	bool per_language;
-} OptionU8;
-typedef struct {
-	char const *name;
-	const float *control;
-	float min, max;
-	bool per_language;
-} OptionFloat;
-typedef struct {
-	char const *name;
-	const u16 *control;
-	u16 min, max;
-	bool per_language;
-} OptionU16;
-typedef struct {
-	char const *name;
-	const u32 *control;
-	u32 min, max;
-	bool per_language;
-} OptionU32;
-typedef struct {
-	char const *name;
-	const char *control;
-	size_t buf_size;
-	bool per_language;
-} OptionString;
-
-typedef enum {
-	OPTION_BOOL = 1,
-	OPTION_U8,
-	OPTION_U16,
-	OPTION_U32,
-	OPTION_FLOAT,
-	OPTION_STRING
-} OptionType;
-typedef struct {
-	OptionType type;
-	const char *name;
-	bool per_language;
-	union {
-		OptionU8 _u8;
-		OptionBool _bool;
-		OptionU16 _u16;
-		OptionU32 _u32;
-		OptionFloat _float;
-		OptionString _string;
-	} u;
-} OptionAny;
-
-// core options
-static Settings const options_zero = {0};
-static OptionBool const options_bool[] = {
-	{"auto-indent", &options_zero.auto_indent, true},
-	{"auto-add-newline", &options_zero.auto_add_newline, true},
-	{"auto-reload", &options_zero.auto_reload, true},
-	{"auto-reload-config", &options_zero.auto_reload_config, false},
-	{"syntax-highlighting", &options_zero.syntax_highlighting, true},
-	{"line-numbers", &options_zero.line_numbers, true},
-	{"restore-session", &options_zero.restore_session, false},
-	{"regenerate-tags-if-not-found", &options_zero.regenerate_tags_if_not_found, true},
-	{"indent-with-spaces", &options_zero.indent_with_spaces, true},
-	{"trigger-characters", &options_zero.trigger_characters, true},
-	{"identifier-trigger-characters", &options_zero.identifier_trigger_characters, true},
-	{"signature-help-enabled", &options_zero.signature_help_enabled, true},
-	{"lsp-enabled", &options_zero.lsp_enabled, true},
-	{"hover-enabled", &options_zero.hover_enabled, true},
-	{"vsync", &options_zero.vsync, false},
-	{"highlight-enabled", &options_zero.highlight_enabled, true},
-	{"highlight-auto", &options_zero.highlight_auto, true},
-};
-static OptionU8 const options_u8[] = {
-	{"tab-width", &options_zero.tab_width, 1, 100, true},
-	{"cursor-width", &options_zero.cursor_width, 1, 100, true},
-	{"undo-save-time", &options_zero.undo_save_time, 1, 200, true},
-	{"border-thickness", &options_zero.border_thickness, 1, 30, false},
-	{"padding", &options_zero.padding, 0, 100, false},
-	{"scrolloff", &options_zero.scrolloff, 1, 100, true},
-	{"tags-max-depth", &options_zero.tags_max_depth, 1, 100, false},
-};
-static OptionU16 const options_u16[] = {
-	{"text-size", &options_zero.text_size, TEXT_SIZE_MIN, TEXT_SIZE_MAX, false},
-	{"max-menu-width", &options_zero.max_menu_width, 10, U16_MAX, false},
-	{"error-display-time", &options_zero.error_display_time, 0, U16_MAX, false},
-	{"framerate-cap", &options_zero.framerate_cap, 3, 1000, false},
-};
-static OptionU32 const options_u32[] = {
-	{"max-file-size", &options_zero.max_file_size, 100, 2000000000, false},
-	{"max-file-size-view-only", &options_zero.max_file_size_view_only, 100, 2000000000, false},
-};
-static OptionFloat const options_float[] = {
-	{"cursor-blink-time-on", &options_zero.cursor_blink_time_on, 0, 1000, true},
-	{"cursor-blink-time-off", &options_zero.cursor_blink_time_off, 0, 1000, true},
-	{"hover-time", &options_zero.hover_time, 0, INFINITY, true},
-};
-static OptionString const options_string[] = {
-	{"build-default-command", options_zero.build_default_command, sizeof options_zero.build_default_command, true},
-	{"bg-shader", options_zero.bg_shader_text, sizeof options_zero.bg_shader_text, true},
-	{"bg-texture", options_zero.bg_shader_image, sizeof options_zero.bg_shader_image, true},
-	{"root-identifiers", options_zero.root_identifiers, sizeof options_zero.root_identifiers, true},
-	{"lsp", options_zero.lsp, sizeof options_zero.lsp, true},
-};
-
-static void option_bool_set(Settings *settings, const OptionBool *opt, bool value) {
-	*(bool *)((char *)settings + ((char*)opt->control - (char*)&options_zero)) = value;
+static void option_bool_set(Settings *settings, const SettingBool *opt, bool value) {
+	*(bool *)((char *)settings + ((char*)opt->control - (char*)&settings_zero)) = value;
 }
-static void option_u8_set(Settings *settings, const OptionU8 *opt, u8 value) {
+static void option_u8_set(Settings *settings, const SettingU8 *opt, u8 value) {
 	if (value >= opt->min && value <= opt->max)
-		*(u8 *)((char *)settings + ((char*)opt->control - (char*)&options_zero)) = value;
+		*(u8 *)((char *)settings + ((char*)opt->control - (char*)&settings_zero)) = value;
 }
-static void option_u16_set(Settings *settings, const OptionU16 *opt, u16 value) {
+static void option_u16_set(Settings *settings, const SettingU16 *opt, u16 value) {
 	if (value >= opt->min && value <= opt->max)
-		*(u16 *)((char *)settings + ((char*)opt->control - (char*)&options_zero)) = value;
+		*(u16 *)((char *)settings + ((char*)opt->control - (char*)&settings_zero)) = value;
 }
-static void option_u32_set(Settings *settings, const OptionU32 *opt, u32 value) {
+static void option_u32_set(Settings *settings, const SettingU32 *opt, u32 value) {
 	if (value >= opt->min && value <= opt->max)
-		*(u32 *)((char *)settings + ((char*)opt->control - (char*)&options_zero)) = value;
+		*(u32 *)((char *)settings + ((char*)opt->control - (char*)&settings_zero)) = value;
 }
-static void option_float_set(Settings *settings, const OptionFloat *opt, float value) {
+static void option_float_set(Settings *settings, const SettingFloat *opt, float value) {
 	if (value >= opt->min && value <= opt->max)
-		*(float *)((char *)settings + ((char*)opt->control - (char*)&options_zero)) = value;
+		*(float *)((char *)settings + ((char*)opt->control - (char*)&settings_zero)) = value;
 }
-static void option_string_set(Settings *settings, const OptionString *opt, const char *value) {
-	char *control = (char *)settings + (opt->control - (char*)&options_zero);
+static void option_string_set(Settings *settings, const SettingString *opt, const char *value) {
+	char *control = (char *)settings + (opt->control - (char*)&settings_zero);
 	str_cpy(control, opt->buf_size, value);
 }
 
@@ -391,46 +282,46 @@ static void config_init_options(void) {
 	if (initialized_options) return;
 	
 	OptionAny *opt = all_options;
-	for (size_t i = 0; i < arr_count(options_bool); ++i) {
-		opt->type = OPTION_BOOL;
-		opt->name = options_bool[i].name;
-		opt->per_language = options_bool[i].per_language;
-		opt->u._bool = options_bool[i];
+	for (size_t i = 0; i < arr_count(settings_bool); ++i) {
+		opt->type = SETTING_BOOL;
+		opt->name = settings_bool[i].name;
+		opt->per_language = settings_bool[i].per_language;
+		opt->u._bool = settings_bool[i];
 		++opt;
 	}
-	for (size_t i = 0; i < arr_count(options_u8); ++i) {
-		opt->type = OPTION_U8;
-		opt->name = options_u8[i].name;
-		opt->per_language = options_u8[i].per_language;
-		opt->u._u8 = options_u8[i];
+	for (size_t i = 0; i < arr_count(settings_u8); ++i) {
+		opt->type = SETTING_U8;
+		opt->name = settings_u8[i].name;
+		opt->per_language = settings_u8[i].per_language;
+		opt->u._u8 = settings_u8[i];
 		++opt;
 	}
-	for (size_t i = 0; i < arr_count(options_u16); ++i) {
-		opt->type = OPTION_U16;
-		opt->name = options_u16[i].name;
-		opt->per_language = options_u16[i].per_language;
-		opt->u._u16 = options_u16[i];
+	for (size_t i = 0; i < arr_count(settings_u16); ++i) {
+		opt->type = SETTING_U16;
+		opt->name = settings_u16[i].name;
+		opt->per_language = settings_u16[i].per_language;
+		opt->u._u16 = settings_u16[i];
 		++opt;
 	}
-	for (size_t i = 0; i < arr_count(options_u32); ++i) {
-		opt->type = OPTION_U32;
-		opt->name = options_u32[i].name;
-		opt->per_language = options_u32[i].per_language;
-		opt->u._u32 = options_u32[i];
+	for (size_t i = 0; i < arr_count(settings_u32); ++i) {
+		opt->type = SETTING_U32;
+		opt->name = settings_u32[i].name;
+		opt->per_language = settings_u32[i].per_language;
+		opt->u._u32 = settings_u32[i];
 		++opt;
 	}
-	for (size_t i = 0; i < arr_count(options_float); ++i) {
-		opt->type = OPTION_FLOAT;
-		opt->name = options_float[i].name;
-		opt->per_language = options_float[i].per_language;
-		opt->u._float = options_float[i];
+	for (size_t i = 0; i < arr_count(settings_float); ++i) {
+		opt->type = SETTING_FLOAT;
+		opt->name = settings_float[i].name;
+		opt->per_language = settings_float[i].per_language;
+		opt->u._float = settings_float[i];
 		++opt;
 	}
-	for (size_t i = 0; i < arr_count(options_string); ++i) {
-		opt->type = OPTION_STRING;
-		opt->name = options_string[i].name;
-		opt->per_language = options_string[i].per_language;
-		opt->u._string = options_string[i];
+	for (size_t i = 0; i < arr_count(settings_string); ++i) {
+		opt->type = SETTING_STRING;
+		opt->name = settings_string[i].name;
+		opt->per_language = settings_string[i].per_language;
+		opt->u._string = settings_string[i];
 		++opt;
 	}
 	initialized_options = true;
@@ -852,44 +743,44 @@ static void config_parse_line(ConfigReader *cfg, Settings *settings, const Confi
 				}
 				
 				switch (any->type) {
-				case OPTION_BOOL: {
-					OptionBool const *option = &any->u._bool;
+				case SETTING_BOOL: {
+					SettingBool const *option = &any->u._bool;
 					if (is_bool)
 						option_bool_set(settings, option, boolean);
 					else
 						config_err(cfg, "Invalid %s: %s. This should be yes, no, on, or off.", option->name, value);
 				} break;
-				case OPTION_U8: {
-					OptionU8 const *option = &any->u._u8;
+				case SETTING_U8: {
+					SettingU8 const *option = &any->u._u8;
 					if (is_integer && integer >= option->min && integer <= option->max)
 						option_u8_set(settings, option, (u8)integer);
 					else
 						config_err(cfg, "Invalid %s: %s. This should be an integer from %u to %u.", option->name, value, option->min, option->max);
 				} break;
-				case OPTION_U16: {
-					OptionU16 const *option = &any->u._u16;
+				case SETTING_U16: {
+					SettingU16 const *option = &any->u._u16;
 					if (is_integer && integer >= option->min && integer <= option->max)
 						option_u16_set(settings, option, (u16)integer);
 					else
 						config_err(cfg, "Invalid %s: %s. This should be an integer from %u to %u.", option->name, value, option->min, option->max);
 				} break;
-				case OPTION_U32: {
-					OptionU32 const *option = &any->u._u32;
+				case SETTING_U32: {
+					SettingU32 const *option = &any->u._u32;
 					if (is_integer && integer >= option->min && integer <= option->max)
 						option_u32_set(settings, option, (u32)integer);
 					else
 						config_err(cfg, "Invalid %s: %s. This should be an integer from %" PRIu32 " to %" PRIu32 ".",
 							option->name, value, option->min, option->max);
 				} break;
-				case OPTION_FLOAT: {
-					OptionFloat const *option = &any->u._float;
+				case SETTING_FLOAT: {
+					SettingFloat const *option = &any->u._float;
 					if (is_floating && floating >= option->min && floating <= option->max)
 						option_float_set(settings, option, (float)floating);
 					else
 						config_err(cfg, "Invalid %s: %s. This should be a number from %g to %g.", option->name, value, option->min, option->max);
 				} break;
-				case OPTION_STRING: {
-					OptionString const *option = &any->u._string;
+				case SETTING_STRING: {
+					SettingString const *option = &any->u._string;
 					if (strlen(value) >= option->buf_size) {
 						config_err(cfg, "%s is too long (length: %zu, maximum length: %zu).", key, strlen(value), option->buf_size - 1);
 					} else {
