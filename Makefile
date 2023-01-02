@@ -19,12 +19,10 @@ OBJECTS=obj/buffer.o obj/build.o obj/colors.o obj/command.o\
 	obj/syntax.o obj/tags.o obj/ted.o obj/text.o obj/ui.o obj/util.o 
 ted: *.[ch] libpcre2-32.a $(OBJECTS)
 	$(CC) $(OBJECTS) -o ted $(DEBUG_CFLAGS) $(LIBS)
-obj/stb_%.o: stb_%.c obj
-	$(CC) -O3 -Wall $< -c -o $@
-obj/%.o: %.c *.h obj
-	$(CC) -Wall $< -c -o $@ $(DEBUG_CFLAGS)
-obj:
-	mkdir obj
+obj/stb_%.o: stb_%.c
+	mkdir -p obj && $(CC) -O3 -Wall $< -c -o $@
+obj/%.o: %.c *.h
+	mkdir -p obj && $(CC) -Wall $< -c -o $@ $(DEBUG_CFLAGS)
 release: *.[ch] libpcre2-32.a
 	$(CC) main.c -o ted $(RELEASE_CFLAGS) $(LIBS)
 profile: *.[ch] libpcre2-32.a

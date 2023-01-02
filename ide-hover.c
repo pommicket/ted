@@ -67,7 +67,7 @@ void hover_process_lsp_response(Ted *ted, LSPResponse *response) {
 		char *p = hover->text + strlen(hover->text) - 1;
 		// remove trailing whitespace
 		// (rust-analyzer gives us trailing newlines for local variables)
-		for (; p > hover->text && isspace(*p); --p)
+		for (; p > hover->text && strchr("\n \t", *p); --p)
 			*p = '\0';
 	}
 }

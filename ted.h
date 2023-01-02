@@ -2,7 +2,6 @@
 #define TED_H_
 
 #include "base.h"
-#include "sdl-inc.h"
 #include "util.h"
 #include "os.h"
 #include "unicode.h"
@@ -12,6 +11,7 @@
 #include "colors.h"
 #include "command.h"
 #include "lib/glcorearb.h"
+#include "sdl-inc.h"
 
 #define TED_VERSION "2.0"
 #define TED_VERSION_FULL "ted v. " TED_VERSION
@@ -94,7 +94,6 @@ ENUM_U8 {
 #define SYNTAX_MATH SYNTAX_STRING // for tex
 #define SYNTAX_CODE SYNTAX_PREPROCESSOR // for markdown
 #define SYNTAX_LINK SYNTAX_CONSTANT // for markdown
-
 
 #define SCANCODE_MOUSE_X1 (SDL_NUM_SCANCODES)
 #define SCANCODE_MOUSE_X2 (SDL_NUM_SCANCODES+1)

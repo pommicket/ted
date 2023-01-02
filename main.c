@@ -1,6 +1,5 @@
 /*
 @TODO:
-- don't include SDL when possible
 - rename v[234] to vec[234]
 - make ctrl+up/ctrl+down move to next/prev blank line
 - broken session fix: close buffers not in any used node

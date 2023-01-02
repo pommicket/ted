@@ -3,6 +3,7 @@ ted
 !windows_installer/ted/ted
 Debug
 Release
+obj
 *~
 *.swp
 tags

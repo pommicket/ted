@@ -1,5 +1,6 @@
 #include "ted.h"
 
+
 // Text buffers - These store the contents of a file.
 // NOTE: All text editing should be done through the two functions
 // buffer_insert_text_at_pos and buffer_delete_chars_at_pos
