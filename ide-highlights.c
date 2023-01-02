@@ -1,3 +1,5 @@
+#include "ted.h"
+
 void highlights_close(Ted *ted) {
 	Highlights *hls = &ted->highlights;
 	arr_clear(hls->highlights);
@@ -6,7 +8,7 @@ void highlights_close(Ted *ted) {
 	hls->requested_position = (LSPDocumentPosition){0};
 }
 
-void highlights_send_request(Ted *ted) {
+static void highlights_send_request(Ted *ted) {
 	TextBuffer *buffer = ted->active_buffer;
 	Highlights *hls = &ted->highlights;
 	if (!buffer) {

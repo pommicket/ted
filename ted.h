@@ -810,6 +810,50 @@ void gl_geometry_rect_border(Rect r, float border_thickness, u32 color);
 void gl_geometry_draw(void);
 GLuint gl_load_texture_from_image(const char *path);
 
+// === ide-autocomplete.c ===
+void autocomplete_select_cursor_completion(Ted *ted);
+void autocomplete_scroll(Ted *ted, i32 by);
+void autocomplete_next(Ted *ted);
+void autocomplete_prev(Ted *ted);
+void autocomplete_close(Ted *ted);
+void autocomplete_update_suggested(Ted *ted);
+
+// === ide-definitions.c ===
+// go to the definition of `name`.
+// if `lsp` is NULL, tags will be used.
+// Note: the document position is required for LSP requests because of overloading (where the name
+// alone isn't sufficient)
+void definition_goto(Ted *ted, LSP *lsp, const char *name, LSPDocumentPosition pos);
+void definitions_selector_open(Ted *ted);
+void definitions_selector_update(Ted *ted);
+void definitions_selector_render(Ted *ted, Rect bounds);
+void definitions_selector_close(Ted *ted);
+
+// === ide-highlights.c ===
+void highlights_close(Ted *ted);
+void highlights_process_lsp_response(Ted *ted, LSPResponse *response);
+void highlights_frame(Ted *ted);
+
+// === ide-hover.c ===
+void hover_close(Ted *ted);
+void hover_process_lsp_response(Ted *ted, LSPResponse *response);
+void hover_frame(Ted *ted, double dt);
+
+// === ide-signature-help.c ===
+void signature_help_send_request(Ted *ted);
+void signature_help_retrigger(Ted *ted);
+void signature_help_open(Ted *ted, char32_t trigger);
+bool signature_help_is_open(Ted *ted);
+void signature_help_close(Ted *ted);
+void signature_help_process_lsp_response(Ted *ted, const LSPResponse *response);
+void signature_help_frame(Ted *ted);
+
+// === ide-usages.c ===
+void usages_cancel_lookup(Ted *ted);
+void usages_find(Ted *ted);
+void usages_process_lsp_response(Ted *ted, LSPResponse *response);
+void usages_frame(Ted *ted);
+
 // === menu.c ===
 void menu_close(Ted *ted);
 void menu_open(Ted *ted, Menu menu);
@@ -938,14 +982,5 @@ void menu_open(Ted *ted, Menu menu);
 void menu_close(Ted *ted);
 void autocomplete_close(Ted *ted);
 void signature_help_retrigger(Ted *ted);
-// go to the definition of `name`.
-// if `lsp` is NULL, tags will be used.
-// Note: the document position is required for LSP requests because of overloading (where the name
-// alone isn't sufficient)
-void definition_goto(Ted *ted, LSP *lsp, const char *name, LSPDocumentPosition pos);
-void definitions_selector_open(Ted *ted);
-void definitions_selector_update(Ted *ted);
-void definitions_selector_render(Ted *ted, Rect bounds);
-void definitions_selector_close(Ted *ted);
 
 #endif

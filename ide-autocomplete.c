@@ -1,3 +1,5 @@
+#include "ted.h"
+
 #define TAGS_MAX_COMPLETIONS 200 // max # of tag completions to scroll through
 #define AUTOCOMPLETE_NCOMPLETIONS_VISIBLE 10 // max # of completions to show at once
 
@@ -25,7 +27,7 @@ static void autocomplete_complete(Ted *ted, Autocompletion completion) {
 	autocomplete_close(ted);
 }
 
-static void autocomplete_select_cursor_completion(Ted *ted) {
+void autocomplete_select_cursor_completion(Ted *ted) {
 	Autocomplete *ac = &ted->autocomplete;
 	if (ac->open) {
 		size_t nsuggestions = arr_len(ac->suggested);
@@ -64,11 +66,11 @@ static void autocomplete_move_cursor(Ted *ted, i32 by) {
 	autocomplete_correct_scroll(ted);
 }
 
-static void autocomplete_next(Ted *ted) {
+void autocomplete_next(Ted *ted) {
 	autocomplete_move_cursor(ted, 1);
 }
 
-static void autocomplete_prev(Ted *ted) {
+void autocomplete_prev(Ted *ted) {
 	autocomplete_move_cursor(ted, -1);
 }
 

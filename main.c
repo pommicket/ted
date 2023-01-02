@@ -31,6 +31,7 @@
     - bad json can give "Unexpected error: client exited without proper shutdown sequence"
 FUTURE FEATURES:
 - comment-start + comment-end settings
+- go to declaration with LSP
 - robust find (results shouldn't move around when you type things)
 - multiple files with command line arguments
 - :set-build-command

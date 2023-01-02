@@ -1,5 +1,7 @@
 // deals with textDocument/signatureHelp LSP requests
 
+#include "ted.h"
+
 static void signature_help_clear(SignatureHelp *help) {
 	for (int i = 0; i < help->signature_count; ++i) {
 		Signature sig = help->signatures[i];

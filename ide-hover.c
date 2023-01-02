@@ -1,5 +1,7 @@
 // LSP hover information (textDocument/hover request)
 
+#include "ted.h"
+
 void hover_close(Ted *ted) {
 	Hover *hover = &ted->hover;
 	hover->open = false;
@@ -22,7 +24,7 @@ static bool get_hover_position(Ted *ted, LSPDocumentPosition *pos, TextBuffer **
 	return false;
 }
 
-void hover_send_request(Ted *ted) {
+static void hover_send_request(Ted *ted) {
 	Hover *hover = &ted->hover;
 	LSPRequest request = {.type = LSP_REQUEST_HOVER};
 	LSPRequestHover *h = &request.data.hover;

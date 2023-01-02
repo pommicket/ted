@@ -1,3 +1,5 @@
+#include "ted.h"
+
 void definition_cancel_lookup(Ted *ted) {
 	Definitions *defs = &ted->definitions;
 	ted_cancel_lsp_request(ted, defs->last_request_lsp, defs->last_request_id);

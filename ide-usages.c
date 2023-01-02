@@ -1,3 +1,5 @@
+#include "ted.h"
+
 void usages_cancel_lookup(Ted *ted) {
 	Usages *usages = &ted->usages;
 	if (usages->last_request_id) {
