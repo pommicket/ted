@@ -1,6 +1,8 @@
 /*
 @TODO:
 - rename v[234] to vec[234]
+- make ctrl+up/ctrl+down move to next/prev blank line
+- broken session fix: close buffers not in any used node
 - handle multiple symbols with same name in go-to-definition menu
 - better non-error window/showMessage(Request)
 - document lsp.h and lsp.c.
@@ -72,18 +74,6 @@ no_warn_end
 #pragma comment(lib, "ole32.lib")
 #pragma comment(lib, "opengl32.lib")
 #pragma comment(lib, "shell32.lib")
-#endif
-#define PCRE2_STATIC
-#define PCRE2_CODE_UNIT_WIDTH 32
-#include <pcre2.h>
-
-#if DEBUG
-extern unsigned char *stbi_load(const char *filename, int *x, int *y, int *comp, int req_comp);
-#else
-#define STB_IMAGE_STATIC
-no_warn_start
-#include "stb_image.c"
-no_warn_end
 #endif
 
 #include "util.c"

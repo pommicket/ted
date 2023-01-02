@@ -519,8 +519,8 @@ typedef struct Ted {
 	bool replace; // is the find+replace menu open?
 	bool find_regex, find_case_sensitive; // find options
 	u32 find_flags; // flags used last time search term was compiled
-	pcre2_code *find_code;
-	pcre2_match_data *find_match_data;
+	struct pcre2_real_code_32 *find_code;
+	struct pcre2_real_match_data_32 *find_match_data;
 	FindResult *find_results;
 	bool find_invalid_pattern; // invalid regex?
 	Command warn_unsaved; // if non-zero, the user is trying to execute this command, but there are unsaved changes
@@ -731,11 +731,13 @@ void buffer_toggle_comment_lines(TextBuffer *buffer, u32 first_line, u32 last_li
 void buffer_toggle_comment_selection(TextBuffer *buffer);
 // make sure to call gl_geometry_draw after this
 void buffer_highlight_lsp_range(TextBuffer *buffer, LSPRange range);
+
 // === colors.c ===
 ColorSetting color_setting_from_str(const char *str);
 const char *color_setting_to_str(ColorSetting s);
 Status color_from_str(const char *str, u32 *color);
 ColorSetting color_for_symbol_kind(SymbolKind kind);
+
 // === gl.c ===
 GlRcSAB *gl_rc_sab_new(GLuint shader, GLuint array, GLuint buffer);
 void gl_rc_sab_incref(GlRcSAB *s);
@@ -755,6 +757,28 @@ void gl_geometry_rect(Rect r, u32 color_rgba);
 void gl_geometry_rect_border(Rect r, float border_thickness, u32 color);
 void gl_geometry_draw(void);
 GLuint gl_load_texture_from_image(const char *path);
+
+// === node.c ===
+void node_switch_to_tab(Ted *ted, Node *node, u16 new_tab_index);
+void node_tab_next(Ted *ted, Node *node, i64 n);
+void node_tab_prev(Ted *ted, Node *node, i64 n);
+void node_tab_switch(Ted *ted, Node *node, i64 tab);
+// swap the position of two tabs
+void node_tabs_swap(Node *node, u16 tab1, u16 tab2);
+void node_free(Node *node);
+// returns index of parent in ted->nodes, or -1 if this is the root node.
+i32 node_parent(Ted *ted, u16 node_idx);
+// join this node with its sibling
+void node_join(Ted *ted, Node *node);
+void node_close(Ted *ted, u16 node_idx);
+// close tab, WITHOUT checking for unsaved changes!
+// returns true if the node is still open
+bool node_tab_close(Ted *ted, Node *node, u16 index);
+void node_frame(Ted *ted, Node *node, Rect r);
+void node_split(Ted *ted, Node *node, bool vertical);
+void node_split_switch(Ted *ted);
+void node_split_swap(Ted *ted);
+
 // === syntax.c ===
 Language language_from_str(const char *str);
 const char *language_to_str(Language language);
@@ -764,6 +788,30 @@ ColorSetting syntax_char_type_to_color_setting(SyntaxCharType t);
 char32_t syntax_matching_bracket(Language lang, char32_t c);
 bool syntax_is_opening_bracket(Language lang, char32_t c);
 void syntax_highlight(SyntaxState *state, Language lang, const char32_t *line, u32 line_len, SyntaxCharType *char_types);
+
+// === ted.c ===
+void ted_seterr_to_buferr(Ted *ted, TextBuffer *buffer);
+bool ted_haserr(Ted *ted);
+const char *ted_geterr(Ted *ted);
+void ted_clearerr(Ted *ted);
+char *ted_get_root_dir_of(Ted *ted, const char *path);
+char *ted_get_root_dir(Ted *ted);
+Settings *ted_active_settings(Ted *ted);
+Settings *ted_get_settings(Ted *ted, const char *path, Language language);
+LSP *ted_get_lsp_by_id(Ted *ted, LSPID id);
+LSP *ted_get_lsp(Ted *ted, const char *path, Language language);
+LSP *ted_active_lsp(Ted *ted);
+u32 ted_color(Ted *ted, ColorSetting color);
+// sets the active buffer to this buffer, and updates active_node, etc. accordingly
+// you can pass NULL to buffer to make it so no buffer is active.
+void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer);
+void ted_load_configs(Ted *ted, bool reloading);
+void ted_press_key(Ted *ted, SDL_Scancode scancode, SDL_Keymod modifier);
+bool ted_get_mouse_buffer_pos(Ted *ted, TextBuffer **pbuffer, BufferPos *ppos);
+void ted_flash_error_cursor(Ted *ted);
+void ted_go_to_position(Ted *ted, const char *path, u32 line, u32 index, bool is_lsp);
+void ted_go_to_lsp_document_position(Ted *ted, LSP *lsp, LSPDocumentPosition position);
+void ted_cancel_lsp_request(Ted *ted, LSPID lsp, LSPRequestID request);
 
 
 char *buffer_contents_utf8_alloc(TextBuffer *buffer);

@@ -1,3 +1,5 @@
+#include "ted.h"
+
 // this is a macro so we get -Wformat warnings
 #define ted_seterr(ted, ...) \
 	snprintf((ted)->error, sizeof (ted)->error - 1, __VA_ARGS__)
@@ -236,8 +238,6 @@ static void ted_load_fonts(Ted *ted) {
 }
 
 
-// sets the active buffer to this buffer, and updates active_node, etc. accordingly
-// you can pass NULL to buffer to make it so no buffer is active.
 void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer) {
 	TextBuffer *search_buffer = find_search_buffer(ted);
 	ted->active_buffer = buffer;
@@ -339,8 +339,6 @@ static void ted_node_switch(Ted *ted, Node *node) {
 	assert(node->tabs);
 	ted_switch_to_buffer(ted, &ted->buffers[node->tabs[node->active_tab]]);
 }
-
-static bool node_tab_close(Ted *ted, Node *node, u16 index);
 
 // Open a new buffer. Fills out *tab to the index of the tab used, and *buffer_idx to the index of the buffer.
 // Returns true on success.

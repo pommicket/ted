@@ -1,4 +1,6 @@
-static void node_switch_to_tab(Ted *ted, Node *node, u16 new_tab_index) {
+#include "ted.h"
+
+void node_switch_to_tab(Ted *ted, Node *node, u16 new_tab_index) {
 	node->active_tab = new_tab_index;
 	if (node == ted->active_node) {
 		// switch active buffer
@@ -9,26 +11,25 @@ static void node_switch_to_tab(Ted *ted, Node *node, u16 new_tab_index) {
 }
 
 // move n tabs to the right
-static void node_tab_next(Ted *ted, Node *node, i64 n) {
+void node_tab_next(Ted *ted, Node *node, i64 n) {
 	assert(node->tabs);
 	u16 ntabs = (u16)arr_len(node->tabs);
 	u16 tab_idx = (u16)mod_i64(node->active_tab + n, ntabs);
 	node_switch_to_tab(ted, node, tab_idx);
 }
 
-static void node_tab_prev(Ted *ted, Node *node, i64 n) {
+void node_tab_prev(Ted *ted, Node *node, i64 n) {
 	node_tab_next(ted, node, -n);
 }
 
-static void node_tab_switch(Ted *ted, Node *node, i64 tab) {
+void node_tab_switch(Ted *ted, Node *node, i64 tab) {
 	assert(node->tabs);
 	if (tab < arr_len(node->tabs)) {
 		node_switch_to_tab(ted, node, (u16)tab);
 	}
 }
 
-// swap the position of two tabs
-static void node_tabs_swap(Node *node, u16 tab1, u16 tab2) {
+void node_tabs_swap(Node *node, u16 tab1, u16 tab2) {
 	assert(tab1 < arr_len(node->tabs) && tab2 < arr_len(node->tabs));
 	if (node->active_tab == tab1) node->active_tab = tab2;
 	else if (node->active_tab == tab2) node->active_tab = tab1;
@@ -37,13 +38,12 @@ static void node_tabs_swap(Node *node, u16 tab1, u16 tab2) {
 	node->tabs[tab2] = tmp;
 }
 
-static void node_free(Node *node) {
+void node_free(Node *node) {
 	arr_free(node->tabs);
 	memset(node, 0, sizeof *node);
 }
 
-// returns index of parent in ted->nodes, or -1 if this is the root node.
-static i32 node_parent(Ted *ted, u16 node_idx) {
+i32 node_parent(Ted *ted, u16 node_idx) {
 	bool *nodes_used = ted->nodes_used;
 	assert(node_idx < TED_MAX_NODES && nodes_used[node_idx]);
 	for (u16 i = 0; i < TED_MAX_NODES; ++i) {
@@ -73,8 +73,7 @@ static u8 node_depth(Ted *ted, u16 node_idx) {
 	return depth;
 }
 
-// join this node with its sibling
-static void node_join(Ted *ted, Node *node) {
+void node_join(Ted *ted, Node *node) {
 	i32 parent_idx = node_parent(ted, (u16)(node - ted->nodes));
 	if (parent_idx >= 0) {
 		Node *parent = &ted->nodes[parent_idx];
@@ -105,7 +104,7 @@ static void node_join(Ted *ted, Node *node) {
 	}
 }
 
-static void node_close(Ted *ted, u16 node_idx) {
+void node_close(Ted *ted, u16 node_idx) {
 	ted->dragging_tab_node = NULL;
 	ted->resizing_split = NULL;
 	
@@ -154,9 +153,7 @@ static void node_close(Ted *ted, u16 node_idx) {
 }
 
 
-// close tab, WITHOUT checking for unsaved changes!
-// returns true if the node is still open
-static bool node_tab_close(Ted *ted, Node *node, u16 index) {
+bool node_tab_close(Ted *ted, Node *node, u16 index) {
 	ted->dragging_tab_node = NULL;
 
 	u16 ntabs = (u16)arr_len(node->tabs);
@@ -186,7 +183,7 @@ static bool node_tab_close(Ted *ted, Node *node, u16 index) {
 	}
 }
 
-static void node_frame(Ted *ted, Node *node, Rect r) {
+void node_frame(Ted *ted, Node *node, Rect r) {
 	const Settings *settings = ted_active_settings(ted);
 	if (node->tabs) {
 		bool is_active = node == ted->active_node;
@@ -387,7 +384,7 @@ static void node_frame(Ted *ted, Node *node, Rect r) {
 	}
 }
 
-static void node_split(Ted *ted, Node *node, bool vertical) {
+void node_split(Ted *ted, Node *node, bool vertical) {
 	if (node_depth(ted, (u16)(node - ted->nodes)) >= 4) return; // prevent splitting too deep
 
 	if (arr_len(node->tabs) > 1) { // need at least 2 tabs to split
@@ -417,7 +414,7 @@ static void node_split(Ted *ted, Node *node, bool vertical) {
 	}
 }
 
-static void node_split_switch(Ted *ted) {
+void node_split_switch(Ted *ted) {
 	assert(ted->active_node);
 	u16 active_node_idx = (u16)(ted->active_node - ted->nodes);
 	i32 parent_idx = node_parent(ted, active_node_idx);
@@ -432,7 +429,7 @@ static void node_split_switch(Ted *ted) {
 	}
 }
 
-static void node_split_swap(Ted *ted) {
+void node_split_swap(Ted *ted) {
 	assert(ted->active_node);
 	u16 active_node_idx = (u16)(ted->active_node - ted->nodes);
 	i32 parent_idx = node_parent(ted, active_node_idx);

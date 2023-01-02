@@ -1,6 +1,15 @@
 #include "ted.h"
 #include "lib/glcorearb.h"
 
+#if DEBUG
+unsigned char *stbi_load(const char *filename, int *x, int *y, int *comp, int req_comp);
+#else
+#define STB_IMAGE_STATIC
+no_warn_start
+#include "stb_image.c"
+no_warn_end
+#endif
+
 // macro trickery to avoid having to write everything twice
 #define gl_for_each_proc(do)\
 	do(DRAWARRAYS, DrawArrays)\

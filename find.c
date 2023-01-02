@@ -1,4 +1,8 @@
+#define PCRE2_STATIC
+#define PCRE2_CODE_UNIT_WIDTH 32
+#include <pcre2.h>
 #define FIND_MAX_GROUPS 50
+
 
 static u32 find_compilation_flags(Ted *ted) {
 	return (ted->find_case_sensitive ? 0 : PCRE2_CASELESS)
