@@ -726,7 +726,7 @@ void buffer_copy_or_cut(TextBuffer *buffer, bool cut);
 void buffer_copy(TextBuffer *buffer);
 void buffer_cut(TextBuffer *buffer);
 void buffer_paste(TextBuffer *buffer);
-Status buffer_load_file(TextBuffer *buffer, const char *filename);
+bool buffer_load_file(TextBuffer *buffer, const char *filename);
 void buffer_reload(TextBuffer *buffer);
 bool buffer_externally_changed(TextBuffer *buffer);
 void buffer_new_file(TextBuffer *buffer, const char *filename);
@@ -1042,7 +1042,7 @@ void ted_seterr_to_buferr(Ted *ted, TextBuffer *buffer);
 bool ted_haserr(Ted *ted);
 // Returns the buffer containing the file at `path`, or NULL if there is none.
 TextBuffer *ted_get_buffer_with_file(Ted *ted, const char *path);
-Status ted_save_all(Ted *ted);
+bool ted_save_all(Ted *ted);
 void ted_reload_all(Ted *ted);
 const char *ted_geterr(Ted *ted);
 // Load all the fonts ted will use.
@@ -1057,8 +1057,8 @@ LSP *ted_get_lsp_by_id(Ted *ted, LSPID id);
 LSP *ted_get_lsp(Ted *ted, const char *path, Language language);
 LSP *ted_active_lsp(Ted *ted);
 u32 ted_color(Ted *ted, ColorSetting color);
-Status ted_open_file(Ted *ted, const char *filename);
-Status ted_new_file(Ted *ted, const char *filename);
+bool ted_open_file(Ted *ted, const char *filename);
+bool ted_new_file(Ted *ted, const char *filename);
 // returns the index of an available buffer, or -1 if none are available 
 i32 ted_new_buffer(Ted *ted);
 // Returns the index of an available node, or -1 if none are available 
@@ -1067,7 +1067,7 @@ i32 ted_new_node(Ted *ted);
 // Make sure you set active_buffer to something else if you delete it!
 void ted_delete_buffer(Ted *ted, u16 index);
 // save all changes to all buffers with unsaved changes.
-Status ted_save_all(Ted *ted);
+bool ted_save_all(Ted *ted);
 // sets the active buffer to this buffer, and updates active_node, etc. accordingly
 // you can pass NULL to buffer to make it so no buffer is active.
 void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer);

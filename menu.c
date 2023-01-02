@@ -181,7 +181,7 @@ void menu_update(Ted *ted) {
 		if (selected_file) {
 			// open that file!
 			menu_close(ted);
-			(void)ted_open_file(ted, selected_file);
+			ted_open_file(ted, selected_file);
 			free(selected_file);
 		}
 	} break;

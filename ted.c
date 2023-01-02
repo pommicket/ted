@@ -377,7 +377,7 @@ TextBuffer *ted_get_buffer_with_file(Ted *ted, const char *path) {
 	return NULL;
 }
 
-Status ted_open_file(Ted *ted, const char *filename) {
+bool ted_open_file(Ted *ted, const char *filename) {
 	char path[TED_PATH_MAX];
 	ted_path_full(ted, filename, path, sizeof path);
 
@@ -408,7 +408,7 @@ Status ted_open_file(Ted *ted, const char *filename) {
 	}
 }
 
-Status ted_new_file(Ted *ted, const char *filename) {
+bool ted_new_file(Ted *ted, const char *filename) {
 	u16 buffer_idx, tab_idx;
 	char path[TED_PATH_MAX];
 	if (filename)
@@ -432,7 +432,7 @@ Status ted_new_file(Ted *ted, const char *filename) {
 }
 
 
-Status ted_save_all(Ted *ted) {
+bool ted_save_all(Ted *ted) {
 	bool success = true;
 	bool *buffers_used = ted->buffers_used;
 	for (u16 i = 0; i < TED_MAX_BUFFERS; ++i) {
