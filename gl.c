@@ -1,3 +1,4 @@
+#include "ted.h"
 #include "lib/glcorearb.h"
 
 // macro trickery to avoid having to write everything twice
@@ -142,7 +143,7 @@ static int glsl_version(void) {
 }
 
 // compile a GLSL shader
-static GLuint gl_compile_shader(char error_buf[256], char const *code, GLenum shader_type) {
+GLuint gl_compile_shader(char error_buf[256], char const *code, GLenum shader_type) {
 	GLuint shader = glCreateShader(shader_type);
 	char header[128];
 	int glsl = glsl_version();
@@ -172,7 +173,7 @@ static GLuint gl_compile_shader(char error_buf[256], char const *code, GLenum sh
 }
 
 // link together GL shaders
-static GLuint gl_link_program(char error_buf[256], GLuint *shaders, size_t count) {
+GLuint gl_link_program(char error_buf[256], GLuint *shaders, size_t count) {
 	GLuint program = glCreateProgram();
 	if (program) {
 		for (size_t i = 0; i < count; ++i) {
@@ -200,7 +201,7 @@ static GLuint gl_link_program(char error_buf[256], GLuint *shaders, size_t count
 	return program;
 }
 
-static GLuint gl_compile_and_link_shaders(char error_buf[256], char const *vshader_code, char const *fshader_code) {
+GLuint gl_compile_and_link_shaders(char error_buf[256], char const *vshader_code, char const *fshader_code) {
 	GLuint shaders[2];
 	shaders[0] = gl_compile_shader(error_buf, vshader_code, GL_VERTEX_SHADER);
 	shaders[1] = gl_compile_shader(error_buf, fshader_code, GL_FRAGMENT_SHADER);
@@ -213,7 +214,7 @@ static GLuint gl_compile_and_link_shaders(char error_buf[256], char const *vshad
 	return program;
 }
 
-static GLuint gl_attrib_loc(GLuint program, char const *attrib) {
+GLuint gl_attrib_loc(GLuint program, char const *attrib) {
 	GLint loc = glGetAttribLocation(program, attrib);
 	if (loc == -1) {
 		debug_print("Couldn't find vertex attribute %s.\n", attrib);
@@ -222,7 +223,7 @@ static GLuint gl_attrib_loc(GLuint program, char const *attrib) {
 	return (GLuint)loc;
 }
 
-static GLint gl_uniform_loc(GLuint program, char const *uniform) {
+GLint gl_uniform_loc(GLuint program, char const *uniform) {
 	GLint loc = glGetUniformLocation(program, uniform);
 	if (loc == -1) {
 		debug_print("Couldn't find uniform: %s.\n", uniform);
@@ -246,7 +247,7 @@ static GLuint gl_geometry_v_color;
 static GLint gl_geometry_u_window_size;
 static GLuint gl_geometry_vbo, gl_geometry_vao;
 
-static void gl_geometry_init(void) {
+void gl_geometry_init(void) {
 	char const *vshader_code = "attribute vec2 v_pos;\n\
 	attribute vec4 v_color;\n\
 	uniform vec2 u_window_size;\n\
@@ -275,7 +276,7 @@ static void gl_geometry_init(void) {
 
 static float gl_window_width, gl_window_height;
 
-static void gl_geometry_rect(Rect r, u32 color_rgba) {
+void gl_geometry_rect(Rect r, u32 color_rgba) {
 	v4 color = rgba_u32_to_v4(color_rgba);
 
 	v2 p1 = r.pos;
@@ -295,7 +296,7 @@ static void gl_geometry_rect(Rect r, u32 color_rgba) {
 	arr_add(gl_geometry_triangles, triangle);
 }
 
-static void gl_geometry_rect_border(Rect r, float border_thickness, u32 color) {
+void gl_geometry_rect_border(Rect r, float border_thickness, u32 color) {
 	float x1 = r.pos.x, y1 = r.pos.y, x2 = x1 + r.size.x, y2 = y1 + r.size.y;
 	
 	// make sure rectangle isn't too small
@@ -308,7 +309,7 @@ static void gl_geometry_rect_border(Rect r, float border_thickness, u32 color) {
 	gl_geometry_rect(rect4(x2-border_thickness, y1+border_thickness, x2, y2), color);
 }
 
-static void gl_geometry_draw(void) {
+void gl_geometry_draw(void) {
 	size_t ntriangles = arr_len(gl_geometry_triangles);
 	
 	if (ntriangles == 0) return;
@@ -330,7 +331,7 @@ static void gl_geometry_draw(void) {
 	arr_clear(gl_geometry_triangles);
 }
 
-static GLuint gl_load_texture_from_image(const char *path) {
+GLuint gl_load_texture_from_image(const char *path) {
 	GLuint texture = 0;
 	int w=0, h=0, n=0;
 	unsigned char *data = stbi_load(path, &w, &h, &n, 4);

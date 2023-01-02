@@ -20,6 +20,10 @@
 // max number of LSPs running at once
 #define TED_LSP_MAX 200
 
+typedef u32 GLuint;
+typedef i32 GLint;
+typedef unsigned GLenum;
+
 // these all say "CPP" but really they're C/C++
 enum {
 	SYNTAX_STATE_CPP_MULTI_LINE_COMMENT = 0x1u, // are we in a multi-line comment? (delineated by /* */)
@@ -129,15 +133,15 @@ typedef struct {
 // so we need to be extra careful about when we delete textures.
 typedef struct {
 	u32 ref_count;
-	u32 texture;
+	GLuint texture;
 } GlRcTexture;
 
 // shader-array-buffer combo.
 typedef struct {
 	u32 ref_count;
-	u32 shader;
-	u32 array;
-	u32 buffer;
+	GLuint shader;
+	GLuint array;
+	GLuint buffer;
 } GlRcSAB;
 
 
@@ -587,6 +591,27 @@ typedef struct Ted {
 	char error[512];
 	char error_shown[512]; // error display in box on screen
 } Ted;
+
+// === gl.c ===
+GlRcSAB *gl_rc_sab_new(GLuint shader, GLuint array, GLuint buffer);
+void gl_rc_sab_incref(GlRcSAB *s);
+void gl_rc_sab_decref(GlRcSAB **ps);
+GlRcTexture *gl_rc_texture_new(GLuint texture);
+void gl_rc_texture_incref(GlRcTexture *t);
+void gl_rc_texture_decref(GlRcTexture **pt);
+GLuint gl_compile_shader(char error_buf[256], char const *code, GLenum shader_type);
+GLuint gl_link_program(char error_buf[256], GLuint *shaders, size_t count);
+GLuint gl_compile_and_link_shaders(char error_buf[256], char const *vshader_code, char const *fshader_code);
+// prints a debug message if `attrib` is not found
+GLuint gl_attrib_location(GLuint program, char const *attrib);
+// prints a debug message if `uniform` is not found
+GLint gl_uniform_location(GLuint program, char const *uniform);
+void gl_geometry_init(void);
+void gl_geometry_rect(Rect r, u32 color_rgba);
+void gl_geometry_rect_border(Rect r, float border_thickness, u32 color);
+void gl_geometry_draw(void);
+GLuint gl_load_texture_from_image(const char *path);
+
 
 char *buffer_contents_utf8_alloc(TextBuffer *buffer);
 Command command_from_str(const char *str);
