@@ -587,7 +587,7 @@ static void popup_get_rects(Ted const *ted, u32 options, Rect *popup, Rect *butt
 	float button_height = 30;
 	u16 nbuttons = util_popcount(options);
 	float button_width = popup->size.x / nbuttons;
-	popup->size = v2_clamp(popup->size, v2_zero, V2(window_width, window_height));
+	popup->size = v2_clamp(popup->size, V2(0, 0), V2(window_width, window_height));
 	Rect r = rect(V2(popup->pos.x, rect_y2(*popup) - button_height), V2(button_width, button_height));
 	if (options & POPUP_YES) {
 		*button_yes = r;

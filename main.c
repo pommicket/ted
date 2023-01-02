@@ -1,5 +1,6 @@
 /*
 @TODO:
+- rename v[234] to vec[234]
 - handle multiple symbols with same name in go-to-definition menu
 - better non-error window/showMessage(Request)
 - document lsp.h and lsp.c.
@@ -95,7 +96,6 @@ no_warn_end
 #error "Unrecognized operating system."
 #endif
 
-#include "math.c"
 #if _WIN32
 #include "process-win.c"
 #elif __unix__
