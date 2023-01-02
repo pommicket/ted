@@ -810,6 +810,21 @@ void gl_geometry_rect_border(Rect r, float border_thickness, u32 color);
 void gl_geometry_draw(void);
 GLuint gl_load_texture_from_image(const char *path);
 
+// === menu.c ===
+void menu_close(Ted *ted);
+void menu_open(Ted *ted, Menu menu);
+void menu_escape(Ted *ted);
+float menu_get_width(Ted *ted);
+Rect menu_rect(Ted *ted);
+void menu_update(Ted *ted);
+void menu_render(Ted *ted);
+// move to next/previous command
+void menu_shell_move(Ted *ted, int direction);
+// move to previous command
+void menu_shell_up(Ted *ted);
+// move to next command
+void menu_shell_down(Ted *ted);
+
 // === node.c ===
 void node_switch_to_tab(Ted *ted, Node *node, u16 new_tab_index);
 void node_tab_next(Ted *ted, Node *node, i64 n);
@@ -840,6 +855,17 @@ ColorSetting syntax_char_type_to_color_setting(SyntaxCharType t);
 char32_t syntax_matching_bracket(Language lang, char32_t c);
 bool syntax_is_opening_bracket(Language lang, char32_t c);
 void syntax_highlight(SyntaxState *state, Language lang, const char32_t *line, u32 line_len, SyntaxCharType *char_types);
+
+// === tags.c ===
+void tags_generate(Ted *ted, bool run_in_build_window);
+// find all tags beginning with the given prefix, returning them into `*out`, writing at most out_size entries.
+// you may pass NULL for `out`, in which case just the number of matching tags is returned
+// (still maxing out at `out_size`).
+// each element in `out` should be freed when you're done with them.
+size_t tags_beginning_with(Ted *ted, const char *prefix, char **out, size_t out_size);
+bool tag_goto(Ted *ted, const char *tag);
+// get all tags in the tags file as SymbolInfos.
+SymbolInfo *tags_get_symbols(Ted *ted);
 
 // === ted.c ===
 void ted_seterr_to_buferr(Ted *ted, TextBuffer *buffer);
@@ -890,7 +916,6 @@ void popup_render(Ted *ted, u32 options, const char *title, const char *body);
 v2 checkbox_frame(Ted *ted, bool *value, const char *label, v2 pos);
 
 
-TextBuffer *find_search_buffer(Ted *ted);
 // first, we read all config files, then we parse them.
 // this is because we want less specific settings (e.g. settings applied
 // to all languages instead of one particular language) to be applied first,
@@ -911,7 +936,6 @@ void config_free(Ted *ted);
 char *settings_get_root_dir(Settings *settings, const char *path);
 void menu_open(Ted *ted, Menu menu);
 void menu_close(Ted *ted);
-void find_update(Ted *ted, bool force);
 void autocomplete_close(Ted *ted);
 void signature_help_retrigger(Ted *ted);
 // go to the definition of `name`.

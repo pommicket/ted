@@ -1,3 +1,5 @@
+#include "ted.h"
+
 static void menu_close_with_next(Ted *ted, Menu next) {
 	ted_switch_to_buffer(ted, ted->prev_active_buffer);
 	TextBuffer *buffer = ted->active_buffer;
@@ -96,7 +98,7 @@ void menu_open(Ted *ted, Menu menu) {
 	}
 }
 
-static void menu_escape(Ted *ted) {
+void menu_escape(Ted *ted) {
 	if (*ted->warn_overwrite) {
 		// just close "are you sure you want to overwrite?"
 		*ted->warn_overwrite = 0;
@@ -106,13 +108,12 @@ static void menu_escape(Ted *ted) {
 	}
 }
 
-static float menu_get_width(Ted *ted) {
+float menu_get_width(Ted *ted) {
 	const Settings *settings = ted_active_settings(ted);
 	return minf(settings->max_menu_width, ted->window_width - 2.0f * settings->padding);
 }
 
-// returns the rectangle of the screen coordinates of the menu
-static Rect menu_rect(Ted *ted) {
+Rect menu_rect(Ted *ted) {
 	Settings *settings = ted_active_settings(ted);
 	float window_width = ted->window_width, window_height = ted->window_height;
 	float padding = settings->padding;
@@ -123,7 +124,7 @@ static Rect menu_rect(Ted *ted) {
 	);
 }
 
-static void menu_update(Ted *ted) {
+void menu_update(Ted *ted) {
 	Menu menu = ted->menu;
 	const Settings *settings = ted_active_settings(ted);
 	const u32 *colors = settings->colors;
@@ -314,7 +315,7 @@ static void menu_update(Ted *ted) {
 	}
 }
 
-static void menu_render(Ted *ted) {
+void menu_render(Ted *ted) {
 	Menu menu = ted->menu;
 	assert(menu);
 	const Settings *settings = ted_active_settings(ted);
@@ -450,8 +451,7 @@ static void menu_render(Ted *ted) {
 	}
 }
 
-// move to next/previous command
-static void menu_shell_move(Ted *ted, int direction) {
+void menu_shell_move(Ted *ted, int direction) {
 	TextBuffer *line_buffer = &ted->line_buffer;
 	if (line_buffer->modified) {
 		// don't do it if the command has been edited
@@ -475,9 +475,9 @@ static void menu_shell_move(Ted *ted, int direction) {
 	}
 }
 
-static void menu_shell_up(Ted *ted) {
+void menu_shell_up(Ted *ted) {
 	menu_shell_move(ted, -1);
 }
-static void menu_shell_down(Ted *ted) {
+void menu_shell_down(Ted *ted) {
 	menu_shell_move(ted, +1);
 }

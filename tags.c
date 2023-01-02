@@ -1,3 +1,5 @@
+#include "ted.h"
+
 static const char *tags_filename(Ted *ted, bool error_if_does_not_exist) {
 	change_directory(ted->cwd);
 	const char *filename = "tags";
@@ -93,7 +95,7 @@ static void tags_generate_at_dir(Ted *ted, bool run_in_build_window, const char 
 }
 
 // generate/re-generate tags.
-static void tags_generate(Ted *ted, bool run_in_build_window) {
+void tags_generate(Ted *ted, bool run_in_build_window) {
 	const char *filename = tags_filename(ted, false);
 	if (!filename) {
 		strcpy(ted->tags_dir, ted->cwd);
@@ -131,9 +133,6 @@ static int tag_try(FILE *fp, const char *tag) {
 	return -1;
 }
 
-// finds all tags beginning with the given prefix, returning them into *out, writing at most out_size entries.
-// you may pass NULL for out, in which case just the number of matching tags is returned (still maxing out at out_size)
-// each element in out should be freed when you're done with them
 size_t tags_beginning_with(Ted *ted, const char *prefix, char **out, size_t out_size) {
 	assert(out_size);
 	const char *tags_name = tags_filename(ted, true);
