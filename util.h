@@ -28,29 +28,11 @@ typedef struct {
 	float x, y;
 } v2;
 typedef struct {
-	float x, y, z;
-} v3;
-typedef struct {
 	float x, y, z, w;
 } v4;
 typedef struct {
 	double x, y;
 } v2d;
-typedef struct {
-	int x, y;
-} v2i;
-
-// matrices are column-major, because that's what they are in OpenGL 
-typedef struct {
-	float e[16];
-} m4;
-
-static const m4 m4_identity = {{
-	1, 0, 0, 0,
-	0, 1, 0, 0,
-	0, 0, 1, 0,
-	0, 0, 0, 1
-}};
 
 typedef struct {
 	v2 pos, size;
@@ -172,7 +154,6 @@ i64 sgn_i64(i64 x);
 float sgnf(float x);
 float smoothstepf(float x);
 float randf(void);
-float rand_gauss(void);
 u32 rand_u32(void);
 float rand_uniform(float from, float to);
 float sigmoidf(float x);
@@ -194,47 +175,7 @@ float v2_dist_squared(v2 a, v2 b);
 void v2_print(v2 v);
 v2 v2_rand_unit(void);
 v2 v2_polar(float r, float theta);
-v3 V3(float x, float y, float z);
-v3 v3_from_v2(v2 v);
-v3 v3_add(v3 a, v3 b);
-v3 v3_sub(v3 a, v3 b);
-v3 v3_scale(v3 v, float s);
-v3 v3_lerp(float x, v3 a, v3 b);
-float v3_dot(v3 u, v3 v);
-v3 v3_cross(v3 u, v3 v);
-float v3_len(v3 v);
-float v3_dist(v3 a, v3 b);
-float v3_dist_squared(v3 a, v3 b);
-v3 v3_normalize(v3 v);
-v2 v3_xy(v3 v);
-v3 v3_on_sphere(float yaw, float pitch);
-void v3_print(v3 v);
-v3 v3_rand(void);
-v3 v3_rand_unit(void);
 v4 V4(float x, float y, float z, float w);
-v4 v4_add(v4 a, v4 b);
-v4 v4_sub(v4 a, v4 b);
-v4 v4_scale(v4 v, float s);
-v4 v4_scale_xyz(v4 v, float s);
-v4 v4_lerp(float x, v4 a, v4 b);
-float v4_dot(v4 u, v4 v);
-v4 v4_mul(v4 u, v4 v);
-float v4_len(v4 v);
-v4 v4_normalize(v4 v);
-v3 v4_xyz(v4 v);
-v4 v4_rand(void);
-void v4_print(v4 v);
-v2d V2D(double x, double y);
-void m4_print(m4 m);
-m4 m4_yaw(float yaw);
-m4 m4_pitch(float pitch);
-m4 m4_translate(v3 t);
-v3 m4_mul_v3(m4 m, v3 v);
-m4 m4_perspective(float fov, float aspect, float z_near, float z_far);
-m4 m4_ortho(float left, float right, float bottom, float top, float near_, float far_);
-m4 m4_mul(m4 a, m4 b);
-m4 m4_inv(m4 mat);
-v2i V2I(int x, int y);
 void rgba_u32_to_floats(u32 rgba, float floats[4]);
 v4 rgba_u32_to_v4(u32 rgba);
 u32 rgba_v4_to_u32(v4 color);
@@ -354,47 +295,8 @@ float v2_dist_squared(v2 a, v2 b);
 void v2_print(v2 v);
 v2 v2_rand_unit(void);
 v2 v2_polar(float r, float theta);
-v3 V3(float x, float y, float z);
-v3 v3_from_v2(v2 v);
-v3 v3_add(v3 a, v3 b);
-v3 v3_sub(v3 a, v3 b);
-v3 v3_scale(v3 v, float s);
-v3 v3_lerp(float x, v3 a, v3 b);
-float v3_dot(v3 u, v3 v);
-v3 v3_cross(v3 u, v3 v);
-float v3_len(v3 v);
-float v3_dist(v3 a, v3 b);
-float v3_dist_squared(v3 a, v3 b);
-v3 v3_normalize(v3 v);
-v2 v3_xy(v3 v);
-v3 v3_on_sphere(float yaw, float pitch);
-void v3_print(v3 v);
-v3 v3_rand(void);
-v3 v3_rand_unit(void);
 v4 V4(float x, float y, float z, float w);
-v4 v4_add(v4 a, v4 b);
-v4 v4_sub(v4 a, v4 b);
-v4 v4_scale(v4 v, float s);
-v4 v4_scale_xyz(v4 v, float s);
-v4 v4_lerp(float x, v4 a, v4 b);
-float v4_dot(v4 u, v4 v);
-v4 v4_mul(v4 u, v4 v);
-float v4_len(v4 v);
-v4 v4_normalize(v4 v);
-v3 v4_xyz(v4 v);
-v4 v4_rand(void);
-void v4_print(v4 v);
 v2d V2D(double x, double y);
-void m4_print(m4 m);
-m4 m4_yaw(float yaw);
-m4 m4_pitch(float pitch);
-m4 m4_translate(v3 t);
-v3 m4_mul_v3(m4 m, v3 v);
-m4 m4_perspective(float fov, float aspect, float z_near, float z_far);
-m4 m4_ortho(float left, float right, float bottom, float top, float near_, float far_);
-m4 m4_mul(m4 a, m4 b);
-m4 m4_inv(m4 mat);
-v2i V2I(int x, int y);
 void rgba_u32_to_floats(u32 rgba, float floats[4]);
 v4 rgba_u32_to_v4(u32 rgba);
 u32 rgba_v4_to_u32(v4 color);
