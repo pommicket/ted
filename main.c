@@ -1,6 +1,5 @@
 /*
 @TODO:
-- rename v[234] to vec[234]
 - make ctrl+up/ctrl+down move to next/prev blank line
 - broken session fix: close buffers not in any used node
 - handle multiple symbols with same name in go-to-definition menu
@@ -125,8 +124,8 @@ static Rect error_box_rect(Ted *ted) {
 	float padding = settings->padding;
 	float window_width = ted->window_width, window_height = ted->window_height;
 	float char_height = text_font_char_height(font);
-	return rect_centered(V2(window_width * 0.5f, window_height * 0.9f),
-			V2(menu_get_width(ted), 3 * char_height + 2 * padding));
+	return rect_centered(Vec2(window_width * 0.5f, window_height * 0.9f),
+			Vec2(menu_get_width(ted), 3 * char_height + 2 * padding));
 }
 
 #if DEBUG
@@ -611,7 +610,7 @@ int main(int argc, char **argv) {
 		{ // get mouse position
 			int mouse_x = 0, mouse_y = 0;
 			ted->mouse_state = SDL_GetMouseState(&mouse_x, &mouse_y);
-			ted->mouse_pos = V2((float)mouse_x, (float)mouse_y);
+			ted->mouse_pos = Vec2((float)mouse_x, (float)mouse_y);
 		}
 		bool ctrl_down = keyboard_state[SDL_SCANCODE_LCTRL] || keyboard_state[SDL_SCANCODE_RCTRL];
 		bool shift_down = keyboard_state[SDL_SCANCODE_LSHIFT] || keyboard_state[SDL_SCANCODE_RSHIFT];
@@ -658,7 +657,7 @@ int main(int argc, char **argv) {
 				
 				if (button < arr_count(ted->nmouse_clicks) 
 					&& ted->nmouse_clicks[button] < arr_count(ted->mouse_clicks[button])) {
-					v2 pos = V2(x, y);
+					vec2 pos = Vec2(x, y);
 					bool add = true;
 					if (*ted->error_shown) {
 						if (rect_contains_point(error_box_rect(ted), pos)) {
@@ -705,7 +704,7 @@ int main(int argc, char **argv) {
 			case SDL_MOUSEBUTTONUP: {
 				Uint8 button = event.button.button;
 				if (button < arr_count(ted->nmouse_releases)) {
-					v2 pos = V2((float)event.button.x, (float)event.button.y);
+					vec2 pos = Vec2((float)event.button.x, (float)event.button.y);
 					if (ted->nmouse_releases[button] < arr_count(ted->mouse_releases[button])) {
 						ted->mouse_releases[button][ted->nmouse_releases[button]++] = pos;
 					}
@@ -719,7 +718,7 @@ int main(int argc, char **argv) {
 					BufferPos pos = {0};
 					// drag to select
 					// we don't check the return value here, because it's okay to drag off the screen.
-					buffer_pixels_to_pos(ted->drag_buffer, V2(x, y), &pos);
+					buffer_pixels_to_pos(ted->drag_buffer, Vec2(x, y), &pos);
 					buffer_select_to_pos(ted->drag_buffer, pos);
 				}
 				ted->hover.time = 0.0;
@@ -770,7 +769,7 @@ int main(int argc, char **argv) {
 		{
 			int mx = 0, my = 0;
 			ted->mouse_state = SDL_GetMouseState(&mx, &my);
-			ted->mouse_pos = V2((float)mx, (float)my);
+			ted->mouse_pos = Vec2((float)mx, (float)my);
 		}
 		// default to arrow cursor
 		ted->cursor = ted->cursor_arrow;

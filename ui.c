@@ -41,10 +41,10 @@ static void selector_scroll_to_cursor(Ted *ted, Selector *s) {
 static bool selector_entry_pos(Ted *ted, const Selector *s, u32 i, Rect *r) {
 	Rect bounds = s->bounds;
 	float char_height = text_font_char_height(ted->font);
-	*r = rect(V2(bounds.pos.x, selector_entries_start_y(ted, s)
+	*r = rect(Vec2(bounds.pos.x, selector_entries_start_y(ted, s)
 		- char_height * s->scroll
 		+ char_height * (float)i), 
-		V2(bounds.size.x, char_height));
+		Vec2(bounds.size.x, char_height));
 	return rect_clip_to_rect(r, bounds);
 }
 
@@ -525,9 +525,9 @@ void file_selector_render(Ted *ted, FileSelector *fs) {
 	selector_render(ted, sel);
 }
 
-v2 button_get_size(Ted *ted, const char *text) {
+vec2 button_get_size(Ted *ted, const char *text) {
 	float border_thickness = ted_active_settings(ted)->border_thickness;
-	return v2_add_const(text_get_size_v2(ted->font, text), 2 * border_thickness);
+	return vec2_add_const(text_get_size_v2(ted->font, text), 2 * border_thickness);
 }
 
 void button_render(Ted *ted, Rect button, const char *text, u32 color) {
@@ -542,7 +542,7 @@ void button_render(Ted *ted, Rect button, const char *text, u32 color) {
 	gl_geometry_rect_border(button, ted_active_settings(ted)->border_thickness, colors[COLOR_BORDER]);
 	gl_geometry_draw();
 
-	v2 pos = rect_center(button);
+	vec2 pos = rect_center(button);
 	text_utf8_anchored(ted->font, text, pos.x, pos.y, color, ANCHOR_MIDDLE);
 	text_render(ted->font);
 }
@@ -559,23 +559,23 @@ bool button_update(Ted *ted, Rect button) {
 static void popup_get_rects(Ted const *ted, u32 options, Rect *popup, Rect *button_yes, Rect *button_no, Rect *button_cancel) {
 	float window_width = ted->window_width, window_height = ted->window_height;
 	
-	*popup = rect_centered(V2(window_width * 0.5f, window_height * 0.5f), V2(300, 200));
+	*popup = rect_centered(Vec2(window_width * 0.5f, window_height * 0.5f), Vec2(300, 200));
 	float button_height = 30;
 	u16 nbuttons = util_popcount(options);
 	float button_width = popup->size.x / nbuttons;
-	popup->size = v2_clamp(popup->size, V2(0, 0), V2(window_width, window_height));
-	Rect r = rect(V2(popup->pos.x, rect_y2(*popup) - button_height), V2(button_width, button_height));
+	popup->size = vec2_clamp(popup->size, Vec2(0, 0), Vec2(window_width, window_height));
+	Rect r = rect(Vec2(popup->pos.x, rect_y2(*popup) - button_height), Vec2(button_width, button_height));
 	if (options & POPUP_YES) {
 		*button_yes = r;
-		r = rect_translate(r, V2(button_width, 0));
+		r = rect_translate(r, Vec2(button_width, 0));
 	}
 	if (options & POPUP_NO) {
 		*button_no = r;
-		r = rect_translate(r, V2(button_width, 0));
+		r = rect_translate(r, Vec2(button_width, 0));
 	}
 	if (options & POPUP_CANCEL) {
 		*button_cancel = r;
-		r = rect_translate(r, V2(button_width, 0));
+		r = rect_translate(r, Vec2(button_width, 0));
 	}	
 }
 
@@ -611,16 +611,16 @@ void popup_render(Ted *ted, u32 options, const char *title, const char *body) {
 	gl_geometry_rect(r, colors[COLOR_MENU_BG]);
 	gl_geometry_rect_border(r, border_thickness, colors[COLOR_BORDER]);
 	// line separating text from body
-	gl_geometry_rect(rect(V2(r.pos.x, y + char_height_bold), V2(r.size.x, border_thickness)), colors[COLOR_BORDER]);
+	gl_geometry_rect(rect(Vec2(r.pos.x, y + char_height_bold), Vec2(r.size.x, border_thickness)), colors[COLOR_BORDER]);
 	
 	if (options & POPUP_YES) button_render(ted, button_yes, "Yes", colors[COLOR_YES]);
 	if (options & POPUP_NO) button_render(ted, button_no, "No", colors[COLOR_NO]);
 	if (options & POPUP_CANCEL) button_render(ted, button_cancel, "Cancel", colors[COLOR_CANCEL]);
 
 	// title text
-	v2 title_size = {0};
+	vec2 title_size = {0};
 	text_get_size(font_bold, title, &title_size.x, &title_size.y);
-	v2 title_pos = v2_sub(V2(window_width * 0.5f, y), V2(title_size.x * 0.5f, 0));
+	vec2 title_pos = vec2_sub(Vec2(window_width * 0.5f, y), Vec2(title_size.x * 0.5f, 0));
 	text_utf8(font_bold, title, title_pos.x, title_pos.y, colors[COLOR_TEXT]);
 	text_render(font_bold);
 
@@ -641,7 +641,7 @@ void popup_render(Ted *ted, u32 options, const char *title, const char *body) {
 }
 
 // returns the size of the checkbox, including the label
-v2 checkbox_frame(Ted *ted, bool *value, const char *label, v2 pos) {
+vec2 checkbox_frame(Ted *ted, bool *value, const char *label, vec2 pos) {
 	Font *font = ted->font;
 	float char_height = text_font_char_height(font);
 	float checkbox_size = char_height;
@@ -650,7 +650,7 @@ v2 checkbox_frame(Ted *ted, bool *value, const char *label, v2 pos) {
 	float padding = settings->padding;
 	float border_thickness = settings->border_thickness;
 	
-	Rect checkbox_rect = rect(pos, V2(checkbox_size, checkbox_size));
+	Rect checkbox_rect = rect(pos, Vec2(checkbox_size, checkbox_size));
 	
 	for (u32 i = 0; i < ted->nmouse_clicks[SDL_BUTTON_LEFT]; ++i) {
 		if (rect_contains_point(checkbox_rect, ted->mouse_clicks[SDL_BUTTON_LEFT][i])) {
@@ -658,17 +658,17 @@ v2 checkbox_frame(Ted *ted, bool *value, const char *label, v2 pos) {
 		}
 	}
 	
-	checkbox_rect.pos = v2_add(checkbox_rect.pos, V2(0.5f, 0.5f));
+	checkbox_rect.pos = vec2_add(checkbox_rect.pos, Vec2(0.5f, 0.5f));
 	gl_geometry_rect_border(checkbox_rect, border_thickness, colors[COLOR_TEXT]);
 	if (*value) {
 		gl_geometry_rect(rect_shrink(checkbox_rect, border_thickness + 2), colors[COLOR_TEXT]);
 	}
 	
-	v2 text_pos = v2_add(pos, V2(checkbox_size + padding * 0.5f, 0));
-	v2 size = text_get_size_v2(font, label);
+	vec2 text_pos = vec2_add(pos, Vec2(checkbox_size + padding * 0.5f, 0));
+	vec2 size = text_get_size_v2(font, label);
 	text_utf8(font, label, text_pos.x, text_pos.y, colors[COLOR_TEXT]);
 	
 	gl_geometry_draw();
 	text_render(font);
-	return v2_add(size, V2(checkbox_size + padding * 0.5f, 0));
+	return vec2_add(size, Vec2(checkbox_size + padding * 0.5f, 0));
 }

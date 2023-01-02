@@ -201,7 +201,7 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 			float tab_width = r.size.x / ntabs;
 			if (!ted->menu) {
 				for (u16 c = 0; c < ted->nmouse_clicks[SDL_BUTTON_LEFT]; ++c) {
-					v2 click = ted->mouse_clicks[SDL_BUTTON_LEFT][c];
+					vec2 click = ted->mouse_clicks[SDL_BUTTON_LEFT][c];
 					if (rect_contains_point(tab_bar_rect, click)) {
 						// click on tab to switch to it
 						u16 tab_index = (u16)((click.x - r.pos.x) / tab_width);
@@ -217,7 +217,7 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 				if (ted->dragging_tab_node) {
 					// check if user dropped tab here
 					for (u16 c = 0; c < ted->nmouse_releases[SDL_BUTTON_LEFT]; ++c) {
-						v2 release = ted->mouse_releases[SDL_BUTTON_LEFT][c];
+						vec2 release = ted->mouse_releases[SDL_BUTTON_LEFT][c];
 						if (rect_contains_point(tab_bar_rect, release)) {
 							u16 tab_index = (u16)roundf((release.x - r.pos.x) / tab_width);
 							if (tab_index <= arr_len(node->tabs)) {
@@ -251,7 +251,7 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 				}
 				for (u16 c = 0; c < ted->nmouse_clicks[SDL_BUTTON_MIDDLE]; ++c) {
 					// middle-click to close tab
-					v2 click = ted->mouse_clicks[SDL_BUTTON_MIDDLE][c];
+					vec2 click = ted->mouse_clicks[SDL_BUTTON_MIDDLE][c];
 					if (rect_contains_point(tab_bar_rect, click)) {
 						u16 tab_index = (u16)((click.x - r.pos.x) / tab_width);
 						if (tab_index < arr_len(node->tabs)) {
@@ -280,7 +280,7 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 				char tab_title[256];
 				const char *path = buffer_get_filename(buffer);
 				const char *filename = path ? path_filename(path) : TED_UNTITLED;
-				Rect tab_rect = rect(V2(r.pos.x + tab_width * i, r.pos.y), V2(tab_width, tab_bar_height));
+				Rect tab_rect = rect(Vec2(r.pos.x + tab_width * i, r.pos.y), Vec2(tab_width, tab_bar_height));
 				
 				if (i > 0) {
 					// make sure tab borders overlap (i.e. don't double the border thickness between tabs)
@@ -290,7 +290,7 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 
 				if (node == ted->dragging_tab_node && i == ted->dragging_tab_idx) {
 					// make tab follow mouse
-					tab_rect.pos = v2_add(tab_rect.pos, v2_sub(ted->mouse_pos, ted->dragging_tab_origin));
+					tab_rect.pos = vec2_add(tab_rect.pos, vec2_sub(ted->mouse_pos, ted->dragging_tab_origin));
 				}
 				
 				// tab border
@@ -327,7 +327,7 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 		u16 buffer_index = node->tabs[node->active_tab];
 		TextBuffer *buffer = &ted->buffers[buffer_index];
 		assert(ted->buffers_used[buffer_index]);
-		Rect buffer_rect = rect_translate(r, V2(0, tab_bar_height));
+		Rect buffer_rect = rect_translate(r, Vec2(0, tab_bar_height));
 		
 		// make sure buffer border and tab border overlap
 		buffer_rect.pos.y  -= border_thickness;
@@ -362,13 +362,13 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 			r1.size.y = split_pos - padding;
 			r2.pos.y += split_pos + padding;
 			r2.size.y = r.size.y - split_pos - padding;
-			r_between = rect(V2(r.pos.x, r.pos.y + split_pos - padding), V2(r.size.x, 2 * padding));
+			r_between = rect(Vec2(r.pos.x, r.pos.y + split_pos - padding), Vec2(r.size.x, 2 * padding));
 		} else {
 			float split_pos = r.size.x * node->split_pos;
 			r1.size.x = split_pos - padding;
 			r2.pos.x += split_pos + padding;
 			r2.size.x = r.size.x - split_pos - padding;
-			r_between = rect(V2(r.pos.x + split_pos - padding, r.pos.y), V2(2 * padding, r.size.y));
+			r_between = rect(Vec2(r.pos.x + split_pos - padding, r.pos.y), Vec2(2 * padding, r.size.y));
 		}
 		if (rect_contains_point(r_between, ted->mouse_pos)) {
 			ted->cursor = resize_cursor;

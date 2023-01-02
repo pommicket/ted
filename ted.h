@@ -501,14 +501,14 @@ typedef struct Ted {
 	Settings *default_settings;
 	float window_width, window_height;
 	u32 key_modifier; // which of shift, alt, ctrl are down right now.
-	v2 mouse_pos;
+	vec2 mouse_pos;
 	u32 mouse_state;
 	u8 nmouse_clicks[4]; // nmouse_clicks[i] = length of mouse_clicks[i]
-	v2 mouse_clicks[4][32]; // mouse_clicks[SDL_BUTTON_RIGHT], for example, is all the right mouse-clicks that have happened this frame
+	vec2 mouse_clicks[4][32]; // mouse_clicks[SDL_BUTTON_RIGHT], for example, is all the right mouse-clicks that have happened this frame
 	// number of times mouse was clicked at each position
 	u8 mouse_click_times[4][32];
 	u8 nmouse_releases[4];
-	v2 mouse_releases[4][32];
+	vec2 mouse_releases[4][32];
 	int scroll_total_x, scroll_total_y; // total amount scrolled in the x and y direction this frame
 	Menu menu;
 	FileSelector file_selector;
@@ -547,7 +547,7 @@ typedef struct Ted {
 	u32 build_error; // build error we are currently "on"
 	
 	// used by menus to keep track of the scroll position so we can return to it.
-	v2d prev_active_buffer_scroll;
+	vec2d prev_active_buffer_scroll;
 	
 	SDL_Cursor *cursor_arrow, *cursor_ibeam, *cursor_wait,
 		*cursor_resize_h, *cursor_resize_v, *cursor_hand, *cursor_move;
@@ -557,7 +557,7 @@ typedef struct Ted {
 	Node *dragging_tab_node;
 	// index in dragging_tab_node->tabs
 	u16 dragging_tab_idx;
-	v2 dragging_tab_origin; // where the tab is being dragged from (i.e. mouse pos at start of drag action)
+	vec2 dragging_tab_origin; // where the tab is being dragged from (i.e. mouse pos at start of drag action)
 	
 	// if not NULL, points to the node whose split the user is currently resizing.
 	Node *resizing_split;
@@ -644,8 +644,8 @@ void buffer_text_dimensions(TextBuffer *buffer, u32 *lines, u32 *columns);
 float buffer_display_lines(TextBuffer *buffer);
 float buffer_display_cols(TextBuffer *buffer);
 void buffer_scroll(TextBuffer *buffer, double dx, double dy);
-v2 buffer_pos_to_pixels(TextBuffer *buffer, BufferPos pos);
-bool buffer_pixels_to_pos(TextBuffer *buffer, v2 pixel_coords, BufferPos *pos);
+vec2 buffer_pos_to_pixels(TextBuffer *buffer, BufferPos pos);
+bool buffer_pixels_to_pos(TextBuffer *buffer, vec2 pixel_coords, BufferPos *pos);
 void buffer_scroll_to_pos(TextBuffer *buffer, BufferPos pos);
 void buffer_scroll_center_pos(TextBuffer *buffer, BufferPos pos);
 void buffer_scroll_to_cursor(TextBuffer *buffer);
@@ -734,7 +734,7 @@ bool buffer_save_as(TextBuffer *buffer, const char *new_filename);
 u32 buffer_first_rendered_line(TextBuffer *buffer);
 u32 buffer_last_rendered_line(TextBuffer *buffer);
 void buffer_goto_word_at_cursor(TextBuffer *buffer);
-bool buffer_handle_click(Ted *ted, TextBuffer *buffer, v2 click, u8 times);
+bool buffer_handle_click(Ted *ted, TextBuffer *buffer, vec2 click, u8 times);
 void buffer_render(TextBuffer *buffer, Rect r);
 void buffer_indent_lines(TextBuffer *buffer, u32 first_line, u32 last_line);
 void buffer_dedent_lines(TextBuffer *buffer, u32 first_line, u32 last_line);
@@ -1097,12 +1097,12 @@ void file_selector_free(FileSelector *fs);
 // the returned pointer should be freed.
 char *file_selector_update(Ted *ted, FileSelector *fs);
 void file_selector_render(Ted *ted, FileSelector *fs);
-v2 button_get_size(Ted *ted, const char *text);
+vec2 button_get_size(Ted *ted, const char *text);
 void button_render(Ted *ted, Rect button, const char *text, u32 color);
 // returns true if the button was clicked on.
 bool button_update(Ted *ted, Rect button);
 PopupOption popup_update(Ted *ted, u32 options);
 void popup_render(Ted *ted, u32 options, const char *title, const char *body);
-v2 checkbox_frame(Ted *ted, bool *value, const char *label, v2 pos);
+vec2 checkbox_frame(Ted *ted, bool *value, const char *label, vec2 pos);
 
 #endif

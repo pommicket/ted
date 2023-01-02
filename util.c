@@ -635,88 +635,88 @@ i32 ceildivi32(i32 x, i32 y) {
 	}
 }
 
-v2 V2(float x, float y) {
-	v2 v;
+vec2 Vec2(float x, float y) {
+	vec2 v;
 	v.x = x;
 	v.y = y;
 	return v;
 }
 
-v2 v2_add(v2 a, v2 b) {
-	return V2(a.x + b.x, a.y + b.y);
+vec2 vec2_add(vec2 a, vec2 b) {
+	return Vec2(a.x + b.x, a.y + b.y);
 }
 
-v2 v2_add_const(v2 a, float c) {
-	return V2(a.x + c, a.y + c);
+vec2 vec2_add_const(vec2 a, float c) {
+	return Vec2(a.x + c, a.y + c);
 }
 
-v2 v2_sub(v2 a, v2 b) {
-	return V2(a.x - b.x, a.y - b.y);
+vec2 vec2_sub(vec2 a, vec2 b) {
+	return Vec2(a.x - b.x, a.y - b.y);
 }
 
-v2 v2_scale(v2 v, float s) {
-	return V2(v.x * s, v.y * s);
+vec2 vec2_scale(vec2 v, float s) {
+	return Vec2(v.x * s, v.y * s);
 }
 
-v2 v2_mul(v2 a, v2 b) {
-	return V2(a.x * b.x, a.y * b.y);
+vec2 vec2_mul(vec2 a, vec2 b) {
+	return Vec2(a.x * b.x, a.y * b.y);
 }
 
-v2 v2_clamp(v2 x, v2 a, v2 b) {
-	return V2(clampf(x.x, a.x, b.x), clampf(x.y, a.y, b.y));
+vec2 vec2_clamp(vec2 x, vec2 a, vec2 b) {
+	return Vec2(clampf(x.x, a.x, b.x), clampf(x.y, a.y, b.y));
 }
 
-float v2_dot(v2 a, v2 b) {
+float vec2_dot(vec2 a, vec2 b) {
 	return a.x * b.x + a.y * b.y;
 }
 
-float v2_len(v2 v) {
-	return sqrtf(v2_dot(v, v));
+float vec2_len(vec2 v) {
+	return sqrtf(vec2_dot(v, v));
 }
 
-v2 v2_lerp(float x, v2 a, v2 b) {
-	return V2(lerpf(x, a.x, b.x), lerpf(x, a.y, b.y));
+vec2 vec2_lerp(float x, vec2 a, vec2 b) {
+	return Vec2(lerpf(x, a.x, b.x), lerpf(x, a.y, b.y));
 }
 
 // rotate v theta radians counterclockwise
-v2 v2_rotate(v2 v, float theta) {
+vec2 vec2_rotate(vec2 v, float theta) {
 	float c = cosf(theta), s = sinf(theta);
-	return V2(
+	return Vec2(
 		c * v.x - s * v.y,
 		s * v.x + c * v.y
 	);
 }
 
-v2 v2_normalize(v2 v) {
-	float len = v2_len(v);
+vec2 vec2_normalize(vec2 v) {
+	float len = vec2_len(v);
 	float mul = len == 0.0f ? 1.0f : 1.0f/len;
-	return v2_scale(v, mul);
+	return vec2_scale(v, mul);
 }
 
-float v2_dist(v2 a, v2 b) {
-	return v2_len(v2_sub(a, b));
+float vec2_dist(vec2 a, vec2 b) {
+	return vec2_len(vec2_sub(a, b));
 }
 
-float v2_dist_squared(v2 a, v2 b) {
-	v2 diff = v2_sub(a, b);
-	return v2_dot(diff, diff);
+float vec2_dist_squared(vec2 a, vec2 b) {
+	vec2 diff = vec2_sub(a, b);
+	return vec2_dot(diff, diff);
 }
 
-void v2_print(v2 v) {
+void vec2_print(vec2 v) {
 	printf("(%f, %f)\n", v.x, v.y);
 }
 
-v2 v2_rand_unit(void) {
+vec2 vec2_rand_unit(void) {
 	float theta = rand_uniform(0, TAUf);
-	return V2(cosf(theta), sinf(theta));
+	return Vec2(cosf(theta), sinf(theta));
 }
 
-v2 v2_polar(float r, float theta) {
-	return V2(r * cosf(theta), r * sinf(theta));
+vec2 vec2_polar(float r, float theta) {
+	return Vec2(r * cosf(theta), r * sinf(theta));
 }
 
-v4 V4(float x, float y, float z, float w) {
-	v4 v;
+vec4 Vec4(float x, float y, float z, float w) {
+	vec4 v;
 	v.x = x;
 	v.y = y;
 	v.z = z;
@@ -724,8 +724,8 @@ v4 V4(float x, float y, float z, float w) {
 	return v;
 }
 
-v2d V2D(double x, double y) {
-	return (v2d) {
+vec2d Vec2d(double x, double y) {
+	return (vec2d) {
 		.x = x,
 		.y = y
 	};
@@ -738,13 +738,13 @@ void rgba_u32_to_floats(u32 rgba, float floats[4]) {
 	floats[3] = (float)((rgba >>  0) & 0xFF) / 255.f;
 }
 
-v4 rgba_u32_to_v4(u32 rgba) {
+vec4 rgba_u32_to_vec4(u32 rgba) {
 	float c[4];
 	rgba_u32_to_floats(rgba, c);
-	return V4(c[0], c[1], c[2], c[3]);
+	return Vec4(c[0], c[1], c[2], c[3]);
 }
 
-u32 rgba_v4_to_u32(v4 color) {
+u32 rgba_vec4_to_u32(vec4 color) {
 	return (u32)(color.x * 255) << 24
 		| (u32)(color.y * 255) << 16
 		| (u32)(color.z * 255) << 8
@@ -757,59 +757,59 @@ float rgba_brightness(u32 color) {
 	return ((float)r+(float)g+(float)b) * (1.0f / 3);
 }
 
-bool rect_contains_point_v2(v2 pos, v2 size, v2 point) {
+bool rect_contains_point_v2(vec2 pos, vec2 size, vec2 point) {
 	float x1 = pos.x, y1 = pos.y, x2 = pos.x + size.x, y2 = pos.y + size.y,
 		x = point.x, y = point.y;
 	return x >= x1 && x < x2 && y >= y1 && y < y2;
 }
 
-bool centered_rect_contains_point(v2 center, v2 size, v2 point) {
-	return rect_contains_point_v2(v2_sub(center, v2_scale(size, 0.5f)), size, point);
+bool centered_rect_contains_point(vec2 center, vec2 size, vec2 point) {
+	return rect_contains_point_v2(vec2_sub(center, vec2_scale(size, 0.5f)), size, point);
 }
 
-Rect rect(v2 pos, v2 size) {
+Rect rect(vec2 pos, vec2 size) {
 	Rect r;
 	r.pos = pos;
 	r.size = size;
 	return r;
 }
 
-Rect rect_endpoints(v2 e1, v2 e2) {
+Rect rect_endpoints(vec2 e1, vec2 e2) {
 	Rect r;
 	r.pos = e1;
-	r.size = v2_sub(e2, e1);
+	r.size = vec2_sub(e2, e1);
 	return r;
 }
 
 Rect rect4(float x1, float y1, float x2, float y2) {
 	assert(x2 >= x1);
 	assert(y2 >= y1);
-	return rect(V2(x1,y1), V2(x2-x1, y2-y1));
+	return rect(Vec2(x1,y1), Vec2(x2-x1, y2-y1));
 }
 
 Rect rect_xywh(float x, float y, float w, float h) {
 	assert(w >= 0);
 	assert(h >= 0);
-	return rect(V2(x, y), V2(w, h));
+	return rect(Vec2(x, y), Vec2(w, h));
 }
 
-Rect rect_centered(v2 center, v2 size) {
+Rect rect_centered(vec2 center, vec2 size) {
 	Rect r;
-	r.pos = v2_sub(center, v2_scale(size, 0.5f));
+	r.pos = vec2_sub(center, vec2_scale(size, 0.5f));
 	r.size = size;
 	return r;
 }
 
-v2 rect_center(Rect r) {
-	return v2_add(r.pos, v2_scale(r.size, 0.5f));
+vec2 rect_center(Rect r) {
+	return vec2_add(r.pos, vec2_scale(r.size, 0.5f));
 }
 
-bool rect_contains_point(Rect r, v2 point) {
+bool rect_contains_point(Rect r, vec2 point) {
 	return rect_contains_point_v2(r.pos, r.size, point);
 }
 
-Rect rect_translate(Rect r, v2 by) {
-	return rect(v2_add(r.pos, by), r.size);
+Rect rect_translate(Rect r, vec2 by) {
+	return rect(vec2_add(r.pos, by), r.size);
 }
 
 float rect_x1(Rect r) { return r.pos.x; }
@@ -841,10 +841,10 @@ float rects_intersect(Rect r1, Rect r2) {
 
 // returns whether or not there is any of the clipped rectangle left
 bool rect_clip_to_rect(Rect *clipped, Rect clipper) {
-	v2 start_pos = clipped->pos;
+	vec2 start_pos = clipped->pos;
 	clipped->pos.x = maxf(clipped->pos.x, clipper.pos.x);
 	clipped->pos.y = maxf(clipped->pos.y, clipper.pos.y);
-	clipped->size = v2_add(clipped->size, v2_sub(start_pos, clipped->pos));
+	clipped->size = vec2_add(clipped->size, vec2_sub(start_pos, clipped->pos));
 
 	clipped->size.x = clampf(clipped->size.x, 0, clipper.pos.x + clipper.size.x - clipped->pos.x);
 	clipped->size.y = clampf(clipped->size.y, 0, clipper.pos.y + clipper.size.y - clipped->pos.y);
@@ -871,7 +871,7 @@ Rect rect_grow(Rect r, float amount) {
 	return r;
 }
 
-v4 color_rgba_to_hsva(v4 rgba) {
+vec4 color_rgba_to_hsva(vec4 rgba) {
 	float R = rgba.x, G = rgba.y, B = rgba.z, A = rgba.w;
 	float M = maxf(R, maxf(G, B));
 	float m = minf(R, minf(G, B));
@@ -888,10 +888,10 @@ v4 color_rgba_to_hsva(v4 rgba) {
 	H *= 60;
 	float V = M;
 	float S = V == 0 ? 0 : C / V;
-	return V4(H, S, V, A);
+	return Vec4(H, S, V, A);
 }
 
-v4 color_hsva_to_rgba(v4 hsva) {
+vec4 color_hsva_to_rgba(vec4 hsva) {
 	float H = hsva.x, S = hsva.y, V = hsva.z, A = hsva.w;
 	H /= 60;
 	float C = S * V;
@@ -914,13 +914,13 @@ v4 color_hsva_to_rgba(v4 hsva) {
 	R += m;
 	G += m;
 	B += m;
-	return V4(R, G, B, A);
+	return Vec4(R, G, B, A);
 }
 
 u32 color_interpolate(float x, u32 color1, u32 color2) {
 	x = x * x * (3 - 2*x); // hermite interpolation
 
-	v4 c1 = rgba_u32_to_v4(color1), c2 = rgba_u32_to_v4(color2);
+	vec4 c1 = rgba_u32_to_vec4(color1), c2 = rgba_u32_to_vec4(color2);
 	// to make it interpolate more nicely, convert to hsv, interpolate in that space, then convert back
 	c1 = color_rgba_to_hsva(c1);
 	c2 = color_rgba_to_hsva(c2);
@@ -943,9 +943,9 @@ u32 color_interpolate(float x, u32 color1, u32 color2) {
 	}
 	h_out = fmodf(h_out, 360);
 	
-	v4 c_out = V4(h_out, s_out, v_out, a_out);
+	vec4 c_out = Vec4(h_out, s_out, v_out, a_out);
 	c_out = color_hsva_to_rgba(c_out);
-	return rgba_v4_to_u32(c_out);
+	return rgba_vec4_to_u32(c_out);
 }
 
 

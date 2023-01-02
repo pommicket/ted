@@ -61,7 +61,7 @@ float text_font_char_width(Font *font);
 void text_font_set_force_monospace(Font *font, bool force);
 // Get the dimensions of some text.
 void text_get_size(Font *font, const char *text, float *width, float *height);
-v2 text_get_size_v2(Font *font, const char *text);
+vec2 text_get_size_v2(Font *font, const char *text);
 void text_get_size32(Font *font, const char32_t *text, u64 len, float *width, float *height);
 void text_utf8(Font *font, const char *text, double x, double y, u32 color);
 void text_utf8_anchored(Font *font, const char *text, double x, double y, u32 color, Anchor anchor);

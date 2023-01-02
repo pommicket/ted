@@ -56,7 +56,7 @@ void menu_open(Ted *ted, Menu menu) {
 	ted->menu = menu;
 	TextBuffer *prev_buf = ted->prev_active_buffer = ted->active_buffer;
 	if (prev_buf)
-		ted->prev_active_buffer_scroll = V2D(prev_buf->scroll_x, prev_buf->scroll_y);
+		ted->prev_active_buffer_scroll = Vec2d(prev_buf->scroll_x, prev_buf->scroll_y);
 	
 	ted_switch_to_buffer(ted, NULL);
 	*ted->warn_overwrite = 0; // clear warn_overwrite
@@ -119,8 +119,8 @@ Rect menu_rect(Ted *ted) {
 	float padding = settings->padding;
 	float menu_width = menu_get_width(ted);
 	return rect(
-		V2(window_width * 0.5f - 0.5f * menu_width, padding),
-		V2(menu_width, window_height - 2 * padding)
+		Vec2(window_width * 0.5f - 0.5f * menu_width, padding),
+		Vec2(menu_width, window_height - 2 * padding)
 	);
 }
 
@@ -327,7 +327,7 @@ void menu_render(Ted *ted) {
 	const float line_buffer_height = ted_line_buffer_height(ted);
 	
 	// render backdrop
-	gl_geometry_rect(rect(V2(0, 0), V2(window_width, window_height)), colors[COLOR_MENU_BACKDROP]);
+	gl_geometry_rect(rect(Vec2(0, 0), Vec2(window_width, window_height)), colors[COLOR_MENU_BACKDROP]);
 	gl_geometry_draw();
 
 	if (*ted->warn_overwrite) {
@@ -394,11 +394,11 @@ void menu_render(Ted *ted) {
 	} break;
 	case MENU_GOTO_LINE: {
 		float menu_height = char_height + 2 * padding;
-		Rect r = rect(V2(padding, window_height - menu_height - padding), V2(window_width - 2 * padding, menu_height));
+		Rect r = rect(Vec2(padding, window_height - menu_height - padding), Vec2(window_width - 2 * padding, menu_height));
 		gl_geometry_rect(r, colors[COLOR_MENU_BG]);
 		gl_geometry_rect_border(r, settings->border_thickness, colors[COLOR_BORDER]);
 		const char *text = "Go to line...";
-		v2 text_size = text_get_size_v2(font_bold, text);
+		vec2 text_size = text_get_size_v2(font_bold, text);
 		rect_coords(r, &x1, &y1, &x2, &y2);
 		x1 += padding;
 		y1 += padding;

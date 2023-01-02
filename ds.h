@@ -7,8 +7,7 @@ VARIOUS DATA STRUCTURES
 - string builder
 - string hash table
 
-This file is self-contained and should not use anything from any project it's contained in.
-You can just #include it -- it's not huge, the functions are all static, and
+You can just #include this file -- it's not huge, the functions are all static, and
 any reasonable compiler will ignore the unused code.
 
 functions in this file suffixed with _ are not meant to be used outside here, unless you
@@ -24,7 +23,12 @@ IMPORTANT NOTE: If you are using this with structures containing `long double`s,
   which isnt important unless you're making a lot of arrays.)
 */
 
-#include <stddef.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+
+typedef uint32_t u32;
+typedef uint8_t u8;
 
 typedef union {
 	long num;
@@ -35,10 +39,6 @@ typedef union {
 #endif
 	double flt;
 } ArrMaxAlign;
-#if __STDC_VERSION__ < 199901L && !defined inline
-#define inline
-#endif
-
 
 typedef struct {
 	u32 len;

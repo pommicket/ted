@@ -1,6 +1,8 @@
 #ifndef COMMAND_H_
 #define COMMAND_H_
 
+#include "base.h"
+
 // i | ARG_STRING = ted->strings[i]
 #define ARG_STRING 0x4000000000000000
 

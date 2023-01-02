@@ -382,7 +382,7 @@ void autocomplete_frame(Ted *ted) {
 		menu_height = 200.f;
 	}
 	
-	v2 cursor_pos = buffer_pos_to_pixels(buffer, buffer->cursor_pos);
+	vec2 cursor_pos = buffer_pos_to_pixels(buffer, buffer->cursor_pos);
 	bool open_up = cursor_pos.y > 0.5f * (buffer->y1 + buffer->y2); // should the completion menu open upwards?
 	bool open_left = cursor_pos.x > 0.5f * (buffer->x1 + buffer->x2);
 	float x = cursor_pos.x, start_y = cursor_pos.y;
@@ -392,7 +392,7 @@ void autocomplete_frame(Ted *ted) {
 	else
 		start_y += char_height; // put menu below cursor
 	{
-		Rect menu_rect = rect(V2(x, start_y), V2(menu_width, menu_height));
+		Rect menu_rect = rect(Vec2(x, start_y), Vec2(menu_width, menu_height));
 		gl_geometry_rect(menu_rect, colors[COLOR_AUTOCOMPLETE_BG]);
 		gl_geometry_rect_border(menu_rect, 1, colors[COLOR_AUTOCOMPLETE_BORDER]);
 		ac->rect = menu_rect;
@@ -404,7 +404,7 @@ void autocomplete_frame(Ted *ted) {
 	if (ncompletions) {
 		assert(ac->cursor >= 0 && ac->cursor < (i32)ncompletions);
 		// highlight cursor entry
-		Rect r = rect(V2(x, start_y + (float)(ac->cursor - scroll) * char_height), V2(menu_width, char_height));
+		Rect r = rect(Vec2(x, start_y + (float)(ac->cursor - scroll) * char_height), Vec2(menu_width, char_height));
 		if (rect_contains_point(ac->rect, rect_center(r))) {
 			gl_geometry_rect(r, colors[COLOR_AUTOCOMPLETE_HL]);
 			document = &ac->completions[ac->suggested[ac->cursor]];
@@ -413,7 +413,7 @@ void autocomplete_frame(Ted *ted) {
 	if (mouse_entry >= 0 && mouse_entry < (i32)ncompletions
 		&& rect_contains_point(ac->rect, ted->mouse_pos)) {
 		// highlight moused over entry
-		Rect r = rect(V2(x, start_y + (float)(mouse_entry - scroll) * char_height), V2(menu_width, char_height));
+		Rect r = rect(Vec2(x, start_y + (float)(mouse_entry - scroll) * char_height), Vec2(menu_width, char_height));
 		gl_geometry_rect(r, colors[COLOR_AUTOCOMPLETE_HL]);
 		ted->cursor = ted->cursor_hand;
 		document = &ac->completions[ac->suggested[mouse_entry]];
@@ -438,7 +438,7 @@ void autocomplete_frame(Ted *ted) {
 			float doc_x = open_left ? ac->rect.pos.x - doc_width - padding
 				: ac->rect.pos.x + ac->rect.size.x + padding;
 			float doc_y = ac->rect.pos.y;
-			Rect r = rect(V2(doc_x, doc_y), V2(doc_width, doc_height));
+			Rect r = rect(Vec2(doc_x, doc_y), Vec2(doc_width, doc_height));
 			gl_geometry_rect(r, colors[COLOR_AUTOCOMPLETE_BG]);
 			gl_geometry_rect_border(r, border_thickness, colors[COLOR_AUTOCOMPLETE_BORDER]);
 			
@@ -457,7 +457,7 @@ void autocomplete_frame(Ted *ted) {
 		
 	
 	for (uint i = 0; i < ted->nmouse_clicks[SDL_BUTTON_LEFT]; ++i) {
-		v2 click = ted->mouse_clicks[SDL_BUTTON_LEFT][i];
+		vec2 click = ted->mouse_clicks[SDL_BUTTON_LEFT][i];
 		if (rect_contains_point(ac->rect, click)) {
 			i32 entry = scroll + (i32)((click.y - start_y) / char_height);
 			if (entry >= 0 && entry < (i32)ncompletions) {
@@ -482,8 +482,8 @@ void autocomplete_frame(Ted *ted) {
 			
 			state.x = x; state.y = y;
 			if (i != ncompletions_visible-1) {
-				gl_geometry_rect(rect(V2(x, y + char_height),
-					V2(menu_width, border_thickness)),
+				gl_geometry_rect(rect(Vec2(x, y + char_height),
+					Vec2(menu_width, border_thickness)),
 					colors[COLOR_AUTOCOMPLETE_BORDER]);
 			}
 			
@@ -498,7 +498,7 @@ void autocomplete_frame(Ted *ted) {
 			state.x += padding;
 			text_utf8_with_state(font, &state, icon_text);
 			state.x += padding;
-			gl_geometry_rect(rect(V2((float)state.x, (float)state.y), V2(border_thickness, char_height)),
+			gl_geometry_rect(rect(Vec2((float)state.x, (float)state.y), Vec2(border_thickness, char_height)),
 				colors[COLOR_AUTOCOMPLETE_BORDER]);
 			state.x += padding;
 			
@@ -536,8 +536,8 @@ void autocomplete_frame(Ted *ted) {
 			}
 			
 			if (completion->deprecated) {
-				gl_geometry_rect(rect(V2(label_x, y + (char_height - border_thickness) * 0.5f),
-					V2((float)state.x - label_x, 1)),
+				gl_geometry_rect(rect(Vec2(label_x, y + (char_height - border_thickness) * 0.5f),
+					Vec2((float)state.x - label_x, 1)),
 					colors[label_color]);
 			}
 			

@@ -347,23 +347,23 @@ void find_menu_frame(Ted *ted, Rect menu_bounds) {
 	
 	const char *prev_text = "Previous", *next_text = "Next";
 	const char *replace_text = "Replace", *replace_find_text = "Replace+find", *replace_all_text = "Replace all";
-	v2 prev_size = button_get_size(ted, prev_text);
-	v2 next_size = button_get_size(ted, next_text);
-	v2 replace_size = button_get_size(ted, replace_text);
-	v2 replace_find_size = button_get_size(ted, replace_find_text);
-	v2 replace_all_size = button_get_size(ted, replace_all_text);
+	vec2 prev_size = button_get_size(ted, prev_text);
+	vec2 next_size = button_get_size(ted, next_text);
+	vec2 replace_size = button_get_size(ted, replace_text);
+	vec2 replace_find_size = button_get_size(ted, replace_find_text);
+	vec2 replace_all_size = button_get_size(ted, replace_all_text);
 	
 	float x = x1, y = y2 - prev_size.y;
 	// compute positions of buttons
-	Rect button_prev = rect(V2(x, y), prev_size);
+	Rect button_prev = rect(Vec2(x, y), prev_size);
 	x += button_prev.size.x + padding;
-	Rect button_next = rect(V2(x, y), next_size);
+	Rect button_next = rect(Vec2(x, y), next_size);
 	x += button_next.size.x + padding;
-	Rect button_replace = rect(V2(x, y), replace_size);
+	Rect button_replace = rect(Vec2(x, y), replace_size);
 	x += button_replace.size.x + padding;
-	Rect button_replace_find = rect(V2(x, y), replace_find_size);
+	Rect button_replace_find = rect(Vec2(x, y), replace_find_size);
 	x += button_replace_find.size.x + padding;
-	Rect button_replace_all = rect(V2(x, y), replace_all_size);
+	Rect button_replace_all = rect(Vec2(x, y), replace_all_size);
 	x += button_replace_all.size.x + padding;
 	
 	
@@ -385,8 +385,8 @@ void find_menu_frame(Ted *ted, Rect menu_bounds) {
 		// highlight matches
 		BufferPos p1 = result->start, p2 = result->end;
 		if (p2.line >= first_rendered_line && p1.line <= last_rendered_line) {
-			v2 pos1 = buffer_pos_to_pixels(buffer, p1);
-			v2 pos2 = buffer_pos_to_pixels(buffer, p2);
+			vec2 pos1 = buffer_pos_to_pixels(buffer, p1);
+			vec2 pos2 = buffer_pos_to_pixels(buffer, p2);
 			pos2.y += char_height;
 			Rect hl_rect = rect4(pos1.x, pos1.y, pos2.x, pos2.y);
 			if (buffer_clip_rect(buffer, &hl_rect))
@@ -400,7 +400,7 @@ void find_menu_frame(Ted *ted, Rect menu_bounds) {
 	
 
 	Rect find_buffer_bounds = rect4(x1 + text_width + padding, y1, x2 - padding, y1 + line_buffer_height);
-	Rect replace_buffer_bounds = rect_translate(find_buffer_bounds, V2(0, line_buffer_height + padding));
+	Rect replace_buffer_bounds = rect_translate(find_buffer_bounds, Vec2(0, line_buffer_height + padding));
 
 	
 	button_render(ted, button_prev, prev_text, colors[COLOR_TEXT]);
@@ -438,8 +438,8 @@ void find_menu_frame(Ted *ted, Rect menu_bounds) {
 	text_render(font_bold);
 	
 	x = x1;
-	x += checkbox_frame(ted, &ted->find_case_sensitive, "Case sensitive", V2(x, y1)).x + 2*padding;
-	x += checkbox_frame(ted, &ted->find_regex, "Regular expression", V2(x, y1)).x + 2*padding;
+	x += checkbox_frame(ted, &ted->find_case_sensitive, "Case sensitive", Vec2(x, y1)).x + 2*padding;
+	x += checkbox_frame(ted, &ted->find_regex, "Regular expression", Vec2(x, y1)).x + 2*padding;
 
 	buffer_render(find_buffer, find_buffer_bounds);
 	if (replace) buffer_render(replace_buffer, replace_buffer_bounds);

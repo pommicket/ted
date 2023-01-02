@@ -186,11 +186,11 @@ GLint gl_uniform_location(GLuint program, const char *uniform) {
 }
 
 typedef struct {
-	v2 pos;
-	v4 color;
+	vec2 pos;
+	vec4 color;
 } GLSimpleVertex;
 typedef struct {
-	GLSimpleVertex v1, v2, v3;
+	GLSimpleVertex vert1, vert2, vert3;
 } GLSimpleTriangle;
 
 static GLSimpleTriangle *gl_geometry_triangles;
@@ -228,12 +228,12 @@ void gl_geometry_init(void) {
 }
 
 void gl_geometry_rect(Rect r, u32 color_rgba) {
-	v4 color = rgba_u32_to_v4(color_rgba);
+	vec4 color = rgba_u32_to_vec4(color_rgba);
 
-	v2 p1 = r.pos;
-	v2 p2 = v2_add(r.pos, V2(0, r.size.y));
-	v2 p3 = v2_add(r.pos, V2(r.size.x, r.size.y));
-	v2 p4 = v2_add(r.pos, V2(r.size.x, 0));
+	vec2 p1 = r.pos;
+	vec2 p2 = vec2_add(r.pos, Vec2(0, r.size.y));
+	vec2 p3 = vec2_add(r.pos, Vec2(r.size.x, r.size.y));
+	vec2 p4 = vec2_add(r.pos, Vec2(r.size.x, 0));
 
 	GLSimpleTriangle triangle = {
 		{p1, color},
@@ -241,9 +241,9 @@ void gl_geometry_rect(Rect r, u32 color_rgba) {
 		{p3, color}
 	};
 	arr_add(gl_geometry_triangles, triangle);
-	triangle.v1.pos = p3;
-	triangle.v2.pos = p4;
-	triangle.v3.pos = p1;
+	triangle.vert1.pos = p3;
+	triangle.vert2.pos = p4;
+	triangle.vert3.pos = p1;
 	arr_add(gl_geometry_triangles, triangle);
 }
 

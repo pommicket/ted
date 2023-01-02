@@ -905,7 +905,7 @@ void buffer_scroll(TextBuffer *buffer, double dx, double dy) {
 }
 
 // returns the position of the character at the given position in the buffer.
-v2 buffer_pos_to_pixels(TextBuffer *buffer, BufferPos pos) {
+vec2 buffer_pos_to_pixels(TextBuffer *buffer, BufferPos pos) {
 	buffer_pos_validate(buffer, &pos);
 	u32 line = pos.line, index = pos.index;
 	// we need to convert the index to a column
@@ -913,12 +913,12 @@ v2 buffer_pos_to_pixels(TextBuffer *buffer, BufferPos pos) {
 	Font *font = buffer_font(buffer);
 	float x = (float)((double)col  - buffer->scroll_x) * text_font_char_width(font) + buffer->x1;
 	float y = (float)((double)line - buffer->scroll_y) * text_font_char_height(font) + buffer->y1;
-	return V2(x, y);
+	return Vec2(x, y);
 }
 
 // convert pixel coordinates to a position in the buffer, selecting the closest character.
 // returns false if the position is not inside the buffer, but still sets *pos to the closest character.
-bool buffer_pixels_to_pos(TextBuffer *buffer, v2 pixel_coords, BufferPos *pos) {
+bool buffer_pixels_to_pos(TextBuffer *buffer, vec2 pixel_coords, BufferPos *pos) {
 	bool ret = true;
 	float x = pixel_coords.x, y = pixel_coords.y;
 	Font *font = buffer_font(buffer);
@@ -962,7 +962,7 @@ bool buffer_clip_rect(TextBuffer *buffer, Rect *r) {
 	float x1, y1, x2, y2;
 	rect_coords(*r, &x1, &y1, &x2, &y2);
 	if (x1 > buffer->x2 || y1 > buffer->y2 || x2 < buffer->x1 || y2 < buffer->y1) {
-		r->pos = r->size = V2(0, 0);
+		r->pos = r->size = Vec2(0, 0);
 		return false;
 	}
 	if (x1 < buffer->x1) x1 = buffer->x1;
@@ -2440,7 +2440,7 @@ void buffer_goto_word_at_cursor(TextBuffer *buffer) {
 }
 
 // returns true if the buffer "used" this event
-bool buffer_handle_click(Ted *ted, TextBuffer *buffer, v2 click, u8 times) {
+bool buffer_handle_click(Ted *ted, TextBuffer *buffer, vec2 click, u8 times) {
 	BufferPos buffer_pos;
 	if (ted->autocomplete.open) {
 		if (rect_contains_point(ted->autocomplete.rect, click))
@@ -2560,7 +2560,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 		x1 += line_number_width;
 		x1 += 2; // a little bit of padding
 		// line separating line numbers from text
-		gl_geometry_rect(rect(V2(x1, y1), V2(border_thickness, y2 - y1)), colors[COLOR_LINE_NUMBERS_SEPARATOR]);
+		gl_geometry_rect(rect(Vec2(x1, y1), Vec2(border_thickness, y2 - y1)), colors[COLOR_LINE_NUMBERS_SEPARATOR]);
 		x1 += border_thickness;
 	}
 
@@ -2595,12 +2595,12 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	}
 
 	// get screen coordinates of cursor
-	v2 cursor_display_pos = buffer_pos_to_pixels(buffer, buffer->cursor_pos);
+	vec2 cursor_display_pos = buffer_pos_to_pixels(buffer, buffer->cursor_pos);
 	// the rectangle that the cursor is rendered as
-	Rect cursor_rect = rect(cursor_display_pos, V2(settings->cursor_width, char_height));
+	Rect cursor_rect = rect(cursor_display_pos, Vec2(settings->cursor_width, char_height));
 
 	if (!buffer->is_line_buffer) { // highlight line cursor is on
-		Rect hl_rect = rect(V2(x1, cursor_display_pos.y), V2(x2-x1-1, char_height));
+		Rect hl_rect = rect(Vec2(x1, cursor_display_pos.y), Vec2(x2-x1-1, char_height));
 		buffer_clip_rect(buffer, &hl_rect);
 		gl_geometry_rect(hl_rect, colors[COLOR_CURSOR_LINE_BG]);
 	}
@@ -2638,10 +2638,10 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 
 			if (n_columns_highlighted) {
 				BufferPos p1 = {.line = line_idx, .index = index1};
-				v2 hl_p1 = buffer_pos_to_pixels(buffer, p1);
+				vec2 hl_p1 = buffer_pos_to_pixels(buffer, p1);
 				Rect hl_rect = rect(
 					hl_p1,
-					V2((float)n_columns_highlighted * char_width, char_height)
+					Vec2((float)n_columns_highlighted * char_width, char_height)
 				);
 				buffer_clip_rect(buffer, &hl_rect);
 				gl_geometry_rect(hl_rect, colors[buffer->view_only ? COLOR_VIEW_ONLY_SELECTION_BG : COLOR_SELECTION_BG]);
@@ -2764,8 +2764,8 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 			}
 			if (depth == 0) {
 				// highlight it
-				v2 gl_pos = buffer_pos_to_pixels(buffer, pos);
-				Rect hl_rect = rect(gl_pos, V2(char_width, char_height));
+				vec2 gl_pos = buffer_pos_to_pixels(buffer, pos);
+				Rect hl_rect = rect(gl_pos, Vec2(char_width, char_height));
 				if (buffer_clip_rect(buffer, &hl_rect)) {
 					gl_geometry_rect(hl_rect, colors[COLOR_MATCHING_BRACKET_HL]);
 				}
@@ -2990,15 +2990,15 @@ void buffer_highlight_lsp_range(TextBuffer *buffer, LSPRange range) {
 	BufferPos range_end = buffer_pos_from_lsp(buffer, range.end);
 	// draw the highlight
 	if (range_start.line == range_end.line) {
-		v2 a = buffer_pos_to_pixels(buffer, range_start);
-		v2 b = buffer_pos_to_pixels(buffer, range_end);
+		vec2 a = buffer_pos_to_pixels(buffer, range_start);
+		vec2 b = buffer_pos_to_pixels(buffer, range_end);
 		b.y += char_height;
 		Rect r = rect_endpoints(a, b); buffer_clip_rect(buffer, &r);
 		gl_geometry_rect(r, colors[COLOR_HOVER_HL]);
 	} else if (range_end.line - range_start.line < 1000) { // prevent gigantic highlights from slowing things down
 		// multiple lines.
-		v2 a = buffer_pos_to_pixels(buffer, range_start);
-		v2 b = buffer_pos_to_pixels(buffer, buffer_pos_end_of_line(buffer, range_start.line));
+		vec2 a = buffer_pos_to_pixels(buffer, range_start);
+		vec2 b = buffer_pos_to_pixels(buffer, buffer_pos_end_of_line(buffer, range_start.line));
 		b.y += char_height;
 		Rect r1 = rect_endpoints(a, b); buffer_clip_rect(buffer, &r1);
 		gl_geometry_rect(r1, colors[COLOR_HOVER_HL]);

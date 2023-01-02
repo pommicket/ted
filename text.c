@@ -28,13 +28,13 @@ no_warn_end
 #define CHAR_PAGE_COUNT UNICODE_CODE_POINTS / CHAR_PAGE_SIZE
 
 typedef struct {
-	v2 pos;
-	v2 tex_coord;
-	v4 color;
+	vec2 pos;
+	vec2 tex_coord;
+	vec4 color;
 } TextVertex;
 
 typedef struct {
-	TextVertex v1, v2, v3;
+	TextVertex vert1, vert2, vert3;
 } TextTriangle;
 
 struct Font {
@@ -387,14 +387,14 @@ void text_utf8_with_state(Font *font, TextRenderState *state, const char *str) {
 	}
 }
 
-static v2 text_render_utf8_internal(Font *font, const char *text, double x, double y, u32 color, bool render) {
+static vec2 text_render_utf8_internal(Font *font, const char *text, double x, double y, u32 color, bool render) {
 	TextRenderState render_state = text_render_state_default;
 	render_state.render = render;
 	render_state.x = x;
 	render_state.y = y;
 	rgba_u32_to_floats(color, render_state.color);
 	text_utf8_with_state(font, &render_state, text);
-	return V2(
+	return Vec2(
 		(float)(render_state.x_largest - x),
 		(float)(render_state.y_largest - y)
 	);
@@ -424,13 +424,13 @@ void text_utf8_anchored(Font *font, const char *text, double x, double y, u32 co
 
 void text_get_size(Font *font, const char *text, float *width, float *height) {
 	double x = 0, y = 0;
-	v2 size = text_render_utf8_internal(font, text, x, y, 0, false);
+	vec2 size = text_render_utf8_internal(font, text, x, y, 0, false);
 	if (width)  *width = size.x;
 	if (height) *height = size.y + font->char_height;
 }
 
-v2 text_get_size_v2(Font *font, const char *text) {
-	v2 v;
+vec2 text_get_size_v2(Font *font, const char *text) {
+	vec2 v;
 	text_get_size(font, text, &v.x, &v.y);
 	return v;
 }
