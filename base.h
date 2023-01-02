@@ -32,11 +32,14 @@
 #include <stdbool.h>
 #include <inttypes.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <stddef.h>
 #include <stdarg.h>
 #include <float.h>
 #include <limits.h>
 #include <assert.h>
+#include <time.h>
 #if __linux__ || _WIN32
 #include <uchar.h>
 #else

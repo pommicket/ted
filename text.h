@@ -41,6 +41,7 @@ typedef enum {
 	ANCHOR_BOTTOM_RIGHT,
 } Anchor;
 
+bool text_init(void);
 bool text_has_err(void);
 // Get the current error. Errors will NOT be overwritten with newer errors.
 const char *text_get_err(void);

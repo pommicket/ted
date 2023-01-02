@@ -90,7 +90,7 @@ static GLuint text_v_pos, text_v_color, text_v_tex_coord;
 static GLint  text_u_sampler;
 static GLint  text_u_window_size;
 
-static bool text_init(void) {
+bool text_init(void) {
 	const char *vshader_code = "attribute vec4 v_color;\n\
 attribute vec2 v_pos;\n\
 attribute vec2 v_tex_coord;\n\

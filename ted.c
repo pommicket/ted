@@ -1,10 +1,6 @@
 #include "ted.h"
 
-// this is a macro so we get -Wformat warnings
-#define ted_seterr(ted, ...) \
-	snprintf((ted)->error, sizeof (ted)->error - 1, __VA_ARGS__)
-
-static void die(const char *fmt, ...) {
+void die(const char *fmt, ...) {
 	char buf[256] = {0};
 	
 	va_list args;
@@ -188,7 +184,7 @@ static bool ted_is_regular_buffer(Ted *ted, TextBuffer *buffer) {
 }
 
 // Check the various places a file could be, and return the full path.
-static Status ted_get_file(Ted const *ted, const char *name, char *out, size_t outsz) {
+Status ted_get_file(Ted const *ted, const char *name, char *out, size_t outsz) {
 	if (ted->search_start_cwd && fs_file_exists(name)) {
 		// check in start_cwd
 		path_full(ted->start_cwd, name, out, outsz);
@@ -231,8 +227,7 @@ static void ted_load_font(Ted *ted, const char *filename, Font **out) {
 	
 }
 
-// Load all the fonts ted will use.
-static void ted_load_fonts(Ted *ted) {
+void ted_load_fonts(Ted *ted) {
 	ted_load_font(ted, "assets/font.ttf", &ted->font);
 	ted_load_font(ted, "assets/font-bold.ttf", &ted->font_bold);
 }
@@ -389,9 +384,7 @@ static TextBuffer *ted_get_buffer_with_file(Ted *ted, const char *path) {
 	return NULL;
 }
 
-
-// Returns true on success
-static bool ted_open_file(Ted *ted, const char *filename) {
+Status ted_open_file(Ted *ted, const char *filename) {
 	char path[TED_PATH_MAX];
 	ted_path_full(ted, filename, path, sizeof path);
 
@@ -422,7 +415,7 @@ static bool ted_open_file(Ted *ted, const char *filename) {
 	}
 }
 
-static bool ted_new_file(Ted *ted, const char *filename) {
+Status ted_new_file(Ted *ted, const char *filename) {
 	u16 buffer_idx, tab_idx;
 	char path[TED_PATH_MAX];
 	if (filename)
@@ -446,10 +439,8 @@ static bool ted_new_file(Ted *ted, const char *filename) {
 }
 
 
-// save all changes to all buffers with unsaved changes.
-// returns true if all buffers were saved successfully
-static bool ted_save_all(Ted *ted) {
-	bool success = true;
+Status ted_save_all(Ted *ted) {
+	Status success = true;
 	bool *buffers_used = ted->buffers_used;
 	for (u16 i = 0; i < TED_MAX_BUFFERS; ++i) {
 		if (buffers_used[i]) {

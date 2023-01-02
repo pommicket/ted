@@ -1,14 +1,26 @@
 #ifndef TED_H_
 #define TED_H_
 
+#include "base.h"
+no_warn_start
+#if _WIN32
+	#include <SDL.h>
+#else
+	#if DEBUG || __TINYC__ // speed up compile time on debug, also tcc doesn't have immintrin.h
+	#define SDL_DISABLE_IMMINTRIN_H
+	#endif
+	#include <SDL2/SDL.h>
+#endif
+no_warn_end
 #include "util.h"
+#include "os.h"
 #include "unicode.h"
 #include "ds.h"
 #include "lsp.h"
-#include "base.h"
 #include "text.h"
 #include "colors.h"
 #include "command.h"
+#include "lib/glcorearb.h"
 
 #define TED_VERSION "2.0"
 #define TED_VERSION_FULL "ted v. " TED_VERSION
@@ -20,10 +32,6 @@
 #define TEXT_SIZE_MAX 70
 // max number of LSPs running at once
 #define TED_LSP_MAX 200
-
-typedef u32 GLuint;
-typedef i32 GLint;
-typedef unsigned GLenum;
 
 // these all say "CPP" but really they're C/C++
 enum {
@@ -575,7 +583,7 @@ typedef struct Ted {
 	
 	double last_save_time; // last time a save command was executed. used for bg-shaders.
 
-	Process build_process;
+	Process *build_process;
 	// When we read the stdout from the build process, the tail end of the read could be an
 	// incomplete UTF-8 code point. This is where we store that "tail end" until more
 	// data is available. (This is up to 3 bytes, null terminated)
@@ -811,6 +819,72 @@ void find_open(Ted *ted, bool replace);
 void find_close(Ted *ted);
 
 // === gl.c ===
+extern float gl_window_width, gl_window_height;
+// set by main()
+extern int gl_version_major, gl_version_minor;
+
+// macro trickery to avoid having to write everything multiple times
+#define gl_for_each_proc(do)\
+	do(DRAWARRAYS, DrawArrays)\
+	do(GENTEXTURES, GenTextures)\
+	do(DELETETEXTURES, DeleteTextures)\
+	do(GENERATEMIPMAP, GenerateMipmap)\
+	do(TEXIMAGE2D, TexImage2D)\
+	do(BINDTEXTURE, BindTexture)\
+	do(TEXPARAMETERI, TexParameteri)\
+	do(GETERROR, GetError)\
+	do(GETINTEGERV, GetIntegerv)\
+	do(ENABLE, Enable)\
+	do(DISABLE, Disable)\
+	do(BLENDFUNC, BlendFunc)\
+	do(VIEWPORT, Viewport)\
+	do(CLEARCOLOR, ClearColor)\
+	do(CLEAR, Clear)\
+	do(FINISH, Finish)\
+	do(CREATESHADER, CreateShader)\
+	do(DELETESHADER, DeleteShader)\
+	do(CREATEPROGRAM, CreateProgram)\
+	do(SHADERSOURCE, ShaderSource)\
+	do(GETSHADERIV, GetShaderiv)\
+	do(GETSHADERINFOLOG, GetShaderInfoLog)\
+	do(COMPILESHADER, CompileShader)\
+	do(CREATEPROGRAM, CreateProgram)\
+	do(DELETEPROGRAM, DeleteProgram)\
+	do(ATTACHSHADER, AttachShader)\
+	do(LINKPROGRAM, LinkProgram)\
+	do(GETPROGRAMIV, GetProgramiv)\
+	do(GETPROGRAMINFOLOG, GetProgramInfoLog)\
+	do(USEPROGRAM, UseProgram)\
+	do(GETATTRIBLOCATION, GetAttribLocation)\
+	do(GETUNIFORMLOCATION, GetUniformLocation)\
+	do(GENBUFFERS, GenBuffers)\
+	do(DELETEBUFFERS, DeleteBuffers)\
+	do(BINDBUFFER, BindBuffer)\
+	do(BUFFERDATA, BufferData)\
+	do(VERTEXATTRIBPOINTER, VertexAttribPointer)\
+	do(ENABLEVERTEXATTRIBARRAY, EnableVertexAttribArray)\
+	do(DISABLEVERTEXATTRIBARRAY, DisableVertexAttribArray)\
+	do(GENVERTEXARRAYS, GenVertexArrays)\
+	do(DELETEVERTEXARRAYS, DeleteVertexArrays)\
+	do(BINDVERTEXARRAY, BindVertexArray)\
+	do(ACTIVETEXTURE, ActiveTexture)\
+	do(UNIFORM1F, Uniform1f)\
+	do(UNIFORM2F, Uniform2f)\
+	do(UNIFORM3F, Uniform3f)\
+	do(UNIFORM4F, Uniform4f)\
+	do(UNIFORM1I, Uniform1i)\
+	do(UNIFORM2I, Uniform2i)\
+	do(UNIFORM3I, Uniform3i)\
+	do(UNIFORM4I, Uniform4i)\
+	do(UNIFORMMATRIX4FV, UniformMatrix4fv)\
+	do(DEBUGMESSAGECALLBACK, DebugMessageCallback)\
+	do(DEBUGMESSAGECONTROL, DebugMessageControl)\
+
+#define gl_declare_proc(upper, lower) extern PFNGL##upper##PROC gl##lower;
+gl_for_each_proc(gl_declare_proc)
+#undef gl_declare_proc
+
+void gl_get_procs(void);
 GlRcSAB *gl_rc_sab_new(GLuint shader, GLuint array, GLuint buffer);
 void gl_rc_sab_incref(GlRcSAB *s);
 void gl_rc_sab_decref(GlRcSAB **ps);
@@ -831,12 +905,17 @@ void gl_geometry_draw(void);
 GLuint gl_load_texture_from_image(const char *path);
 
 // === ide-autocomplete.c ===
+// open autocomplete
+// trigger should either be a character (e.g. '.') or one of the TRIGGER_* constants.
+void autocomplete_open(Ted *ted, uint32_t trigger);
+void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *response); 
 void autocomplete_select_cursor_completion(Ted *ted);
 void autocomplete_scroll(Ted *ted, i32 by);
 void autocomplete_next(Ted *ted);
 void autocomplete_prev(Ted *ted);
 void autocomplete_close(Ted *ted);
 void autocomplete_update_suggested(Ted *ted);
+void autocomplete_frame(Ted *ted);
 
 // === ide-definitions.c ===
 // go to the definition of `name`.
@@ -844,10 +923,12 @@ void autocomplete_update_suggested(Ted *ted);
 // Note: the document position is required for LSP requests because of overloading (where the name
 // alone isn't sufficient)
 void definition_goto(Ted *ted, LSP *lsp, const char *name, LSPDocumentPosition pos);
+void definitions_process_lsp_response(Ted *ted, LSP *lsp, const LSPResponse *response);
 void definitions_selector_open(Ted *ted);
 void definitions_selector_update(Ted *ted);
 void definitions_selector_render(Ted *ted, Rect bounds);
 void definitions_selector_close(Ted *ted);
+void definitions_frame(Ted *ted);
 
 // === ide-highlights.c ===
 void highlights_close(Ted *ted);
@@ -936,9 +1017,16 @@ bool tag_goto(Ted *ted, const char *tag);
 SymbolInfo *tags_get_symbols(Ted *ted);
 
 // === ted.c ===
+#define ted_seterr(ted, ...) \
+	snprintf((ted)->error, sizeof (ted)->error - 1, __VA_ARGS__)
+// for fatal errors
+void die(PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRINTF(1, 2);
+Status ted_get_file(Ted const *ted, const char *name, char *out, size_t outsz);
 void ted_seterr_to_buferr(Ted *ted, TextBuffer *buffer);
 bool ted_haserr(Ted *ted);
 const char *ted_geterr(Ted *ted);
+// Load all the fonts ted will use.
+void ted_load_fonts(Ted *ted);
 void ted_clearerr(Ted *ted);
 char *ted_get_root_dir_of(Ted *ted, const char *path);
 char *ted_get_root_dir(Ted *ted);
@@ -949,6 +1037,10 @@ LSP *ted_get_lsp_by_id(Ted *ted, LSPID id);
 LSP *ted_get_lsp(Ted *ted, const char *path, Language language);
 LSP *ted_active_lsp(Ted *ted);
 u32 ted_color(Ted *ted, ColorSetting color);
+Status ted_open_file(Ted *ted, const char *filename);
+Status ted_new_file(Ted *ted, const char *filename);
+// save all changes to all buffers with unsaved changes.
+Status ted_save_all(Ted *ted);
 // sets the active buffer to this buffer, and updates active_node, etc. accordingly
 // you can pass NULL to buffer to make it so no buffer is active.
 void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer);

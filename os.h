@@ -89,11 +89,11 @@ typedef struct {
 
 // get process ID of this process
 int process_get_id(void);
-// execute the given command (like if it was passed to system()).
-// returns false on failure
-bool process_run_ex(Process *proc, const char *command, const ProcessSettings *props);
+// execute the given command (like if it was passed to system()), creating a new Process object.
+// returns a valid process object on failure, but it will have an error, according to process_geterr
+Process *process_run_ex(const char *command, const ProcessSettings *props);
 // like process_run_ex, but with the default settings
-bool process_run(Process *process, const char *command);
+Process *process_run(const char *command);
 // returns the error last error produced, or NULL if there was no error.
 const char *process_geterr(Process *process);
 // write to stdin
@@ -119,6 +119,7 @@ long long process_read_stderr(Process *process, char *data, size_t size);
 // If message is not NULL, it will be set to a description of what happened (e.g. "exited successfully")
 int process_check_status(Process *process, char *message, size_t message_size);
 // kills process if still running
+// this also frees any resources used by `process`.
 void process_kill(Process *process);
 
 #endif // OS_H_

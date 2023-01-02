@@ -240,7 +240,7 @@ static SymbolKind lsp_completion_kind_to_ted(LSPCompletionKind kind) {
 }
 
 
-static void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *response) {
+void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *response) {
 	const LSPRequest *request = &response->request;
 	if (request->type != LSP_REQUEST_COMPLETION)
 		return;
@@ -288,9 +288,7 @@ static void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *respo
 	}
 }
 
-// open autocomplete
-// trigger should either be a character (e.g. '.') or one of the TRIGGER_* constants.
-static void autocomplete_open(Ted *ted, uint32_t trigger) {
+void autocomplete_open(Ted *ted, uint32_t trigger) {
 	Autocomplete *ac = &ted->autocomplete;
 	if (ac->open) return;
 	if (!ted->active_buffer) return;
@@ -342,7 +340,7 @@ static char symbol_kind_icon(SymbolKind k) {
 	return ' ';
 }
 
-static void autocomplete_frame(Ted *ted) {
+void autocomplete_frame(Ted *ted) {
 	Autocomplete *ac = &ted->autocomplete;
 	if (!ac->open) return;
 	

@@ -1,6 +1,10 @@
 #include "ted.h"
 #include "lib/glcorearb.h"
 
+float gl_window_width, gl_window_height;
+int gl_version_major, gl_version_minor;
+
+
 #if DEBUG
 unsigned char *stbi_load(const char *filename, int *x, int *y, int *comp, int req_comp);
 #else
@@ -10,66 +14,10 @@ no_warn_start
 no_warn_end
 #endif
 
-// macro trickery to avoid having to write everything twice
-#define gl_for_each_proc(do)\
-	do(DRAWARRAYS, DrawArrays)\
-	do(GENTEXTURES, GenTextures)\
-	do(DELETETEXTURES, DeleteTextures)\
-	do(GENERATEMIPMAP, GenerateMipmap)\
-	do(TEXIMAGE2D, TexImage2D)\
-	do(BINDTEXTURE, BindTexture)\
-	do(TEXPARAMETERI, TexParameteri)\
-	do(GETERROR, GetError)\
-	do(GETINTEGERV, GetIntegerv)\
-	do(ENABLE, Enable)\
-	do(DISABLE, Disable)\
-	do(BLENDFUNC, BlendFunc)\
-	do(VIEWPORT, Viewport)\
-	do(CLEARCOLOR, ClearColor)\
-	do(CLEAR, Clear)\
-	do(FINISH, Finish)\
-	do(CREATESHADER, CreateShader)\
-	do(DELETESHADER, DeleteShader)\
-	do(CREATEPROGRAM, CreateProgram)\
-	do(SHADERSOURCE, ShaderSource)\
-	do(GETSHADERIV, GetShaderiv)\
-	do(GETSHADERINFOLOG, GetShaderInfoLog)\
-	do(COMPILESHADER, CompileShader)\
-	do(CREATEPROGRAM, CreateProgram)\
-	do(DELETEPROGRAM, DeleteProgram)\
-	do(ATTACHSHADER, AttachShader)\
-	do(LINKPROGRAM, LinkProgram)\
-	do(GETPROGRAMIV, GetProgramiv)\
-	do(GETPROGRAMINFOLOG, GetProgramInfoLog)\
-	do(USEPROGRAM, UseProgram)\
-	do(GETATTRIBLOCATION, GetAttribLocation)\
-	do(GETUNIFORMLOCATION, GetUniformLocation)\
-	do(GENBUFFERS, GenBuffers)\
-	do(DELETEBUFFERS, DeleteBuffers)\
-	do(BINDBUFFER, BindBuffer)\
-	do(BUFFERDATA, BufferData)\
-	do(VERTEXATTRIBPOINTER, VertexAttribPointer)\
-	do(ENABLEVERTEXATTRIBARRAY, EnableVertexAttribArray)\
-	do(DISABLEVERTEXATTRIBARRAY, DisableVertexAttribArray)\
-	do(GENVERTEXARRAYS, GenVertexArrays)\
-	do(DELETEVERTEXARRAYS, DeleteVertexArrays)\
-	do(BINDVERTEXARRAY, BindVertexArray)\
-	do(ACTIVETEXTURE, ActiveTexture)\
-	do(UNIFORM1F, Uniform1f)\
-	do(UNIFORM2F, Uniform2f)\
-	do(UNIFORM3F, Uniform3f)\
-	do(UNIFORM4F, Uniform4f)\
-	do(UNIFORM1I, Uniform1i)\
-	do(UNIFORM2I, Uniform2i)\
-	do(UNIFORM3I, Uniform3i)\
-	do(UNIFORM4I, Uniform4i)\
-	do(UNIFORMMATRIX4FV, UniformMatrix4fv)\
-	do(DEBUGMESSAGECALLBACK, DebugMessageCallback)\
-	do(DEBUGMESSAGECONTROL, DebugMessageControl)\
 
-#define gl_declare_proc(upper, lower) static PFNGL##upper##PROC gl##lower;
-gl_for_each_proc(gl_declare_proc)
-#undef gl_declare_proc
+#define gl_define_proc(upper, lower) PFNGL##upper##PROC gl##lower;
+gl_for_each_proc(gl_define_proc)
+#undef gl_define_proc
 
 GlRcSAB *gl_rc_sab_new(GLuint shader, GLuint array, GLuint buffer) {
 	GlRcSAB *s = calloc(1, sizeof *s);
@@ -121,11 +69,7 @@ void gl_rc_texture_decref(GlRcTexture **pt) {
 	*pt = NULL;
 }
 
-// set by main()
-static int gl_version_major;
-static int gl_version_minor;
-
-static void gl_get_procs(void) {
+void gl_get_procs(void) {
 	#define gl_get_proc(upper, lower) gl##lower = (PFNGL##upper##PROC)SDL_GL_GetProcAddress("gl" #lower);
 #if __GNUC__ && !__clang__
 	#pragma GCC diagnostic push
@@ -282,8 +226,6 @@ void gl_geometry_init(void) {
 	if (gl_version_major >= 3)
 		glGenVertexArrays(1, &gl_geometry_vao);
 }
-
-static float gl_window_width, gl_window_height;
 
 void gl_geometry_rect(Rect r, u32 color_rgba) {
 	v4 color = rgba_u32_to_v4(color_rgba);

@@ -494,7 +494,7 @@ typedef struct LSP {
 	
 	// The server process
 	// thread-safety: created in lsp_create, then only accessed by the communication thread
-	Process process;
+	Process *process;
 	
 	SDL_mutex *document_mutex;
 		// for our purposes, folders are "documents"

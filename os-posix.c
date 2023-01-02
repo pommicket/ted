@@ -153,19 +153,19 @@ static void set_nonblocking(int fd) {
 	fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK);
 }
 
-bool process_run_ex(Process *proc, const char *command, const ProcessSettings *settings) {
-	memset(proc, 0, sizeof *proc);
+Process *process_run_ex(const char *command, const ProcessSettings *settings) {
+	Process *proc = calloc(1, sizeof *proc);
 
 	int stdin_pipe[2] = {0}, stdout_pipe[2] = {0}, stderr_pipe[2] = {0};
 	if (pipe(stdin_pipe) != 0) {
 		strbuf_printf(proc->error, "%s", strerror(errno));
-		return false; 
+		return proc; 
 	}
 	if (pipe(stdout_pipe) != 0) {
 		strbuf_printf(proc->error, "%s", strerror(errno));
 		close(stdin_pipe[0]);
 		close(stdin_pipe[1]);
-		return false;
+		return proc;
 	}
 	if (settings->separate_stderr) {
 		if (pipe(stderr_pipe) != 0) {
@@ -174,7 +174,7 @@ bool process_run_ex(Process *proc, const char *command, const ProcessSettings *s
 			close(stdin_pipe[1]);
 			close(stdout_pipe[0]);
 			close(stdout_pipe[1]);
-			return false;
+			return proc;
 		}
 	}
 	
@@ -232,14 +232,13 @@ bool process_run_ex(Process *proc, const char *command, const ProcessSettings *s
 		if (stderr_pipe[0])
 			proc->stderr_pipe = stderr_pipe[0];
 		proc->stdin_pipe = stdin_pipe[1];
-		success = true;
 	}
-	return success;
+	return proc;
 }
 
-bool process_run(Process *proc, const char *command) {
+Process *process_run(const char *command) {
 	const ProcessSettings settings = {0};
-	return process_run_ex(proc, command, &settings);
+	return process_run_ex(command, &settings);
 }
 
 

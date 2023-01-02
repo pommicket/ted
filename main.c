@@ -54,19 +54,11 @@ FUTURE FEATURES:
 - LSP request timeout
 */
 
-#include "base.h"
-no_warn_start
-#if _WIN32
-#include <SDL.h>
-#else
-#if DEBUG || __TINYC__ // speed up compile time on debug, also tcc doesn't have immintrin.h
-#define SDL_DISABLE_IMMINTRIN_H
-#endif
-#include <SDL2/SDL.h>
-#endif
-no_warn_end
+#include "ted.h"
+
 #include <locale.h>
 #include <wctype.h>
+#include <signal.h>
 #if __linux__
 #include <execinfo.h>
 #endif
@@ -77,6 +69,13 @@ no_warn_end
 #pragma comment(lib, "opengl32.lib")
 #pragma comment(lib, "shell32.lib")
 #endif
+
+
+#if !defined ONE_SOURCE && !defined DEBUG
+	#define ONE_SOURCE 1
+#endif
+
+#if ONE_SOURCE
 
 #include "util.c"
 
@@ -114,11 +113,14 @@ no_warn_end
 #include "lsp-write.c"
 #include "lsp-parse.c"
 
+#endif // ONE_SOURCE
+
 #if PROFILE
 #define PROFILE_TIME(var) double var = time_get_seconds();
 #else
 #define PROFILE_TIME(var)
 #endif
+
 
 static Rect error_box_rect(Ted *ted) {
 	Font *font = ted->font;
