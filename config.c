@@ -7,7 +7,9 @@
 // [section2]
 // asdf = 123
 
-// all the "control" pointers here are relative to a NULL Settings object.
+#include "ted.h"
+
+// all the "control" pointers here are relative to `settings_zero`.
 typedef struct {
 	const char *name;
 	const bool *control;

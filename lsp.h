@@ -574,3 +574,119 @@ LSPDocumentPosition lsp_location_end_position(LSPLocation location);
 void lsp_free(LSP *lsp);
 
 #endif // LSP_H_
+
+#if defined LSP_INTERNAL && !defined LSP_INTERNAL_H_
+#define LSP_INTERNAL_H_
+
+#define lsp_set_error(lsp, ...) do {\
+		SDL_LockMutex(lsp->error_mutex);\
+		strbuf_printf(lsp->error, __VA_ARGS__);\
+		SDL_UnlockMutex(lsp->error_mutex);\
+	} while (0)
+
+// a string
+typedef struct {
+	u32 pos;
+	u32 len;
+} JSONString;
+
+typedef struct JSONValue JSONValue;
+
+typedef struct {
+	u32 len;
+	// this is an index into the values array
+	//   values[items..items+len] store the names
+	//   values[items+len..items+2*len] store the values
+	u32 items;
+} JSONObject;
+
+typedef struct {
+	u32 len;
+	// this is an index into the values array
+	//    values[elements..elements+len] are the elements
+	u32 elements;
+} JSONArray;
+
+typedef enum {
+	// note: json doesn't actually include undefined.
+	// this is only for returning things from json_get etc.
+	JSON_UNDEFINED,
+	JSON_NULL,
+	JSON_FALSE,
+	JSON_TRUE,
+	JSON_NUMBER,
+	JSON_STRING,
+	JSON_OBJECT,
+	JSON_ARRAY
+} JSONValueType;
+
+struct JSONValue {
+	JSONValueType type;
+	union {
+		double number;
+		JSONString string;
+		JSONArray array;
+		JSONObject object;
+	} val;
+};
+
+
+typedef struct {
+	char error[64];
+	bool is_text_copied; // if this is true, then json_free will call free on text
+	const char *text;
+	// root = values[0]
+	JSONValue *values;
+} JSON;
+
+
+void process_message(LSP *lsp, JSON *json);
+void write_request(LSP *lsp, LSPRequest *request);
+void write_message(LSP *lsp, LSPMessage *message);
+void lsp_request_free(LSPRequest *r);
+void lsp_response_free(LSPResponse *r);
+
+const char *json_type_to_str(JSONValueType type);
+void json_debug_print_array(const JSON *json, JSONArray array);
+void json_debug_print_object(const JSON *json, JSONObject obj);
+void json_debug_print_string(const JSON *json, JSONString string);
+void json_debug_print_value(const JSON *json, JSONValue value);
+void json_free(JSON *json);
+// NOTE: text must live as long as json!!!
+bool json_parse(JSON *json, const char *text);
+// like json_parse, but a copy of text is made, so you can free/overwrite it immediately.
+bool json_parse_copy(JSON *json, const char *text);
+JSONValue json_object_get(const JSON *json, JSONObject object, const char *name);
+JSONValue json_array_get(const JSON *json, JSONArray array, u64 i);
+JSONValue json_object_key(const JSON *json, JSONObject object, u64 i);
+JSONValue json_object_value(const JSON *json, JSONObject object, u64 i);
+double json_force_number(JSONValue x);
+double json_object_get_number(const JSON *json, JSONObject object, const char *name);
+double json_array_get_number(const JSON *json, JSONArray array, size_t i);
+bool json_force_bool(JSONValue x, bool default_value);
+bool json_object_get_bool(const JSON *json, JSONObject object, const char *name, bool default_value);
+bool json_array_get_bool(const JSON *json, JSONArray array, size_t i, bool default_value);
+JSONString json_force_string(JSONValue x);
+JSONString json_object_get_string(const JSON *json, JSONObject object, const char *name);
+JSONString json_array_get_string(const JSON *json, JSONArray array, size_t i);
+JSONObject json_force_object(JSONValue x);
+JSONObject json_object_get_object(const JSON *json, JSONObject object, const char *name);
+JSONObject json_array_get_object(const JSON *json, JSONArray array, size_t i);
+JSONArray json_force_array(JSONValue x);
+JSONArray json_object_get_array(const JSON *json, JSONObject object, const char *name);
+JSONArray json_array_get_array(const JSON *json, JSONArray array, size_t i);
+JSONValue json_root(const JSON *json);
+JSONValue json_get(const JSON *json, const char *path);
+bool json_has(const JSON *json, const char *path);
+void json_string_get(const JSON *json, JSONString string, char *buf, size_t buf_sz);
+void json_debug_print(const JSON *json);
+size_t json_escape_to(char *out, size_t out_sz, const char *in);
+char *json_escape(const char *str);
+
+// print server-to-client communication
+#define LSP_SHOW_S2C 0
+// print client-to-server communication
+#define LSP_SHOW_C2S 0
+
+#endif // LSP_INTERNAL
+

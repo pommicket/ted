@@ -1,3 +1,6 @@
+#define LSP_INTERNAL 1
+#include "lsp.h"
+
 #define write_bool lsp_write_bool // prevent naming conflict
 
 static const char *lsp_language_id(Language lang) {
@@ -363,7 +366,7 @@ static void write_symbol_kind_support(JSONWriter *o) {
 
 // NOTE: don't call lsp_request_free after calling this function.
 //  I will do it for you.
-static void write_request(LSP *lsp, LSPRequest *request) {
+void write_request(LSP *lsp, LSPRequest *request) {
 	JSONWriter writer = message_writer_new(lsp);
 	JSONWriter *o = &writer;
 	
@@ -660,7 +663,7 @@ static void write_response(LSP *lsp, LSPResponse *response) {
 	lsp_response_free(response);
 }
 
-static void write_message(LSP *lsp, LSPMessage *message) {
+void write_message(LSP *lsp, LSPMessage *message) {
 	switch (message->type) {
 	case LSP_REQUEST:
 		write_request(lsp, &message->u.request);

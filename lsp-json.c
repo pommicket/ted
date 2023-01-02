@@ -1,62 +1,9 @@
 // JSON parser for LSP
-// provides FAST(ish) parsing but SLOW lookup
-// this is especially fast for small objects
+// provides FAST(ish) parsing but SLOW lookup for large objects
 // this actually supports "extended json", where objects can have arbitrary values as keys.
 
-// a string
-typedef struct {
-	u32 pos;
-	u32 len;
-} JSONString;
-
-typedef struct JSONValue JSONValue;
-
-typedef struct {
-	u32 len;
-	// this is an index into the values array
-	//   values[items..items+len] store the names
-	//   values[items+len..items+2*len] store the values
-	u32 items;
-} JSONObject;
-
-typedef struct {
-	u32 len;
-	// this is an index into the values array
-	//    values[elements..elements+len] are the elements
-	u32 elements;
-} JSONArray;
-
-typedef enum {
-	// note: json doesn't actually include undefined.
-	// this is only for returning things from json_get etc.
-	JSON_UNDEFINED,
-	JSON_NULL,
-	JSON_FALSE,
-	JSON_TRUE,
-	JSON_NUMBER,
-	JSON_STRING,
-	JSON_OBJECT,
-	JSON_ARRAY
-} JSONValueType;
-
-struct JSONValue {
-	JSONValueType type;
-	union {
-		double number;
-		JSONString string;
-		JSONArray array;
-		JSONObject object;
-	} val;
-};
-
-
-typedef struct {
-	char error[64];
-	bool is_text_copied; // if this is true, then json_free will call free on text
-	const char *text;
-	// root = values[0]
-	JSONValue *values;
-} JSON;
+#define LSP_INTERNAL 1
+#include "lsp.h"
 
 
 #define SKIP_WHITESPACE while (json_is_space(text[index])) ++index;
@@ -401,7 +348,6 @@ void json_free(JSON *json) {
 	json->text = NULL;
 }
 
-// NOTE: text must live as long as json!!!
 bool json_parse(JSON *json, const char *text) {
 	memset(json, 0, sizeof *json);
 	json->text = text;
@@ -423,7 +369,6 @@ bool json_parse(JSON *json, const char *text) {
 	return true;
 }
 
-// like json_parse, but a copy of text is made, so you can free/overwrite it immediately.
 bool json_parse_copy(JSON *json, const char *text) {
 	bool success = json_parse(json, str_dup(text));
 	if (success) {
@@ -446,7 +391,6 @@ static bool json_streq(const JSON *json, const JSONString *string, const char *n
 	return *name == '\0';
 }
 
-// returns undefined if the property `name` does not exist.
 JSONValue json_object_get(const JSON *json, JSONObject object, const char *name) {
 	const JSONValue *items = &json->values[object.items];
 	for (u32 i = 0; i < object.len; ++i) {

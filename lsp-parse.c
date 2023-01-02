@@ -1,3 +1,6 @@
+#define LSP_INTERNAL 1
+#include "lsp.h"
+
 static WarnUnusedResult bool lsp_expect_type(LSP *lsp, JSONValue value, JSONValueType type, const char *what) {
 	if (value.type != type) {
 		lsp_set_error(lsp, "Expected %s for %s, got %s",
@@ -827,7 +830,7 @@ static bool parse_references(LSP *lsp, const JSON *json, LSPResponse *response) 
 	return true;
 }
 
-static void process_message(LSP *lsp, JSON *json) {
+void process_message(LSP *lsp, JSON *json) {
 		
 	#if 0
 	printf("\x1b[3m");

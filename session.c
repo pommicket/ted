@@ -1,3 +1,5 @@
+#include "ted.h"
+
 #define SESSION_FILENAME "session.txt"
 #define SESSION_VERSION "\x7fTED0002"
 
@@ -320,7 +322,7 @@ static void session_read_file(Ted *ted, FILE *fp) {
 	}
 }
 
-static void session_write(Ted *ted) {
+void session_write(Ted *ted) {
 	const Settings *settings = ted_active_settings(ted);
 	if (!settings->restore_session)
 		return;
@@ -341,7 +343,7 @@ static void session_write(Ted *ted) {
 	}
 }
 
-static void session_read(Ted *ted) {
+void session_read(Ted *ted) {
 	const Settings *settings = ted_active_settings(ted);
 	if (settings->restore_session) {
 		char filename[TED_PATH_MAX];

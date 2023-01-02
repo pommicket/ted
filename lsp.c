@@ -1,19 +1,5 @@
-// print server-to-client communication
-#define LSP_SHOW_S2C 0
-// print client-to-server communication
-#define LSP_SHOW_C2S 0
-
-static void lsp_request_free(LSPRequest *r);
-static void lsp_response_free(LSPResponse *r);
-
-#define lsp_set_error(lsp, ...) do {\
-		SDL_LockMutex(lsp->error_mutex);\
-		strbuf_printf(lsp->error, __VA_ARGS__);\
-		SDL_UnlockMutex(lsp->error_mutex);\
-	} while (0)
-#include "lsp-json.c"
-#include "lsp-write.c"
-#include "lsp-parse.c"
+#define LSP_INTERNAL 1
+#include "lsp.h"
 
 // it's nice to have request IDs be totally unique, including across LSP servers.
 static LSPRequestID get_request_id(void) {
@@ -39,7 +25,7 @@ static void lsp_document_change_event_free(LSPDocumentChangeEvent *event) {
 	free(event->text);
 }
 
-static void lsp_request_free(LSPRequest *r) {
+void lsp_request_free(LSPRequest *r) {
 	free(r->id_string);
 	switch (r->type) {
 	case LSP_REQUEST_NONE:
@@ -87,7 +73,7 @@ static void lsp_request_free(LSPRequest *r) {
 	memset(r, 0, sizeof *r);
 }
 
-static void lsp_response_free(LSPResponse *r) {
+void lsp_response_free(LSPResponse *r) {
 	arr_free(r->string_data);
 	switch (r->request.type) {
 	case LSP_REQUEST_COMPLETION:

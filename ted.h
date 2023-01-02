@@ -778,6 +778,26 @@ Command command_from_str(const char *str);
 const char *command_to_str(Command c);
 void command_execute(Ted *ted, Command c, i64 argument);
 
+// === config.c ===
+// first, we read all config files, then we parse them.
+// this is because we want less specific settings (e.g. settings applied
+// to all languages instead of one particular language) to be applied first,
+// then more specific settings are based off of those.
+// EXAMPLE:
+//   ---config file 1---
+//     [Javascript.core]
+//     syntax-highlighting = off
+//     (inherits tab-width = 4)
+//     [CSS.core]
+//     tab-width = 2 (overrides tab-width = 4)
+//   ---config file 2---
+//     [core]
+//     tab-width = 4
+void config_read(Ted *ted, ConfigPart **parts, const char *filename);
+void config_parse(Ted *ted, ConfigPart **pparts);
+void config_free(Ted *ted);
+char *settings_get_root_dir(Settings *settings, const char *path);
+
 // === find.c ===
 TextBuffer *find_search_buffer(Ted *ted);
 float find_menu_height(Ted *ted);
@@ -890,6 +910,10 @@ void node_split(Ted *ted, Node *node, bool vertical);
 void node_split_switch(Ted *ted);
 void node_split_swap(Ted *ted);
 
+// === session.c ===
+void session_write(Ted *ted);
+void session_read(Ted *ted);
+
 // === syntax.c ===
 Language language_from_str(const char *str);
 const char *language_to_str(Language language);
@@ -958,29 +982,5 @@ bool button_update(Ted *ted, Rect button);
 PopupOption popup_update(Ted *ted, u32 options);
 void popup_render(Ted *ted, u32 options, const char *title, const char *body);
 v2 checkbox_frame(Ted *ted, bool *value, const char *label, v2 pos);
-
-
-// first, we read all config files, then we parse them.
-// this is because we want less specific settings (e.g. settings applied
-// to all languages instead of one particular language) to be applied first,
-// then more specific settings are based off of those.
-// EXAMPLE:
-//   ---config file 1---
-//     [Javascript.core]
-//     syntax-highlighting = off
-//     (inherits tab-width = 4)
-//     [CSS.core]
-//     tab-width = 2 (overrides tab-width = 4)
-//   ---config file 2---
-//     [core]
-//     tab-width = 4
-void config_read(Ted *ted, ConfigPart **parts, const char *filename);
-void config_parse(Ted *ted, ConfigPart **parts);
-void config_free(Ted *ted);
-char *settings_get_root_dir(Settings *settings, const char *path);
-void menu_open(Ted *ted, Menu menu);
-void menu_close(Ted *ted);
-void autocomplete_close(Ted *ted);
-void signature_help_retrigger(Ted *ted);
 
 #endif

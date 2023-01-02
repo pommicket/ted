@@ -110,6 +110,9 @@ no_warn_end
 #include "config.c"
 #include "session.c"
 #include "lsp.c"
+#include "lsp-json.c"
+#include "lsp-write.c"
+#include "lsp-parse.c"
 
 #if PROFILE
 #define PROFILE_TIME(var) double var = time_get_seconds();
