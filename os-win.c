@@ -2,6 +2,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <io.h>
+#include <sysinfoapi.h>
 
 static FsType windows_file_attributes_to_type(DWORD attrs) {
 	if (attrs == INVALID_FILE_ATTRIBUTES)
@@ -103,4 +104,25 @@ int fs_get_cwd(char *buf, size_t buflen) {
 	if (WideCharToMultiByte(CP_UTF8, 0, wide_path, (int)wide_pathlen, buf, (int)buflen, NULL, NULL) == 0)
 		return 0;
 	return 1;
+}
+
+struct timespec time_last_modified(char const *filename) {
+	// windows' _stat does not have st_mtim
+	struct _stat statbuf = {0};
+	struct timespec ts = {0};
+	_stat(filename, &statbuf);
+	ts.tv_sec = statbuf.st_mtime;
+	return ts;
+}
+
+
+struct timespec time_get(void) {
+	struct timespec ts = {0};
+	timespec_get(&ts, TIME_UTC);
+	return ts;
+}
+
+void time_sleep_ns(u64 ns) {
+	// windows....
+	Sleep((DWORD)(ns / 1000000));
 }

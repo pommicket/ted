@@ -249,5 +249,9 @@ Rect rect_grow(Rect r, float amount);
 v4 color_rgba_to_hsva(v4 rgba);
 v4 color_hsva_to_rgba(v4 hsva);
 u32 color_interpolate(float x, u32 color1, u32 color2);
+int timespec_cmp(struct timespec a, struct timespec b);
+bool timespec_eq(struct timespec a, struct timespec b);
+struct timespec timespec_max(struct timespec a, struct timespec b);
+double timespec_to_seconds(struct timespec ts);
 
 #endif // UTIL_H_

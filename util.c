@@ -1228,3 +1228,25 @@ u32 color_interpolate(float x, u32 color1, u32 color2) {
 	c_out = color_hsva_to_rgba(c_out);
 	return rgba_v4_to_u32(c_out);
 }
+
+
+int timespec_cmp(struct timespec a, struct timespec b) {
+	if (a.tv_sec  > b.tv_sec)  return 1;
+	if (a.tv_sec  < b.tv_sec)  return -1;
+	if (a.tv_nsec > b.tv_nsec) return 1;
+	if (a.tv_nsec < b.tv_nsec) return -1;
+	return 0;
+}
+
+bool timespec_eq(struct timespec a, struct timespec b) {
+	return timespec_cmp(a, b) == 0;
+}
+
+struct timespec timespec_max(struct timespec a, struct timespec b) {
+	return timespec_cmp(a, b) < 0 ? b : a;
+}
+
+double timespec_to_seconds(struct timespec ts) {
+	return (double)ts.tv_sec
+		+ (double)ts.tv_nsec * 1e-9;
+}

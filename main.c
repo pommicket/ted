@@ -7,6 +7,7 @@
 - check LSP process status (TEST: what happens if LSP server is not installed)
 - make tags_dir the root folder
 - check that tags still works
+- do we need higher than 1-second resolution in time_last_modified on windows?
 - TESTING: make rust-analyzer-slow (waits 10s before sending response)
 - TESTING: check all IDE features with different servers
 - run everything through valgrind ideally with leak checking
@@ -89,22 +90,15 @@ no_warn_end
 #include "util.c"
 
 #if _WIN32
-#include "filesystem-win.c"
-#elif __unix__
-#include "filesystem-posix.c"
-#else
-#error "Unrecognized operating system."
-#endif
-
-#if _WIN32
+#include "os-win.c"
 #include "process-win.c"
 #elif __unix__
+#include "os-posix.c"
 #include "process-posix.c"
 #else
 #error "Unrecognized operating system."
 #endif
 
-#include "time.c"
 #include "ted.h"
 #include "gl.c"
 #include "text.c"

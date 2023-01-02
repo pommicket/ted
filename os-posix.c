@@ -1,10 +1,11 @@
-#include "filesystem.h"
+#include "os.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <time.h>
 
 static FsType statbuf_path_type(const struct stat *statbuf) {
 	if (S_ISREG(statbuf->st_mode))
@@ -108,4 +109,26 @@ int fs_get_cwd(char *buf, size_t buflen) {
 	} else {
 		return -1;
 	}
+}
+
+struct timespec time_last_modified(char const *filename) {
+	struct stat statbuf = {0};
+	stat(filename, &statbuf);
+	return statbuf.st_mtim;
+}
+
+struct timespec time_get(void) {
+	struct timespec ts = {0};
+	clock_gettime(CLOCK_REALTIME, &ts);
+	return ts;
+}
+
+void time_sleep_ns(u64 ns) {
+	struct timespec rem = {0}, req = {
+		(time_t)(ns / 1000000000),
+		(long)(ns % 1000000000)
+	};
+	
+	while (nanosleep(&req, &rem) == EINTR) // sleep interrupted by signal
+		req = rem;
 }
