@@ -1,5 +1,6 @@
 /*
 @TODO:
+- change @OPTIM(IZE) to @TODO
 - rename v[234] to vec[234]
 - handle multiple symbols with same name in go-to-definition menu
 - better non-error window/showMessage(Request)

@@ -592,6 +592,11 @@ typedef struct Ted {
 	char error_shown[512]; // error display in box on screen
 } Ted;
 
+// === colors.c ===
+ColorSetting color_setting_from_str(char const *str);
+const char *color_setting_to_str(ColorSetting s);
+Status color_from_str(const char *str, u32 *color);
+ColorSetting color_for_symbol_kind(SymbolKind kind);
 // === gl.c ===
 GlRcSAB *gl_rc_sab_new(GLuint shader, GLuint array, GLuint buffer);
 void gl_rc_sab_incref(GlRcSAB *s);
