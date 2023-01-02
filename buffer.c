@@ -661,8 +661,8 @@ static Status buffer_edit_resize_prev_text(TextBuffer *buffer, BufferEdit *edit,
 // does this edit actually make a difference to the buffer?
 static bool buffer_edit_does_anything(TextBuffer *buffer, BufferEdit *edit) {
 	if (edit->prev_len == edit->new_len) {
-		// @OPTIMIZE: compare directly to the buffer contents, rather than extracting them temporarily
-		// into new_text.
+		// @TODO(optimization): compare directly to the buffer contents,
+		// rather than extracting them temporarily into new_text.
 		char32_t *new_text = buffer_calloc(buffer, edit->new_len, sizeof *new_text);
 		if (new_text) {
 			size_t len = buffer_get_text_at_pos(buffer, edit->pos, new_text, edit->new_len);
@@ -1747,13 +1747,13 @@ void buffer_select_page_down(TextBuffer *buffer, i64 npages) {
 
 static void buffer_shorten_line(Line *line, u32 new_len) {
 	assert(line->len >= new_len);
-	line->len = new_len; // @OPTIMIZE(memory): decrease line capacity
+	line->len = new_len; // @TODO(optimization,memory): decrease line capacity
 }
 
 // decrease the number of lines in the buffer.
 // DOES NOT DO ANYTHING TO THE LINES REMOVED! YOU NEED TO FREE THEM YOURSELF!
 static void buffer_shorten(TextBuffer *buffer, u32 new_nlines) {
-	buffer->nlines = new_nlines; // @OPTIMIZE(memory): decrease lines capacity
+	buffer->nlines = new_nlines; // @TODO(optimization,memory): decrease lines capacity
 }
 
 // delete `nlines` lines starting from index `first_line_idx`
@@ -2002,7 +2002,8 @@ void buffer_newline(TextBuffer *buffer) {
 	}
 	if (settings->auto_indent) {
 		// newline + auto-indent
-		char32_t *text = buffer_calloc(buffer, whitespace_len + 1, sizeof *text); // @OPTIMIZE: don't allocate on heap if whitespace_len is small
+		 // @TODO(optimize): don't allocate on heap if whitespace_len is small
+		char32_t *text = buffer_calloc(buffer, whitespace_len + 1, sizeof *text);
 		if (text) {
 			text[0] = '\n';
 			memcpy(&text[1], line.str, whitespace_len * sizeof *text);

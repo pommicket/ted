@@ -88,7 +88,7 @@ static CommandName const command_names[] = {
 static_assert_if_possible(arr_count(command_names) == CMD_COUNT)
 
 Command command_from_str(char const *str) {
-	// @OPTIMIZE: sort command_names, do a binary search
+	// @TODO(optimize): sort command_names, do a binary search
 	for (int i = 0; i < CMD_COUNT; ++i) {
 		if (streq(command_names[i].name, str))
 			return command_names[i].cmd;

@@ -292,7 +292,7 @@ static u32 config_parse_key_combo(ConfigReader *cfg, char const *str) {
 			{"X2", "x2", SCANCODE_MOUSE_X2, 0}
 		};
 
-		// @OPTIMIZE: sort key_names (and split keyname1/2); do a binary search
+		// @TODO(optimize): sort key_names (and split keyname1/2); do a binary search
 		for (size_t i = 0; i < arr_count(key_names); ++i) {
 			KeyName const *k = &key_names[i];
 			if (streq(str, k->keyname1) || (k->keyname2 && streq(str, k->keyname2))) {

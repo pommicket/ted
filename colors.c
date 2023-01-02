@@ -58,7 +58,7 @@ static ColorName const color_names[] = {
 static_assert_if_possible(arr_count(color_names) == COLOR_COUNT)
 
 ColorSetting color_setting_from_str(const char *str) {
-	// @OPTIMIZE: sort color_names, binary search
+	// @TODO(optimize): sort color_names, binary search
 	for (int i = 0; i < COLOR_COUNT; ++i) {
 		ColorName const *n = &color_names[i];
 		if (streq(n->name, str))
