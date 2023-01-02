@@ -91,10 +91,8 @@ no_warn_end
 
 #if _WIN32
 #include "os-win.c"
-#include "process-win.c"
 #elif __unix__
 #include "os-posix.c"
-#include "process-posix.c"
 #else
 #error "Unrecognized operating system."
 #endif

@@ -1,5 +1,15 @@
 (work in progress)
 
+As much as possible, OS-dependent functions should be put in `os.h/os-*.c`.
+(But "pure" functions like `qsort_with_context`, which could
+in theory be implemented on any platform with just plain C, should be put
+in `util.c` even if they use OS-specific library functions.)
+
+
+## Adding settings
+
+## Adding languages
+
 ## Releasing
 
 When releasing a new version of `ted`:
