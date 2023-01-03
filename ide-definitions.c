@@ -113,7 +113,13 @@ static int definition_entry_qsort_cmp(const void *av, const void *bv) {
 	if (a_len < b_len) return -1;
 	if (a_len > b_len) return 1;
 	// then sort alphabetically
-	return strcmp(a->name, b->name);
+	int cmp = strcmp(a->name, b->name);
+	if (cmp) return cmp;
+	// then sort by detail
+	if (!a->detail && b->detail) return -1;
+	if (a->detail && !b->detail) return 1;
+	if (!a->detail && !b->detail) return 0;
+	return strcmp(a->detail, b->detail);
 }
 
 // put the entries matching the search term into the selector.
