@@ -530,7 +530,7 @@ typedef struct LSP {
 	//                (when the initialize response is received)
 	bool initialized;
 	// thread-safety: only set once in lsp_create.
-	Language language;
+	char *command;
 	LSPThread communication_thread;
 	LSPSemaphore quit_sem;
 	// thread-safety: only accessed in communication thread
@@ -569,7 +569,7 @@ void lsp_cancel_request(LSP *lsp, LSPRequestID id);
 // don't free the contents of this response! let me handle it!
 void lsp_send_response(LSP *lsp, LSPResponse *response);
 const char *lsp_response_string(const LSPResponse *response, LSPString string);
-LSP *lsp_create(const char *root_dir, Language language, const char *analyzer_command);
+LSP *lsp_create(const char *root_dir, const char *analyzer_command);
 // try to add a new "workspace folder" to the lsp.
 // IMPORTANT: only call this if lsp->initialized is true
 //            (if not we don't yet know whether the server supports workspace folders)

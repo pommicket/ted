@@ -170,7 +170,7 @@ LSP *ted_get_lsp(Ted *ted, const char *path, Language language) {
 	for (i = 0; i < TED_LSP_MAX; ++i) {
 		LSP *lsp = ted->lsps[i];
 		if (!lsp) break;
-		if (lsp->language != language) continue;
+		if (!streq(lsp->command, settings->lsp)) continue;
 		
 		if (!lsp->initialized) {
 			// withhold judgement until this server initializes.
@@ -190,7 +190,7 @@ LSP *ted_get_lsp(Ted *ted, const char *path, Language language) {
 	if (*settings->lsp) {
 		// start up this LSP
 		char *root_dir = settings_get_root_dir(settings, path);
-		ted->lsps[i] = lsp_create(root_dir, language, settings->lsp);
+		ted->lsps[i] = lsp_create(root_dir, settings->lsp);
 		free(root_dir);
 		// don't actually return it yet, since it's still initializing (see above)
 	}

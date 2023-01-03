@@ -2,7 +2,6 @@
 @TODO:
 - fix problem where LSP_REQUEST_DEFINITION tag isn't being found
 - ted.h documentation
-- don't start up separate clangd servers for C and C++
 - handle multiple symbols with same name in go-to-definition menu
 - better non-error window/showMessage(Request)
 - document lsp.h and lsp.c.

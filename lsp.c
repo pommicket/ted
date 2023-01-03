@@ -167,8 +167,8 @@ static bool lsp_supports_request(LSP *lsp, const LSPRequest *request) {
 	case LSP_REQUEST_EXIT:
 		return true;
 	case LSP_REQUEST_JDTLS_CONFIGURATION:
-		// @TODO: check if this is actually jdtls
-		return lsp->language == LANG_JAVA;
+		// not perfect but whatever
+		return strstr(lsp->command, "jdtls") != 0;
 	case LSP_REQUEST_COMPLETION:
 		return cap->completion_support;
 	case LSP_REQUEST_SIGNATURE_HELP:
@@ -444,7 +444,7 @@ const char *lsp_document_path(LSP *lsp, LSPDocumentID document) {
 	return path;
 }
 
-LSP *lsp_create(const char *root_dir, Language language, const char *analyzer_command) {
+LSP *lsp_create(const char *root_dir, const char *analyzer_command) {
 	LSP *lsp = calloc(1, sizeof *lsp);
 	if (!lsp) return NULL;
 	
@@ -454,13 +454,14 @@ LSP *lsp_create(const char *root_dir, Language language, const char *analyzer_co
 	static LSPID curr_id = 1;
 	lsp->id = curr_id++;
 	
+	
 	#if DEBUG
-		printf("Starting up LSP %p `%s` for language %s in %s\n",
-			(void *)lsp, analyzer_command, language_to_str(language), root_dir);
+		printf("Starting up LSP %p `%s` in %s\n",
+			(void *)lsp, analyzer_command, root_dir);
 	#endif
 	
 	str_hash_table_create(&lsp->document_ids, sizeof(u32));
-	lsp->language = language;
+	lsp->command = str_dup(analyzer_command);
 	lsp->quit_sem = SDL_CreateSemaphore(0);	
 	lsp->error_mutex = SDL_CreateMutex();
 	lsp->messages_mutex = SDL_CreateMutex();
@@ -564,6 +565,7 @@ void lsp_free(LSP *lsp) {
 	arr_free(lsp->completion_trigger_chars);
 	arr_free(lsp->signature_help_trigger_chars);
 	arr_free(lsp->signature_help_retrigger_chars);
+	free(lsp->command);
 	memset(lsp, 0, sizeof *lsp);
 	free(lsp);
 }
