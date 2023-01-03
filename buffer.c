@@ -2561,14 +2561,17 @@ bool buffer_handle_click(Ted *ted, TextBuffer *buffer, vec2 click, u8 times) {
 				// select to position
 				buffer_select_to_pos(buffer, buffer_pos);
 				break;
-			case KEY_MODIFIER_CTRL: 
+			case KEY_MODIFIER_CTRL:
 			case KEY_MODIFIER_CTRL | KEY_MODIFIER_SHIFT:
+			case KEY_MODIFIER_CTRL | KEY_MODIFIER_ALT:
 				if (!buffer->is_line_buffer) {
 					// go to definition/declaration
 					buffer_cursor_move_to_pos(buffer, buffer_pos);
 					GotoType type = GOTO_DEFINITION;
 					if (ted->key_modifier & KEY_MODIFIER_SHIFT)
 						type = GOTO_DECLARATION;
+					else if (ted->key_modifier & KEY_MODIFIER_ALT)
+						type = GOTO_TYPE_DEFINITION;
 					buffer_goto_word_at_cursor(buffer, type);
 				}
 				break;

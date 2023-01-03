@@ -467,6 +467,8 @@ typedef struct {
 typedef enum {
 	GOTO_DECLARATION,
 	GOTO_DEFINITION,
+	GOTO_IMPLEMENTATION,
+	GOTO_TYPE_DEFINITION,
 } GotoType;
 
 typedef struct {

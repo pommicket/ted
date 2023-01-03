@@ -281,6 +281,10 @@ static const char *lsp_request_method(LSPRequest *request) {
 		return "textDocument/definition";
 	case LSP_REQUEST_DECLARATION:
 		return "textDocument/declaration";
+	case LSP_REQUEST_TYPE_DEFINITION:
+		return "textDocument/typeDefinition";
+	case LSP_REQUEST_IMPLEMENTATION:
+		return "textDocument/implementation";
 	case LSP_REQUEST_HIGHLIGHT:
 		return "textDocument/documentHighlight";
 	case LSP_REQUEST_RENAME:
@@ -549,7 +553,9 @@ void write_request(LSP *lsp, LSPRequest *request) {
 		write_obj_end(o);
 	} break;
 	case LSP_REQUEST_DEFINITION:
-	case LSP_REQUEST_DECLARATION: {
+	case LSP_REQUEST_DECLARATION:
+	case LSP_REQUEST_TYPE_DEFINITION:
+	case LSP_REQUEST_IMPLEMENTATION: {
 		const LSPRequestDefinition *def = &request->data.definition;
 		write_key_obj_start(o, "params");
 			write_document_position(o, def->position);

@@ -64,11 +64,22 @@ void definition_goto(Ted *ted, LSP *lsp, const char *name, LSPDocumentPosition p
 		case GOTO_DECLARATION:
 			request_type = LSP_REQUEST_DECLARATION;
 			break;
+		case GOTO_TYPE_DEFINITION:
+			request_type = LSP_REQUEST_TYPE_DEFINITION;
+			break;
+		case GOTO_IMPLEMENTATION:
+			request_type = LSP_REQUEST_IMPLEMENTATION;
+			break;
 		}
 		// send that request
 		LSPRequest request = {.type = request_type};
 		request.data.definition.position = position;
 		LSPRequestID id = lsp_send_request(lsp, &request);
+		if (id == 0 && request.type == LSP_REQUEST_IMPLEMENTATION) {
+			// if we can't go to the implementation, try going to the definition
+			request.type = LSP_REQUEST_DEFINITION;
+			id = lsp_send_request(lsp, &request);
+		}
 		defs->last_request_id = id;
 		defs->last_request_lsp = lsp->id;
 		defs->last_request_time = ted->frame_time;
@@ -142,7 +153,9 @@ void definitions_process_lsp_response(Ted *ted, LSP *lsp, const LSPResponse *res
 	
 	switch (response->request.type) {
 	case LSP_REQUEST_DEFINITION:
-	case LSP_REQUEST_DECLARATION: {
+	case LSP_REQUEST_DECLARATION:
+	case LSP_REQUEST_TYPE_DEFINITION:
+	case LSP_REQUEST_IMPLEMENTATION: {
 		// handle textDocument/definition or textDocument/declaration response
 		const LSPResponseDefinition *response_def = &response->data.definition;
 		

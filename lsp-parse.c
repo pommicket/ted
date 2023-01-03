@@ -151,22 +151,33 @@ static void parse_capabilities(LSP *lsp, const JSON *json, JSONObject capabiliti
 		arr_add(lsp->signature_help_retrigger_chars, '>');
 	}
 	
-	// check for hover support
+	// check for textDocument/hover support
 	JSONValue hover_value = json_object_get(json, capabilities, "hoverProvider");
 	if (hover_value.type != JSON_UNDEFINED && hover_value.type != JSON_FALSE) {
 		cap->hover_support = true;
 	}
 	
-	// check for definition support
+	// check for textDocument/definition support
 	JSONValue definition_value = json_object_get(json, capabilities, "definitionProvider");
 	if (definition_value.type != JSON_UNDEFINED && definition_value.type != JSON_FALSE) {
 		cap->definition_support = true;
 	}
 	
-	// check for declaration support
+	// check for textDocument/declaration support
 	JSONValue declaration_value = json_object_get(json, capabilities, "declarationProvider");
 	if (declaration_value.type != JSON_UNDEFINED && declaration_value.type != JSON_FALSE) {
 		cap->declaration_support = true;
+	}
+	// check for textDocument/typeDefinition support
+	JSONValue type_definition_value = json_object_get(json, capabilities, "typeDefinitionProvider");
+	if (type_definition_value.type != JSON_UNDEFINED && type_definition_value.type != JSON_FALSE) {
+		cap->type_definition_support = true;
+	}
+	
+	// check for textDocument/implementation support
+	JSONValue implementation_value = json_object_get(json, capabilities, "implementationProvider");
+	if (implementation_value.type != JSON_UNDEFINED && implementation_value.type != JSON_FALSE) {
+		cap->implementation_support = true;
 	}
 	
 	// check for textDocument/documentHighlight support
@@ -890,6 +901,8 @@ void process_message(LSP *lsp, JSON *json) {
 			break;
 		case LSP_REQUEST_DEFINITION:
 		case LSP_REQUEST_DECLARATION:
+		case LSP_REQUEST_TYPE_DEFINITION:
+		case LSP_REQUEST_IMPLEMENTATION:
 			add_to_messages = parse_definition(lsp, json, &response);
 			break;
 		case LSP_REQUEST_HIGHLIGHT:

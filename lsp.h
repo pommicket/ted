@@ -66,6 +66,8 @@ typedef enum {
 	LSP_REQUEST_HOVER, // textDocument/hover
 	LSP_REQUEST_DEFINITION, // textDocument/definition
 	LSP_REQUEST_DECLARATION, // textDocument/declaration
+	LSP_REQUEST_TYPE_DEFINITION, // textDocument/typeDefinition
+	LSP_REQUEST_IMPLEMENTATION, // textDocument/implementation
 	LSP_REQUEST_HIGHLIGHT, // textDocument/documentHighlight
 	LSP_REQUEST_REFERENCES, // textDocument/references
 	LSP_REQUEST_RENAME, // textDocument/rename
@@ -201,7 +203,7 @@ typedef struct {
 		LSPRequestCompletion completion;
 		LSPRequestSignatureHelp signature_help;
 		LSPRequestHover hover;
-		// LSP_REQUEST_DEFINITION, LSP_REQUEST_DECLARATION, or LSP_REQUEST_TYPE_DEFINITION
+		// LSP_REQUEST_DEFINITION, LSP_REQUEST_DECLARATION, LSP_REQUEST_TYPE_DEFINITION, or LSP_REQUEST_IMPLEMENTATION
 		LSPRequestDefinition definition;
 		LSPRequestHighlight highlight;
 		LSPRequestReferences references;
@@ -456,7 +458,7 @@ typedef struct {
 		LSPResponseCompletion completion;
 		LSPResponseSignatureHelp signature_help;
 		LSPResponseHover hover;
-		// LSP_REQUEST_DEFINITION, LSP_REQUEST_DECLARATION, or LSP_REQUEST_TYPE_DEFINITION
+		// LSP_REQUEST_DEFINITION, LSP_REQUEST_DECLARATION, LSP_REQUEST_TYPE_DEFINITION, or LSP_REQUEST_IMPLEMENTATION
 		LSPResponseDefinition definition;
 		LSPResponseWorkspaceSymbols workspace_symbols;
 		LSPResponseRename rename;
@@ -484,6 +486,8 @@ typedef struct {
 	bool hover_support;
 	bool definition_support;
 	bool declaration_support;
+	bool implementation_support;
+	bool type_definition_support;
 	bool workspace_symbols_support;
 	bool highlight_support;
 	// support for multiple root folders

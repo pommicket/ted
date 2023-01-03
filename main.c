@@ -1,8 +1,6 @@
 /*
 @TODO:
-- go to type definition
-- why does asking for a definition in ted.h send us to the wrong place?
-   (vscode doesn't experience this problem)
+- fix problem where LSP_REQUEST_DEFINITION tag isn't being found
 - ted.h documentation
 - handle multiple symbols with same name in go-to-definition menu
 - better non-error window/showMessage(Request)
@@ -28,8 +26,10 @@
     - make buffer->path NULL for untitled buffers & fix resulting mess
 - rust-analyzer bug reports:
     - bad json can give "Unexpected error: client exited without proper shutdown sequence"
+- clangd bug report:
+    - textDocumemt/definition on ted.h declarations just gives you the declaration
 FUTURE FEATURES:
-- add numlock as a key modifier? (but make sure "Ctrl+S" handles both "No NumLock+Ctrl+S" and "NumLock+Ctrl+S")
+- make go-to-definition/hover/highlight modifier key configurable
 - return to previous location in buffer
 - font setting & support for multiple fonts to cover more characters
 - comment-start & comment-end settings
