@@ -1,5 +1,8 @@
 /*
 @TODO:
+- rename ted_seterr to ted_error
+- use keycodes instead of scancodes (maybe that will make numlock modifier no longer necessary)
+- go to declaration with LSP
 - ted.h documentation
 - handle multiple symbols with same name in go-to-definition menu
 - better non-error window/showMessage(Request)
@@ -26,8 +29,8 @@
 - rust-analyzer bug reports:
     - bad json can give "Unexpected error: client exited without proper shutdown sequence"
 FUTURE FEATURES:
+- add numlock as a key modifier? (but make sure "Ctrl+S" handles both "No NumLock+Ctrl+S" and "NumLock+Ctrl+S")
 - comment-start + comment-end settings
-- go to declaration with LSP
 - robust find (results shouldn't move around when you type things)
 - multiple files with command line arguments
 - :set-build-command
@@ -37,7 +40,6 @@ FUTURE FEATURES:
        - i'm putting this off for now since it seems hard to have undo support for it.
            - possible idea: open all files altered, and create undo chains for each of them.
                             if there are too many files, give an error like "use a different tool for this"
-- add numlock as a key modifier? (but make sure "Ctrl+S" handles both "No NumLock+Ctrl+S" and "NumLock+Ctrl+S")
 - better undo chaining (dechain on backspace?)
 - allow multiple fonts (fonts directory?)
 - regenerate tags for completion too if there are no results
@@ -117,7 +119,7 @@ FUTURE FEATURES:
 #endif
 
 
-static Rect error_box_rect(Ted *ted) {
+static Rect message_box_rect(Ted *ted) {
 	Font *font = ted->font;
 	const Settings *settings = ted_active_settings(ted);
 	float padding = settings->padding;
@@ -431,9 +433,6 @@ int main(int argc, char **argv) {
 	// (for testing on Unix systems without /proc)
 	ted->search_cwd = true;
 	#endif
-
-
-	char config_err[sizeof ted->error] = {0};
 	
 	PROFILE_TIME(misc_end)
 	
@@ -508,10 +507,6 @@ int main(int argc, char **argv) {
 	
 	PROFILE_TIME(configs_start)
 	ted_load_configs(ted, false);
-	if (ted_haserr(ted)) {
-		strcpy(config_err, ted->error);
-		ted_clearerr(ted); // clear the error so later things (e.g. loading font) don't detect an error
-	}
 	PROFILE_TIME(configs_end)
 	
 	PROFILE_TIME(fonts_start)
@@ -519,8 +514,6 @@ int main(int argc, char **argv) {
 	PROFILE_TIME(fonts_end)
 	
 	PROFILE_TIME(create_start)
-	if (ted_haserr(ted))
-		die("Error loading font: %s", ted_geterr(ted));
 	{
 		TextBuffer *lbuffer = &ted->line_buffer;
 		line_buffer_create(lbuffer, ted);
@@ -535,17 +528,9 @@ int main(int argc, char **argv) {
 	{
 		if (starting_filename) {
 			if (fs_file_exists(starting_filename)) {
-				if (!ted_open_file(ted, starting_filename)) {
-					char err[512] = {0};
-					sprintf(err, "%.500s", ted_geterr(ted)); // -Wrestrict (rightly) complains without this intermediate step
-					ted_seterr(ted, "Couldn't load file: %s", err);
-				}
+				ted_open_file(ted, starting_filename);
 			} else {
-				if (!ted_new_file(ted, starting_filename)) {
-					char err[512] = {0};
-					sprintf(err, "%.500s", ted_geterr(ted));
-					ted_seterr(ted, "Couldn't create file: %s", err);
-				}
+				ted_new_file(ted, starting_filename);
 			}
 		} else {
 			session_read(ted);
@@ -567,8 +552,6 @@ int main(int argc, char **argv) {
 	PROFILE_TIME(get_ready_start)
 
 	Uint32 time_at_last_frame = SDL_GetTicks();
-	
-	strbuf_cpy(ted->error, config_err);
 
 	SDL_GL_SetSwapInterval(1); // vsync
 	
@@ -659,12 +642,12 @@ int main(int argc, char **argv) {
 					&& ted->nmouse_clicks[button] < arr_count(ted->mouse_clicks[button])) {
 					vec2 pos = Vec2(x, y);
 					bool add = true;
-					if (*ted->error_shown) {
-						if (rect_contains_point(error_box_rect(ted), pos)) {
-							// clicked on error
+					if (*ted->message_shown) {
+						if (rect_contains_point(message_box_rect(ted), pos)) {
+							// clicked on message
 							if (button == SDL_BUTTON_LEFT) {
-								// dismiss error
-								*ted->error_shown = '\0';
+								// dismiss message
+								*ted->message_shown = '\0';
 							}
 							// don't let anyone else use this event
 							add = false;
@@ -848,13 +831,12 @@ int main(int argc, char **argv) {
 					switch (r->type) {
 					case LSP_REQUEST_SHOW_MESSAGE: {
 						LSPRequestMessage *m = &r->data.message;
-						// @TODO: multiple messages
-						ted_seterr(ted, "%s", m->message);
+						MessageType type = ted_message_type_from_lsp(m->type);
+						ted_set_message(ted, type, "%s", m->message);
 						} break;
 					case LSP_REQUEST_LOG_MESSAGE: {
 						LSPRequestMessage *m = &r->data.message;
-						// @TODO: actual logging
-						printf("%s\n", m->message);
+						ted_log(ted, "%s\n", m->message);
 						} break;
 					default: break;
 					}
@@ -1011,39 +993,36 @@ int main(int argc, char **argv) {
 		}
 		for (int i = 0; ted->lsps[i]; ++i) {
 			LSP *lsp = ted->lsps[i];
-			if (lsp_get_error(lsp, NULL, 0, false)) {
-				lsp_get_error(lsp, ted->error, sizeof ted->error, true);
+			char error[512] = {0};
+			if (lsp_get_error(lsp, error, sizeof error, true)) {
+				ted_seterr(ted, "%s", error);
 			}
 		}
 
 		// check if there's a new error
-		if (ted_haserr(ted)) {
-			ted->error_time = ted->frame_time;
-			str_cpy(ted->error_shown, sizeof ted->error_shown, ted->error);
-
-			// output error to log file
-			char tstr[256];
-			time_t t = time(NULL);
-			struct tm *tm = localtime(&t);
-			strftime(tstr, sizeof tstr, "%Y-%m-%d %H:%M:%S", tm);
-			ted_log(ted, "[ERROR %s] %s\n", tstr, ted->error);
-			
-			ted_clearerr(ted);
+		if (*ted->message) {
+			ted->message_time = ted->frame_time;
+			str_cpy(ted->message_shown, sizeof ted->message_shown, ted->message);
+			ted->message_shown_type = ted->message_type;
+			*ted->message = '\0';
 		}
 
-		// error box
-		if (*ted->error_shown) {
-			double time_passed = ted->frame_time - ted->error_time;
+		// message box
+		if (*ted->message_shown) {
+			double time_passed = ted->frame_time - ted->message_time;
 			Settings *settings = ted_active_settings(ted);
 			if (time_passed > settings->error_display_time) {
 				// stop showing error
-				*ted->error_shown = '\0';
+				*ted->message_shown = '\0';
 			} else {
-				Rect r = error_box_rect(ted);
+				Rect r = message_box_rect(ted);
 				float padding = settings->padding;
-
-				gl_geometry_rect(r, ted_color(ted, COLOR_ERROR_BG));
-				gl_geometry_rect_border(r, settings->border_thickness, ted_color(ted, COLOR_ERROR_BORDER));
+				ColorSetting bg_color=0, border_color=0;
+				
+				ted_color_settings_for_message_type(ted->message_type, &bg_color, &border_color);
+				
+				gl_geometry_rect(r, ted_color(ted, bg_color));
+				gl_geometry_rect_border(r, settings->border_thickness, ted_color(ted, border_color));
 
 				float text_x1 = rect_x1(r) + padding, text_x2 = rect_x2(r) - padding;
 				float text_y1 = rect_y1(r) + padding;
@@ -1055,8 +1034,8 @@ int main(int argc, char **argv) {
 				text_state.x = text_x1;
 				text_state.y = text_y1;
 				text_state.wrap = true;
-				rgba_u32_to_floats(ted_color(ted, COLOR_ERROR_TEXT), text_state.color);
-				text_utf8_with_state(font, &text_state, ted->error_shown);
+				rgba_u32_to_floats(ted_color(ted, COLOR_TEXT), text_state.color);
+				text_utf8_with_state(font, &text_state, ted->message_shown);
 				gl_geometry_draw();
 				text_render(font);
 			}

@@ -16,10 +16,48 @@ void die(const char *fmt, ...) {
 	exit(EXIT_FAILURE);
 }
 
+static void ted_vset_message(Ted *ted, MessageType type, const char *fmt, va_list args) {
+	char message[sizeof ted->message] = {0};
+	vsnprintf(message, sizeof message - 1, fmt, args);
+	
+	// output error to log file
+	char tstr[256];
+	time_t t = time(NULL);
+	struct tm *tm = localtime(&t);
+	strftime(tstr, sizeof tstr, "%Y-%m-%d %H:%M:%S", tm);
+	ted_log(ted, "[ERROR %s] %s\n", tstr, message);
+	
+	if (type >= ted->message_type) {
+		ted->message_type = type;
+		strbuf_cpy(ted->message, message);
+	}
+}
+
+void ted_set_message(Ted *ted, MessageType type, const char *fmt, ...) {
+	va_list args;
+	va_start(args, fmt);
+	ted_vset_message(ted, type, fmt, args);
+	va_end(args);
+}
+
 void ted_seterr(Ted *ted, const char *fmt, ...) {
 	va_list args;
 	va_start(args, fmt);
-	vsnprintf(ted->error, sizeof ted->error - 1, fmt, args);
+	ted_vset_message(ted, MESSAGE_ERROR, fmt, args);
+	va_end(args);
+}
+
+void ted_warn(Ted *ted, const char *fmt, ...) {
+	va_list args;
+	va_start(args, fmt);
+	ted_vset_message(ted, MESSAGE_WARNING, fmt, args);
+	va_end(args);
+}
+
+void ted_info(Ted *ted, const char *fmt, ...) {
+	va_list args;
+	va_start(args, fmt);
+	ted_vset_message(ted, MESSAGE_INFO, fmt, args);
 	va_end(args);
 }
 
@@ -34,23 +72,8 @@ void ted_log(Ted *ted, const char *fmt, ...) {
 
 
 void ted_seterr_to_buferr(Ted *ted, TextBuffer *buffer) {
-	size_t size = sizeof ted->error;
-	if (sizeof buffer->error < size) size = sizeof buffer->error;
-	memcpy(ted->error, buffer->error, size);
+	ted_seterr(ted, "%s", buffer->error);
 }
-
-bool ted_haserr(Ted *ted) {
-	return ted->error[0] != '\0';
-}
-
-const char *ted_geterr(Ted *ted) {
-	return ted->error;
-}
-
-void ted_clearerr(Ted *ted) {
-	ted->error[0] = '\0';
-}
-
 
 void ted_out_of_mem(Ted *ted) {
 	ted_seterr(ted, "Out of memory.");
@@ -235,11 +258,10 @@ static void ted_load_font(Ted *ted, const char *filename, Font **out) {
 			}
 			*out = font;
 		} else {
-			ted_seterr(ted, "Couldn't load font: %s", text_get_err());
-			text_clear_err();
+			die("Couldn't load font: %s", text_get_err());
 		}
 	} else {
-		ted_seterr(ted, "Couldn't find font file. There is probably a problem with your ted installation.");
+		die("Couldn't find font file. There is probably a problem with your ted installation.");
 	}
 	
 }
@@ -622,5 +644,34 @@ void ted_check_for_node_problems(Ted *ted) {
 			ted_log(ted, "ORPHANED NODE %u\n", i);
 			node_close(ted, i);
 		}
+	}
+}
+
+MessageType ted_message_type_from_lsp(LSPWindowMessageType type) {
+	switch (type) {
+	case LSP_WINDOW_MESSAGE_ERROR: return MESSAGE_ERROR;
+	case LSP_WINDOW_MESSAGE_WARNING: return MESSAGE_WARNING;
+	case LSP_WINDOW_MESSAGE_INFO:
+	case LSP_WINDOW_MESSAGE_LOG:
+		return MESSAGE_INFO;
+	}
+	assert(0);
+	return MESSAGE_ERROR;
+}
+
+void ted_color_settings_for_message_type(MessageType type, ColorSetting *bg_color, ColorSetting *border_color) {
+	switch (type) {
+	case MESSAGE_ERROR:
+		*bg_color = COLOR_ERROR_BG;
+		*border_color = COLOR_ERROR_BORDER;
+		break;
+	case MESSAGE_WARNING:
+		*bg_color = COLOR_WARNING_BG;
+		*border_color = COLOR_WARNING_BORDER;
+		break;
+	case MESSAGE_INFO:
+		*bg_color = COLOR_INFO_BG;
+		*border_color = COLOR_INFO_BORDER;
+		break;
 	}
 }

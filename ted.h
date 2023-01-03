@@ -482,6 +482,14 @@ typedef struct {
 	LSPDocumentPosition requested_position;
 } Highlights;
 
+// more severe message types should have higher numbers.
+// they will override less severe messages.
+typedef enum {
+	MESSAGE_INFO,
+	MESSAGE_WARNING,
+	MESSAGE_ERROR
+} MessageType;
+
 typedef struct Ted {
 	LSP *lsps[TED_LSP_MAX + 1];
 	// current time (see time_get_seconds), as of the start of this frame
@@ -518,7 +526,6 @@ typedef struct Ted {
 	TextBuffer replace_buffer; // "replace" for find+replace
 	TextBuffer build_buffer; // buffer for build output (view only)
 	TextBuffer argument_buffer; // used for command selector
-	double error_time; // time error box was opened (in seconds -- see time_get_seconds)
 	double cursor_error_time; // time which the cursor error animation started (cursor turns red, e.g. when there's no autocomplete suggestion)
 	bool search_start_cwd; // should start_cwd be searched for files? set to true if the executable isn't "installed"
 	char start_cwd[TED_PATH_MAX];
@@ -598,8 +605,13 @@ typedef struct Ted {
 	u32 nstrings;
 	char *strings[TED_MAX_STRINGS];
 	char window_title[256];
-	char error[512];
-	char error_shown[512]; // error display in box on screen
+	
+	// little box used to display errors and info.
+	double message_time; // time message box was opened
+	MessageType message_type;
+	char message[512];
+	MessageType message_shown_type;
+	char message_shown[512];
 } Ted;
 
 // === buffer.c ===
@@ -1034,8 +1046,14 @@ SymbolInfo *tags_get_symbols(Ted *ted);
 // === ted.c ===
 // for fatal errors
 void die(PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRINTF(1, 2);
-// for non-fatal errors that should be displayed to the user
+// display a message to the user
+void ted_set_message(Ted *ted, MessageType type, PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRINTF(3, 4);
+// display an error to the user
 void ted_seterr(Ted *ted, PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRINTF(2, 3);
+// display a warning to the user
+void ted_warn(Ted *ted, PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRINTF(2, 3);
+// display information to the user
+void ted_info(Ted *ted, PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRINTF(2, 3);
 // for information that should be logged
 void ted_log(Ted *ted, PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRINTF(2, 3);
 // set error to "out of memory" message.
@@ -1048,15 +1066,12 @@ Status ted_get_file(Ted const *ted, const char *name, char *out, size_t outsz);
 void ted_path_full(Ted *ted, const char *relpath, char *abspath, size_t abspath_size);
 void ted_reset_active_buffer(Ted *ted);
 void ted_seterr_to_buferr(Ted *ted, TextBuffer *buffer);
-bool ted_haserr(Ted *ted);
 // Returns the buffer containing the file at `path`, or NULL if there is none.
 TextBuffer *ted_get_buffer_with_file(Ted *ted, const char *path);
 bool ted_save_all(Ted *ted);
 void ted_reload_all(Ted *ted);
-const char *ted_geterr(Ted *ted);
 // Load all the fonts ted will use.
 void ted_load_fonts(Ted *ted);
-void ted_clearerr(Ted *ted);
 char *ted_get_root_dir_of(Ted *ted, const char *path);
 char *ted_get_root_dir(Ted *ted);
 // the settings of the active buffer, or the default settings if there is no active buffer
@@ -1093,6 +1108,10 @@ void ted_cancel_lsp_request(Ted *ted, LSPID lsp, LSPRequestID request);
 float ted_line_buffer_height(Ted *ted);
 // check for orphaned nodes and node cycles
 void ted_check_for_node_problems(Ted *ted);
+// convert LSPWindowMessageType to MessageType
+MessageType ted_message_type_from_lsp(LSPWindowMessageType type);
+// get colors to use for message box
+void ted_color_settings_for_message_type(MessageType type, ColorSetting *bg_color, ColorSetting *border_color);
 
 // === ui.c ===
 void selector_up(Ted *ted, Selector *s, i64 n);

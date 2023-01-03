@@ -147,22 +147,22 @@ static void setting_string_set(Settings *settings, const SettingString *set, con
 }
 
 
-
-
-
-// all worth it for the -Wformat warnings
-#define config_err(cfg, ...) do {\
-	if ((cfg)->error) break;\
-	 snprintf((cfg)->ted->error, sizeof (cfg)->ted->error - 1, "%s:%u: ",  (cfg)->filename, (cfg)->line_number), \
-	snprintf((cfg)->ted->error + strlen((cfg)->ted->error), sizeof (cfg)->ted->error - 1 - strlen((cfg)->ted->error), __VA_ARGS__), \
-	(cfg)->error = true; } while (0)
-
 typedef struct {
 	Ted *ted;
 	const char *filename;
 	u32 line_number; // currently processing this line number
 	bool error;
 } ConfigReader;
+
+static void config_err(ConfigReader *cfg, PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRINTF(2, 3);
+static void config_err(ConfigReader *cfg, const char *fmt, ...) {
+	char error[1024] = {0};
+	strbuf_printf(error, "%s:%u: ", cfg->filename, cfg->line_number);
+	va_list args;
+	va_start(args, fmt);
+	vsnprintf(error + strlen(error), sizeof error - strlen(error) - 1, fmt, args);
+	va_end(args);
+}
 
 static void context_copy(SettingsContext *dest, const SettingsContext *src) {
 	*dest = *src;
@@ -647,7 +647,10 @@ uniform sampler2D t_texture;\n\
 	
 	gl_rc_sab_decref(&s->bg_shader);
 	
-	GLuint shader = gl_compile_and_link_shaders(ted->error, vshader, fshader);
+	char error[512] = {0};
+	GLuint shader = gl_compile_and_link_shaders(error, vshader, fshader);
+	if (*error)
+		ted_seterr(ted, "%s", error);
 	if (shader) {
 		GLuint buffer = 0, array = 0;
 		glGenBuffers(1, &buffer);

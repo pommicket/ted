@@ -119,10 +119,10 @@ typedef struct {
 } LSPRequestDidChange;
 
 typedef enum {
-	ERROR = 1,
-	WARNING = 2,
-	INFO = 3,
-	LOG = 4
+	LSP_WINDOW_MESSAGE_ERROR = 1,
+	LSP_WINDOW_MESSAGE_WARNING = 2,
+	LSP_WINDOW_MESSAGE_INFO = 3,
+	LSP_WINDOW_MESSAGE_LOG = 4
 } LSPWindowMessageType;
 
 typedef struct {
