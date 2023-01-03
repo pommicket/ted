@@ -192,6 +192,13 @@ static void *arr_remove_(void *arr, size_t member_size, size_t index) {
 	}
 }
 
+static void *arr_copy_(const void *arr, size_t member_size) {
+	void *new_arr = NULL;
+	arr_set_len_(&new_arr, member_size, arr_len(arr));
+	memcpy(new_arr, arr, member_size * arr_len(arr));
+	return new_arr;
+}
+
 #ifdef __cplusplus
 #define arr_cast_typeof(a) (decltype(a))
 #elif defined __GNUC__
@@ -224,6 +231,7 @@ static void *arr_remove_(void *arr, size_t member_size, size_t index) {
 #define arr_pop_last(a) ((a)[--arr_hdr_(a)->len])
 #define arr_size_in_bytes(a) (arr_len(a) * sizeof *(a))
 #define arr_lastp(a) ((a) ? &(a)[arr_len(a)-1] : NULL)
+#define arr_copy(a) arr_cast_typeof(a) arr_copy_((a), sizeof *(a))
 #define arr_foreach_ptr_end(a, type, var, end) type *end = (a) + arr_len(a); \
 	for (type *var = (a); var != end; ++var)
 // Iterate through each element of the array, setting var to a pointer to the element.

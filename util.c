@@ -298,6 +298,10 @@ int strcmp_case_insensitive(const char *a, const char *b) {
 #endif
 }
 
+bool streq_case_insensitive(const char *a, const char *b) {
+	return strcmp_case_insensitive(a, b) == 0;
+}
+
 int str_qsort_case_insensitive_cmp(const void *av, const void *bv) {
 	const char *const *a = av, *const *b = bv;
 	return strcmp_case_insensitive(*a, *b);

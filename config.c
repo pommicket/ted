@@ -162,6 +162,7 @@ static void config_err(ConfigReader *cfg, const char *fmt, ...) {
 	va_start(args, fmt);
 	vsnprintf(error + strlen(error), sizeof error - strlen(error) - 1, fmt, args);
 	va_end(args);
+	ted_seterr(cfg->ted, "%s", error);
 }
 
 static void context_copy(SettingsContext *dest, const SettingsContext *src) {
@@ -221,6 +222,7 @@ static void settings_copy(Settings *dest, const Settings *src) {
 		if (src->language_extensions[i])
 			dest->language_extensions[i] = str_dup(src->language_extensions[i]);
 	}
+	dest->key_actions = arr_copy(src->key_actions);
 }
 
 static void context_free(SettingsContext *ctx) {
@@ -265,83 +267,35 @@ static u32 config_parse_key_combo(ConfigReader *cfg, const char *str) {
 	}
 
 	// read key
-	SDL_Scancode scancode = SDL_GetScancodeFromName(str);
-	if (scancode == SDL_SCANCODE_UNKNOWN) {
+	SDL_Keycode keycode = SDL_GetKeyFromName(str);
+	if (keycode == SDLK_UNKNOWN) {
 		typedef struct {
 			const char *keyname1;
 			const char *keyname2; // alternate key name
-			SDL_Scancode scancode;
-			bool shift;
+			SDL_Keycode keycode;
 		} KeyName;
 		static KeyName const key_names[] = {
-			{"Apostrophe", "Single Quote", SDL_SCANCODE_APOSTROPHE, 0},
-			{"Backslash", 0, SDL_SCANCODE_BACKSLASH, 0},
-			{"Comma", 0, SDL_SCANCODE_COMMA, 0},
-			{"Equals", 0, SDL_SCANCODE_EQUALS, 0},
-			{"Grave", "Backtick", SDL_SCANCODE_GRAVE, 0},
-			{"Keypad Plus", 0, SDL_SCANCODE_KP_PLUS, 0},
-			{"Keypad Minus", 0, SDL_SCANCODE_KP_MINUS, 0},
-			{"Keypad Divide", 0, SDL_SCANCODE_KP_DIVIDE, 0},
-			{"Keypad Multiply", 0, SDL_SCANCODE_KP_MULTIPLY, 0},
-			{"Left Bracket", 0, SDL_SCANCODE_LEFTBRACKET, 0}, // [
-			{"Right Bracket", 0, SDL_SCANCODE_RIGHTBRACKET, 0}, // ]
-			{"Dash", 0, SDL_SCANCODE_MINUS, 0},
-			{"Minus", 0, SDL_SCANCODE_MINUS, 0},
-			{"Period", 0, SDL_SCANCODE_PERIOD, 0},
-			{"Semicolon", 0, SDL_SCANCODE_SEMICOLON, 0},
-			{"Slash", 0, SDL_SCANCODE_SLASH, 0},
-			{"Enter", 0, SDL_SCANCODE_RETURN, 0},
-			{"Keypad Return", 0, SDL_SCANCODE_KP_ENTER, 0},
-			{"Exclaim", "Exclamation Mark", SDL_SCANCODE_1, 1},
-			{"!", 0, SDL_SCANCODE_1, 1},
-			{"At", "@", SDL_SCANCODE_2, 1},
-			{"Hash", "#", SDL_SCANCODE_3, 1},
-			{"Dollar", "$", SDL_SCANCODE_4, 1},
-			{"Percent", "%", SDL_SCANCODE_5, 1},
-			{"Caret", "^", SDL_SCANCODE_6, 1},
-			{"Ampersand", "&", SDL_SCANCODE_7, 1},
-			{"Asterisk", "*", SDL_SCANCODE_8, 1},
-			{"Left Paren", "(", SDL_SCANCODE_9, 1},
-			{"Right Paren", ")", SDL_SCANCODE_0, 1},
-			{"Underscore", "_", SDL_SCANCODE_MINUS, 1},
-			{"Plus", "+", SDL_SCANCODE_EQUALS, 1},
-			{"Left Brace", "{", SDL_SCANCODE_LEFTBRACKET, 1},
-			{"Right Brace", "}", SDL_SCANCODE_RIGHTBRACKET, 1},
-			{"Pipe", "|", SDL_SCANCODE_BACKSLASH, 1},
-			{"Colon", ":", SDL_SCANCODE_SEMICOLON, 1},
-			{"Double Quote", "\"", SDL_SCANCODE_APOSTROPHE, 1},
-			{"Less Than", "<", SDL_SCANCODE_COMMA, 1},
-			{"Greater Than", ">", SDL_SCANCODE_PERIOD, 1},
-			{"Question Mark", "?", SDL_SCANCODE_SLASH, 1},
-			{"Question", 0, SDL_SCANCODE_SLASH, 1},
-			{"Tilde", "~", SDL_SCANCODE_GRAVE, 1},
-			{"X1", "x1", SCANCODE_MOUSE_X1, 0},
-			{"X2", "x2", SCANCODE_MOUSE_X2, 0}
+			{"X1", NULL, KEYCODE_X1},
+			{"X2", NULL, KEYCODE_X2},
+			{"Enter", NULL, SDLK_RETURN},
+			{"Equals", "Equal", SDLK_EQUALS},
 		};
-
 		// @TODO(optimize): sort key_names (and split keyname1/2); do a binary search
 		for (size_t i = 0; i < arr_count(key_names); ++i) {
 			KeyName const *k = &key_names[i];
-			if (streq(str, k->keyname1) || (k->keyname2 && streq(str, k->keyname2))) {
-				scancode = k->scancode;
-				if (k->shift) {
-					if (modifier & KEY_MODIFIER_SHIFT) {
-						config_err(cfg, "Shift+%s is redundant.", str);
-						return 0;
-					}
-					modifier |= KEY_MODIFIER_SHIFT;
-				}
+			if (streq_case_insensitive(str, k->keyname1) || (k->keyname2 && streq_case_insensitive(str, k->keyname2))) {
+				keycode = k->keycode;
 				break;
 			}
 		}
-		if (scancode == SDL_SCANCODE_UNKNOWN) {
-			if (isdigit(str[0])) { // direct scancode numbers, e.g. Ctrl+24 or Ctrl+08
+		if (keycode == SDLK_UNKNOWN) {
+			if (isdigit(str[0])) { // direct keycode numbers, e.g. Ctrl+24 or Ctrl+08
 				char *endp;
 				long n = strtol(str, &endp, 10);
-				if (*endp == '\0' && n > 0 && n < SCANCODE_COUNT) {
-					scancode = (SDL_Scancode)n;
+				if (*endp == '\0' && n > 0) {
+					keycode = (SDL_Keycode)n;
 				} else {
-					config_err(cfg, "Invalid scancode number: %s", str);
+					config_err(cfg, "Invalid keycode number: %s", str);
 					return 0;
 				}
 			} else {
@@ -350,7 +304,7 @@ static u32 config_parse_key_combo(ConfigReader *cfg, const char *str) {
 			}
 		}
 	}
-	return (u32)scancode << 3 | modifier;
+	return KEY_COMBO(modifier, keycode);
 }
 
 
@@ -767,7 +721,9 @@ static void config_parse_line(ConfigReader *cfg, Settings *settings, const Confi
 				config_err(cfg, "'%s' is not a valid color. Colors should look like #rgb, #rgba, #rrggbb, or #rrggbbaa.", value);
 			}
 		} else {
-		#if DEBUG
+			// don't actually produce this error.
+			// we have removed colors in the past and might again in the future.
+		#if 0
 			config_err(cfg, "No such color setting: %s", key);
 		#endif
 		}
@@ -775,7 +731,18 @@ static void config_parse_line(ConfigReader *cfg, Settings *settings, const Confi
 	case SECTION_KEYBOARD: {
 		// lines like Ctrl+Down = 10 :down
 		u32 key_combo = config_parse_key_combo(cfg, key);
-		KeyAction *action = &settings->key_actions[key_combo];
+		KeyAction *action = NULL;
+		// check if we already have an action for this key combo
+		arr_foreach_ptr(settings->key_actions, KeyAction, act) {
+			if (act->key_combo == key_combo) {
+				action = act;
+				break;
+			}
+		}
+		// if this is a new key combo, add an element to the key_actions array
+		if (!action)
+			action = arr_addp(settings->key_actions);
+		action->key_combo = key_combo;
 		llong argument = 1; // default argument = 1
 		if (isdigit(*value)) {
 			// read the argument
@@ -948,6 +915,15 @@ static void config_parse_line(ConfigReader *cfg, Settings *settings, const Confi
 	}
 }
 
+static int key_action_qsort_cmp_combo(const void *av, const void *bv) {
+	const KeyAction *a = av, *b = bv;
+	if (a->key_combo < b->key_combo)
+		return -1;
+	if (a->key_combo > b->key_combo)
+		return 1;
+	return 0;
+}
+
 void config_parse(Ted *ted, ConfigPart **pparts) {
 	config_init_settings();
 	
@@ -1020,6 +996,11 @@ void config_parse(Ted *ted, ConfigPart **pparts) {
 	}
 	
 	arr_clear(*pparts);
+	
+	arr_foreach_ptr(ted->all_settings, Settings, s) {
+		// sort key_actions by key_combo.
+		arr_qsort(s->key_actions, key_action_qsort_cmp_combo);
+	}
 }
 
 static int gluint_cmp(const void *av, const void *bv) {
@@ -1056,6 +1037,7 @@ void config_free(Ted *ted) {
 			free(settings->language_extensions[i]);
 		gl_rc_sab_decref(&settings->bg_shader);
 		gl_rc_texture_decref(&settings->bg_texture);
+		arr_free(settings->key_actions);
 	}
 	
 	

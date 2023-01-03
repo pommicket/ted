@@ -100,6 +100,8 @@ void print_bytes(const u8 *bytes, size_t n);
 char *strstr_case_insensitive(const char *haystack, const char *needle);
 // like strcmp, but case-insensitive
 int strcmp_case_insensitive(const char *a, const char *b);
+// like streq, but case-insensitive
+bool streq_case_insensitive(const char *a, const char *b);
 // function to be passed into qsort for case insensitive sorting
 int str_qsort_case_insensitive_cmp(const void *av, const void *bv);
 // the actual file name part of the path; get rid of the containing directory.

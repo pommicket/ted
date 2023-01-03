@@ -549,17 +549,28 @@ void ted_load_configs(Ted *ted, bool reloading) {
 	}
 }
 
-void ted_press_key(Ted *ted, SDL_Scancode scancode, SDL_Keymod modifier) {
-	u32 key_combo = (u32)scancode << 3 |
+void ted_press_key(Ted *ted, SDL_Keycode keycode, SDL_Keymod modifier) {
+	u32 key_combo = KEY_COMBO(
 		(u32)((modifier & (KMOD_LCTRL|KMOD_RCTRL)) != 0) << KEY_MODIFIER_CTRL_BIT |
 		(u32)((modifier & (KMOD_LSHIFT|KMOD_RSHIFT)) != 0) << KEY_MODIFIER_SHIFT_BIT |
-		(u32)((modifier & (KMOD_LALT|KMOD_RALT)) != 0) << KEY_MODIFIER_ALT_BIT;
-	if (key_combo < KEY_COMBO_COUNT) {
-		KeyAction *action = &ted_active_settings(ted)->key_actions[key_combo];
-		if (action->command) {
-			command_execute(ted, action->command, action->argument);
+		(u32)((modifier & (KMOD_LALT|KMOD_RALT)) != 0) << KEY_MODIFIER_ALT_BIT,
+		keycode);
+	
+	const KeyAction *const key_actions = ted_active_settings(ted)->key_actions;
+	u32 lo = 0;
+	u32 hi = arr_len(key_actions);
+	while (lo < hi) {
+		u32 mid = (lo + hi) / 2;
+		if (key_actions[mid].key_combo < key_combo) {
+			lo = mid + 1;
+		} else if (key_actions[mid].key_combo > key_combo) {
+			hi = mid;
+		} else {
+			command_execute(ted, key_actions[mid].command, key_actions[mid].argument);
+			return;
 		}
 	}
+	// nothing bound to this key
 }
 
 bool ted_get_mouse_buffer_pos(Ted *ted, TextBuffer **pbuffer, BufferPos *ppos) {

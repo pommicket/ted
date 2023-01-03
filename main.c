@@ -1,7 +1,6 @@
 /*
 @TODO:
 - rename ted_seterr to ted_error
-- use keycodes instead of scancodes (maybe that will make numlock modifier no longer necessary)
 - go to declaration with LSP
 - ted.h documentation
 - handle multiple symbols with same name in go-to-definition menu
@@ -30,7 +29,8 @@
     - bad json can give "Unexpected error: client exited without proper shutdown sequence"
 FUTURE FEATURES:
 - add numlock as a key modifier? (but make sure "Ctrl+S" handles both "No NumLock+Ctrl+S" and "NumLock+Ctrl+S")
-- comment-start + comment-end settings
+- font setting & support for multiple fonts to cover more characters
+- comment-start & comment-end settings
 - robust find (results shouldn't move around when you type things)
 - multiple files with command line arguments
 - :set-build-command
@@ -633,9 +633,9 @@ int main(int argc, char **argv) {
 				float x = (float)event.button.x, y = (float)event.button.y;
 				
 				if (button == SDL_BUTTON_X1) {
-					ted_press_key(ted, SCANCODE_MOUSE_X1, key_modifier);
+					ted_press_key(ted, KEYCODE_X1, key_modifier);
 				} else if (button == SDL_BUTTON_X2) {
-					ted_press_key(ted, SCANCODE_MOUSE_X2, key_modifier);
+					ted_press_key(ted, KEYCODE_X2, key_modifier);
 				}
 				
 				if (button < arr_count(ted->nmouse_clicks) 
@@ -707,9 +707,9 @@ int main(int argc, char **argv) {
 				ted->hover.time = 0.0;
 			} break;
 			case SDL_KEYDOWN: {
-				SDL_Scancode scancode = event.key.keysym.scancode;
+				SDL_Keycode keycode = event.key.keysym.sym;
 				SDL_Keymod modifier = event.key.keysym.mod;
-				ted_press_key(ted, scancode, modifier);
+				ted_press_key(ted, keycode, modifier);
 			} break;
 			case SDL_TEXTINPUT: {
 				char *text = event.text.text;

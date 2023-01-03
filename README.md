@@ -79,6 +79,7 @@ explaining what they do.
 Keyboard shortcuts are of the form `key combo = action`, where `action` is an argument (number or string),
 followed by a command. The commands match the things in the command palette (Ctrl+Shift+p), but `:` is added to the beginning to make
 it clear it's a command.
+A list of key names can be found [here](https://wiki.libsdl.org/SDL2/SDL_Keycode).
 
 Colors are formatted like `#rgb`, `#rgba`, `#rrggbb` or `#rrggbbaa`, where r, g, b, and a are red, green,
 blue, and alpha (transparency/opacity). You can use a [color picker](https://www.google.com/search?q=color+picker) to help you out. 

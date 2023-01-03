@@ -95,9 +95,10 @@ ENUM_U8 {
 #define SYNTAX_CODE SYNTAX_PREPROCESSOR // for markdown
 #define SYNTAX_LINK SYNTAX_CONSTANT // for markdown
 
-#define SCANCODE_MOUSE_X1 (SDL_NUM_SCANCODES)
-#define SCANCODE_MOUSE_X2 (SDL_NUM_SCANCODES+1)
-#define SCANCODE_COUNT (SDL_NUM_SCANCODES+2)
+enum {
+	KEYCODE_X1 = 1<<20,
+	KEYCODE_X2
+};
 // a "key combo" is some subset of {control, shift, alt} + some key.
 #define KEY_COMBO_COUNT (SCANCODE_COUNT << 3)
 #define KEY_MODIFIER_CTRL_BIT 0
@@ -106,9 +107,11 @@ ENUM_U8 {
 #define KEY_MODIFIER_CTRL ((u32)1<<KEY_MODIFIER_CTRL_BIT)
 #define KEY_MODIFIER_SHIFT ((u32)1<<KEY_MODIFIER_SHIFT_BIT)
 #define KEY_MODIFIER_ALT ((u32)1<<KEY_MODIFIER_ALT_BIT)
-// ctrl+alt+c is encoded as SDL_SCANCODE_C << 3 | KEY_MODIFIER_CTRL | KEY_MODIFIER_ALT
+// annoyingly SDL sets bit 30 for some keycodes
+#define KEY_COMBO(modifier, key) ((u32)(modifier) | ((u32)(key) & ~(1u<<30)) << 3 | ((u32)(key & (1<<30)) >> 10))
 
 typedef struct KeyAction {
+	u32 key_combo;
 	u32 line_number; // config line number where this was set
 	Command command; // this will be 0 (COMMAND_UNKNOWN) if there's no action for the key
 	i64 argument;
@@ -192,7 +195,7 @@ typedef struct {
 	char build_default_command[256];
 	// [i] = comma-separated string of file extensions for language i, or NULL for none
 	char *language_extensions[LANG_COUNT];
-	KeyAction key_actions[KEY_COMBO_COUNT];
+	KeyAction *key_actions; // dynamic array, sorted by KEY_COMBO(modifier, key)
 } Settings;
 
 // a position in the buffer
@@ -1098,7 +1101,7 @@ void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer);
 // switch to this node
 void ted_node_switch(Ted *ted, Node *node);
 void ted_load_configs(Ted *ted, bool reloading);
-void ted_press_key(Ted *ted, SDL_Scancode scancode, SDL_Keymod modifier);
+void ted_press_key(Ted *ted, SDL_Keycode keycode, SDL_Keymod modifier);
 bool ted_get_mouse_buffer_pos(Ted *ted, TextBuffer **pbuffer, BufferPos *ppos);
 void ted_flash_error_cursor(Ted *ted);
 void ted_go_to_position(Ted *ted, const char *path, u32 line, u32 index, bool is_lsp);
