@@ -418,9 +418,9 @@ char *file_selector_update(Ted *ted, FileSelector *fs) {
 		if (files) break;
 		else if (i == 0) {
 			if (fs_path_type(cwd) == FS_NON_EXISTENT)
-				ted_seterr(ted, "%s is not a directory.", cwd);
+				ted_error(ted, "%s is not a directory.", cwd);
 			else
-				ted_seterr(ted, "Can't list directory %s.", cwd);
+				ted_error(ted, "Can't list directory %s.", cwd);
 		}
 		file_selector_cd(ted, fs, "..");
 	}
@@ -478,7 +478,7 @@ char *file_selector_update(Ted *ted, FileSelector *fs) {
 		// set cwd to this (if no buffers are open, the "open" menu should use the last file selector's cwd)
 		strbuf_cpy(ted->cwd, cwd);
 	} else {
-		ted_seterr(ted, "Couldn't list directory '%s'.", cwd);
+		ted_error(ted, "Couldn't list directory '%s'.", cwd);
 	}
 	
 	free(search_term);

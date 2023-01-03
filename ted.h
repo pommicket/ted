@@ -1052,7 +1052,7 @@ void die(PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRINTF(1, 2);
 // display a message to the user
 void ted_set_message(Ted *ted, MessageType type, PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRINTF(3, 4);
 // display an error to the user
-void ted_seterr(Ted *ted, PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRINTF(2, 3);
+void ted_error(Ted *ted, PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRINTF(2, 3);
 // display a warning to the user
 void ted_warn(Ted *ted, PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRINTF(2, 3);
 // display information to the user
@@ -1068,7 +1068,7 @@ Status ted_get_file(Ted const *ted, const char *name, char *out, size_t outsz);
 // get full path relative to ted->cwd.
 void ted_path_full(Ted *ted, const char *relpath, char *abspath, size_t abspath_size);
 void ted_reset_active_buffer(Ted *ted);
-void ted_seterr_to_buferr(Ted *ted, TextBuffer *buffer);
+void ted_error_from_buffer(Ted *ted, TextBuffer *buffer);
 // Returns the buffer containing the file at `path`, or NULL if there is none.
 TextBuffer *ted_get_buffer_with_file(Ted *ted, const char *path);
 bool ted_save_all(Ted *ted);

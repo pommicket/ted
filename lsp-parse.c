@@ -869,8 +869,9 @@ void process_message(LSP *lsp, JSON *json) {
 			response.error = json_string_get_alloc(json, error.val.string);
 		}
 		
-		if (response.error && error_code != LSP_ERROR_REQUEST_CANCELLED) {
-			add_to_messages = true;
+		if (response.error) {
+			if (error_code != LSP_ERROR_REQUEST_CANCELLED)
+				add_to_messages = true;
 		} else switch (response_to.type) {
 		case LSP_REQUEST_COMPLETION:
 			add_to_messages = parse_completion(lsp, json, &response);

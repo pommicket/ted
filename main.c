@@ -1,6 +1,5 @@
 /*
 @TODO:
-- rename ted_seterr to ted_error
 - go to declaration with LSP
 - ted.h documentation
 - handle multiple symbols with same name in go-to-definition menu
@@ -29,6 +28,7 @@
     - bad json can give "Unexpected error: client exited without proper shutdown sequence"
 FUTURE FEATURES:
 - add numlock as a key modifier? (but make sure "Ctrl+S" handles both "No NumLock+Ctrl+S" and "NumLock+Ctrl+S")
+- return to previous location in buffer
 - font setting & support for multiple fonts to cover more characters
 - comment-start & comment-end settings
 - robust find (results shouldn't move around when you type things)
@@ -846,7 +846,7 @@ int main(int argc, char **argv) {
 					if (r->error) {
 						// not displaying this right now
 						// idk it might be spammy
-						//ted_seterr(ted, "%s", r->error);
+						//ted_error(ted, "%s", r->error);
 					}
 					// it's important that we send error responses here too.
 					// we don't want to be waiting around for a response that's never coming.
@@ -982,12 +982,12 @@ int main(int argc, char **argv) {
 		}
 
 		if (text_has_err()) {
-			ted_seterr(ted, "Couldn't render text: %s", text_get_err());
+			ted_error(ted, "Couldn't render text: %s", text_get_err());
 		}
 		for (u16 i = 0; i < TED_MAX_BUFFERS; ++i) {
 			TextBuffer *buffer = &ted->buffers[i];
 			if (buffer_haserr(buffer)) {
-				ted_seterr_to_buferr(ted, buffer);
+				ted_error_from_buffer(ted, buffer);
 				buffer_clearerr(buffer);
 			}
 		}
@@ -995,7 +995,7 @@ int main(int argc, char **argv) {
 			LSP *lsp = ted->lsps[i];
 			char error[512] = {0};
 			if (lsp_get_error(lsp, error, sizeof error, true)) {
-				ted_seterr(ted, "%s", error);
+				ted_error(ted, "%s", error);
 			}
 		}
 

@@ -52,7 +52,7 @@ static bool build_run_next_command_in_queue(Ted *ted) {
 			free(command);
 			return true;
 		} else {
-			ted_seterr(ted, "Couldn't start build: %s", error);
+			ted_error(ted, "Couldn't start build: %s", error);
 			build_stop(ted);
 			return false;
 		}
@@ -253,7 +253,7 @@ void build_frame(Ted *ted, float x1, float y1, float x2, float y2) {
 
 			i64 bytes_read = (i64)process_read(process, buf + 3, sizeof buf - 3);
 			if (bytes_read == -2) {
-				ted_seterr(ted, "Error reading command output: %s.", process_geterr(process));
+				ted_error(ted, "Error reading command output: %s.", process_geterr(process));
 				build_stop(ted);
 				break;
 			} else if (bytes_read == -1) {

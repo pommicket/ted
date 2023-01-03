@@ -22,12 +22,12 @@ TextBuffer *find_search_buffer(Ted *ted) {
 }
 
 
-static void ted_seterr_to_pcre2_err(Ted *ted, int err) {
+static void ted_error_from_pcre2_error(Ted *ted, int err) {
 	char32_t buf[256] = {0};
 	size_t len = (size_t)pcre2_get_error_message(err, buf, arr_count(buf) - 1);
 	char *error_cstr = str32_to_utf8_cstr(str32(buf, len));
 	if (error_cstr) {
-		ted_seterr(ted, "Search error: %s.", error_cstr);
+		ted_error(ted, "Search error: %s.", error_cstr);
 		free(error_cstr);
 	}
 }
@@ -51,7 +51,7 @@ static bool find_compile_pattern(Ted *ted) {
 			}
 			pcre2_match_data_free(match_data);
 		} else {
-			ted_seterr(ted, "Out of memory.");
+			ted_error(ted, "Out of memory.");
 		}
 	} else {
 		ted->find_invalid_pattern = false;
@@ -256,11 +256,11 @@ static bool find_replace_match(Ted *ted, u32 match_idx) {
 			}
 			success = true;
 		} else if (ret < 0) {
-			ted_seterr_to_pcre2_err(ted, ret);
+			ted_error_from_pcre2_error(ted, ret);
 		}
 		free(output_buffer);
 	} else {
-		ted_seterr(ted, "Out of memory.");
+		ted_error(ted, "Out of memory.");
 	}
 	return success;
 }

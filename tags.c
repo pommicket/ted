@@ -13,7 +13,7 @@ static const char *tags_filename(Ted *ted, bool error_if_does_not_exist) {
 			ted_path_full(ted, "../..", ted->tags_dir, sizeof ted->tags_dir);
 			if (!fs_file_exists(filename)) {
 				if (error_if_does_not_exist)
-					ted_seterr(ted, "No tags file. Try running ctags.");
+					ted_error(ted, "No tags file. Try running ctags.");
 				filename = NULL;
 			}
 		}
@@ -325,7 +325,7 @@ top:;
 								}
 								str32_free(&pattern32);
 							} else {
-								ted_seterr(ted, "Unrecognized tag address: %s", address);
+								ted_error(ted, "Unrecognized tag address: %s", address);
 							}
 						}
 						break;
@@ -340,7 +340,7 @@ top:;
 			already_regenerated_tags = true;
 			goto top;
 		} else {
-			ted_seterr(ted, "No such tag: %s", tag);
+			ted_error(ted, "No such tag: %s", tag);
 		}
 	}
 	fclose(file);

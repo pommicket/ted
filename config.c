@@ -162,7 +162,7 @@ static void config_err(ConfigReader *cfg, const char *fmt, ...) {
 	va_start(args, fmt);
 	vsnprintf(error + strlen(error), sizeof error - strlen(error) - 1, fmt, args);
 	va_end(args);
-	ted_seterr(cfg->ted, "%s", error);
+	ted_error(cfg->ted, "%s", error);
 }
 
 static void context_copy(SettingsContext *dest, const SettingsContext *src) {
@@ -424,7 +424,7 @@ static void config_init_settings(void) {
 void config_read(Ted *ted, ConfigPart **parts, const char *filename) {
 	FILE *fp = fopen(filename, "rb");
 	if (!fp) {
-		ted_seterr(ted, "Couldn't open config file %s: %s.", filename, strerror(errno));
+		ted_error(ted, "Couldn't open config file %s: %s.", filename, strerror(errno));
 		return;
 	}
 	
@@ -475,7 +475,7 @@ void config_read(Ted *ted, ConfigPart **parts, const char *filename) {
 	}
 	
 	if (ferror(fp))
-		ted_seterr(ted, "Error reading %s.", filename);
+		ted_error(ted, "Error reading %s.", filename);
 	fclose(fp);
 }
 
@@ -604,7 +604,7 @@ uniform sampler2D t_texture;\n\
 	char error[512] = {0};
 	GLuint shader = gl_compile_and_link_shaders(error, vshader, fshader);
 	if (*error)
-		ted_seterr(ted, "%s", error);
+		ted_error(ted, "%s", error);
 	if (shader) {
 		GLuint buffer = 0, array = 0;
 		glGenBuffers(1, &buffer);
@@ -649,7 +649,7 @@ static void settings_load_bg_texture(Ted *ted, Settings *s) {
 	if (texture) {
 		s->bg_texture = gl_rc_texture_new(texture);
 	} else {
-		ted_seterr(ted, "Couldn't load image %s", path);
+		ted_error(ted, "Couldn't load image %s", path);
 	}
 }
 

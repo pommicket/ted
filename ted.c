@@ -40,7 +40,7 @@ void ted_set_message(Ted *ted, MessageType type, const char *fmt, ...) {
 	va_end(args);
 }
 
-void ted_seterr(Ted *ted, const char *fmt, ...) {
+void ted_error(Ted *ted, const char *fmt, ...) {
 	va_list args;
 	va_start(args, fmt);
 	ted_vset_message(ted, MESSAGE_ERROR, fmt, args);
@@ -71,12 +71,13 @@ void ted_log(Ted *ted, const char *fmt, ...) {
 }
 
 
-void ted_seterr_to_buferr(Ted *ted, TextBuffer *buffer) {
-	ted_seterr(ted, "%s", buffer->error);
+void ted_error_from_buffer(Ted *ted, TextBuffer *buffer) {
+	if (*buffer->error)
+		ted_error(ted, "%s", buffer->error);
 }
 
 void ted_out_of_mem(Ted *ted) {
-	ted_seterr(ted, "Out of memory.");
+	ted_error(ted, "Out of memory.");
 }
 
 void *ted_malloc(Ted *ted, size_t size) {
@@ -353,7 +354,7 @@ i32 ted_new_node(Ted *ted) {
 			return i;
 		}
 	}
-	ted_seterr(ted, "Too many nodes.");
+	ted_error(ted, "Too many nodes.");
 	return -1;
 	
 }
@@ -394,7 +395,7 @@ static Status ted_open_buffer(Ted *ted, u16 *buffer_idx, u16 *tab) {
 			ted_switch_to_buffer(ted, new_buffer);
 			return true;
 		} else {
-			ted_seterr(ted, "Too many tabs.");
+			ted_error(ted, "Too many tabs.");
 			ted_delete_buffer(ted, (u16)new_buffer_index);
 			return false;
 		}
@@ -437,7 +438,7 @@ bool ted_open_file(Ted *ted, const char *filename) {
 		if (buffer_load_file(buffer, path)) {
 			return true;
 		} else {
-			ted_seterr_to_buferr(ted, buffer);
+			ted_error_from_buffer(ted, buffer);
 			node_tab_close(ted, ted->active_node, tab_idx);
 			ted_delete_buffer(ted, (u16)buffer_idx);
 			return false;
@@ -460,7 +461,7 @@ bool ted_new_file(Ted *ted, const char *filename) {
 		if (!buffer_haserr(buffer)) {
 			return true;
 		} else {
-			ted_seterr_to_buferr(ted, buffer);
+			ted_error_from_buffer(ted, buffer);
 			node_tab_close(ted, ted->active_node, tab_idx);
 			ted_delete_buffer(ted, (u16)buffer_idx);
 			return false;
@@ -486,7 +487,7 @@ bool ted_save_all(Ted *ted) {
 				} else {
 					if (!buffer_save(buffer)) {
 						success = false;
-						ted_seterr_to_buferr(ted, buffer);
+						ted_error_from_buffer(ted, buffer);
 					}
 				}
 			}
@@ -632,7 +633,7 @@ void ted_cancel_lsp_request(Ted *ted, LSPID lsp, LSPRequestID request) {
 
 static void mark_node_reachable(Ted *ted, u16 node, bool reachable[TED_MAX_NODES]) {
 	if (reachable[node]) {
-		ted_seterr(ted, "Node %u reachable in 2 different ways\nThis should never happen.", node);
+		ted_error(ted, "Node %u reachable in 2 different ways\nThis should never happen.", node);
 		ted_log(ted, "Node %u reachable in 2 different ways\n", node);
 		node_close(ted, node);
 		return;
@@ -651,7 +652,7 @@ void ted_check_for_node_problems(Ted *ted) {
 		mark_node_reachable(ted, 0, reachable);
 	for (u16 i = 0; i < TED_MAX_NODES; ++i) {
 		if (ted->nodes_used[i] && !reachable[i]) {
-			ted_seterr(ted, "ORPHANED NODE %u\nThis should never happen.", i);
+			ted_error(ted, "ORPHANED NODE %u\nThis should never happen.", i);
 			ted_log(ted, "ORPHANED NODE %u\n", i);
 			node_close(ted, i);
 		}
