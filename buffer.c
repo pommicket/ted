@@ -1036,7 +1036,7 @@ void buffer_center_cursor(TextBuffer *buffer) {
 
 // move left (if `by` is negative) or right (if `by` is positive) by the specified amount.
 // returns the signed number of characters successfully moved (it could be less in magnitude than `by` if the beginning of the file is reached)
-i64 buffer_pos_move_horizontally(TextBuffer *buffer, BufferPos *p, i64 by) {
+static i64 buffer_pos_move_horizontally(TextBuffer *buffer, BufferPos *p, i64 by) {
 	buffer_pos_validate(buffer, p);
 	if (by < 0) {
 		by = -by;
@@ -1088,7 +1088,7 @@ i64 buffer_pos_move_horizontally(TextBuffer *buffer, BufferPos *p, i64 by) {
 }
 
 // same as buffer_pos_move_horizontally, but for up and down.
-i64 buffer_pos_move_vertically(TextBuffer *buffer, BufferPos *pos, i64 by) {
+static i64 buffer_pos_move_vertically(TextBuffer *buffer, BufferPos *pos, i64 by) {
 	buffer_pos_validate(buffer, pos);
 	// moving up/down should preserve the column, not the index.
 	// consider:
@@ -1138,6 +1138,13 @@ i64 buffer_pos_move_up(TextBuffer *buffer, BufferPos *pos, i64 by) {
 
 i64 buffer_pos_move_down(TextBuffer *buffer, BufferPos *pos, i64 by) {
 	return +buffer_pos_move_vertically(buffer, pos, +by);
+}
+
+static bool buffer_line_is_blank(Line *line) {
+	for (u32 i = 0; i < line->len; ++i)
+		if (!is32_space(line->str[i]))
+			return false;
+	return true;
 }
 
 void buffer_cursor_move_to_pos(TextBuffer *buffer, BufferPos pos) {
@@ -1199,6 +1206,86 @@ i64 buffer_cursor_move_down(TextBuffer *buffer, i64 by) {
 		cur_pos = buffer->selection_pos;
 	i64 ret = buffer_pos_move_down(buffer, &cur_pos, by);
 	buffer_cursor_move_to_pos(buffer, cur_pos);
+	return ret;
+}
+
+i64 buffer_pos_move_up_blank_lines(TextBuffer *buffer, BufferPos *pos, i64 by) {
+	if (by == 0) return 0;
+	if (by < 0) return buffer_pos_move_down_blank_lines(buffer, pos, -by);
+	
+	
+	buffer_pos_validate(buffer, pos);
+	
+	u32 line = pos->line;
+	
+	// skip blank lines at start
+	while (line > 0 && buffer_line_is_blank(&buffer->lines[line]))
+		--line;
+	
+	i64 i;
+	for (i = 0; i < by; ++i) {
+		while (1) {
+			if (line == 0) {
+				goto end;
+			} else if (buffer_line_is_blank(&buffer->lines[line])) {
+				// move to the top blank line in this group
+				while (line > 0 && buffer_line_is_blank(&buffer->lines[line-1]))
+					--line;
+				break;
+			} else {
+				--line;
+			}
+		}
+	}
+	end:
+	pos->line = line;
+	pos->index = 0;
+	return i;
+}
+
+i64 buffer_pos_move_down_blank_lines(TextBuffer *buffer, BufferPos *pos, i64 by) {
+	if (by == 0) return 0;
+	if (by < 0) return buffer_pos_move_up_blank_lines(buffer, pos, -by);
+	
+	buffer_pos_validate(buffer, pos);
+	
+	u32 line = pos->line;
+	// skip blank lines at start
+	while (line + 1 < buffer->nlines && buffer_line_is_blank(&buffer->lines[line]))
+		++line;
+	
+	i64 i;
+	for (i = 0; i < by; ++i) {
+		while (1) {
+			if (line + 1 >= buffer->nlines) {
+				goto end;
+			} else if (buffer_line_is_blank(&buffer->lines[line])) {
+				// move to the bottom blank line in this group
+				while (line + 1 < buffer->nlines && buffer_line_is_blank(&buffer->lines[line+1]))
+					++line;
+				break;
+			} else {
+				++line;
+			}
+		}
+	}
+	end:
+	pos->line = line;
+	pos->index = 0;
+	return i;
+}
+
+i64 buffer_cursor_move_up_blank_lines(TextBuffer *buffer, i64 by) {
+	BufferPos cursor = buffer->cursor_pos;
+	i64 ret = buffer_pos_move_up_blank_lines(buffer, &cursor, by);
+	buffer_cursor_move_to_pos(buffer, cursor);
+	return ret;
+}
+
+i64 buffer_cursor_move_down_blank_lines(TextBuffer *buffer, i64 by) {
+	BufferPos cursor = buffer->cursor_pos;
+	i64 ret = buffer_pos_move_down_blank_lines(buffer, &cursor, by);
+	buffer_cursor_move_to_pos(buffer, cursor);
 	return ret;
 }
 
@@ -1610,7 +1697,6 @@ void buffer_select_to_pos(TextBuffer *buffer, BufferPos pos) {
 	buffer->selection = !buffer_pos_eq(buffer->cursor_pos, buffer->selection_pos); // disable selection if cursor_pos = selection_pos.
 }
 
-// Like shift+left in most editors, move cursor nchars chars to the left, selecting everything in between
 void buffer_select_left(TextBuffer *buffer, i64 nchars) {
 	BufferPos cpos = buffer->cursor_pos;
 	buffer_pos_move_left(buffer, &cpos, nchars);
@@ -1632,6 +1718,18 @@ void buffer_select_down(TextBuffer *buffer, i64 nchars) {
 void buffer_select_up(TextBuffer *buffer, i64 nchars) {
 	BufferPos cpos = buffer->cursor_pos;
 	buffer_pos_move_up(buffer, &cpos, nchars);
+	buffer_select_to_pos(buffer, cpos);
+}
+
+void buffer_select_down_blank_lines(TextBuffer *buffer, i64 by) {
+	BufferPos cpos = buffer->cursor_pos;
+	buffer_pos_move_down_blank_lines(buffer, &cpos, by);
+	buffer_select_to_pos(buffer, cpos);
+}
+
+void buffer_select_up_blank_lines(TextBuffer *buffer, i64 by) {
+	BufferPos cpos = buffer->cursor_pos;
+	buffer_pos_move_up_blank_lines(buffer, &cpos, by);
 	buffer_select_to_pos(buffer, cpos);
 }
 

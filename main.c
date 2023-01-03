@@ -1,6 +1,6 @@
 /*
 @TODO:
-- make ctrl+up/ctrl+down move to next/prev blank line
+- ted.h documentation
 - broken session fix: close buffers not in any used node
 - handle multiple symbols with same name in go-to-definition menu
 - better non-error window/showMessage(Request)

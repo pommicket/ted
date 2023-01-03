@@ -17,6 +17,8 @@ static CommandName const command_names[] = {
 	{"select-down", CMD_SELECT_DOWN},
 	{"left-word", CMD_LEFT_WORD},
 	{"right-word", CMD_RIGHT_WORD},
+	{"up-blank-line", CMD_UP_BLANK_LINE},
+	{"down-blank-line", CMD_DOWN_BLANK_LINE},
 	{"select-left-word", CMD_SELECT_LEFT_WORD},
 	{"select-right-word", CMD_SELECT_RIGHT_WORD},
 	{"start-of-line", CMD_START_OF_LINE},
@@ -30,6 +32,8 @@ static CommandName const command_names[] = {
 	{"select-page-up", CMD_SELECT_PAGE_UP},
 	{"select-page-down", CMD_SELECT_PAGE_DOWN},
 	{"select-all", CMD_SELECT_ALL},
+	{"select-up-blank-line", CMD_SELECT_UP_BLANK_LINE},
+	{"select-down-blank-line", CMD_SELECT_DOWN_BLANK_LINE},
 	{"page-up", CMD_PAGE_UP},
 	{"page-down", CMD_PAGE_DOWN},
 	{"tab", CMD_TAB},
@@ -154,6 +158,14 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		else if (buffer) buffer_cursor_move_down(buffer, argument);
 		autocomplete_close(ted);
 		break;
+	case CMD_UP_BLANK_LINE:
+		if (buffer) buffer_cursor_move_up_blank_lines(buffer, argument);
+		autocomplete_close(ted);
+		break;
+	case CMD_DOWN_BLANK_LINE:
+		if (buffer) buffer_cursor_move_down_blank_lines(buffer, argument);
+		autocomplete_close(ted);
+		break;
 	case CMD_SELECT_LEFT:
 		if (buffer) buffer_select_left(buffer, argument);
 		autocomplete_close(ted);
@@ -220,6 +232,14 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		break;
 	case CMD_SELECT_ALL:
 		if (buffer) buffer_select_all(buffer);
+		autocomplete_close(ted);
+		break;
+	case CMD_SELECT_UP_BLANK_LINE:
+		if (buffer) buffer_select_up_blank_lines(buffer, argument);
+		autocomplete_close(ted);
+		break;
+	case CMD_SELECT_DOWN_BLANK_LINE:
+		if (buffer) buffer_select_down_blank_lines(buffer, argument);
 		autocomplete_close(ted);
 		break;
 	

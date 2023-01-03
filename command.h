@@ -20,6 +20,8 @@ ENUM_U16 {
 	CMD_SELECT_DOWN,
 	CMD_LEFT_WORD, // move cursor left a word
 	CMD_RIGHT_WORD,
+	CMD_UP_BLANK_LINE,
+	CMD_DOWN_BLANK_LINE,
 	CMD_SELECT_LEFT_WORD,
 	CMD_SELECT_RIGHT_WORD,
 	CMD_START_OF_LINE, // move cursor to start of line
@@ -33,6 +35,8 @@ ENUM_U16 {
 	CMD_SELECT_ALL, // select entire buffer
 	CMD_SELECT_PAGE_UP,
 	CMD_SELECT_PAGE_DOWN,
+	CMD_SELECT_UP_BLANK_LINE,
+	CMD_SELECT_DOWN_BLANK_LINE,
 	
 	// insertion
 	CMD_INSERT_TEXT, // insert text
