@@ -78,10 +78,9 @@ void hover_frame(Ted *ted, double dt) {
 		return;
 	Hover *hover = &ted->hover;
 	
-	bool shift_down = SDL_GetKeyboardState(NULL)[SDL_SCANCODE_LSHIFT]
-		|| SDL_GetKeyboardState(NULL)[SDL_SCANCODE_RSHIFT];
+	bool f1_down = SDL_GetKeyboardState(NULL)[SDL_SCANCODE_F1];
 	
-	bool open_hover = shift_down || hover->time >= settings->hover_time;
+	bool open_hover = f1_down || hover->time >= settings->hover_time;
 	
 	hover->time += dt;
 	

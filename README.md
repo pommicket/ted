@@ -136,11 +136,11 @@ Press Ctrl+space to autocomplete. If there is only one possible completion from 
 Otherwise, you'll get a popup showing all possible completions. You can press tab to select a completion (or click on it), and press
 Ctrl+space/Ctrl+shift+space to cycle between suggestions.
 
-Hover over an identifier and press Shift to see its type and documentation ("hover information").
+Hover over an identifier and press F1 to see its type and documentation ("hover information").
 
-While your cursor is over an identifier, you can press Ctrl to highlight where it is used
+While your cursor is over an identifier, you can press F2 to highlight where it is used
 ("document highlights"). If you turn on `highlight-auto` in the settings, the highlights
-will appear even if you don't press Ctrl.
+will appear even if you don't press F2.
 
 Press Ctrl+U to see usages of the identifier under the cursor. You can use Ctrl+\[ and Ctrl+\]
 to navigate between them, just like build errors.

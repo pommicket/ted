@@ -52,10 +52,9 @@ void highlights_frame(Ted *ted) {
 		return;
 	}
 	const Settings *settings = buffer_settings(buffer);
-	bool ctrl_down = SDL_GetKeyboardState(NULL)[SDL_SCANCODE_LCTRL]
-		|| SDL_GetKeyboardState(NULL)[SDL_SCANCODE_RCTRL];
+	bool f2_down = SDL_GetKeyboardState(NULL)[SDL_SCANCODE_F2];
 	if (!settings->highlight_enabled
-		|| (!settings->highlight_auto && !ctrl_down)) {
+		|| (!settings->highlight_auto && !f2_down)) {
 		highlights_close(ted);
 		return;
 	}
