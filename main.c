@@ -1,7 +1,6 @@
 /*
 @TODO:
 - ted.h documentation
-- broken session fix: close buffers not in any used node
 - handle multiple symbols with same name in go-to-definition menu
 - better non-error window/showMessage(Request)
 - document lsp.h and lsp.c.
@@ -394,14 +393,15 @@ int main(int argc, char **argv) {
 		
 	}
 
-	FILE *log = NULL;
 	{
 		// open log file
+		FILE *log = NULL;
 		char log_filename[TED_PATH_MAX];
 		strbuf_printf(log_filename, "%s/log.txt", ted->local_data_dir);
 		log = fopen(log_filename, "w");
+		setbuf(log, NULL);
+		ted->log = log;
 	}
-	ted->log = log;
 
 	{ // get current working directory
 		fs_get_cwd(ted->cwd, sizeof ted->cwd);
@@ -1021,16 +1021,13 @@ int main(int argc, char **argv) {
 			ted->error_time = ted->frame_time;
 			str_cpy(ted->error_shown, sizeof ted->error_shown, ted->error);
 
-			{ // output error to log file
-				char tstr[256];
-				time_t t = time(NULL);
-				struct tm *tm = localtime(&t);
-				strftime(tstr, sizeof tstr, "%Y-%m-%d %H:%M:%S", tm);
-				if (log) {
-					fprintf(log, "[ERROR %s] %s\n", tstr, ted->error);
-					fflush(log);
-				}
-			}
+			// output error to log file
+			char tstr[256];
+			time_t t = time(NULL);
+			struct tm *tm = localtime(&t);
+			strftime(tstr, sizeof tstr, "%Y-%m-%d %H:%M:%S", tm);
+			ted_log(ted, "[ERROR %s] %s\n", tstr, ted->error);
+			
 			ted_clearerr(ted);
 		}
 
@@ -1064,6 +1061,8 @@ int main(int argc, char **argv) {
 				text_render(font);
 			}
 		}
+		
+		ted_check_for_node_problems(ted);
 
 	#if !NDEBUG
 		for (u16 i = 0; i < TED_MAX_BUFFERS; ++i)
@@ -1144,7 +1143,7 @@ int main(int argc, char **argv) {
 		free(*cmd);
 	}
 	arr_free(ted->shell_history);
-
+	fclose(ted->log), ted->log = NULL;
 	SDL_FreeCursor(ted->cursor_arrow);
 	SDL_FreeCursor(ted->cursor_ibeam);
 	SDL_FreeCursor(ted->cursor_wait);
@@ -1155,7 +1154,6 @@ int main(int argc, char **argv) {
 	SDL_GL_DeleteContext(glctx);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
-	if (log) fclose(log);
 	definitions_selector_close(ted);
 	for (u16 i = 0; i < TED_MAX_BUFFERS; ++i)
 		if (ted->buffers_used[i])

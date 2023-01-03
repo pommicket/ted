@@ -16,6 +16,23 @@ void die(const char *fmt, ...) {
 	exit(EXIT_FAILURE);
 }
 
+void ted_seterr(Ted *ted, const char *fmt, ...) {
+	va_list args;
+	va_start(args, fmt);
+	vsnprintf(ted->error, sizeof ted->error - 1, fmt, args);
+	va_end(args);
+}
+
+void ted_log(Ted *ted, const char *fmt, ...) {
+	if (!ted->log) return;
+	
+	va_list args;
+	va_start(args, fmt);
+	vfprintf(ted->log, fmt, args);
+	va_end(args);
+}
+
+
 void ted_seterr_to_buferr(Ted *ted, TextBuffer *buffer) {
 	size_t size = sizeof ted->error;
 	if (sizeof buffer->error < size) size = sizeof buffer->error;
@@ -577,4 +594,33 @@ void ted_go_to_lsp_document_position(Ted *ted, LSP *lsp, LSPDocumentPosition pos
 
 void ted_cancel_lsp_request(Ted *ted, LSPID lsp, LSPRequestID request) {
 	lsp_cancel_request(ted_get_lsp_by_id(ted, lsp), request);
+}
+
+
+static void mark_node_reachable(Ted *ted, u16 node, bool reachable[TED_MAX_NODES]) {
+	if (reachable[node]) {
+		ted_seterr(ted, "NODE CYCLE %u\nThis should never happen.", node);
+		ted_log(ted, "NODE CYCLE %u\n", node);
+		node_close(ted, node);
+		return;
+	}
+	reachable[node] = true;
+	Node *n = &ted->nodes[node];
+	if (!n->tabs) {
+		mark_node_reachable(ted, n->split_a, reachable);
+		mark_node_reachable(ted, n->split_b, reachable);
+	}
+}
+
+void ted_check_for_node_problems(Ted *ted) {
+	bool reachable[TED_MAX_NODES] = {0};
+	if (ted->nodes_used[0])
+		mark_node_reachable(ted, 0, reachable);
+	for (u16 i = 0; i < TED_MAX_NODES; ++i) {
+		if (ted->nodes_used[i] && !reachable[i]) {
+			ted_seterr(ted, "ORPHANED NODE %u\nThis should never happen.", i);
+			ted_log(ted, "ORPHANED NODE %u\n", i);
+			node_close(ted, i);
+		}
+	}
 }

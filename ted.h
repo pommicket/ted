@@ -589,6 +589,7 @@ typedef struct Ted {
 	char build_dir[TED_PATH_MAX]; // directory where we run the build command
 	char tags_dir[TED_PATH_MAX]; // where we are reading tags from
 	bool nodes_used[TED_MAX_NODES];
+	// nodes[0] is always the "root node", if any buffers are open.
 	Node nodes[TED_MAX_NODES];
 	// NOTE: the buffer at index 0 is reserved as a "null buffer" and should not be used.
 	bool buffers_used[TED_MAX_BUFFERS];
@@ -1031,10 +1032,12 @@ bool tag_goto(Ted *ted, const char *tag);
 SymbolInfo *tags_get_symbols(Ted *ted);
 
 // === ted.c ===
-#define ted_seterr(ted, ...) \
-	snprintf((ted)->error, sizeof (ted)->error - 1, __VA_ARGS__)
 // for fatal errors
 void die(PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRINTF(1, 2);
+// for non-fatal errors that should be displayed to the user
+void ted_seterr(Ted *ted, PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRINTF(2, 3);
+// for information that should be logged
+void ted_log(Ted *ted, PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRINTF(2, 3);
 void *ted_malloc(Ted *ted, size_t size);
 void *ted_calloc(Ted *ted, size_t n, size_t size);
 void *ted_realloc(Ted *ted, void *p, size_t new_size);
@@ -1086,6 +1089,8 @@ void ted_go_to_lsp_document_position(Ted *ted, LSP *lsp, LSPDocumentPosition pos
 void ted_cancel_lsp_request(Ted *ted, LSPID lsp, LSPRequestID request);
 // how tall is a line buffer?
 float ted_line_buffer_height(Ted *ted);
+// check for orphaned nodes and node cycles
+void ted_check_for_node_problems(Ted *ted);
 
 // === ui.c ===
 void selector_up(Ted *ted, Selector *s, i64 n);
