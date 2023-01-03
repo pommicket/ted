@@ -1,6 +1,8 @@
 /*
 @TODO:
-- go to declaration with LSP
+- go to type definition
+- why does asking for a definition in ted.h send us to the wrong place?
+   (vscode doesn't experience this problem)
 - ted.h documentation
 - handle multiple symbols with same name in go-to-definition menu
 - better non-error window/showMessage(Request)

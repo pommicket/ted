@@ -163,6 +163,12 @@ static void parse_capabilities(LSP *lsp, const JSON *json, JSONObject capabiliti
 		cap->definition_support = true;
 	}
 	
+	// check for declaration support
+	JSONValue declaration_value = json_object_get(json, capabilities, "declarationProvider");
+	if (declaration_value.type != JSON_UNDEFINED && declaration_value.type != JSON_FALSE) {
+		cap->declaration_support = true;
+	}
+	
 	// check for textDocument/documentHighlight support
 	JSONValue highlight_value = json_object_get(json, capabilities, "documentHighlightProvider");
 	if (highlight_value.type != JSON_UNDEFINED && highlight_value.type != JSON_FALSE) {
@@ -883,6 +889,7 @@ void process_message(LSP *lsp, JSON *json) {
 			add_to_messages = parse_hover(lsp, json, &response);
 			break;
 		case LSP_REQUEST_DEFINITION:
+		case LSP_REQUEST_DECLARATION:
 			add_to_messages = parse_definition(lsp, json, &response);
 			break;
 		case LSP_REQUEST_HIGHLIGHT:

@@ -51,13 +51,22 @@ static SymbolKind symbol_kind_to_ted(LSPSymbolKind kind) {
 	return SYMBOL_OTHER;
 }
 
-void definition_goto(Ted *ted, LSP *lsp, const char *name, LSPDocumentPosition position) {
+void definition_goto(Ted *ted, LSP *lsp, const char *name, LSPDocumentPosition position, GotoType type) {
 	Definitions *defs = &ted->definitions;
 	if (lsp) {
 		// cancel old request
 		ted_cancel_lsp_request(ted, defs->last_request_lsp, defs->last_request_id);
+		LSPRequestType request_type = LSP_REQUEST_DEFINITION;
+		switch (type) {
+		case GOTO_DEFINITION:
+			request_type = LSP_REQUEST_DEFINITION;
+			break;
+		case GOTO_DECLARATION:
+			request_type = LSP_REQUEST_DECLARATION;
+			break;
+		}
 		// send that request
-		LSPRequest request = {.type = LSP_REQUEST_DEFINITION};
+		LSPRequest request = {.type = request_type};
 		request.data.definition.position = position;
 		LSPRequestID id = lsp_send_request(lsp, &request);
 		defs->last_request_id = id;
@@ -132,8 +141,9 @@ void definitions_process_lsp_response(Ted *ted, LSP *lsp, const LSPResponse *res
 	defs->last_request_id = 0;
 	
 	switch (response->request.type) {
-	case LSP_REQUEST_DEFINITION: {
-		// handle textDocument/definition response
+	case LSP_REQUEST_DEFINITION:
+	case LSP_REQUEST_DECLARATION: {
+		// handle textDocument/definition or textDocument/declaration response
 		const LSPResponseDefinition *response_def = &response->data.definition;
 		
 		if (!arr_len(response_def->locations)) {

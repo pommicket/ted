@@ -48,6 +48,7 @@ void lsp_request_free(LSPRequest *r) {
 	case LSP_REQUEST_SIGNATURE_HELP:
 	case LSP_REQUEST_HOVER:
 	case LSP_REQUEST_DEFINITION:
+	case LSP_REQUEST_DECLARATION:
 	case LSP_REQUEST_REFERENCES:
 	case LSP_REQUEST_HIGHLIGHT:
 	case LSP_REQUEST_DID_CLOSE:
@@ -176,6 +177,8 @@ static bool lsp_supports_request(LSP *lsp, const LSPRequest *request) {
 		return cap->hover_support;
 	case LSP_REQUEST_DEFINITION:
 		return cap->definition_support;
+	case LSP_REQUEST_DECLARATION:
+		return cap->declaration_support;
 	case LSP_REQUEST_WORKSPACE_SYMBOLS:
 		return cap->workspace_symbols_support;
 	case LSP_REQUEST_RENAME:
@@ -216,6 +219,7 @@ static bool request_type_is_notification(LSPRequestType type) {
 	case LSP_REQUEST_SIGNATURE_HELP:
 	case LSP_REQUEST_HOVER:
 	case LSP_REQUEST_DEFINITION:
+	case LSP_REQUEST_DECLARATION:
 	case LSP_REQUEST_REFERENCES:
 	case LSP_REQUEST_RENAME:
 	case LSP_REQUEST_WORKSPACE_SYMBOLS:

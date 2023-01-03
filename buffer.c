@@ -2532,11 +2532,11 @@ u32 buffer_last_rendered_line(TextBuffer *buffer) {
 	return clamp_u32(line, 0, buffer->nlines);
 }
 
-void buffer_goto_word_at_cursor(TextBuffer *buffer) {
+void buffer_goto_word_at_cursor(TextBuffer *buffer, GotoType type) {
 	char *word = buffer_word_at_cursor_utf8(buffer);
 	if (*word) {
 		LSPDocumentPosition pos = buffer_pos_to_lsp_document_position(buffer, buffer->cursor_pos);
-		definition_goto(buffer->ted, buffer_lsp(buffer), word, pos);
+		definition_goto(buffer->ted, buffer_lsp(buffer), word, pos, type);
 	}
 	free(word);
 }
@@ -2562,10 +2562,14 @@ bool buffer_handle_click(Ted *ted, TextBuffer *buffer, vec2 click, u8 times) {
 				buffer_select_to_pos(buffer, buffer_pos);
 				break;
 			case KEY_MODIFIER_CTRL: 
+			case KEY_MODIFIER_CTRL | KEY_MODIFIER_SHIFT:
 				if (!buffer->is_line_buffer) {
-					// go to definition
+					// go to definition/declaration
 					buffer_cursor_move_to_pos(buffer, buffer_pos);
-					buffer_goto_word_at_cursor(buffer);
+					GotoType type = GOTO_DEFINITION;
+					if (ted->key_modifier & KEY_MODIFIER_SHIFT)
+						type = GOTO_DECLARATION;
+					buffer_goto_word_at_cursor(buffer, type);
 				}
 				break;
 			case 0:

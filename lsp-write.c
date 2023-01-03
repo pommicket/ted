@@ -1,5 +1,6 @@
 #define LSP_INTERNAL 1
 #include "lsp.h"
+#include "util.h"
 
 #define write_bool lsp_write_bool // prevent naming conflict
 
@@ -278,6 +279,8 @@ static const char *lsp_request_method(LSPRequest *request) {
 		return "textDocument/references";
 	case LSP_REQUEST_DEFINITION:
 		return "textDocument/definition";
+	case LSP_REQUEST_DECLARATION:
+		return "textDocument/declaration";
 	case LSP_REQUEST_HIGHLIGHT:
 		return "textDocument/documentHighlight";
 	case LSP_REQUEST_RENAME:
@@ -545,7 +548,8 @@ void write_request(LSP *lsp, LSPRequest *request) {
 			write_document_position(o, hover->position);
 		write_obj_end(o);
 	} break;
-	case LSP_REQUEST_DEFINITION: {
+	case LSP_REQUEST_DEFINITION:
+	case LSP_REQUEST_DECLARATION: {
 		const LSPRequestDefinition *def = &request->data.definition;
 		write_key_obj_start(o, "params");
 			write_document_position(o, def->position);

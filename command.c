@@ -66,6 +66,7 @@ static CommandName const command_names[] = {
 	{"find-usages", CMD_FIND_USAGES},
 	{"goto-definition", CMD_GOTO_DEFINITION},
 	{"goto-definition-at-cursor", CMD_GOTO_DEFINITION_AT_CURSOR},
+	{"goto-declaration-at-cursor", CMD_GOTO_DECLARATION_AT_CURSOR},
 	{"find", CMD_FIND},
 	{"find-replace", CMD_FIND_REPLACE},
 	{"tab-close", CMD_TAB_CLOSE},
@@ -405,10 +406,15 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		break;	
 	case CMD_GOTO_DEFINITION:
 		menu_open(ted, MENU_GOTO_DEFINITION);
-		break;	
+		break;
 	case CMD_GOTO_DEFINITION_AT_CURSOR: {
 		if (buffer && buffer_is_named_file(buffer)) {
-			buffer_goto_word_at_cursor(buffer);
+			buffer_goto_word_at_cursor(buffer, GOTO_DEFINITION);
+		}
+		} break;
+	case CMD_GOTO_DECLARATION_AT_CURSOR: {
+		if (buffer && buffer_is_named_file(buffer)) {
+			buffer_goto_word_at_cursor(buffer, GOTO_DECLARATION);
 		}
 		} break;
 	case CMD_FIND_USAGES:

@@ -464,6 +464,11 @@ typedef struct {
 	LSPDocumentPosition position; // only set if from_lsp = true
 } SymbolInfo;
 
+typedef enum {
+	GOTO_DECLARATION,
+	GOTO_DEFINITION,
+} GotoType;
+
 typedef struct {
 	LSPID last_request_lsp; // used for cancellation
 	// ID of the last request which was sent out.
@@ -754,7 +759,7 @@ bool buffer_save(TextBuffer *buffer);
 bool buffer_save_as(TextBuffer *buffer, const char *new_filename);
 u32 buffer_first_rendered_line(TextBuffer *buffer);
 u32 buffer_last_rendered_line(TextBuffer *buffer);
-void buffer_goto_word_at_cursor(TextBuffer *buffer);
+void buffer_goto_word_at_cursor(TextBuffer *buffer, GotoType type);
 bool buffer_handle_click(Ted *ted, TextBuffer *buffer, vec2 click, u8 times);
 void buffer_render(TextBuffer *buffer, Rect r);
 void buffer_indent_lines(TextBuffer *buffer, u32 first_line, u32 last_line);
@@ -951,7 +956,7 @@ void autocomplete_frame(Ted *ted);
 // if `lsp` is NULL, tags will be used.
 // Note: the document position is required for LSP requests because of overloading (where the name
 // alone isn't sufficient)
-void definition_goto(Ted *ted, LSP *lsp, const char *name, LSPDocumentPosition pos);
+void definition_goto(Ted *ted, LSP *lsp, const char *name, LSPDocumentPosition pos, GotoType type);
 void definition_cancel_lookup(Ted *ted);
 void definitions_process_lsp_response(Ted *ted, LSP *lsp, const LSPResponse *response);
 void definitions_selector_open(Ted *ted);
