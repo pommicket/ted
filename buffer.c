@@ -2099,13 +2099,15 @@ i64 buffer_backspace_at_pos(TextBuffer *buffer, BufferPos *pos, i64 ntimes) {
 
 // returns number of characters backspaced
 i64 buffer_backspace_at_cursor(TextBuffer *buffer, i64 ntimes) {
-	i64 ret = 0;
-	BufferPos cursor_pos = buffer->cursor_pos;
-	if (buffer->selection)
+	i64 ret=0;
+	if (buffer->selection) {
 		ret = buffer_delete_selection(buffer);
-	else
+	} else {
+		BufferPos cursor_pos = buffer->cursor_pos;
 		ret = buffer_backspace_at_pos(buffer, &cursor_pos, ntimes);
-	buffer_cursor_move_to_pos(buffer, cursor_pos);
+		buffer_cursor_move_to_pos(buffer, cursor_pos);
+	}
+	buffer_scroll_to_cursor(buffer);
 	return ret;
 }
 
@@ -2130,12 +2132,14 @@ void buffer_backspace_words_at_pos(TextBuffer *buffer, BufferPos *pos, i64 nword
 }
 
 void buffer_backspace_words_at_cursor(TextBuffer *buffer, i64 nwords) {
-	BufferPos cursor_pos = buffer->cursor_pos;
-	if (buffer->selection)
+	if (buffer->selection) {
 		buffer_delete_selection(buffer);
-	else
+	} else {
+		BufferPos cursor_pos = buffer->cursor_pos;
 		buffer_backspace_words_at_pos(buffer, &cursor_pos, nwords);
-	buffer_cursor_move_to_pos(buffer, cursor_pos);
+		buffer_cursor_move_to_pos(buffer, cursor_pos);
+	}
+	buffer_scroll_to_cursor(buffer);
 }
 
 // puts the inverse edit into `inverse`
