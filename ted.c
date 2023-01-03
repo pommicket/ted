@@ -52,7 +52,7 @@ void ted_clearerr(Ted *ted) {
 }
 
 
-static void ted_out_of_mem(Ted *ted) {
+void ted_out_of_mem(Ted *ted) {
 	ted_seterr(ted, "Out of memory.");
 }
 
@@ -599,8 +599,8 @@ void ted_cancel_lsp_request(Ted *ted, LSPID lsp, LSPRequestID request) {
 
 static void mark_node_reachable(Ted *ted, u16 node, bool reachable[TED_MAX_NODES]) {
 	if (reachable[node]) {
-		ted_seterr(ted, "NODE CYCLE %u\nThis should never happen.", node);
-		ted_log(ted, "NODE CYCLE %u\n", node);
+		ted_seterr(ted, "Node %u reachable in 2 different ways\nThis should never happen.", node);
+		ted_log(ted, "Node %u reachable in 2 different ways\n", node);
 		node_close(ted, node);
 		return;
 	}

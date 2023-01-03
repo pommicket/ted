@@ -1038,6 +1038,8 @@ void die(PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRINTF(1, 2);
 void ted_seterr(Ted *ted, PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRINTF(2, 3);
 // for information that should be logged
 void ted_log(Ted *ted, PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRINTF(2, 3);
+// set error to "out of memory" message.
+void ted_out_of_mem(Ted *ted);
 void *ted_malloc(Ted *ted, size_t size);
 void *ted_calloc(Ted *ted, size_t n, size_t size);
 void *ted_realloc(Ted *ted, void *p, size_t new_size);

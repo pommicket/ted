@@ -89,7 +89,9 @@ void node_join(Ted *ted, Node *node) {
 			arr_foreach_ptr(b->tabs, u16, tab) {
 				arr_add(parent->tabs, *tab);
 			}
-			if (parent->tabs) {
+			if (!parent->tabs) {
+				ted_out_of_mem(ted);
+			} else {
 				if (node == a) {
 					parent->active_tab = a->active_tab;
 				} else {
@@ -99,6 +101,9 @@ void node_join(Ted *ted, Node *node) {
 				node_free(b);
 				ted->nodes_used[parent->split_a] = false;
 				ted->nodes_used[parent->split_b] = false;
+				// this isn't really needed since parent->tabs is not NULL anymore.
+				parent->split_a = 0;
+				parent->split_b = 0;
 			}
 		}
 	}
@@ -107,9 +112,14 @@ void node_join(Ted *ted, Node *node) {
 void node_close(Ted *ted, u16 node_idx) {
 	ted->dragging_tab_node = NULL;
 	ted->resizing_split = NULL;
-	
-	assert(node_idx < TED_MAX_NODES);
-	assert(ted->nodes_used[node_idx]);
+	if (node_idx >= TED_MAX_NODES) {
+		assert(0);
+		return;
+	}
+	if (!ted->nodes_used[node_idx]) {
+		assert(0);
+		return;
+	}
 	i32 parent_idx = node_parent(ted, node_idx);
 	ted->nodes_used[node_idx] = false;
 
@@ -130,7 +140,10 @@ void node_close(Ted *ted, u16 node_idx) {
 	} else {
 		// turn parent from split node into tab node
 		Node *parent = &ted->nodes[parent_idx];
-		assert(!parent->tabs);
+		if (parent->tabs) {
+			assert(0); // this node's parent should be a split node
+			return;
+		}
 		u16 other_side;
 		if (node_idx == parent->split_a) {
 			other_side = parent->split_b;
