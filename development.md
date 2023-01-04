@@ -21,6 +21,15 @@ in `util.c` even if they use OS-specific library functions.)
 
 ## Adding languages
 
+## Syntax highlighting
+
+Obviously we don't want to re-highlight the whole file every time a change is made.
+Ideally, we would just re-highlight the line that was edited, but that might
+not work, because some syntax highlighting (e.g. multi-line comments) spans multiple lines.
+So we keep track of a "syntax state" for the start of each line (whether we're in a multi-line comment or not,
+whether we're in a multi-line string or not, etc.). A line's syntax highlighting can only change
+if it is edited, or if its syntax state changes.
+
 ## Adding LSP features
 
 ## Releasing

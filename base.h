@@ -105,14 +105,6 @@ typedef unsigned long long ullong;
 #define ENUM_U8_END(name) ; typedef u8 name
 #endif
 
-#if __clang__
-#define ENUM_U16 typedef enum : u16
-#define ENUM_U16_END(name) name
-#else
-#define ENUM_U16 enum
-#define ENUM_U16_END(name) ; typedef u16 name
-#endif
-
 #ifdef __GNUC__
 #define WarnUnusedResult __attribute__((warn_unused_result))
 #else

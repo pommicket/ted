@@ -27,6 +27,10 @@
 // max number of LSPs running at once
 #define TED_LSP_MAX 200
 
+
+// ---- syntax state constants ----
+// syntax state is explained in development.md
+
 // these all say "CPP" but really they're C/C++
 enum {
 	SYNTAX_STATE_CPP_MULTI_LINE_COMMENT = 0x1u, // are we in a multi-line comment? (delineated by /* */)
@@ -83,6 +87,7 @@ enum {
 
 typedef u8 SyntaxState;
 
+// types of syntax highlighting
 ENUM_U8 {
 	SYNTAX_NORMAL,
 	SYNTAX_KEYWORD,
@@ -98,6 +103,7 @@ ENUM_U8 {
 #define SYNTAX_CODE SYNTAX_PREPROCESSOR // for markdown
 #define SYNTAX_LINK SYNTAX_CONSTANT // for markdown
 
+// special keycodes for mouse X1 & X2 buttons.
 enum {
 	KEYCODE_X1 = 1<<20,
 	KEYCODE_X2
@@ -111,9 +117,12 @@ enum {
 #define KEY_MODIFIER_SHIFT ((u32)1<<KEY_MODIFIER_SHIFT_BIT)
 #define KEY_MODIFIER_ALT ((u32)1<<KEY_MODIFIER_ALT_BIT)
 // annoyingly SDL sets bit 30 for some keycodes
-#define KEY_COMBO(modifier, key) ((u32)(modifier) | ((u32)(key) & ~(1u<<30)) << 3 | ((u32)(key & (1<<30)) >> 10))
+#define KEY_COMBO(modifier, key) ((u32)(modifier) \
+	| ((u32)(key >> 30) << 3)\
+	| ((u32)(key) & ~(1u<<30)) << 4)
 
-typedef struct KeyAction {
+// what happens when we press this key combo
+typedef struct {
 	u32 key_combo;
 	Command command;
 	i64 argument;
@@ -126,8 +135,8 @@ typedef struct {
 	char *path; // these settings apply to all paths which start with this string, or all paths if path=NULL
 } SettingsContext;
 
-// need to use refcounting for this because of Settings.
-// => we copy parent settings to children
+// need to use reference counting for this because of Settings:
+// We copy parent settings to children
 // e.g.
 //     [core]
 //     bg-texture = "blablabla.png"
@@ -140,7 +149,7 @@ typedef struct {
 	GLuint texture;
 } GlRcTexture;
 
-// shader-array-buffer combo.
+// reference-counted shader-array-buffer combo.
 typedef struct {
 	u32 ref_count;
 	GLuint shader;
@@ -149,7 +158,7 @@ typedef struct {
 } GlRcSAB;
 
 
-
+// all of ted's settings
 typedef struct {
 	// NOTE: to add more options to ted, add fields here,
 	// and change the settings_<type> global constant near the top of config.c
@@ -206,13 +215,14 @@ typedef struct {
 	u32 index; // index of character in line (not the same as column, since a tab is settings->tab_width columns)
 } BufferPos;
 
+// a single line in a buffer
 typedef struct {
 	SyntaxState syntax;
 	u32 len;
 	char32_t *str;
 } Line;
 
-
+// sections of ted.cfg
 typedef enum {
 	SECTION_NONE,
 	SECTION_CORE,
@@ -243,6 +253,7 @@ typedef struct {
 	double time; // time at start of edit (i.e. the time just before the edit), in seconds since epoch
 } BufferEdit;
 
+// a buffer - this includes line buffers, unnamed buffers, the build buffer, etc.
 typedef struct {
 	char *filename; // NULL if this buffer doesn't correspond to a file (e.g. line buffers)
 	struct Ted *ted; // we keep a back-pointer to the ted instance so we don't have to pass it in to every buffer function
@@ -252,7 +263,7 @@ typedef struct {
 	BufferPos cursor_pos;
 	BufferPos selection_pos; // if selection is true, the text between selection_pos and cursor_pos is selected.
 	bool is_line_buffer; // "line buffers" are buffers which can only have one line of text (used for inputs)
-	bool selection;
+	bool selection; // is anything selected?
 	bool store_undo_events; // set to false to disable undo events
 	// This is set to true whenever a change is made to the buffer, and never set to false by buffer_ functions.
 	// (Distinct from buffer_unsaved_changes)
@@ -264,7 +275,7 @@ typedef struct {
 	// If set to true, buffer will be scrolled to the cursor position next frame.
 	// This is to fix the problem that x1,y1,x2,y2 are not updated until the buffer is rendered.
 	bool center_cursor_next_frame; 
-	float x1, y1, x2, y2;
+	float x1, y1, x2, y2; // buffer's rectangle on screen
 	u32 nlines;
 	u32 lines_capacity;
 	
@@ -285,7 +296,7 @@ typedef struct {
 	BufferEdit *redo_history; // dynamic array of redo history
 } TextBuffer;
 
-ENUM_U16 {
+typedef enum {
 	MENU_NONE,
 	MENU_OPEN,
 	MENU_SAVE_AS,
@@ -295,8 +306,10 @@ ENUM_U16 {
 	MENU_GOTO_LINE,
 	MENU_COMMAND_SELECTOR,
 	MENU_SHELL, // run a shell command
-} ENUM_U16_END(Menu);
+} Menu;
 
+
+// an entry in a selector menu (e.g. the "open" menu)
 typedef struct {
 	const char *name;
 	// if not NULL, this will show on the right side of the entry.
@@ -306,12 +319,14 @@ typedef struct {
 	u64 userdata;
 } SelectorEntry;
 
+// a selector menu (e.g. the "open" menu)
 typedef struct {
 	SelectorEntry *entries;
 	u32 n_entries;
 	Rect bounds;
 	u32 cursor; // index where the selector thing is
 	float scroll;
+	// whether or not we should let the user select entries using a cursor.
 	bool enable_cursor;
 } Selector;
 
@@ -322,6 +337,7 @@ typedef struct {
 	FsType type;
 } FileEntry;
 
+// a selector menu for files (e.g. the "open" menu)
 typedef struct {
 	Selector sel;
 	Rect bounds;
@@ -331,6 +347,7 @@ typedef struct {
 	bool create_menu; // this is for creating files, not opening files
 } FileSelector;
 
+// options for a pop-up menu
 typedef enum {
 	POPUP_NONE,
 	POPUP_YES = 1<<1,
@@ -338,7 +355,9 @@ typedef enum {
 	POPUP_CANCEL = 1<<3,
 } PopupOption;
 
+// pop-up with "yes" and "no" buttons
 #define POPUP_YES_NO (POPUP_YES | POPUP_NO)
+// pop-up with "yes", "no", and "cancel" buttons
 #define POPUP_YES_NO_CANCEL (POPUP_YES | POPUP_NO | POPUP_CANCEL)
 
 // a node is a collection of tabs OR a split of two nodes
@@ -351,11 +370,13 @@ typedef struct {
 	u16 split_b; // split right/lower half
 } Node;
 
+// max number of buffers open at one time
 #define TED_MAX_BUFFERS 256
+// max number of nodes open at one time
 #define TED_MAX_NODES 256
 // max tabs per node
 #define TED_MAX_TABS 100
-// max strings in config file
+// max strings in all config files
 #define TED_MAX_STRINGS 1000
 
 typedef struct {
@@ -380,6 +401,7 @@ typedef enum {
 	SYMBOL_KEYWORD
 } SymbolKind;
 
+// a single autocompletion suggestion
 typedef struct {
 	char *label;
 	char *filter;
@@ -397,6 +419,7 @@ enum {
 	TRIGGER_INCOMPLETE = 0x12001,
 };
 
+// data needed for autocompletion
 typedef struct {
 	bool open; // is the autocomplete window open?
 	bool is_list_complete; // should the completions array be updated when more characters are typed?
@@ -421,12 +444,14 @@ typedef struct {
 	Rect rect; // rectangle where the autocomplete menu is (needed to avoid interpreting autocomplete clicks as other clicks)
 } Autocomplete;
 
+// data needed for finding usages
 typedef struct {
 	LSPID last_request_lsp;
 	LSPRequestID last_request_id;
 	double last_request_time;
 } Usages;
 
+// a single signature in the signature help.
 typedef struct {
 	// displayed normal
 	char *label_pre;
@@ -436,6 +461,7 @@ typedef struct {
 	char *label_post;
 } Signature;
 
+// max # of signatures to display at a time.
 #define SIGNATURE_HELP_MAX 5
 
 // "signature help" (LSP) is thing that shows the current parameter, etc.
@@ -447,6 +473,7 @@ typedef struct {
 	Signature signatures[SIGNATURE_HELP_MAX];
 } SignatureHelp;
 
+// "hover" information from LSP server
 typedef struct {
 	// is some hover info being displayed?
 	bool open;
@@ -460,6 +487,7 @@ typedef struct {
 	double time; // how long the cursor has been hovering for
 } Hover;
 
+// symbol information for the definitions menu
 typedef struct {
 	char *name;
 	char *detail;
@@ -468,6 +496,7 @@ typedef struct {
 	LSPDocumentPosition position; // only set if from_lsp = true
 } SymbolInfo;
 
+// determines which thing associated with a symbol to go to
 typedef enum {
 	GOTO_DECLARATION,
 	GOTO_DEFINITION,
@@ -489,6 +518,7 @@ typedef struct {
 	SymbolInfo *all_definitions; // an array of all definitions (gotten from workspace/symbols) for "go to definition" menu
 } Definitions;
 
+// "highlight" information from LSP server
 typedef struct {
 	LSPHighlight *highlights;
 	LSPRequestID last_request_id;
@@ -504,6 +534,7 @@ typedef enum {
 	MESSAGE_ERROR
 } MessageType;
 
+// (almost) all data used by the ted application
 typedef struct Ted {
 	LSP *lsps[TED_LSP_MAX + 1];
 	// current time (see time_get_seconds), as of the start of this frame
@@ -520,7 +551,7 @@ typedef struct Ted {
 	TextBuffer *prev_active_buffer; 
 	Node *active_node;
 	Settings *all_settings; // dynamic array of Settings. use Settings.context to figure out which one to use.
-	Settings *default_settings;
+	Settings *default_settings; // settings to use when no buffer is open
 	float window_width, window_height;
 	u32 key_modifier; // which of shift, alt, ctrl are down right now.
 	vec2 mouse_pos;
@@ -532,7 +563,7 @@ typedef struct Ted {
 	u8 nmouse_releases[4];
 	vec2 mouse_releases[4][32];
 	int scroll_total_x, scroll_total_y; // total amount scrolled in the x and y direction this frame
-	Menu menu;
+	Menu menu; // currently open menu, or MENU_NONE if no menu is open.
 	FileSelector file_selector;
 	Selector command_selector;
 	TextBuffer line_buffer; // general-purpose line buffer for inputs -- used for menus
@@ -572,7 +603,9 @@ typedef struct Ted {
 	
 	SDL_Cursor *cursor_arrow, *cursor_ibeam, *cursor_wait,
 		*cursor_resize_h, *cursor_resize_v, *cursor_hand, *cursor_move;
-	SDL_Cursor *cursor; // which cursor to use this frame (NULL for no cursor)
+	// which cursor to use this frame
+	// this should be set to one of the cursor_* members above, or NULL for no cursor
+	SDL_Cursor *cursor;
 	
 	// node containing tab user is dragging around, NULL if user is not dragging a tab
 	Node *dragging_tab_node;
