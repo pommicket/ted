@@ -519,8 +519,8 @@ int main(int argc, char **argv) {
 	{
 		TextBuffer *lbuffer = &ted->line_buffer;
 		line_buffer_create(lbuffer, ted);
-		if (buffer_haserr(lbuffer))
-			die("Error creating line buffer: %s", buffer_geterr(lbuffer));
+		if (buffer_has_error(lbuffer))
+			die("Error creating line buffer: %s", buffer_get_error(lbuffer));
 	}
 	line_buffer_create(&ted->find_buffer, ted);
 	line_buffer_create(&ted->replace_buffer, ted);
@@ -768,8 +768,8 @@ int main(int argc, char **argv) {
 		{ // ted->cwd should be the directory containing the last active buffer
 			TextBuffer *buffer = ted->active_buffer;
 			if (buffer) {
-				const char *buffer_path = buffer_get_filename(buffer);
-				if (buffer_path && !buffer_is_untitled(buffer)) {
+				if (buffer_is_named_file(buffer)) {
+					const char *buffer_path = buffer->filename;
 					assert(*buffer_path);
 					char *last_sep = strrchr(buffer_path, PATH_SEPARATOR);
 					if (last_sep) {
@@ -790,7 +790,7 @@ int main(int argc, char **argv) {
 				if (buffer_settings(active_buffer)->auto_reload)
 					buffer_reload(active_buffer);
 				else {
-					strbuf_cpy(ted->ask_reload, buffer_get_filename(active_buffer));
+					strbuf_cpy(ted->ask_reload, active_buffer->filename);
 					menu_open(ted, MENU_ASK_RELOAD);
 				}
 			}
@@ -988,9 +988,9 @@ int main(int argc, char **argv) {
 		}
 		for (u16 i = 0; i < TED_MAX_BUFFERS; ++i) {
 			TextBuffer *buffer = &ted->buffers[i];
-			if (buffer_haserr(buffer)) {
+			if (buffer_has_error(buffer)) {
 				ted_error_from_buffer(ted, buffer);
-				buffer_clearerr(buffer);
+				buffer_clear_error(buffer);
 			}
 		}
 		for (int i = 0; ted->lsps[i]; ++i) {

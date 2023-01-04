@@ -7,25 +7,25 @@
 
 
 // this is a macro so we get -Wformat warnings
-#define buffer_seterr(buffer, ...) \
+#define buffer_error(buffer, ...) \
 	snprintf(buffer->error, sizeof buffer->error - 1, __VA_ARGS__)
 
-bool buffer_haserr(TextBuffer *buffer) {
+bool buffer_has_error(TextBuffer *buffer) {
 	return buffer->error[0] != '\0';
 }
 
 // returns the buffer's last error
-const char *buffer_geterr(TextBuffer *buffer) {
+const char *buffer_get_error(TextBuffer *buffer) {
 	return buffer->error;
 }
 
-void buffer_clearerr(TextBuffer *buffer) {
+void buffer_clear_error(TextBuffer *buffer) {
 	*buffer->error = '\0';
 }
 
 // set the buffer's error to indicate that we're out of memory
 static void buffer_out_of_mem(TextBuffer *buffer) {
-	buffer_seterr(buffer, "Out of memory.");
+	buffer_error(buffer, "Out of memory.");
 }
 
 
@@ -58,10 +58,6 @@ void buffer_clear_undo_redo(TextBuffer *buffer) {
 
 bool buffer_empty(TextBuffer *buffer) {
 	return buffer->nlines == 1 && buffer->lines[0].len == 0;
-}
-
-const char *buffer_get_filename(TextBuffer *buffer) {
-	return buffer->filename;
 }
 
 bool buffer_is_untitled(TextBuffer *buffer) {
@@ -179,31 +175,20 @@ bool buffer_unsaved_changes(TextBuffer *buffer) {
 	return arr_len(buffer->undo_history) != buffer->undo_history_write_pos;
 }
 
-// code point at position.
-// returns 0 if the position is invalid. note that it can also return 0 for a valid position, if there's a null character there
-char32_t buffer_char_at_pos(TextBuffer *buffer, BufferPos p) {
-	if (p.line >= buffer->nlines)
-		return 0; // invalid (line too large)
-	
-	Line *line = &buffer->lines[p.line];
-	if (p.index < line->len) {
-		return line->str[p.index];
-	} else if (p.index > line->len) {
-		// invalid (col too large)
+char32_t buffer_char_at_pos(TextBuffer *buffer, BufferPos pos) {
+	if (!buffer_pos_valid(buffer, pos))
 		return 0;
-	} else {
-		return '\n';
-	}
+	
+	Line *line = &buffer->lines[pos.line];
+	return line->str[pos.index];
 }
 
-// returns 0 if pos is at the start of a line
 char32_t buffer_char_before_pos(TextBuffer *buffer, BufferPos pos) {
 	assert(buffer_pos_valid(buffer, pos));
 	if (pos.index == 0) return 0;
 	return buffer->lines[pos.line].str[pos.index - 1];
 }
 
-// returns 0 if pos is at the end of a line (unlike buffer_char_at_pos)
 char32_t buffer_char_after_pos(TextBuffer *buffer, BufferPos pos) {
 	assert(buffer_pos_valid(buffer, pos));
 	Line *line = &buffer->lines[pos.line];
@@ -211,12 +196,10 @@ char32_t buffer_char_after_pos(TextBuffer *buffer, BufferPos pos) {
 	return line->str[pos.index];
 }
 
-// returns the character to the left of the cursor, or 0 if the cursor at the start of the line.
 char32_t buffer_char_before_cursor(TextBuffer *buffer) {
 	return buffer_char_before_pos(buffer, buffer->cursor_pos);
 }
 
-// returns 0 if cursor is at end of line
 char32_t buffer_char_after_cursor(TextBuffer *buffer) {
 	return buffer_char_after_pos(buffer, buffer->cursor_pos);
 }
@@ -345,10 +328,6 @@ static u64 buffer_checksum(TextBuffer *buffer) {
 	return sum;
 }
 
-// Get some number of characters of text from the given position in the buffer.
-// Returns the number of characters gotten.
-// You can pass NULL for text if you just want to know how many characters *could* be accessed before the
-// end of the file.
 size_t buffer_get_text_at_pos(TextBuffer *buffer, BufferPos pos, char32_t *text, size_t nchars) {
 	if (!buffer_pos_valid(buffer, pos)) {
 		return 0; // invalid position. no chars for you!
@@ -381,8 +360,6 @@ size_t buffer_get_text_at_pos(TextBuffer *buffer, BufferPos pos, char32_t *text,
 	return nchars - chars_left;
 }
 
-// returns a UTF-32 string of at most `nchars` code points from `buffer` starting at `pos`
-// the string should be str32_free'd.
 String32 buffer_get_str32_text_at_pos(TextBuffer *buffer, BufferPos pos, size_t nchars) {
 	String32 s32 = {0};
 	size_t len = buffer_get_text_at_pos(buffer, pos, NULL, nchars);
@@ -397,8 +374,6 @@ String32 buffer_get_str32_text_at_pos(TextBuffer *buffer, BufferPos pos, size_t 
 	return s32;
 }
 
-// see buffer_get_str32_text_at_pos. returns NULL on failure (out of memory)
-// the returned string should be free'd
 char *buffer_get_utf8_text_at_pos(TextBuffer *buffer, BufferPos pos, size_t nchars) {
 	String32 s32 = buffer_get_str32_text_at_pos(buffer, pos, nchars);
 	char *ret = str32_to_utf8_cstr(s32);
@@ -407,9 +382,6 @@ char *buffer_get_utf8_text_at_pos(TextBuffer *buffer, BufferPos pos, size_t ncha
 	return ret;
 }
 
-// Puts a UTF-8 string containing the contents of the buffer into out.
-// Returns the number of bytes, including a null terminator.
-// To use, first pass NULL for out to get the number of bytes you need to allocate.
 size_t buffer_contents_utf8(TextBuffer *buffer, char *out) {
 	char *p = out, x[4];
 	size_t size = 0;
@@ -431,8 +403,6 @@ size_t buffer_contents_utf8(TextBuffer *buffer, char *out) {
 	return size;
 }
 
-// Returns a UTF-8 string containing the contents of `buffer`.
-// free the return value.
 char *buffer_contents_utf8_alloc(TextBuffer *buffer) {
 	size_t size = buffer_contents_utf8(buffer, NULL);
 	char *s = calloc(1, size);
@@ -537,7 +507,6 @@ static bool buffer_line_valid(Line *line) {
 	return true;
 }
 
-// perform a series of checks to make sure the buffer doesn't have any invalid values
 void buffer_check_valid(TextBuffer *buffer) {
 	assert(buffer->nlines);
 	buffer_pos_check_valid(buffer, buffer->cursor_pos);
@@ -847,8 +816,6 @@ static u32 buffer_column_to_index(TextBuffer *buffer, u32 line, u32 column) {
 	return len;
 }
 
-// returns the number of lines of text in the buffer into *lines (if not NULL),
-// and the number of columns of text, i.e. the number of columns in the longest line displayed, into *cols (if not NULL)
 void buffer_text_dimensions(TextBuffer *buffer, u32 *lines, u32 *columns) {
 	if (lines) {
 		*lines = buffer->nlines;
@@ -865,12 +832,10 @@ void buffer_text_dimensions(TextBuffer *buffer, u32 *lines, u32 *columns) {
 }
 
 
-// returns the number of rows of text that can fit in the buffer
 float buffer_display_lines(TextBuffer *buffer) {
 	return (buffer->y2 - buffer->y1) / text_font_char_height(buffer_font(buffer));
 }
 
-// returns the number of columns of text that can fit in the buffer
 float buffer_display_cols(TextBuffer *buffer) {
 	return (buffer->x2 - buffer->x1) / text_font_char_width(buffer_font(buffer));
 }
@@ -905,7 +870,6 @@ void buffer_scroll(TextBuffer *buffer, double dx, double dy) {
 	buffer_correct_scroll(buffer);
 }
 
-// returns the position of the character at the given position in the buffer.
 vec2 buffer_pos_to_pixels(TextBuffer *buffer, BufferPos pos) {
 	buffer_pos_validate(buffer, &pos);
 	u32 line = pos.line, index = pos.index;
@@ -917,8 +881,6 @@ vec2 buffer_pos_to_pixels(TextBuffer *buffer, BufferPos pos) {
 	return Vec2(x, y);
 }
 
-// convert pixel coordinates to a position in the buffer, selecting the closest character.
-// returns false if the position is not inside the buffer, but still sets *pos to the closest character.
 bool buffer_pixels_to_pos(TextBuffer *buffer, vec2 pixel_coords, BufferPos *pos) {
 	bool ret = true;
 	float x = pixel_coords.x, y = pixel_coords.y;
@@ -1005,7 +967,6 @@ void buffer_scroll_to_pos(TextBuffer *buffer, BufferPos pos) {
 	buffer_correct_scroll(buffer); // it's possible that min/max_scroll_x/y go too far
 }
 
-// scroll in such a way that this position is in the center of the screen
 void buffer_scroll_center_pos(TextBuffer *buffer, BufferPos pos) {
 	double line = pos.line;
 	double col = buffer_index_to_column(buffer, pos.line, pos.index);
@@ -1551,7 +1512,7 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 	if (buffer->view_only)
 		return pos;
 	if (str.len > U32_MAX) {
-		buffer_seterr(buffer, "Inserting too much text (length: %zu).", str.len);
+		buffer_error(buffer, "Inserting too much text (length: %zu).", str.len);
 		BufferPos ret = {0,0};
 		return ret;
 	}
@@ -1840,7 +1801,7 @@ static void buffer_delete_lines(TextBuffer *buffer, u32 first_line_idx, u32 nlin
 void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) {
 	if (buffer->view_only) return;
 	if (nchars_ < 0) {
-		buffer_seterr(buffer, "Deleting negative characters (specifically, " I64_FMT ").", nchars_);
+		buffer_error(buffer, "Deleting negative characters (specifically, " I64_FMT ").", nchars_);
 		return;
 	}
 	if (nchars_ <= 0) return;
@@ -2247,7 +2208,7 @@ void buffer_copy_or_cut(TextBuffer *buffer, bool cut) {
 			int err = SDL_SetClipboardText(text);
 			free(text);
 			if (err < 0) {
-				buffer_seterr(buffer, "Couldn't set clipboard contents: %s", SDL_GetError());
+				buffer_error(buffer, "Couldn't set clipboard contents: %s", SDL_GetError());
 			} else {
 				// text copied successfully
 				if (cut) {
@@ -2302,10 +2263,10 @@ Status buffer_load_file(TextBuffer *buffer, const char *filename) {
 		u32 max_file_size_view_only = default_settings->max_file_size_view_only;
 		
 		if (file_pos == -1 || file_pos == LONG_MAX) {
-			buffer_seterr(buffer, "Couldn't get file position. There is something wrong with the file '%s'.", filename);
+			buffer_error(buffer, "Couldn't get file position. There is something wrong with the file '%s'.", filename);
 			success = false;
 		} else if (file_size > max_file_size_editable && file_size > max_file_size_view_only) {
-			buffer_seterr(buffer, "File too big (size: %zu).", file_size);
+			buffer_error(buffer, "File too big (size: %zu).", file_size);
 			success = false;
 		} else {
 			u8 *file_contents = buffer_calloc(buffer, 1, file_size + 2);
@@ -2335,7 +2296,7 @@ Status buffer_load_file(TextBuffer *buffer, const char *filename) {
 						} else if (n >= (size_t)(-2)) {
 							// invalid UTF-8
 							success = false;
-							buffer_seterr(buffer, "Invalid UTF-8 (position: %td).", p - file_contents);
+							buffer_error(buffer, "Invalid UTF-8 (position: %td).", p - file_contents);
 							break;
 						} else {
 							p += n;
@@ -2351,7 +2312,7 @@ Status buffer_load_file(TextBuffer *buffer, const char *filename) {
 					}
 				}
 			} else {
-				buffer_seterr(buffer, "Error reading from file.");
+				buffer_error(buffer, "Error reading from file.");
 				success = false;
 			}
 			if (!success) {
@@ -2394,7 +2355,7 @@ Status buffer_load_file(TextBuffer *buffer, const char *filename) {
 		}
 		fclose(fp);
 	} else {
-		buffer_seterr(buffer, "Couldn't open file %s: %s.", filename, strerror(errno));
+		buffer_error(buffer, "Couldn't open file %s: %s.", filename, strerror(errno));
 		success = false;
 	}
 	return success;
@@ -2422,7 +2383,7 @@ void buffer_reload(TextBuffer *buffer) {
 
 // has this buffer been changed by another program since last save?
 bool buffer_externally_changed(TextBuffer *buffer) {
-	if (!buffer->filename || buffer_is_untitled(buffer))
+	if (!buffer_is_named_file(buffer))
 		return false;
 	return buffer->last_write_time != timespec_to_seconds(time_last_modified(buffer->filename));
 }
@@ -2444,7 +2405,7 @@ bool buffer_save(TextBuffer *buffer) {
 	
 	if (!buffer->is_line_buffer && buffer->filename) {
 		if (buffer->view_only) {
-			buffer_seterr(buffer, "Can't save view-only file.");
+			buffer_error(buffer, "Can't save view-only file.");
 			return false;
 		}
 
@@ -2467,7 +2428,7 @@ bool buffer_save(TextBuffer *buffer) {
 					size_t bytes = unicode_utf32_to_utf8(utf8, *p);
 					if (bytes != (size_t)-1) {
 						if (fwrite(utf8, 1, bytes, out) != bytes) {
-							buffer_seterr(buffer, "Couldn't write to %s.", buffer->filename);
+							buffer_error(buffer, "Couldn't write to %s.", buffer->filename);
 						}
 					}
 				}
@@ -2477,15 +2438,15 @@ bool buffer_save(TextBuffer *buffer) {
 				}
 			}
 			if (ferror(out)) {
-				if (!buffer_haserr(buffer))
-					buffer_seterr(buffer, "Couldn't write to %s.", buffer->filename);
+				if (!buffer_has_error(buffer))
+					buffer_error(buffer, "Couldn't write to %s.", buffer->filename);
 			}
 			if (fclose(out) != 0) {
-				if (!buffer_haserr(buffer))
-					buffer_seterr(buffer, "Couldn't close file %s.", buffer->filename);
+				if (!buffer_has_error(buffer))
+					buffer_error(buffer, "Couldn't close file %s.", buffer->filename);
 			}
 			buffer->last_write_time = timespec_to_seconds(time_last_modified(buffer->filename));
-			bool success = !buffer_haserr(buffer);
+			bool success = !buffer_has_error(buffer);
 			if (success) {
 				buffer->undo_history_write_pos = arr_len(buffer->undo_history);
 				const char *name = buffer->filename ? path_filename(buffer->filename) : TED_UNTITLED;
@@ -2495,7 +2456,7 @@ bool buffer_save(TextBuffer *buffer) {
 			}
 			return success;
 		} else {
-			buffer_seterr(buffer, "Couldn't open file %s for writing: %s.", buffer->filename, strerror(errno));
+			buffer_error(buffer, "Couldn't open file %s for writing: %s.", buffer->filename, strerror(errno));
 			return false;
 		}
 	} else {

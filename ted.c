@@ -460,7 +460,7 @@ bool ted_new_file(Ted *ted, const char *filename) {
 	if (ted_open_buffer(ted, &buffer_idx, &tab_idx)) {
 		TextBuffer *buffer = &ted->buffers[buffer_idx];
 		buffer_new_file(buffer, TED_UNTITLED);
-		if (!buffer_haserr(buffer)) {
+		if (!buffer_has_error(buffer)) {
 			return true;
 		} else {
 			ted_error_from_buffer(ted, buffer);

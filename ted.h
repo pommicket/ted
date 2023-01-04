@@ -662,71 +662,129 @@ typedef struct Ted {
 } Ted;
 
 // === buffer.c ===
-bool buffer_haserr(TextBuffer *buffer);
-const char *buffer_geterr(TextBuffer *buffer);
-void buffer_clearerr(TextBuffer *buffer);
+bool buffer_has_error(TextBuffer *buffer);
+const char *buffer_get_error(TextBuffer *buffer);
+void buffer_clear_error(TextBuffer *buffer);
+// clear undo and redo history
 void buffer_clear_undo_redo(TextBuffer *buffer);
+// is this buffer empty?
 bool buffer_empty(TextBuffer *buffer);
-const char *buffer_get_filename(TextBuffer *buffer);
+// is this buffer normal (i.e. not a line buffer or build buffer), but untitled?
 bool buffer_is_untitled(TextBuffer *buffer);
+// does this buffer contained a named file (i.e. not a line buffer, not the build buffer, not untitled)
 bool buffer_is_named_file(TextBuffer *buffer);
+// create a new empty buffer with no file name
 void buffer_create(TextBuffer *buffer, Ted *ted);
+// create a new empty line buffer
 void line_buffer_create(TextBuffer *buffer, Ted *ted);
+// does this buffer have unsaved changes?
 bool buffer_unsaved_changes(TextBuffer *buffer);
-char32_t buffer_char_at_pos(TextBuffer *buffer, BufferPos p);
+// returns the character at position pos, or 0 if pos is invalid
+char32_t buffer_char_at_pos(TextBuffer *buffer, BufferPos pos);
+// returns the character before position pos, or 0 if pos is invalid or at the start of a line
 char32_t buffer_char_before_pos(TextBuffer *buffer, BufferPos pos);
+// returns the character after position pos, or 0 if pos is invalid or at the end of a line
 char32_t buffer_char_after_pos(TextBuffer *buffer, BufferPos pos);
+// returns the character to the left of the cursor, or 0 if the cursor at the start of the line.
 char32_t buffer_char_before_cursor(TextBuffer *buffer);
+// returns the character to the right of the cursor, 0 if cursor is at end of line
 char32_t buffer_char_after_cursor(TextBuffer *buffer);
+// buffer position of start of file
 BufferPos buffer_pos_start_of_file(TextBuffer *buffer);
+// buffer position of end of file
 BufferPos buffer_pos_end_of_file(TextBuffer *buffer);
 // ensures that `p` refers to a valid position, moving it if needed.
 void buffer_pos_validate(TextBuffer *buffer, BufferPos *p);
+// is this a valid buffer position?
 bool buffer_pos_valid(TextBuffer *buffer, BufferPos p);
 Language buffer_language(TextBuffer *buffer);
 // clip the rectangle so it's all inside the buffer. returns true if there's any rectangle left.
 bool buffer_clip_rect(TextBuffer *buffer, Rect *r);
+// get LSP server which deals with this buffer
 LSP *buffer_lsp(TextBuffer *buffer);
 // Get the settings used for this buffer.
 Settings *buffer_settings(TextBuffer *buffer);
 // NOTE: this string will be invalidated when the line is edited!!!
 // only use it briefly!!
 String32 buffer_get_line(TextBuffer *buffer, u32 line_number);
+// get at most `nchars` characters starting from position `pos`.
+// returns the number of characters actually available.
+// you can pass NULL for text if you just want to know how many
+// characters *could* be accessed before the end of the file.
 size_t buffer_get_text_at_pos(TextBuffer *buffer, BufferPos pos, char32_t *text, size_t nchars);
+// returns a UTF-32 string of at most `nchars` code points from `buffer` starting at `pos`
+// the string should be passed to str32_free.
 String32 buffer_get_str32_text_at_pos(TextBuffer *buffer, BufferPos pos, size_t nchars);
+// get UTF-8 string at position, up to `nchars` code points (NOT bytes).
+// the resulting string should be freed.
 char *buffer_get_utf8_text_at_pos(TextBuffer *buffer, BufferPos pos, size_t nchars);
+// Puts a UTF-8 string containing the contents of the buffer into out.
+// Returns the number of bytes, including a null terminator.
+// To use this function, first pass NULL for out to get the number of bytes you need to allocate.
 size_t buffer_contents_utf8(TextBuffer *buffer, char *out);
+// Returns a UTF-8 string containing the contents of `buffer`.
+// The return value should be freed..
 char *buffer_contents_utf8_alloc(TextBuffer *buffer);
+// perform a series of checks to make sure the buffer doesn't have any invalid values
 void buffer_check_valid(TextBuffer *buffer);
+// free all resources used by the buffer
 void buffer_free(TextBuffer *buffer);
+// clear buffer contents
 void buffer_clear(TextBuffer *buffer);
+// returns the number of lines of text in the buffer into *lines (if not NULL),
+// and the number of columns of text, i.e. the number of columns in the longest line displayed, into *cols (if not NULL)
 void buffer_text_dimensions(TextBuffer *buffer, u32 *lines, u32 *columns);
+// returns the number of rows of text that can fit in the buffer
 float buffer_display_lines(TextBuffer *buffer);
+// returns the number of columns of text that can fit in the buffer
 float buffer_display_cols(TextBuffer *buffer);
 void buffer_scroll(TextBuffer *buffer, double dx, double dy);
+// returns the screen position of the character at the given position in the buffer.
 vec2 buffer_pos_to_pixels(TextBuffer *buffer, BufferPos pos);
+// convert pixel coordinates to a position in the buffer, selecting the closest character.
+// returns false if the position is not inside the buffer, but still sets *pos to the closest character.
 bool buffer_pixels_to_pos(TextBuffer *buffer, vec2 pixel_coords, BufferPos *pos);
+// scroll to `pos`, scrolling as little as possible while maintaining scrolloff.
 void buffer_scroll_to_pos(TextBuffer *buffer, BufferPos pos);
+// scroll in such a way that this position is in the center of the screen
 void buffer_scroll_center_pos(TextBuffer *buffer, BufferPos pos);
 void buffer_scroll_to_cursor(TextBuffer *buffer);
+// scroll so that the cursor is in the center of the buffer's rectangle.
 void buffer_center_cursor(TextBuffer *buffer);
+// returns the number of characters successfully moved by.
 i64 buffer_pos_move_left(TextBuffer *buffer, BufferPos *pos, i64 by);
+// returns the number of characters successfully moved by.
 i64 buffer_pos_move_right(TextBuffer *buffer, BufferPos *pos, i64 by);
+// returns the number of lines successfully moved by.
 i64 buffer_pos_move_up(TextBuffer *buffer, BufferPos *pos, i64 by);
+// returns the number of lines successfully moved by.
 i64 buffer_pos_move_down(TextBuffer *buffer, BufferPos *pos, i64 by);
 void buffer_cursor_move_to_pos(TextBuffer *buffer, BufferPos pos);
+// returns the number of characters successfully moved by.
 i64 buffer_cursor_move_left(TextBuffer *buffer, i64 by);
+// returns the number of characters successfully moved by.
 i64 buffer_cursor_move_right(TextBuffer *buffer, i64 by);
+// returns the number of lines successfully moved by.
 i64 buffer_cursor_move_up(TextBuffer *buffer, i64 by);
+// returns the number of lines successfully moved by.
 i64 buffer_cursor_move_down(TextBuffer *buffer, i64 by);
+// returns the number of blank lines successfully moved by.
 i64 buffer_pos_move_up_blank_lines(TextBuffer *buffer, BufferPos *pos, i64 by);
+// returns the number of blank lines successfully moved by.
 i64 buffer_pos_move_down_blank_lines(TextBuffer *buffer, BufferPos *pos, i64 by);
+// returns the number of blank lines successfully moved by.
 i64 buffer_cursor_move_up_blank_lines(TextBuffer *buffer, i64 by);
+// returns the number of blank lines successfully moved by.
 i64 buffer_cursor_move_down_blank_lines(TextBuffer *buffer, i64 by);
+// returns the number of words successfully moved by.
 i64 buffer_pos_move_words(TextBuffer *buffer, BufferPos *pos, i64 nwords);
+// returns the number of words successfully moved by.
 i64 buffer_pos_move_left_words(TextBuffer *buffer, BufferPos *pos, i64 nwords);
+// returns the number of words successfully moved by.
 i64 buffer_pos_move_right_words(TextBuffer *buffer, BufferPos *pos, i64 nwords);
+// returns the number of words successfully moved by.
 i64 buffer_cursor_move_left_words(TextBuffer *buffer, i64 nwords);
+// returns the number of words successfully moved by.
 i64 buffer_cursor_move_right_words(TextBuffer *buffer, i64 nwords);
 String32 buffer_word_at_pos(TextBuffer *buffer, BufferPos pos);
 String32 buffer_word_at_cursor(TextBuffer *buffer);

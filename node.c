@@ -293,7 +293,7 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 			for (u16 i = 0; i < ntabs; ++i) {
 				TextBuffer *buffer = &ted->buffers[node->tabs[i]];
 				char tab_title[256];
-				const char *path = buffer_get_filename(buffer);
+				const char *path = buffer->filename;
 				const char *filename = path ? path_filename(path) : TED_UNTITLED;
 				Rect tab_rect = rect(Vec2(r.pos.x + tab_width * i, r.pos.y), Vec2(tab_width, tab_bar_height));
 				

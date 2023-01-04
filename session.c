@@ -230,7 +230,7 @@ static void session_read_buffer(Ted *ted, FILE *fp) {
 	char filename[TED_PATH_MAX] = {0};
 	read_cstr(fp, filename, sizeof filename);
 	buffer_create(buffer, ted);
-	if (!buffer_haserr(buffer)) {
+	if (!buffer_has_error(buffer)) {
 		if (*filename) {
 			if (!buffer_load_file(buffer, filename))
 				buffer_new_file(buffer, TED_UNTITLED);
