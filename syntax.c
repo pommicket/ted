@@ -1,3 +1,5 @@
+// syntax highlighting for ted
+
 #include "ted.h"
 #include "keywords.h"
 

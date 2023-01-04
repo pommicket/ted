@@ -1,3 +1,5 @@
+// various core ted functions (opening files, displaying errors, etc.)
+
 #include "ted.h"
 
 void die(const char *fmt, ...) {

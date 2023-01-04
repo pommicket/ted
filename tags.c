@@ -1,3 +1,5 @@
+// support for ctags go-to-definition and completion
+
 #include "ted.h"
 #include "pcre-inc.h"
 

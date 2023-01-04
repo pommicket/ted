@@ -1,3 +1,5 @@
+// POSIX implementation of OS functions
+
 #include "os.h"
 #include "util.h"
 #include <sys/types.h>

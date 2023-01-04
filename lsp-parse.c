@@ -1,3 +1,5 @@
+// reading messages from the LSP server
+
 #define LSP_INTERNAL 1
 #include "lsp.h"
 #include "util.h"

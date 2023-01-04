@@ -1,3 +1,5 @@
+// various UI elements used by ted
+
 #include "ted.h"
 
 #if __unix__

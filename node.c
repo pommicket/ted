@@ -1,3 +1,5 @@
+// deals with ted's split-screen feature
+
 #include "ted.h"
 
 void node_switch_to_tab(Ted *ted, Node *node, u16 new_tab_index) {

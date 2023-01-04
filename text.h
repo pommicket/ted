@@ -1,9 +1,3 @@
-#ifndef TEXT_H_
-#define TEXT_H_
-
-#include "base.h"
-#include "util.h"
-
 // A text-rendering interface.
 // Example usage:
 // Font *font = text_font_load("font.ttf", 18);
@@ -13,6 +7,11 @@
 //     text_render(font);
 // }
 
+#ifndef TEXT_H_
+#define TEXT_H_
+
+#include "base.h"
+#include "util.h"
 
 typedef struct Font Font;
 
