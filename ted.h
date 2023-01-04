@@ -1130,7 +1130,8 @@ void selector_up(Ted *ted, Selector *s, i64 n);
 void selector_down(Ted *ted, Selector *s, i64 n);
 // sort entries alphabetically
 void selector_sort_entries_by_name(Selector *s);
-// returns a null-terminated UTF-8 string of the option selected, or NULL if none was.
+// returns a null-terminated UTF-8 string of the entry selected, or NULL if none was.
+// also, sel->cursor will be set to the index of the entry, even if the mouse was used.
 // you should call free() on the return value.
 char *selector_update(Ted *ted, Selector *s);
 // NOTE: also renders the line buffer

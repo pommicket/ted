@@ -82,6 +82,7 @@ char *selector_update(Ted *ted, Selector *s) {
 			for (uint c = 0; c < ted->nmouse_clicks[SDL_BUTTON_LEFT]; ++c) {
 				if (rect_contains_point(entry_rect, ted->mouse_clicks[SDL_BUTTON_LEFT][c])) {
 					// this option was selected
+					s->cursor = i; // indicate the index of the selected entry using s->cursor
 					ret = str_dup(s->entries[i].name);
 					break;
 				}

@@ -1,6 +1,5 @@
 /*
 @TODO:
-- handle mouse clicks in "go to definition..." menu
 - ted.h documentation
 - document lsp.h and lsp.c.
 - debug-lsp option (which logs LSP messages)
@@ -25,6 +24,7 @@
     - make buffer->path NULL for untitled buffers & fix resulting mess
 - rust-analyzer bug reports:
     - bad json can give "Unexpected error: client exited without proper shutdown sequence"
+    - containerName not always given
 - clangd bug report:
     - textDocumemt/definition on ted.h declarations just gives you the declaration
 FUTURE FEATURES:
