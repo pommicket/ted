@@ -300,6 +300,8 @@ typedef struct {
 	// if not NULL, this will show on the right side of the entry.
 	const char *detail;
 	u32 color;
+	// use this for whatever you want
+	u64 userdata;
 } SelectorEntry;
 
 typedef struct {
@@ -482,7 +484,7 @@ typedef struct {
 	
 	char *last_request_query; // last query string which we sent a request for
 	Selector selector; // for "go to definition of..." menu
-	SymbolInfo *selector_all_definitions; // an array of all definitions
+	SymbolInfo *all_definitions; // an array of all definitions (gotten from workspace/symbols) for "go to definition" menu
 } Definitions;
 
 typedef struct {

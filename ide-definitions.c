@@ -97,11 +97,11 @@ void definitions_frame(Ted *ted) {
 }
 
 static void definitions_clear_entries(Definitions *defs) {
-	arr_foreach_ptr(defs->selector_all_definitions, SymbolInfo, def) {
+	arr_foreach_ptr(defs->all_definitions, SymbolInfo, def) {
 		free(def->name);
 		free(def->detail);
 	}
-	arr_clear(defs->selector_all_definitions);
+	arr_clear(defs->all_definitions);
 	arr_clear(defs->selector.entries);
 	defs->selector.n_entries = 0;
 }
@@ -131,14 +131,22 @@ static void definitions_selector_filter_entries(Ted *ted) {
 	char *search_term = str32_to_utf8_cstr(buffer_get_line(&ted->line_buffer, 0));
 
 	arr_clear(sel->entries);
-
-	arr_foreach_ptr(defs->selector_all_definitions, SymbolInfo, info) {
+	
+	for (u32 i = 0; i < arr_len(defs->all_definitions); ++i) {
+		SymbolInfo *info = &defs->all_definitions[i];
 		if (!search_term || strstr_case_insensitive(info->name, search_term)) {
 			SelectorEntry *entry = arr_addp(sel->entries);
 			entry->name = info->name;
 			entry->color = info->color;
 			entry->detail = info->detail;
+			// this isn't exactly ideal but we're sorting these entries so
+			// it's probably the nicest way of keeping track of the definition
+			// this corresponds to
+			entry->userdata = i;
 		}
+		// don't try to display too many entries
+		if (arr_len(sel->entries) >= 1000)
+			break;
 	}
 	free(search_term);
 	
@@ -187,10 +195,10 @@ void definitions_process_lsp_response(Ted *ted, LSP *lsp, const LSPResponse *res
 		const u32 *colors = settings->colors;
 		
 		definitions_clear_entries(defs);
-		arr_set_len(defs->selector_all_definitions, arr_len(symbols));
+		arr_set_len(defs->all_definitions, arr_len(symbols));
 		for (size_t i = 0; i < arr_len(symbols); ++i) {
 			const LSPSymbolInformation *symbol = &symbols[i];
-			SymbolInfo *def = &defs->selector_all_definitions[i];
+			SymbolInfo *def = &defs->all_definitions[i];
 			
 			def->name = str_dup(lsp_response_string(response, symbol->name));
 			SymbolKind kind = symbol_kind_to_ted(symbol->kind);
@@ -241,7 +249,7 @@ void definitions_selector_open(Ted *ted) {
 	if (lsp) {
 		definitions_send_request_if_needed(ted);
 	} else {
-		defs->selector_all_definitions = tags_get_symbols(ted);
+		defs->all_definitions = tags_get_symbols(ted);
 	}
 	ted_switch_to_buffer(ted, &ted->line_buffer);
 	buffer_select_all(ted->active_buffer);
@@ -271,24 +279,31 @@ void definitions_selector_update(Ted *ted) {
 	
 	char *chosen = selector_update(ted, sel);
 	if (chosen) {
-		arr_foreach_ptr(defs->selector_all_definitions, SymbolInfo, info) {
-			if (strcmp(info->name, chosen) == 0) {
-				if (info->from_lsp) {
-					// NOTE: we need to get this before calling menu_close,
-					// since that clears selector_all_definitions
-					LSPDocumentPosition position = info->position;
-					
-					menu_close(ted);
-					ted_go_to_lsp_document_position(ted, NULL, position);
-				} else {
-					menu_close(ted);
-					tag_goto(ted, chosen);
-				}
-				break;
-			}
+		free(chosen), chosen = NULL;
+		// we ignore `chosen` and use the cursor instead.
+		// this is because a single symbol can have multiple definitions,
+		// e.g. with overloading.
+		if (sel->cursor >= sel->n_entries) {
+			assert(0);
+			return;
 		}
-		
-		free(chosen);
+		u64 def_idx = sel->entries[sel->cursor].userdata;
+		if (def_idx >= arr_len(defs->all_definitions)) {
+			assert(0);
+			return;
+		}
+		SymbolInfo *info = &defs->all_definitions[def_idx];
+		if (info->from_lsp) {
+			// NOTE: we need to get this before calling menu_close,
+			// since that clears selector_all_definitions
+			LSPDocumentPosition position = info->position;
+			
+			menu_close(ted);
+			ted_go_to_lsp_document_position(ted, NULL, position);
+		} else {
+			menu_close(ted);
+			tag_goto(ted, chosen);
+		}
 	}
 }
 

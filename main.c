@@ -1,8 +1,6 @@
 /*
 @TODO:
 - ted.h documentation
-- handle multiple symbols with same name in go-to-definition menu
-- better non-error window/showMessage(Request)
 - document lsp.h and lsp.c.
 - check LSP process status (TEST: what happens if LSP server is not installed)
 - make tags_dir the root folder
