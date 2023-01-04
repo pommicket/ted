@@ -1,5 +1,6 @@
 /*
 @TODO:
+- handle mouse clicks in "go to definition..." menu
 - ted.h documentation
 - document lsp.h and lsp.c.
 - debug-lsp option (which logs LSP messages)

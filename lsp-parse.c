@@ -32,6 +32,9 @@ static WarnUnusedResult bool lsp_expect_number(LSP *lsp, JSONValue value, const 
 
 
 static LSPString lsp_response_add_json_string(LSPResponse *response, const JSON *json, JSONString string) {
+	if (string.len == 0) {
+		return (LSPString){0};
+	}
 	u32 offset = arr_len(response->string_data);
 	arr_set_len(response->string_data, offset + string.len + 1);
 	json_string_get(json, string, response->string_data + offset, string.len + 1);
@@ -607,6 +610,10 @@ static bool parse_symbol_information(LSP *lsp, const JSON *json, JSONValue value
 	JSONValue location = json_object_get(json, object, "location");
 	if (!parse_location(lsp, json, location, &info->location))
 		return false;
+	
+	// get container name
+	JSONString container = json_object_get_string(json, object, "containerName");
+	info->container = lsp_response_add_json_string(response, json, container);
 	
 	return true;
 }

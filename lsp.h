@@ -392,6 +392,9 @@ typedef struct {
 	LSPSymbolKind kind;
 	bool deprecated;
 	LSPLocation location;
+	// the "symbol containing this symbol"
+	// e.g. multiple classes might have a "foo" method, so this can be used to distinguish them.
+	LSPString container;
 } LSPSymbolInformation;
 
 typedef struct {

@@ -439,6 +439,8 @@ const char *lsp_document_path(LSP *lsp, LSPDocumentID document) {
 			assert(0);
 			return "";
 		}
+		// it's okay to keep a pointer to this around without the mutex locked
+		// we'll never change the path of a document ID.
 		const char *path = lsp->document_data[document].path;
 	SDL_UnlockMutex(lsp->document_mutex);
 	return path;

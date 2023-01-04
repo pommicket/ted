@@ -206,8 +206,13 @@ void definitions_process_lsp_response(Ted *ted, LSP *lsp, const LSPResponse *res
 			def->color = colors[color_for_symbol_kind(kind)];
 			def->from_lsp = true;
 			def->position = lsp_location_start_position(symbol->location);
-			def->detail = a_sprintf("%s:%" PRIu32,
-				path_filename(lsp_document_path(lsp, def->position.document)),
+			const char *container_name = lsp_response_string(response, symbol->container);
+			const char *filename = path_filename(lsp_document_path(lsp, def->position.document));
+			bool has_container = *container_name != 0;
+			def->detail = a_sprintf("%s%s%s:%" PRIu32,
+				container_name,
+				has_container ? ", " : "",
+				filename,
 				def->position.pos.line + 1);
 		}
 		
