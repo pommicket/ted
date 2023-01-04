@@ -1,14 +1,21 @@
+// functions for dealing with UTF-8/UTF-16/UTF-32.
+// this file is entirely self-contained.
+
 #ifndef UNICODE_H_
 #define UNICODE_H_
 #define UNICODE_BOX_CHARACTER 0x2610
 #define UNICODE_CODE_POINTS 0x110000 // number of Unicode code points
 
-static bool unicode_is_start_of_code_point(u8 byte) {
+#include <stddef.h>
+#include <stdint.h>
+
+static bool unicode_is_start_of_code_point(uint8_t byte) {
 	// see https://en.wikipedia.org/wiki/UTF-8#Encoding
 	// continuation bytes are of the form 10xxxxxx
 	return (byte & 0xC0) != 0x80;
 }
-static bool unicode_is_continuation_byte(u8 byte) {
+
+static bool unicode_is_continuation_byte(uint8_t byte) {
 	return (byte & 0xC0) == 0x80;
 }
 
@@ -21,26 +28,26 @@ static bool unicode_is_continuation_byte(u8 byte) {
 // (size_t)-1 - on invalid UTF-8
 // (size_t)-2 - on incomplete code point (str should be longer)
 // other - the number of bytes read from `str`.
-static size_t unicode_utf8_to_utf32(char32_t *c, const char *str, size_t bytes) {
+static size_t unicode_utf8_to_utf32(uint32_t *c, const char *str, size_t bytes) {
 	*c = 0;
 	if (bytes == 0) {
 		return 0;
 	}
 	// it's easier to do things with unsigned integers
-	const u8 *p = (const u8 *)str;
+	const uint8_t *p = (const uint8_t *)str;
 
-	u8 first_byte = *p;
+	uint8_t first_byte = *p;
 	
 	if (first_byte & 0x80) {
 		if ((first_byte & 0xE0) == 0xC0) {
 			// two-byte code point
 			if (bytes >= 2) {
 				++p;
-				u32 second_byte = *p;
+				uint32_t second_byte = *p;
 				if ((second_byte & 0xC0) != 0x80) return (size_t)-1;
-				u32 value = ((u32)first_byte & 0x1F) << 6
+				uint32_t value = ((uint32_t)first_byte & 0x1F) << 6
 					| (second_byte & 0x3F);
-				*c = (char32_t)value;
+				*c = (uint32_t)value;
 				return 2;
 			} else {
 				// incomplete code point
@@ -51,16 +58,16 @@ static size_t unicode_utf8_to_utf32(char32_t *c, const char *str, size_t bytes) 
 			// three-byte code point
 			if (bytes >= 3) {
 				++p;
-				u32 second_byte = *p;
+				uint32_t second_byte = *p;
 				if ((second_byte & 0xC0) != 0x80) return (size_t)-1;
 				++p;
-				u32 third_byte = *p;
+				uint32_t third_byte = *p;
 				if ((third_byte & 0xC0) != 0x80) return (size_t)-1;
-				u32 value = ((u32)first_byte & 0x0F) << 12
+				uint32_t value = ((uint32_t)first_byte & 0x0F) << 12
 					| (second_byte & 0x3F) << 6
 					| (third_byte & 0x3F);
 				if (value < 0xD800 || value > 0xDFFF) {
-					*c = (char32_t)value;
+					*c = (uint32_t)value;
 					return 3;
 				} else {
 					// reserved for UTF-16 surrogate halves
@@ -75,15 +82,15 @@ static size_t unicode_utf8_to_utf32(char32_t *c, const char *str, size_t bytes) 
 			// four-byte code point
 			if (bytes >= 4) {
 				++p;
-				u32 second_byte = *p;
+				uint32_t second_byte = *p;
 				if ((second_byte & 0xC0) != 0x80) return (size_t)-1;
 				++p;
-				u32 third_byte = *p;
+				uint32_t third_byte = *p;
 				if ((third_byte & 0xC0) != 0x80) return (size_t)-1;
 				++p;
-				u32 fourth_byte = *p;
+				uint32_t fourth_byte = *p;
 				if ((fourth_byte & 0xC0) != 0x80) return (size_t)-1;
-				u32 value = ((u32)first_byte & 0x07) << 18
+				uint32_t value = ((uint32_t)first_byte & 0x07) << 18
 					| (second_byte & 0x3F) << 12
 					| (third_byte  & 0x3F) << 6
 					| (fourth_byte & 0x3F);
@@ -91,7 +98,7 @@ static size_t unicode_utf8_to_utf32(char32_t *c, const char *str, size_t bytes) 
 					// reserved for UTF-16 surrogate halves
 					return (size_t)-1;
 				} else if (value <= 0x10FFFF) {
-					*c = (char32_t)value;
+					*c = (uint32_t)value;
 					return 4;
 				} else {
 					// Code points this big can't be encoded by UTF-16 so are invalid UTF-8.
@@ -118,22 +125,22 @@ static size_t unicode_utf8_to_utf32(char32_t *c, const char *str, size_t bytes) 
 // Converts a UTF-32 codepoint to a UTF-8 string. Writes at most 4 bytes to s.
 // NOTE: It is YOUR JOB to null-terminate your string if the UTF-32 isn't null-terminated!
 // Returns the number of bytes written to s, or (size_t)-1 on invalid UTF-32.
-static size_t unicode_utf32_to_utf8(char *s, char32_t c32) {
-	u8 *p = (u8 *)s;
+static size_t unicode_utf32_to_utf8(char *s, uint32_t c32) {
+	uint8_t *p = (uint8_t *)s;
 	if (c32 <= 0x7F) {
 		// ASCII
-		*p = (u8)c32;
+		*p = (uint8_t)c32;
 		return 1;
 	} else if (c32 <= 0x7FF) {
 		// two bytes needed
-		*p++ = (u8)(0xC0 | (c32 >> 6));
-		*p   = (u8)(0x80 | (c32 & 0x3F));
+		*p++ = (uint8_t)(0xC0 | (c32 >> 6));
+		*p   = (uint8_t)(0x80 | (c32 & 0x3F));
 		return 2;
 	} else if (c32 <= 0x7FFF) {
 		if (c32 < 0xD800 || c32 > 0xDFFF) {
-			*p++ = (u8)(0xE0 | ( c32 >> 12));
-			*p++ = (u8)(0x80 | ((c32 >> 6) & 0x3F));
-			*p   = (u8)(0x80 | ( c32       & 0x3F));
+			*p++ = (uint8_t)(0xE0 | ( c32 >> 12));
+			*p++ = (uint8_t)(0x80 | ((c32 >> 6) & 0x3F));
+			*p   = (uint8_t)(0x80 | ( c32       & 0x3F));
 			return 3;
 		} else {
 			// UTF-16 surrogate halves
@@ -141,10 +148,10 @@ static size_t unicode_utf32_to_utf8(char *s, char32_t c32) {
 			return (size_t)-1;
 		}
 	} else if (c32 <= 0x10FFFF) {
-		*p++ = (u8)(0xF0 | ( c32 >> 18));
-		*p++ = (u8)(0x80 | ((c32 >> 12) & 0x3F));
-		*p++ = (u8)(0x80 | ((c32 >>  6) & 0x3F));
-		*p   = (u8)(0x80 | ( c32        & 0x3F));
+		*p++ = (uint8_t)(0xF0 | ( c32 >> 18));
+		*p++ = (uint8_t)(0x80 | ((c32 >> 12) & 0x3F));
+		*p++ = (uint8_t)(0x80 | ((c32 >>  6) & 0x3F));
+		*p   = (uint8_t)(0x80 | ( c32        & 0x3F));
 		return 4;
 	} else {
 		// code point too big
@@ -158,7 +165,7 @@ static size_t unicode_utf32_to_utf8(char *s, char32_t c32) {
 // returns (size_t)-1 on bad UTF-8
 static size_t unicode_utf16_len(const char *str) {
 	size_t len = 0;
-	char32_t c = 0;
+	uint32_t c = 0;
 	while (*str) {
 		size_t n = unicode_utf8_to_utf32(&c, str, 4);
 		if (n >= (size_t)-2)
@@ -177,7 +184,7 @@ static size_t unicode_utf16_len(const char *str) {
 // returns (size_t)-1 on bad UTF-8, or if utf16_offset > unicode_utf16_len(str)
 static size_t unicode_utf16_to_utf8_offset(const char *str, size_t utf16_offset) {
 	size_t offset = 0;
-	char32_t c = 0;
+	uint32_t c = 0;
 	while (*str) {
 		size_t n = unicode_utf8_to_utf32(&c, str, 4);
 		if (n >= (size_t)-2)

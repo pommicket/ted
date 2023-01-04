@@ -1,3 +1,6 @@
+// C utility functions
+// these utilities should be self-contained
+
 #ifndef UTIL_H_
 #define UTIL_H_
 

@@ -1,3 +1,6 @@
+// the main header file for ted.
+// this contains almost all of the function declarations.
+
 #ifndef TED_H_
 #define TED_H_
 

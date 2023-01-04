@@ -1,3 +1,6 @@
+// basic types and macros.
+// this file is included almost everywhere.
+
 #ifndef BASE_H_
 #define BASE_H_
 
@@ -184,7 +187,7 @@ static void print(const char *fmt, ...) {
 #define debug_println(...)
 #endif
 
-// NOTE: these have to be defined here because lsp.h uses them
+// NOTE: these have to be defined here because lsp.h uses Language
 
 // If you are adding new languages, DO NOT change the constant values
 // of the previous languages. It will mess up config files which use :set-language!
