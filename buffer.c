@@ -2283,6 +2283,10 @@ void buffer_paste(TextBuffer *buffer) {
 
 // if an error occurs, buffer is left untouched (except for the error field) and the function returns false.
 Status buffer_load_file(TextBuffer *buffer, const char *filename) {
+	// it's important we do this first, since someone might write to the file while we're reading it,
+	// and we want to detect that in buffer_externally_changed
+	double modified_time = timespec_to_seconds(time_last_modified(buffer->filename));
+	
 	FILE *fp = fopen(filename, "rb");
 	bool success = true;
 	Line *lines = NULL;
@@ -2368,7 +2372,7 @@ Status buffer_load_file(TextBuffer *buffer, const char *filename) {
 					buffer->frame_latest_line_modified = nlines - 1;
 					buffer->lines_capacity = lines_capacity;
 					buffer->filename = filename_copy;
-					buffer->last_write_time = timespec_to_seconds(time_last_modified(buffer->filename));
+					buffer->last_write_time = modified_time;
 					if (!(fs_path_permission(filename) & FS_PERMISSION_WRITE)) {
 						// can't write to this file; make the buffer view only.
 						buffer->view_only = true;
