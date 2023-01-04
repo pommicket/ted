@@ -2,6 +2,7 @@
 @TODO:
 - ted.h documentation
 - document lsp.h and lsp.c.
+- debug-lsp option (which logs LSP messages)
 - check LSP process status (TEST: what happens if LSP server is not installed)
 - make tags_dir the root folder
 - check that tags still works

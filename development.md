@@ -21,6 +21,8 @@ in `util.c` even if they use OS-specific library functions.)
 
 ## Adding languages
 
+## Adding LSP features
+
 ## Releasing
 
 When releasing a new version of `ted`:

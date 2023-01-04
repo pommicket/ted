@@ -55,7 +55,7 @@ void definition_goto(Ted *ted, LSP *lsp, const char *name, LSPDocumentPosition p
 	Definitions *defs = &ted->definitions;
 	if (lsp) {
 		// cancel old request
-		ted_cancel_lsp_request(ted, defs->last_request_lsp, defs->last_request_id);
+		definition_cancel_lookup(ted);
 		LSPRequestType request_type = LSP_REQUEST_DEFINITION;
 		switch (type) {
 		case GOTO_DEFINITION:
@@ -153,6 +153,7 @@ static void definitions_selector_filter_entries(Ted *ted) {
 	arr_qsort(sel->entries, definition_entry_qsort_cmp);
 	
 	sel->n_entries = arr_len(sel->entries);
+	sel->cursor = clamp_u32(sel->cursor, 0, sel->n_entries);
 }
 
 
@@ -232,6 +233,8 @@ void definitions_send_request_if_needed(Ted *ted) {
 	LSPRequest request = {.type = LSP_REQUEST_WORKSPACE_SYMBOLS};
 	LSPRequestWorkspaceSymbols *syms = &request.data.workspace_symbols;
 	syms->query = str_dup(query);
+	// cancel old request
+	definition_cancel_lookup(ted);
 	defs->last_request_id = lsp_send_request(lsp, &request);
 	defs->last_request_lsp = lsp->id;
 	defs->last_request_time = ted->frame_time;

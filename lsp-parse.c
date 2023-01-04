@@ -879,6 +879,9 @@ void process_message(LSP *lsp, JSON *json) {
 		LSPResponse response = {0};
 		bool add_to_messages = false;
 		response.request = response_to;
+		// now response_to is response's responsibility
+		memset(&response_to, 0, sizeof response_to);
+
 		// make sure (LSPString){0} gets treated as an empty string
 		arr_add(response.string_data, '\0');
 		
@@ -889,7 +892,7 @@ void process_message(LSP *lsp, JSON *json) {
 		if (response.error) {
 			if (error_code != LSP_ERROR_REQUEST_CANCELLED)
 				add_to_messages = true;
-		} else switch (response_to.type) {
+		} else switch (response.request.type) {
 		case LSP_REQUEST_COMPLETION:
 			add_to_messages = parse_completion(lsp, json, &response);
 			break;
@@ -952,7 +955,6 @@ void process_message(LSP *lsp, JSON *json) {
 			message->type = LSP_RESPONSE;
 			message->u.response = response;
 			SDL_UnlockMutex(lsp->messages_mutex);
-			memset(&response_to, 0, sizeof response_to); // don't free
 		} else {
 			lsp_response_free(&response);
 		}
