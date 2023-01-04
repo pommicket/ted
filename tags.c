@@ -262,6 +262,7 @@ top:;
 							++address_end;
 						}
 						*address_end = '\0';
+						// some addresses randomly end with ;" I think. not entirely sure why this needs to be here.
 						if (address_end - address > 2 && address_end[-2] == ';' && address_end[-1] == '"') {
 							address_end[-2] = '\0';
 						}
@@ -280,19 +281,32 @@ top:;
 								success = true;
 							} else if (address[0] == '/') {
 								// the tags file gives us a pattern to look for
-								char *pattern = address + 1;
+								const char *in = address + 1;
+								
 								// the patterns seem to be always literal (not regex-y), except for ^ and $
+								// first, we do some preprocessing to remove backslashes and check for ^ and $.
 								bool start_anchored = false, end_anchored = false;
-								if (*pattern == '^') {
-									start_anchored = true;
-									++pattern;
-								}
-								char *dollar = strchr(pattern, '$');
-								if (dollar) {
-									end_anchored = true;
-									*dollar = '\0';
+								char *pattern = calloc(1, strlen(in) + 1);
+								{
+									char *out = pattern;
+									if (*in == '^') {
+										start_anchored = true;
+										++in;
+									}
+									while (*in) {
+										if (*in == '\\' && in[1]) {
+											 *out++ = in[1];
+											 in += 2;
+										} else if (*in == '$') {
+											end_anchored = true;
+											break;
+										} else {
+											*out++ = *in++;
+										}
+									}
 								}
 								
+								// now we search
 								String32 pattern32 = str32_from_utf8(pattern);
 								u32 options = PCRE2_LITERAL;
 								if (start_anchored) options |= PCRE2_ANCHORED;
@@ -324,6 +338,7 @@ top:;
 									pcre2_code_free(code);
 								}
 								str32_free(&pattern32);
+								free(pattern);
 							} else {
 								ted_error(ted, "Unrecognized tag address: %s", address);
 							}

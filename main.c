@@ -1,6 +1,5 @@
 /*
 @TODO:
-- fix problem where LSP_REQUEST_DEFINITION tag isn't being found
 - ted.h documentation
 - handle multiple symbols with same name in go-to-definition menu
 - better non-error window/showMessage(Request)
