@@ -1,6 +1,5 @@
 // JSON parser for LSP
 // provides FAST(ish) parsing but SLOW lookup for large objects
-// this actually supports "extended json", where objects can have arbitrary values as keys.
 
 #define LSP_INTERNAL 1
 #include "lsp.h"
@@ -182,6 +181,10 @@ static bool json_parse_object(JSON *json, u32 *p_index, JSONObject *object) {
 		JSONValue name = {0}, value = {0};
 		if (!json_parse_value(json, &index, &name))
 			return false;
+		if (name.type != JSON_STRING) {
+			strbuf_printf(json->error, "object key is not a string");
+			return false;
+		}
 		SKIP_WHITESPACE;
 		if (text[index] != ':') {
 			strbuf_printf(json->error, "stuff after name in object");
@@ -396,7 +399,8 @@ JSONValue json_object_get(const JSON *json, JSONObject object, const char *name)
 	const JSONValue *items = &json->values[object.items];
 	for (u32 i = 0; i < object.len; ++i) {
 		const JSONValue *this_name = items++;
-		if (this_name->type == JSON_STRING && json_streq(json, &this_name->val.string, name)) {
+		assert(this_name->type == JSON_STRING);
+		if (json_streq(json, &this_name->val.string, name)) {
 			return json->values[object.items + object.len + i];
 		}
 	}

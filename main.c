@@ -17,8 +17,6 @@
 - some way of opening + closing all C files in directory for clangd
    textDocument/references to work?
 	- maybe it can be done with the clangd config instead.
-- CSS highlighting
-- styles ([color] sections)
 - more documentation generally (development.md or something?)
 - rename buffer->filename to buffer->path
     - make buffer->path NULL for untitled buffers & fix resulting mess
@@ -28,7 +26,10 @@
 - clangd bug report:
     - textDocumemt/definition on ted.h declarations just gives you the declaration
 FUTURE FEATURES:
+- CSS highlighting
+- styles ([color] sections)
 - make go-to-definition/hover/highlight modifier key configurable
+- option for separate colors for read/write highlights
 - return to previous location in buffer
 - font setting & support for multiple fonts to cover more characters
 - comment-start & comment-end settings
