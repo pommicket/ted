@@ -1,4 +1,5 @@
 // deals with textDocument/signatureHelp LSP requests
+// this is the little thing which shows you the signature of the function and the current argument
 
 #include "ted.h"
 

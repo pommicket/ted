@@ -1,12 +1,12 @@
+// command enum
+
 #ifndef COMMAND_H_
 #define COMMAND_H_
 
-#include "base.h"
-
-// i | ARG_STRING = ted->strings[i]
+// `i | ARG_STRING` when used as an argument refers to `ted->strings[i]`
 #define ARG_STRING 0x4000000000000000
 
-ENUM_U16 {
+typedef enum {
 	CMD_UNKNOWN,
 	CMD_NOOP, // do nothing
 	// movement and selection commands
@@ -113,7 +113,7 @@ ENUM_U16 {
 	CMD_ESCAPE, // by default this is the escape key. closes menus, etc.
 
 	CMD_COUNT
-} ENUM_U16_END(Command);
+} Command;
 
 
 #endif

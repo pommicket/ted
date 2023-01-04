@@ -14,8 +14,8 @@
 - when searching files, put exact matches at the top
 - auto-set build command for cmake (both for windows and unix)
 --- LSP MERGE ---
-- some way of opening + closing all C files in directory for clangd workspace/symbols to work?
-	is this still necessary?
+- some way of opening + closing all C files in directory for clangd
+   textDocument/references to work?
 	- maybe it can be done with the clangd config instead.
 - CSS highlighting
 - styles ([color] sections)

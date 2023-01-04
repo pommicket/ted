@@ -1,3 +1,6 @@
+// this file deals with ctrl+click "go to definition", and
+// the definitions menu (Ctrl+D)
+
 #include "ted.h"
 
 void definition_cancel_lookup(Ted *ted) {

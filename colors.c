@@ -1,3 +1,5 @@
+// color names and functions for dealing with colors
+
 #include "ted.h"
 
 typedef struct {

@@ -1,3 +1,6 @@
+// various functions for dealing with OpenGL.
+// also houses all of the basic rendering functions ted uses.
+
 #include "ted.h"
 #include "lib/glcorearb.h"
 

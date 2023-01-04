@@ -1,3 +1,5 @@
+// auto-completion for ted
+
 #include "ted.h"
 
 #define TAGS_MAX_COMPLETIONS 200 // max # of tag completions to scroll through

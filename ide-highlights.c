@@ -1,3 +1,5 @@
+// highlight uses of identifier (LSP request textDocument/highlight)
+
 #include "ted.h"
 
 void highlights_close(Ted *ted) {

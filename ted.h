@@ -115,8 +115,7 @@ enum {
 
 typedef struct KeyAction {
 	u32 key_combo;
-	u32 line_number; // config line number where this was set
-	Command command; // this will be 0 (COMMAND_UNKNOWN) if there's no action for the key
+	Command command;
 	i64 argument;
 } KeyAction;
 

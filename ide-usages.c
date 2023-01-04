@@ -1,3 +1,5 @@
+// find usages of symbol
+
 #include "ted.h"
 
 void usages_cancel_lookup(Ted *ted) {

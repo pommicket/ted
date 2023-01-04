@@ -1,3 +1,5 @@
+// handles ted's find and replace menu.
+
 #include "ted.h"
 #include "pcre-inc.h"
 

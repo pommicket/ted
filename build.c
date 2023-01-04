@@ -1,3 +1,6 @@
+// :build command
+// also handles :shell.
+
 #include "ted.h"
 
 void build_stop(Ted *ted) {

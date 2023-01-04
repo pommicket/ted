@@ -1,4 +1,4 @@
-// Read a configuration file.
+// Read a ted configuration file.
 // Config files are formatted as several sections, each containing key = value pairs.
 // e.g.:
 // [section1]
@@ -773,7 +773,6 @@ static void config_parse_line(ConfigReader *cfg, Settings *settings, const Confi
 			if (command != CMD_UNKNOWN) {
 				action->command = command;
 				action->argument = argument;
-				action->line_number = cfg->line_number;
 			} else {
 				config_err(cfg, "Unrecognized command %s", value);
 			}

@@ -12,10 +12,6 @@
 #define _GNU_SOURCE
 #endif
 
-#if DEBUG || __TINYC__ // speed up compile time on debug, also tcc doesn't have immintrin.h
-#define SDL_DISABLE_IMMINTRIN_H
-#endif
-
 #if __GNUC__
 #define FALLTHROUGH __attribute__((fallthrough));
 #else

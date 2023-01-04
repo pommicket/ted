@@ -1,3 +1,5 @@
+// main file for dealing with LSP servers
+
 #define LSP_INTERNAL 1
 #include "lsp.h"
 #include "util.h"
