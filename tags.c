@@ -297,7 +297,9 @@ top:;
 										if (*in == '\\' && in[1]) {
 											 *out++ = in[1];
 											 in += 2;
-										} else if (*in == '$') {
+										} else
+										// NOTE: ctags-universal doesn't escape $ when it's not at the end of the pattern
+										if (*in == '$' && in[1] == 0) {
 											end_anchored = true;
 											break;
 										} else {
