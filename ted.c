@@ -109,7 +109,7 @@ char *ted_get_root_dir_of(Ted *ted, const char *path) {
 // the return value should be freed
 char *ted_get_root_dir(Ted *ted) {
 	TextBuffer *buffer = ted->active_buffer;
-	if (buffer) {
+	if (buffer && buffer_is_named_file(buffer)) {
 		return ted_get_root_dir_of(ted, buffer->path);
 	} else {
 		return ted_get_root_dir_of(ted, ted->cwd);
@@ -214,7 +214,7 @@ LSP *ted_active_lsp(Ted *ted) {
 	return buffer_lsp(ted->active_buffer);
 }
 
-u32 ted_color(Ted *ted, ColorSetting color) {
+u32 ted_active_color(Ted *ted, ColorSetting color) {
 	return ted_active_settings(ted)->colors[color];
 }
 
@@ -226,7 +226,6 @@ static bool ted_is_regular_buffer(Ted *ted, TextBuffer *buffer) {
 	return buffer >= ted->buffers && buffer < ted->buffers + TED_MAX_BUFFERS;
 }
 
-// Check the various places a file could be, and return the full path.
 Status ted_get_file(Ted const *ted, const char *name, char *out, size_t outsz) {
 	if (ted->search_start_cwd && fs_file_exists(name)) {
 		// check in start_cwd
@@ -310,7 +309,6 @@ void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer) {
 	
 }
 
-// set ted->active_buffer to something nice
 void ted_reset_active_buffer(Ted *ted) {
 	if (ted->nodes_used[0]) {
 		Node *node = &ted->nodes[0];
@@ -422,6 +420,11 @@ TextBuffer *ted_get_buffer_with_file(Ted *ted, const char *path) {
 }
 
 bool ted_open_file(Ted *ted, const char *filename) {
+	if (!filename) {
+		assert(0);
+		return false;
+	}
+	
 	char path[TED_PATH_MAX];
 	ted_path_full(ted, filename, path, sizeof path);
 
@@ -600,7 +603,6 @@ bool ted_get_mouse_buffer_pos(Ted *ted, TextBuffer **pbuffer, BufferPos *ppos) {
 	return false;
 }
 
-// make the cursor red for a bit to indicate an error (e.g. no autocompletions)
 void ted_flash_error_cursor(Ted *ted) {
 	ted->cursor_error_time = ted->frame_time;
 }
@@ -635,7 +637,10 @@ void ted_go_to_lsp_document_position(Ted *ted, LSP *lsp, LSPDocumentPosition pos
 }
 
 void ted_cancel_lsp_request(Ted *ted, LSPID lsp, LSPRequestID request) {
-	lsp_cancel_request(ted_get_lsp_by_id(ted, lsp), request);
+	if (!request) return;
+	LSP *lsp_obj = ted_get_lsp_by_id(ted, lsp);
+	if (!lsp_obj) return;
+	lsp_cancel_request(lsp_obj, request);
 }
 
 

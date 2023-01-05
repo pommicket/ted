@@ -8,8 +8,11 @@
 #include "ds.h"
 #include "os.h"
 
+// a document ID. 0 is a valid document ID, currently.
 typedef u32 LSPDocumentID;
+// ID of an LSP server. a server's ID is never 0.
 typedef u32 LSPID;
+// a request ID. this is unique across all servers. a request's ID is never 0.
 typedef u32 LSPRequestID;
 typedef struct SDL_mutex *LSPMutex;
 typedef struct SDL_semaphore *LSPSemaphore;

@@ -374,7 +374,7 @@ SymbolInfo *tags_get_symbols(Ted *ted) {
 	if (!file) return NULL;
 	
 	SymbolInfo *infos = NULL;
-	u32 color = ted_color(ted, COLOR_TEXT);
+	u32 color = ted_active_color(ted, COLOR_TEXT);
 	if (file) {
 		char line[1024];
 		while (fgets(line, sizeof line, file)) {

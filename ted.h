@@ -1332,30 +1332,60 @@ void ted_info(Ted *ted, PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRI
 void ted_log(Ted *ted, PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRINTF(2, 3);
 // set error to "out of memory" message.
 void ted_out_of_mem(Ted *ted);
+// allocate memory, producing an error message and returning NULL on failure
 void *ted_malloc(Ted *ted, size_t size);
+// allocate memory, producing an error message and returning NULL on failure
 void *ted_calloc(Ted *ted, size_t n, size_t size);
+// allocate memory, producing an error message and returning NULL on failure
 void *ted_realloc(Ted *ted, void *p, size_t new_size);
+// Check the various places a ted data file could be
+// (i.e. look for it in the local and global data directories),
+// and return the full path.
 Status ted_get_file(Ted const *ted, const char *name, char *out, size_t outsz);
 // get full path relative to ted->cwd.
 void ted_path_full(Ted *ted, const char *relpath, char *abspath, size_t abspath_size);
+// set ted->active_buffer to something nice
 void ted_reset_active_buffer(Ted *ted);
+// set ted's error message to the buffer's error.
 void ted_error_from_buffer(Ted *ted, TextBuffer *buffer);
 // Returns the buffer containing the file at `path`, or NULL if there is none.
 TextBuffer *ted_get_buffer_with_file(Ted *ted, const char *path);
+// save all buffers
 bool ted_save_all(Ted *ted);
+// reload all buffers from their files
 void ted_reload_all(Ted *ted);
 // Load all the fonts ted will use.
 void ted_load_fonts(Ted *ted);
+// Get likely root directory of project containing `path`.
+// The returned value should be freed.
 char *ted_get_root_dir_of(Ted *ted, const char *path);
+// Get the root directory of the project containing the active buffer's file,
+// or `ted->cwd` if no file is open.
+// The returned value should be freed.
 char *ted_get_root_dir(Ted *ted);
 // the settings of the active buffer, or the default settings if there is no active buffer
 Settings *ted_active_settings(Ted *ted);
+// Get the settings for a file at the given path in the given language.
 Settings *ted_get_settings(Ted *ted, const char *path, Language language);
+// Get LSP by ID. Returns NULL if there is no LSP with that ID.
 LSP *ted_get_lsp_by_id(Ted *ted, LSPID id);
+// Get LSP which should be used for the given path and language.
+// If no running LSP server would cover the path and language, a new one is
+// started if possible.
+// Returns NULL on failure (e.g. there is no LSP server
+// specified for the given path and language).
 LSP *ted_get_lsp(Ted *ted, const char *path, Language language);
+// Get the LSP of the active buffer/ted->cwd.
+// Returns NULL if there is no such server.
 LSP *ted_active_lsp(Ted *ted);
-u32 ted_color(Ted *ted, ColorSetting color);
+// get the value of the given color setting, according to `ted_active_settings(ted)`.
+u32 ted_active_color(Ted *ted, ColorSetting color);
+// open the given file, or switch to it if it's already open.
+// returns true on success.
 bool ted_open_file(Ted *ted, const char *filename);
+// create a new buffer for the file `filename`, or open it if it's already open.
+// if `filename` is NULL, this creates an untitled buffer.
+// returns true on success.
 bool ted_new_file(Ted *ted, const char *filename);
 // returns the index of an available buffer, or -1 if none are available 
 i32 ted_new_buffer(Ted *ted);
@@ -1371,12 +1401,22 @@ bool ted_save_all(Ted *ted);
 void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer);
 // switch to this node
 void ted_node_switch(Ted *ted, Node *node);
+// load ted.cfg files
 void ted_load_configs(Ted *ted, bool reloading);
+// handle a key press
 void ted_press_key(Ted *ted, SDL_Keycode keycode, SDL_Keymod modifier);
-bool ted_get_mouse_buffer_pos(Ted *ted, TextBuffer **pbuffer, BufferPos *ppos);
+// get the buffer and buffer position where the mouse is.
+// returns false if the mouse is not in a buffer.
+Status ted_get_mouse_buffer_pos(Ted *ted, TextBuffer **pbuffer, BufferPos *ppos);
+// make the cursor red for a bit to indicate an error (e.g. no autocompletions)
 void ted_flash_error_cursor(Ted *ted);
+// go to `path` at line `line` and index `index`, opening a new buffer if necessary.
+// if `is_lsp` is set to true, `index` is interpreted as a UTF-16 offset rather than a UTF-32 offset.
 void ted_go_to_position(Ted *ted, const char *path, u32 line, u32 index, bool is_lsp);
+// go to this LSP document position, opening a new buffer containing the file if necessary.
 void ted_go_to_lsp_document_position(Ted *ted, LSP *lsp, LSPDocumentPosition position);
+// cancel this LSP request. if `lsp` or `request` is 0,
+// or if `lsp` is not a valid LSP ID, nothing happens.
 void ted_cancel_lsp_request(Ted *ted, LSPID lsp, LSPRequestID request);
 // how tall is a line buffer?
 float ted_line_buffer_height(Ted *ted);
@@ -1388,7 +1428,9 @@ MessageType ted_message_type_from_lsp(LSPWindowMessageType type);
 void ted_color_settings_for_message_type(MessageType type, ColorSetting *bg_color, ColorSetting *border_color);
 
 // === ui.c ===
+// move selector cursor up by `n` entries
 void selector_up(Ted *ted, Selector *s, i64 n);
+// move selector cursor down by `n` entries
 void selector_down(Ted *ted, Selector *s, i64 n);
 // sort entries alphabetically
 void selector_sort_entries_by_name(Selector *s);
@@ -1407,6 +1449,7 @@ vec2 button_get_size(Ted *ted, const char *text);
 void button_render(Ted *ted, Rect button, const char *text, u32 color);
 // returns true if the button was clicked on.
 bool button_update(Ted *ted, Rect button);
+// returns selected option, or POPUP_NONE if none was selected
 PopupOption popup_update(Ted *ted, u32 options);
 void popup_render(Ted *ted, u32 options, const char *title, const char *body);
 vec2 checkbox_frame(Ted *ted, bool *value, const char *label, vec2 pos);

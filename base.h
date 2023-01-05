@@ -122,7 +122,10 @@ typedef unsigned long long ullong;
 #define PRINTF_FORMAT_STRING
 #endif
 
-#define Status bool WarnUnusedResult // false = error, true = success
+// this type is an alias for bool, except that it
+// produces a warning if it's not used.
+// false = error, true = success
+#define Status bool WarnUnusedResult
 
 #define arr_count(a) (sizeof (a) / sizeof *(a))
 
