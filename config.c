@@ -279,7 +279,6 @@ static u32 config_parse_key_combo(ConfigReader *cfg, const char *str) {
 			{"Enter", NULL, SDLK_RETURN},
 			{"Equals", "Equal", SDLK_EQUALS},
 		};
-		// @TODO(optimize): sort key_names (and split keyname1/2); do a binary search
 		for (size_t i = 0; i < arr_count(key_names); ++i) {
 			KeyName const *k = &key_names[i];
 			if (streq_case_insensitive(str, k->keyname1) || (k->keyname2 && streq_case_insensitive(str, k->keyname2))) {

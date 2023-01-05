@@ -28,6 +28,7 @@ FUTURE FEATURES:
 - write first to <path>.tmp then rename to <path>.
   this prevents freak occurences, e.g. power outage during file write,
   from losing (all) data.
+- manual.md
 - better handling of backspace with space indentation
 - CSS highlighting
 - styles ([color] sections)
@@ -317,6 +318,9 @@ int main(int argc, char **argv) {
 	#else
 	setlocale(LC_ALL, "C.UTF-8");
 	#endif
+	
+	command_init();
+	color_init();
 	
 	// read command-line arguments
 	const char *starting_filename = NULL;

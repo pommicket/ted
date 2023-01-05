@@ -249,29 +249,53 @@ const char *process_geterr(Process *p) {
 }
 
 long long process_write(Process *proc, const char *data, size_t size) {
-	assert(proc->stdin_pipe); // check that process hasn't been killed
-	ssize_t bytes_written = write(proc->stdin_pipe, data, size);
-	if (bytes_written >= 0) {
-		return (long long)bytes_written;
-	} else if (errno == EAGAIN) {
-		return 0;
-	} else {
-		strbuf_printf(proc->error, "%s", strerror(errno));
+	if (!proc->stdin_pipe) { // check that process hasn't been killed
+		strbuf_printf(proc->error, "Process terminated");
 		return -2;
 	}
+	if (size > LLONG_MAX) {
+		strbuf_printf(proc->error, "Too much data to write.");
+		return -2;
+	}
+	size_t so_far = 0;
+	while (so_far < size) {
+		ssize_t bytes_written = write(proc->stdin_pipe, data + so_far, size - so_far);
+		if (bytes_written >= 0) {
+			so_far += (size_t)bytes_written;
+		} else if (errno == EAGAIN) {
+			return (long long)so_far;
+		} else {
+			strbuf_printf(proc->error, "%s", strerror(errno));
+			return -2;
+		}
+	}
+	return (long long)size;
 }
 
 static long long process_read_fd(Process *proc, int fd, char *data, size_t size) {
-	assert(fd);
-	ssize_t bytes_read = read(fd, data, size);
-	if (bytes_read >= 0) {
-		return (long long)bytes_read;
-	} else if (errno == EAGAIN) {
-		return -1;
-	} else {
-		strbuf_printf(proc->error, "%s", strerror(errno));
+	if (!fd) { // check that process hasn't been killed
+		strbuf_printf(proc->error, "Process terminated");
 		return -2;
 	}
+	if (size > LLONG_MAX) {
+		strbuf_printf(proc->error, "Too much data to read.");
+		return -2;
+	}
+	size_t so_far = 0;
+	while (so_far < size) {
+		ssize_t bytes_read = read(fd, data + so_far, size - so_far);
+		if (bytes_read > 0) {
+			so_far += (size_t)bytes_read;
+		} else if (bytes_read == 0) {
+			return (long long)so_far;
+		} else if (errno == EAGAIN) {
+			return so_far == 0 ? -1 : (long long)so_far;
+		} else {
+			strbuf_printf(proc->error, "%s", strerror(errno));
+			return -2;
+		}
+	}
+	return (long long)size;
 }
 
 long long process_read(Process *proc, char *data, size_t size) {

@@ -130,7 +130,7 @@ void time_sleep_ns(u64 ns) {
 }
 
 #error "@TODO :  implement process_write, separate_stderr, working_directory"
-
+#error "@TODO : make sure process_read & process_write do what they're supposed to for both blocking & non-blocking read/writes."
 #include "process.h"
 
 struct Process {

@@ -104,6 +104,7 @@ const char *process_geterr(Process *process);
 // returns:
 // -2 on error
 // or a non-negative number indicating the number of bytes written.
+// If stdin is set to blocking, fewer than `size` bytes will be written only if an error occured.
 long long process_write(Process *process, const char *data, size_t size);
 // read from stdout+stderr
 // returns:
@@ -111,6 +112,7 @@ long long process_write(Process *process, const char *data, size_t size);
 // -1 if no data is available right now
 // 0 on end of file
 // or a positive number indicating the number of bytes read to data (at most size)
+// If stdout is set to blocking, fewer than `size` bytes will be read only if an error occured or end-of-file was reached.
 long long process_read(Process *process, char *data, size_t size);
 // like process_read, but reads stderr.
 // this function ALWAYS RETURNS -2 if separate_stderr is not specified in the ProcessSettings.

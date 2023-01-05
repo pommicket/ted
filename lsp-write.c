@@ -332,7 +332,6 @@ static void message_writer_write_and_free(LSP *lsp, JSONWriter *o) {
 		printf("%s%s%s\n",term_bold(stdout),content,term_clear(stdout));
 	#endif
 	
-	// @TODO: does write always write the full amount? probably not. this should be fixed.
 	process_write(lsp->process, content, strlen(content));
 
 	str_builder_free(&builder);

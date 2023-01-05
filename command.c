@@ -7,7 +7,7 @@ typedef struct {
 	const char *name;
 	Command cmd;
 } CommandName;
-static CommandName const command_names[] = {
+static CommandName command_names[] = {
 	{"unknown", CMD_UNKNOWN},
 	{"noop", CMD_NOOP},
 	{"left", CMD_LEFT},
@@ -99,11 +99,28 @@ static CommandName const command_names[] = {
 
 static_assert_if_possible(arr_count(command_names) == CMD_COUNT)
 
+int command_name_cmp(const void *av, const void *bv) {
+	const CommandName *a = av, *b = bv;
+	return strcmp(a->name, b->name);
+}
+
+void command_init(void) {
+	qsort(command_names, arr_count(command_names), sizeof *command_names, command_name_cmp);
+}
+
 Command command_from_str(const char *str) {
-	// @TODO(optimize): sort command_names, do a binary search
-	for (int i = 0; i < CMD_COUNT; ++i) {
-		if (streq(command_names[i].name, str))
-			return command_names[i].cmd;
+	int lo = 0;
+	int hi = CMD_COUNT;
+	while (lo < hi) {
+		int mid = (lo + hi) / 2;
+		int cmp = strcmp(command_names[mid].name, str);
+		if (cmp < 0) {
+			lo = mid + 1;
+		} else if (cmp > 0) {
+			hi = mid;
+		} else {
+			return command_names[mid].cmd;
+		}
 	}
 	return CMD_UNKNOWN;
 }

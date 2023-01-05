@@ -1009,6 +1009,7 @@ void build_check_for_errors(Ted *ted);
 void build_frame(Ted *ted, float x1, float y1, float x2, float y2);
 
 // === colors.c ===
+void color_init(void);
 ColorSetting color_setting_from_str(const char *str);
 const char *color_setting_to_str(ColorSetting s);
 Status color_from_str(const char *str, u32 *color);
@@ -1017,6 +1018,7 @@ Status color_from_str(const char *str, u32 *color);
 ColorSetting color_for_symbol_kind(SymbolKind kind);
 
 // === command.c ===
+void command_init(void);
 Command command_from_str(const char *str);
 const char *command_to_str(Command c);
 void command_execute(Ted *ted, Command c, i64 argument);

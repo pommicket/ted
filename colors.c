@@ -7,7 +7,7 @@ typedef struct {
 	const char *name;
 } ColorName;
 
-static ColorName const color_names[] = {
+static ColorName color_names[] = {
 	{COLOR_UNKNOWN, "unknown"},
 	{COLOR_TEXT, "text"},
 	{COLOR_TEXT_SECONDARY, "text-secondary"},
@@ -62,12 +62,28 @@ static ColorName const color_names[] = {
 
 static_assert_if_possible(arr_count(color_names) == COLOR_COUNT)
 
+int color_name_cmp(const void *av, const void *bv) {
+	const ColorName *a = av, *b = bv;
+	return strcmp(a->name, b->name);
+}
+
+void color_init(void) {
+	qsort(color_names, arr_count(color_names), sizeof *color_names, color_name_cmp);
+}
+
 ColorSetting color_setting_from_str(const char *str) {
-	// @TODO(optimize): sort color_names, binary search
-	for (int i = 0; i < COLOR_COUNT; ++i) {
-		ColorName const *n = &color_names[i];
-		if (streq(n->name, str))
-			return n->setting;
+	int lo = 0;
+	int hi = COLOR_COUNT;
+	while (lo < hi) {
+		int mid = (lo + hi) / 2;
+		int cmp = strcmp(color_names[mid].name, str);
+		if (cmp < 0) {
+			lo = mid + 1;
+		} else if (cmp > 0) {
+			hi = mid;
+		} else {
+			return color_names[mid].setting;
+		}
 	}
 	return COLOR_UNKNOWN;
 }
