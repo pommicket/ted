@@ -1342,9 +1342,6 @@ i64 buffer_cursor_move_right_words(TextBuffer *buffer, i64 nwords) {
 	return ret;
 }
 
-// Returns a string of word characters (see is_word) around the position,
-// or an empty string if neither of the characters to the left and right of the cursor are word characters.
-// NOTE: The string is invalidated when the buffer is changed!!!
 String32 buffer_word_at_pos(TextBuffer *buffer, BufferPos pos) {
 	buffer_pos_validate(buffer, &pos);
 	Line *line = &buffer->lines[pos.line];
@@ -1723,7 +1720,6 @@ void buffer_select_to_end_of_file(TextBuffer *buffer) {
 	buffer_select_to_pos(buffer, buffer_pos_end_of_file(buffer));
 }
 
-// select the word the cursor is inside of
 void buffer_select_word(TextBuffer *buffer) {
 	BufferPos start_pos = buffer->cursor_pos, end_pos = buffer->cursor_pos;
 	if (start_pos.index > 0)
@@ -1735,7 +1731,6 @@ void buffer_select_word(TextBuffer *buffer) {
 	buffer_select_to_pos(buffer, start_pos);
 }
 
-// select the line the cursor is currently on
 void buffer_select_line(TextBuffer *buffer) {
 	u32 line = buffer->cursor_pos.line;
 	if (line == buffer->nlines - 1)
@@ -1750,8 +1745,7 @@ void buffer_select_all(TextBuffer *buffer) {
 	buffer_select_to_pos(buffer, buffer_pos_end_of_file(buffer));
 }
 
-// stop selecting
-void buffer_disable_selection(TextBuffer *buffer) {
+void buffer_deselect(TextBuffer *buffer) {
 	if (buffer->selection) {
 		buffer->cursor_pos = buffer->selection_pos;
 		buffer->selection = false;
@@ -2198,7 +2192,7 @@ void buffer_end_edit_chain(TextBuffer *buffer) {
 	buffer->chaining_edits = buffer->will_chain_edits = false;
 }
 
-void buffer_copy_or_cut(TextBuffer *buffer, bool cut) {
+static void buffer_copy_or_cut(TextBuffer *buffer, bool cut) {
 	if (buffer->selection) {
 		BufferPos pos1 = buffer_pos_min(buffer->selection_pos, buffer->cursor_pos);
 		BufferPos pos2 = buffer_pos_max(buffer->selection_pos, buffer->cursor_pos);
@@ -2244,12 +2238,17 @@ void buffer_paste(TextBuffer *buffer) {
 }
 
 // if an error occurs, buffer is left untouched (except for the error field) and the function returns false.
-Status buffer_load_file(TextBuffer *buffer, const char *filename) {
+Status buffer_load_file(TextBuffer *buffer, const char *path) {
+	if (!path || !path_is_absolute(path)) {
+		buffer_error(buffer, "Loaded path '%s' is not an absolute path.", path);
+		return false;
+	}
+	
 	// it's important we do this first, since someone might write to the file while we're reading it,
 	// and we want to detect that in buffer_externally_changed
-	double modified_time = timespec_to_seconds(time_last_modified(buffer->filename));
+	double modified_time = timespec_to_seconds(time_last_modified(path));
 	
-	FILE *fp = fopen(filename, "rb");
+	FILE *fp = fopen(path, "rb");
 	bool success = true;
 	Line *lines = NULL;
 	u32 nlines = 0, lines_capacity = 0;
@@ -2263,7 +2262,7 @@ Status buffer_load_file(TextBuffer *buffer, const char *filename) {
 		u32 max_file_size_view_only = default_settings->max_file_size_view_only;
 		
 		if (file_pos == -1 || file_pos == LONG_MAX) {
-			buffer_error(buffer, "Couldn't get file position. There is something wrong with the file '%s'.", filename);
+			buffer_error(buffer, "Couldn't get file position. There is something wrong with the file '%s'.", path);
 			success = false;
 		} else if (file_size > max_file_size_editable && file_size > max_file_size_view_only) {
 			buffer_error(buffer, "File too big (size: %zu).", file_size);
@@ -2323,7 +2322,7 @@ Status buffer_load_file(TextBuffer *buffer, const char *filename) {
 			}
 				
 			if (success) {
-				char *filename_copy = buffer_strdup(buffer, filename);
+				char *filename_copy = buffer_strdup(buffer, path);
 				if (!filename_copy) success = false;
 				if (success) {
 					// everything is good
@@ -2335,7 +2334,7 @@ Status buffer_load_file(TextBuffer *buffer, const char *filename) {
 					buffer->lines_capacity = lines_capacity;
 					buffer->filename = filename_copy;
 					buffer->last_write_time = modified_time;
-					if (!(fs_path_permission(filename) & FS_PERMISSION_WRITE)) {
+					if (!(fs_path_permission(path) & FS_PERMISSION_WRITE)) {
 						// can't write to this file; make the buffer view only.
 						buffer->view_only = true;
 					}
@@ -2355,7 +2354,7 @@ Status buffer_load_file(TextBuffer *buffer, const char *filename) {
 		}
 		fclose(fp);
 	} else {
-		buffer_error(buffer, "Couldn't open file %s: %s.", filename, strerror(errno));
+		buffer_error(buffer, "Couldn't open file %s: %s.", path, strerror(errno));
 		success = false;
 	}
 	return success;

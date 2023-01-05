@@ -98,7 +98,7 @@ int fs_mkdir(const char *path) {
 	}
 }
 
-int fs_get_cwd(char *buf, size_t buflen) {
+int os_get_cwd(char *buf, size_t buflen) {
 	assert(buf && buflen);
 	wchar_t wide_path[4100];
 	DWORD wide_pathlen = GetCurrentDirectoryW(sizeof wide_path - 1, wide_path);

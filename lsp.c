@@ -421,6 +421,10 @@ static int lsp_communication_thread(void *data) {
 }
 
 u32 lsp_document_id(LSP *lsp, const char *path) {
+	if (!path) {
+		assert(0);
+		return 0;
+	}
 	SDL_LockMutex(lsp->document_mutex);
 		u32 *value = str_hash_table_get(&lsp->document_ids, path);
 		if (!value) {

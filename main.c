@@ -26,6 +26,7 @@
 - clangd bug report:
     - textDocumemt/definition on ted.h declarations just gives you the declaration
 FUTURE FEATURES:
+- better handling of backspace with space indentation
 - CSS highlighting
 - styles ([color] sections)
 - make go-to-definition/hover/highlight modifier key configurable
@@ -358,7 +359,7 @@ int main(int argc, char **argv) {
 	// make sure signal handler has access to ted.
 	error_signal_handler_ted = ted;
 
-	fs_get_cwd(ted->start_cwd, sizeof ted->start_cwd);
+	os_get_cwd(ted->start_cwd, sizeof ted->start_cwd);
 	{ // get local and global data directory
 #if _WIN32
 		wchar_t *appdata = NULL;
@@ -408,7 +409,7 @@ int main(int argc, char **argv) {
 	}
 
 	{ // get current working directory
-		fs_get_cwd(ted->cwd, sizeof ted->cwd);
+		os_get_cwd(ted->cwd, sizeof ted->cwd);
 	}
 
 	{ // check if this is the installed version of ted (as opposed to just running it from the directory with the source)

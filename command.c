@@ -546,7 +546,7 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 				build_stop(ted);
 			}
 			if (buffer) {
-				buffer_disable_selection(buffer);
+				buffer_deselect(buffer);
 			}
 		}
 		break;

@@ -42,7 +42,7 @@ int fs_mkdir(const char *path);
 // 1  if the working directory was inserted into buf successfully
 // 0  if buf is too short to hold the cwd
 // -1 if we can't get the cwd for whatever reason.
-int fs_get_cwd(char *buf, size_t buflen);
+int os_get_cwd(char *buf, size_t buflen);
 struct timespec time_last_modified(const char *filename);
 struct timespec time_get(void);
 // sleep for a certain number of nanoseconds

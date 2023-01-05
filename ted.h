@@ -786,69 +786,146 @@ i64 buffer_pos_move_right_words(TextBuffer *buffer, BufferPos *pos, i64 nwords);
 i64 buffer_cursor_move_left_words(TextBuffer *buffer, i64 nwords);
 // returns the number of words successfully moved by.
 i64 buffer_cursor_move_right_words(TextBuffer *buffer, i64 nwords);
+// Returns a string of word characters (see is32_word) around the position,
+// or an empty string if neither of the characters to the left and right of the cursor are word characters.
+// NOTE: The string is invalidated when the buffer is changed!!!
+// The return value should NOT be freed.
 String32 buffer_word_at_pos(TextBuffer *buffer, BufferPos pos);
+// Get the word at the cursor.
+// NOTE: The string is invalidated when the buffer is changed!!!
+// The return value should NOT be freed.
 String32 buffer_word_at_cursor(TextBuffer *buffer);
+// Get a UTF-8 string consisting of the word at the cursor.
+// The return value should be freed.
 char *buffer_word_at_cursor_utf8(TextBuffer *buffer);
+// Buffer position corresponding to the start of line `line` (0-indexed).
 BufferPos buffer_pos_start_of_line(TextBuffer *buffer, u32 line);
+// Buffer position corresponding to the end of line `line` (0-indexed).
 BufferPos buffer_pos_end_of_line(TextBuffer *buffer, u32 line);
+// Move cursor to the start of the line, like the Home key does.
 void buffer_cursor_move_to_start_of_line(TextBuffer *buffer);
+// Move cursor to the end of the line, like the End key does.
 void buffer_cursor_move_to_end_of_line(TextBuffer *buffer);
+// Move cursor to the start of the file, like Ctrl+Home does.
 void buffer_cursor_move_to_start_of_file(TextBuffer *buffer);
+// Move cursor to the end of the file, like Ctrl+End does.
 void buffer_cursor_move_to_end_of_file(TextBuffer *buffer);
+// Get the LSPDocumentID corresponding to the file this buffer contains.
+// The return value is only useful if buffer_lsp(buffer) != NULL.
 LSPDocumentID buffer_lsp_document_id(TextBuffer *buffer);
+// Get LSPPosition corresponding to position in buffer.
 LSPPosition buffer_pos_to_lsp_position(TextBuffer *buffer, BufferPos pos);
+// Get LSPDocumentPosition corresponding to position in buffer.
 LSPDocumentPosition buffer_pos_to_lsp_document_position(TextBuffer *buffer, BufferPos pos);
+// Convert LSPPosition to BufferPos.
 BufferPos buffer_pos_from_lsp(TextBuffer *buffer, LSPPosition lsp_pos);
+// Get the cursor position as an LSPPosition.
 LSPPosition buffer_cursor_pos_as_lsp_position(TextBuffer *buffer);
+// Get the cursor position as an LSPDocumentPosition.
 LSPDocumentPosition buffer_cursor_pos_as_lsp_document_position(TextBuffer *buffer);
+// Put text at a position. All text insertion should eventually go through this function.
 BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 str);
+// Insert a single character at a position.
 void buffer_insert_char_at_pos(TextBuffer *buffer, BufferPos pos, char32_t c);
+// Set the selection to between `buffer->cursor_pos` and `pos`,
+// and move the cursor to `pos`.
 void buffer_select_to_pos(TextBuffer *buffer, BufferPos pos);
-// Like shift+left in most editors, move cursor nchars chars to the left, selecting everything in between
+// Like shift+left, move cursor `nchars` chars to the left, selecting everything in between.
 void buffer_select_left(TextBuffer *buffer, i64 nchars);
+// Like shift+right, move cursor `nchars` chars to the right, selecting everything in between.
 void buffer_select_right(TextBuffer *buffer, i64 nchars);
+// Like shift+down, move cursor `nchars` lines down, selecting everything in between.
 void buffer_select_down(TextBuffer *buffer, i64 nchars);
+// Like shift+up, move cursor `nchars` lines up, selecting everything in between.
 void buffer_select_up(TextBuffer *buffer, i64 nchars);
+// Move the cursor `by` lines down, selecting everything in between.
 void buffer_select_down_blank_lines(TextBuffer *buffer, i64 by);
+// Move the cursor `by` lines up, selecting everything in between.
 void buffer_select_up_blank_lines(TextBuffer *buffer, i64 by);
+// Move the cursor `nwords` words left, selecting everything in between.
 void buffer_select_left_words(TextBuffer *buffer, i64 nwords);
+// Move the cursor `nwords` words right, selecting everything in between.
 void buffer_select_right_words(TextBuffer *buffer, i64 nwords);
+// Like Shift+Home, move cursor to start of line and select everything in between.
 void buffer_select_to_start_of_line(TextBuffer *buffer);
+// Like Shift+End, move cursor to end of line and select everything in between.
 void buffer_select_to_end_of_line(TextBuffer *buffer);
+// Like Ctrl+Shift+Home, move cursor to start of file and select everything in between.
 void buffer_select_to_start_of_file(TextBuffer *buffer);
+// Like Ctrl+Shift+End, move cursor to end of file and select everything in between.
 void buffer_select_to_end_of_file(TextBuffer *buffer);
+// select the word the cursor is inside of
 void buffer_select_word(TextBuffer *buffer);
+// select the line the cursor is currently on
 void buffer_select_line(TextBuffer *buffer);
+// select all of the buffer's contents
 void buffer_select_all(TextBuffer *buffer);
-void buffer_disable_selection(TextBuffer *buffer);
+// Remove current selection.
+void buffer_deselect(TextBuffer *buffer);
+// Scroll up by `npages` pages
 void buffer_page_up(TextBuffer *buffer, i64 npages);
+// Scroll down by `npages` pages
 void buffer_page_down(TextBuffer *buffer, i64 npages);
+// Scroll up by `npages` pages, selecting everything in between
 void buffer_select_page_up(TextBuffer *buffer, i64 npages);
+// Scroll down by `npages` pages, selecting everything in between
 void buffer_select_page_down(TextBuffer *buffer, i64 npages);
-void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_);
+// Delete `nchars` characters starting from `pos`.
+// All text deletion should eventually go through this function.
+void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars);
+// Delete characters between the two positions.
+// The order of `p1` and `p2` is irrelevant.
 i64 buffer_delete_chars_between(TextBuffer *buffer, BufferPos p1, BufferPos p2);
+// Delete current selection.
 i64 buffer_delete_selection(TextBuffer *buffer);
+// Insert UTF-32 text at the cursor, and move the cursor to the end of it.
 void buffer_insert_text_at_cursor(TextBuffer *buffer, String32 str);
+// Insert a single character at the cursor, and move the cursor past it.
 void buffer_insert_char_at_cursor(TextBuffer *buffer, char32_t c);
+// Insert UTF-8 text at the cursor, and move the cursor to the end of it.
 void buffer_insert_utf8_at_cursor(TextBuffer *buffer, const char *utf8);
+// Insert a "tab" at the cursor position, and move the cursor past it.
+// This inserts spaces if ted is configured to indent with spaces.
 void buffer_insert_tab_at_cursor(TextBuffer *buffer);
+// Insert a newline at the cursor position.
+// If `buffer` is a line buffer, this "submits" the buffer.
+// If not, this auto-indents the next line, and moves the cursor to it.
 void buffer_newline(TextBuffer *buffer);
+// Delete `nchars` characters after the cursor.
 void buffer_delete_chars_at_cursor(TextBuffer *buffer, i64 nchars);
-i64 buffer_backspace_at_pos(TextBuffer *buffer, BufferPos *pos, i64 ntimes);
-i64 buffer_backspace_at_cursor(TextBuffer *buffer, i64 ntimes);
+// Delete `nchars` characters before *pos, and set *pos to just before the deleted characters.
+// Returns the number of characters actually deleted.
+i64 buffer_backspace_at_pos(TextBuffer *buffer, BufferPos *pos, i64 nchars);
+// Delete `nchars` characters before the cursor position, and set the cursor position accordingly.
+// Returns the number of characters actually deleted.
+i64 buffer_backspace_at_cursor(TextBuffer *buffer, i64 nchars);
+// Delete `nwords` words after the position.
 void buffer_delete_words_at_pos(TextBuffer *buffer, BufferPos pos, i64 nwords);
+// Delete `nwords` words after the cursor.
 void buffer_delete_words_at_cursor(TextBuffer *buffer, i64 nwords);
+// Delete `nwords` words before *pos, and set *pos to just before the deleted words.
+// Returns the number of words actually deleted.
 void buffer_backspace_words_at_pos(TextBuffer *buffer, BufferPos *pos, i64 nwords);
+// Delete `nwords` words before the cursor position, and set the cursor position accordingly.
+// Returns the number of words actually deleted.
 void buffer_backspace_words_at_cursor(TextBuffer *buffer, i64 nwords);
+// Undo `ntimes` times
 void buffer_undo(TextBuffer *buffer, i64 ntimes);
+// Redo `ntimes` times
 void buffer_redo(TextBuffer *buffer, i64 ntimes);
+// Start a new "edit chain". Undoing once after an edit chain will undo everything in the chain.
 void buffer_start_edit_chain(TextBuffer *buffer);
+// End the edit chain.
 void buffer_end_edit_chain(TextBuffer *buffer);
-void buffer_copy_or_cut(TextBuffer *buffer, bool cut);
+// Copy the current selection to the clipboard.
 void buffer_copy(TextBuffer *buffer);
+// Copy the current selection to the clipboard, and delete it.
 void buffer_cut(TextBuffer *buffer);
+// Insert the clipboard contents at the cursor position.
 void buffer_paste(TextBuffer *buffer);
-bool buffer_load_file(TextBuffer *buffer, const char *filename);
+// Load the file `path`. If `path` is not an absolute path,
+// this function will fail.
+bool buffer_load_file(TextBuffer *buffer, const char *path);
 void buffer_reload(TextBuffer *buffer);
 bool buffer_externally_changed(TextBuffer *buffer);
 void buffer_new_file(TextBuffer *buffer, const char *filename);
