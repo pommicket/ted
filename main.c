@@ -1,6 +1,8 @@
 /*
 @TODO:
-- document lsp.h.
+- :lsp-reset command
+- can we display publishDiagnostics notifications from rust-analyzer (& others)?
+- phantom completions
 - debug-lsp option (which logs LSP messages)
 - check LSP process status (TEST: what happens if LSP server is not installed)
 - make tags_dir the root folder

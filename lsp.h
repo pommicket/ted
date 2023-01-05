@@ -8,7 +8,7 @@
 #include "ds.h"
 #include "os.h"
 
-// a document ID. 0 is a valid document ID, currently.
+// an ID specific to a path. 0 is a valid document ID, currently.
 typedef u32 LSPDocumentID;
 // ID of an LSP server. a server's ID is never 0.
 typedef u32 LSPID;
@@ -18,12 +18,14 @@ typedef struct SDL_mutex *LSPMutex;
 typedef struct SDL_semaphore *LSPSemaphore;
 typedef struct SDL_Thread *LSPThread;
 
+// interface Position in the LSP spec
 typedef struct {
 	u32 line;
 	// NOTE: this is the UTF-16 character index!
 	u32 character;
 } LSPPosition;
 
+// interface TextDocumentPositionParams in the LSP spec
 typedef struct {
 	LSPDocumentID document;
 	LSPPosition pos;
@@ -34,15 +36,19 @@ typedef enum {
 	LSP_RESPONSE
 } LSPMessageType;
 
+// A string in a LSPResponse
 typedef struct {
+	// offset into string_data
 	u32 offset;
 } LSPString;
 
+// interface Range in the LSP spec
 typedef struct {
 	LSPPosition start;
 	LSPPosition end;
 } LSPRange;
 
+// interface Location in the LSP spec
 typedef struct {
 	LSPDocumentID document;
 	LSPRange range;
@@ -175,10 +181,12 @@ typedef struct {
 
 typedef struct {
 	LSPDocumentPosition position;
+	// include the declaration of the symbol as a reference
 	bool include_declaration;
 } LSPRequestReferences;
 
 typedef struct {
+	// string to filter the symbols by
 	char *query;
 } LSPRequestWorkspaceSymbols;
 
@@ -186,7 +194,6 @@ typedef struct {
 	LSPDocumentPosition position;
 	char *new_name;
 } LSPRequestRename;
-
 
 typedef struct {
 	LSPDocumentID *removed; // dynamic array
@@ -283,6 +290,7 @@ typedef enum {
 	#define LSP_COMPLETION_KIND_MAX 25
 } LSPCompletionKind;
 
+// interface TextEdit in the LSP spec
 typedef struct {	
 	LSPRange range;
 	LSPString new_text;
@@ -297,6 +305,7 @@ typedef enum {
 } LSPCompletionEditType;
 
 
+// interface CompletionItem in the LSP spec
 typedef struct {
 	// display text for this completion
 	LSPString label;
@@ -327,6 +336,7 @@ typedef struct {
 } LSPCompletionItem;
 
 typedef struct {
+	// should completions be re-requested when more characters are typed?
 	bool is_complete;
 	// dynamic array
 	LSPCompletionItem *items;
@@ -369,6 +379,7 @@ typedef enum {
 #define LSP_HIGHLIGHT_MAX 3
 } LSPHighlightKind;
 
+// interface DocumentHighlight in the LSP spec
 typedef struct {
 	LSPRange range;
 	LSPHighlightKind kind;
@@ -552,7 +563,8 @@ typedef struct LSP {
 	// thread-safety: same as `capabilities`
 	char32_t *signature_help_retrigger_chars; // dynamic array
 	LSPMutex workspace_folders_mutex;
-		LSPDocumentID *workspace_folders; // dynamic array of root directories of LSP workspace folders
+		// dynamic array of root directories of LSP workspace folders
+		LSPDocumentID *workspace_folders;
 	LSPMutex error_mutex;
 		char error[256];
 } LSP;
@@ -564,7 +576,7 @@ typedef struct LSP {
 bool lsp_get_error(LSP *lsp, char *error, size_t error_size, bool clear);
 void lsp_message_free(LSPMessage *message);
 u32 lsp_document_id(LSP *lsp, const char *path);
-// returned pointer lives exactly as long as lsp.
+// returned pointer lives as long as lsp.
 const char *lsp_document_path(LSP *lsp, LSPDocumentID id);
 // returns the ID of the sent request, or 0 if the request is not supported by the LSP
 // don't free the contents of this request (even on failure)! let me handle it!
@@ -587,10 +599,13 @@ bool lsp_try_add_root_dir(LSP *lsp, const char *new_root_dir);
 void lsp_document_changed(LSP *lsp, const char *document, LSPDocumentChangeEvent change);
 // is this path in the LSP's workspace folders?
 bool lsp_covers_path(LSP *lsp, const char *path);
+// get next message from server
 bool lsp_next_message(LSP *lsp, LSPMessage *message);
 bool lsp_position_eq(LSPPosition a, LSPPosition b);
 bool lsp_document_position_eq(LSPDocumentPosition a, LSPDocumentPosition b);
+// get the start of location's range as a LSPDocumentPosition
 LSPDocumentPosition lsp_location_start_position(LSPLocation location);
+// get the end of location's range as a LSPDocumentPosition
 LSPDocumentPosition lsp_location_end_position(LSPLocation location);
 void lsp_free(LSP *lsp);
 
