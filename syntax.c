@@ -124,7 +124,17 @@ static bool syntax_keyword_matches(const char32_t *text, size_t len, const char 
 }
 
 char32_t syntax_matching_bracket(Language lang, char32_t c) {
-	(void)lang; // not needed yet
+	if (lang == LANG_HTML) {
+		// for most languages, this would look weird since
+		//                       v cursor
+		//       if (x < 5 && y >| 6)
+		//             ^ this will be highlighted as a "matching bracket"
+		// but for HTML this is nice
+		switch (c) {
+		case '<': return '>';
+		case '>': return '<';
+		}
+	}
 	switch (c) {
 	case '(': return ')';
 	case ')': return '(';
@@ -137,7 +147,10 @@ char32_t syntax_matching_bracket(Language lang, char32_t c) {
 }
 
 bool syntax_is_opening_bracket(Language lang, char32_t c) {
-	(void)lang;
+	if (lang == LANG_HTML) {
+		if (c == '<')
+			return true;
+	}
 	switch (c) {
 	case '(':
 	case '[':
