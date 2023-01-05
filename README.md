@@ -70,6 +70,7 @@ to open the command palette, and select "open-config". There are several section
 - `[extensions]` for which file extensions should be mapped to which programming languages
 
 Comments begin with `#`, and all other lines are of the form `key = value`.
+Strings can span multiple lines and can either be delimited with `"` or `\``.
 
 By default ted's settings will automatically update when you save the config file.
 
@@ -163,7 +164,8 @@ to reset all running LSP servers.
 You can integrate any LSP server with ted by setting the `lsp` option in the `[core.<language>]` section of `ted.cfg`
 to the command which starts the server. Some defaults will already be there, and are listed below. Make
 sure you install the LSP(s) you want and put the executables in your PATH (or change the `lsp` variable
-to include the absolute path if not).
+to include the absolute path if not). You can also set configuration options with the `lsp-configuration` option.
+Make sure the configuration you provide is valid JSON.
 
 ### C/C++
 

@@ -295,7 +295,7 @@ static const char *lsp_request_method(LSPRequest *request) {
 		return "workspace/workspaceFolders";
 	case LSP_REQUEST_DID_CHANGE_WORKSPACE_FOLDERS:
 		return "workspace/didChangeWorkspaceFolders";
-	case LSP_REQUEST_JDTLS_CONFIGURATION:
+	case LSP_REQUEST_CONFIGURATION:
 		return "workspace/didChangeConfiguration";
 	case LSP_REQUEST_WORKSPACE_SYMBOLS:
 		return "workspace/symbol";
@@ -613,17 +613,13 @@ void write_request(LSP *lsp, LSPRequest *request) {
 			write_obj_end(o);
 		write_obj_end(o);
 		} break;
-	case LSP_REQUEST_JDTLS_CONFIGURATION:
+	case LSP_REQUEST_CONFIGURATION: {
+		const LSPRequestConfiguration *config = &request->data.configuration;
 		write_key_obj_start(o, "params");
-			write_key_obj_start(o, "settings");
-				write_key_obj_start(o, "java");
-					write_key_obj_start(o, "signatureHelp");
-						write_key_bool(o, "enabled", true);
-					write_obj_end(o);
-				write_obj_end(o);
-			write_obj_end(o);
+			write_key(o, "settings");
+			str_builder_append(&o->builder, config->settings);
 		write_obj_end(o);
-		break;
+		} break;
 	}
 	
 	write_obj_end(o);

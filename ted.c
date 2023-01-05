@@ -192,7 +192,7 @@ LSP *ted_get_lsp(Ted *ted, const char *path, Language language) {
 	if (*settings->lsp) {
 		// start up this LSP
 		char *root_dir = settings_get_root_dir(settings, path);
-		ted->lsps[i] = lsp_create(root_dir, settings->lsp);
+		ted->lsps[i] = lsp_create(root_dir, settings->lsp, settings->lsp_configuration);
 		free(root_dir);
 		// don't actually return it yet, since it's still initializing (see above)
 	}

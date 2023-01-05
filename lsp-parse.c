@@ -929,30 +929,32 @@ void process_message(LSP *lsp, JSON *json) {
 		case LSP_REQUEST_RENAME:
 			add_to_messages = parse_rename(lsp, json, &response);
 			break;
-		case LSP_REQUEST_INITIALIZE: {
-			// it's the response to our initialize request!
-			if (result.type == JSON_OBJECT) {
-				// read server capabilities
-				JSONObject capabilities = json_object_get_object(json, result.val.object, "capabilities");
-				parse_capabilities(lsp, json, capabilities);
-			}
-			
-			LSPRequest initialized = {
-				.type = LSP_REQUEST_INITIALIZED,
-				.data = {{0}},
-			};
-			write_request(lsp, &initialized);
-			// we can now send requests which have nothing to do with initialization
-			lsp->initialized = true;
-			{
-				// configure jdtls so it actually supports signature help
-				// NOTE: this won't send if the LSP isn't jdtls (because of lsp_supports_request)
-				LSPRequest jdtls_configuration = {
-					.type = LSP_REQUEST_JDTLS_CONFIGURATION
+		case LSP_REQUEST_INITIALIZE:
+			if (!lsp->initialized) {
+				// it's the response to our initialize request!
+				if (result.type == JSON_OBJECT) {
+					// read server capabilities
+					JSONObject capabilities = json_object_get_object(json, result.val.object, "capabilities");
+					parse_capabilities(lsp, json, capabilities);
+				}
+				
+				LSPRequest initialized = {
+					.type = LSP_REQUEST_INITIALIZED,
+					.data = {{0}},
 				};
-				lsp_send_request(lsp, &jdtls_configuration);
+				write_request(lsp, &initialized);
+				// we can now send requests which have nothing to do with initialization
+				lsp->initialized = true;
+				if (lsp->configuration_to_send) {
+					LSPRequest configuration = {
+						.type = LSP_REQUEST_CONFIGURATION
+					};
+					configuration.data.configuration.settings = lsp->configuration_to_send;
+					lsp->configuration_to_send = NULL;
+					lsp_send_request(lsp, &configuration);
+				}
 			}
-			} break;
+			break;
 		default:
 			// it's some response we don't care about
 			break;

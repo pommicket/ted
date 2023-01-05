@@ -57,8 +57,11 @@ void lsp_request_free(LSPRequest *r) {
 	case LSP_REQUEST_HIGHLIGHT:
 	case LSP_REQUEST_DID_CLOSE:
 	case LSP_REQUEST_WORKSPACE_FOLDERS:
-	case LSP_REQUEST_JDTLS_CONFIGURATION:
 		break;
+	case LSP_REQUEST_CONFIGURATION: {
+		LSPRequestConfiguration *config = &r->data.configuration;
+		free(config->settings);
+		} break;
 	case LSP_REQUEST_DID_OPEN: {
 		LSPRequestDidOpen *open = &r->data.open;
 		free(open->file_contents);
@@ -165,12 +168,10 @@ static bool lsp_supports_request(LSP *lsp, const LSPRequest *request) {
 	case LSP_REQUEST_DID_OPEN:
 	case LSP_REQUEST_DID_CLOSE:
 	case LSP_REQUEST_DID_CHANGE:
+	case LSP_REQUEST_CONFIGURATION:
 	case LSP_REQUEST_SHUTDOWN:
 	case LSP_REQUEST_EXIT:
 		return true;
-	case LSP_REQUEST_JDTLS_CONFIGURATION:
-		// not perfect but whatever
-		return strstr(lsp->command, "jdtls") != 0;
 	case LSP_REQUEST_COMPLETION:
 		return cap->completion_support;
 	case LSP_REQUEST_SIGNATURE_HELP:
@@ -216,7 +217,7 @@ static bool request_type_is_notification(LSPRequestType type) {
 	case LSP_REQUEST_DID_CLOSE:
 	case LSP_REQUEST_DID_CHANGE:
 	case LSP_REQUEST_DID_CHANGE_WORKSPACE_FOLDERS:
-	case LSP_REQUEST_JDTLS_CONFIGURATION:
+	case LSP_REQUEST_CONFIGURATION:
 		return true;
 	case LSP_REQUEST_INITIALIZE:
 	case LSP_REQUEST_SHUTDOWN:
@@ -452,7 +453,7 @@ const char *lsp_document_path(LSP *lsp, LSPDocumentID document) {
 	return path;
 }
 
-LSP *lsp_create(const char *root_dir, const char *analyzer_command) {
+LSP *lsp_create(const char *root_dir, const char *analyzer_command, const char *configuration) {
 	LSP *lsp = calloc(1, sizeof *lsp);
 	if (!lsp) return NULL;
 	
@@ -470,6 +471,8 @@ LSP *lsp_create(const char *root_dir, const char *analyzer_command) {
 	
 	str_hash_table_create(&lsp->document_ids, sizeof(u32));
 	lsp->command = str_dup(analyzer_command);
+	if (configuration && *configuration)
+		lsp->configuration_to_send = str_dup(configuration);
 	lsp->quit_sem = SDL_CreateSemaphore(0);	
 	lsp->error_mutex = SDL_CreateMutex();
 	lsp->messages_mutex = SDL_CreateMutex();
@@ -574,6 +577,7 @@ void lsp_free(LSP *lsp) {
 	arr_free(lsp->signature_help_trigger_chars);
 	arr_free(lsp->signature_help_retrigger_chars);
 	free(lsp->command);
+	free(lsp->configuration_to_send);
 	memset(lsp, 0, sizeof *lsp);
 	free(lsp);
 }

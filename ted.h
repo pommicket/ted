@@ -144,6 +144,7 @@ typedef struct {
 	char bg_shader_image[TED_PATH_MAX];
 	char root_identifiers[4096];
 	char lsp[512];
+	char lsp_configuration[4096];
 	char build_default_command[256];
 	// [i] = comma-separated string of file extensions for language i, or NULL for none
 	char *language_extensions[LANG_COUNT];

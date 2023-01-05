@@ -61,10 +61,7 @@ typedef enum {
 	LSP_REQUEST_INITIALIZE, // initialize
 	LSP_REQUEST_INITIALIZED, // initialized
 	LSP_REQUEST_CANCEL, // $/cancelRequest
-	// workspace/didChangeConfiguration with parameters specifically for jdtls.
-	// we need this because annoyingly jdtls refuses to give signature help
-	// unless you specifically configure it to do that
-	LSP_REQUEST_JDTLS_CONFIGURATION,
+	LSP_REQUEST_CONFIGURATION, // workspace/didChangeConfiguration
 	LSP_REQUEST_SHUTDOWN, // shutdown
 	LSP_REQUEST_EXIT, // exit
 	LSP_REQUEST_DID_OPEN, // textDocument/didOpen
@@ -201,6 +198,11 @@ typedef struct {
 } LSPRequestDidChangeWorkspaceFolders;
 
 typedef struct {
+	// this string should be valid JSON. will be freed.
+	char *settings;
+} LSPRequestConfiguration;
+
+typedef struct {
 	LSPRequestID id;
 	LSPRequestType type;
 	char *id_string; // if not NULL, this is the ID (only for server-to-client messages; we always use integer IDs)
@@ -210,6 +212,7 @@ typedef struct {
 		LSPRequestDidOpen open;
 		LSPRequestDidClose close;
 		LSPRequestDidChange change;
+		LSPRequestConfiguration configuration;
 		LSPRequestCompletion completion;
 		LSPRequestSignatureHelp signature_help;
 		LSPRequestHover hover;
@@ -548,6 +551,9 @@ typedef struct LSP {
 	bool initialized;
 	// thread-safety: only set once in lsp_create.
 	char *command;
+	// this is set in lsp_create, then later set to NULL when we send over the configuration (after the initialized notification).
+	// thread-safety: set once in lsp_create, then only acessed once in communication thread.
+	char *configuration_to_send;
 	LSPThread communication_thread;
 	LSPSemaphore quit_sem;
 	// thread-safety: only accessed in communication thread
@@ -587,7 +593,7 @@ void lsp_cancel_request(LSP *lsp, LSPRequestID id);
 // don't free the contents of this response! let me handle it!
 void lsp_send_response(LSP *lsp, LSPResponse *response);
 const char *lsp_response_string(const LSPResponse *response, LSPString string);
-LSP *lsp_create(const char *root_dir, const char *analyzer_command);
+LSP *lsp_create(const char *root_dir, const char *analyzer_command, const char *configuration);
 // try to add a new "workspace folder" to the lsp.
 // IMPORTANT: only call this if lsp->initialized is true
 //            (if not we don't yet know whether the server supports workspace folders)

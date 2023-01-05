@@ -1,7 +1,6 @@
 /*
 @TODO:
 - LSP configuration in ted.cfg
-        - remove LSP_REQUEST_JDTLS_CONFIGURATION
 	- disable publishDiagnostics for rust-analyzer (& others)?
 - phantom completions
 - debug-lsp option (which logs LSP messages)

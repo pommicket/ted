@@ -119,6 +119,7 @@ static SettingString const settings_string[] = {
 	{"bg-texture", settings_zero.bg_shader_image, sizeof settings_zero.bg_shader_image, true},
 	{"root-identifiers", settings_zero.root_identifiers, sizeof settings_zero.root_identifiers, true},
 	{"lsp", settings_zero.lsp, sizeof settings_zero.lsp, true},
+	{"lsp-configuration", settings_zero.lsp_configuration, sizeof settings_zero.lsp_configuration, true},
 };
 
 
