@@ -1,6 +1,5 @@
 /*
 @TODO:
-- :lsp-reset command
 - can we display publishDiagnostics notifications from rust-analyzer (& others)?
 - phantom completions
 - debug-lsp option (which logs LSP messages)

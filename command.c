@@ -71,6 +71,7 @@ static CommandName const command_names[] = {
 	{"goto-definition-at-cursor", CMD_GOTO_DEFINITION_AT_CURSOR},
 	{"goto-declaration-at-cursor", CMD_GOTO_DECLARATION_AT_CURSOR},
 	{"goto-type-definition-at-cursor", CMD_GOTO_TYPE_DEFINITION_AT_CURSOR},
+	{"lsp-reset", CMD_LSP_RESET},
 	{"find", CMD_FIND},
 	{"find-replace", CMD_FIND_REPLACE},
 	{"tab-close", CMD_TAB_CLOSE},
@@ -427,6 +428,15 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 			buffer_goto_word_at_cursor(buffer, GOTO_TYPE_DEFINITION);
 		}
 		} break;
+	case CMD_LSP_RESET:
+		for (int i = 0; i < TED_LSP_MAX; ++i) {
+			LSP *lsp = ted->lsps[i];
+			if (lsp) {
+				lsp_free(lsp);
+				ted->lsps[i] = NULL;
+			}
+		}
+		break;
 	case CMD_FIND_USAGES:
 		usages_find(ted);
 		break;

@@ -157,6 +157,9 @@ to navigate between them, just like build errors.
 If these features aren't working properly and you don't know why, try running ted in a terminal (non-Windows) or a debugger (Windows)
 so you can see the stderr output from the server.
 
+If an LSP server crashes or is having difficulty, you can run the `lsp-reset` command (via the command palette)
+to reset all running LSP servers.
+
 You can integrate any LSP server with ted by setting the `lsp` option in the `[core.<language>]` section of `ted.cfg`
 to the command which starts the server. Some defaults will already be there, and are listed below. Make
 sure you install the LSP(s) you want and put the executables in your PATH (or change the `lsp` variable
