@@ -6,6 +6,65 @@
 // all characters that can appear in a number
 #define SYNTAX_DIGITS "0123456789.xXoObBlLuUiIabcdefABCDEF_"
 
+
+// ---- syntax state constants ----
+// syntax state is explained in development.md
+
+// these all say "CPP" but really they're C/C++
+enum {
+	SYNTAX_STATE_CPP_MULTI_LINE_COMMENT = 0x1u, // are we in a multi-line comment? (delineated by /* */)
+	SYNTAX_STATE_CPP_SINGLE_LINE_COMMENT = 0x2u, // if you add a \ to the end of a single-line comment, it is continued to the next line.
+	SYNTAX_STATE_CPP_PREPROCESSOR = 0x4u, // similar to above
+	SYNTAX_STATE_CPP_STRING = 0x8u,
+	SYNTAX_STATE_CPP_RAW_STRING = 0x10u,
+};
+
+enum {
+	SYNTAX_STATE_RUST_COMMENT_DEPTH_MASK = 0xfu, // in rust, /* */ comments can nest.
+	SYNTAX_STATE_RUST_COMMENT_DEPTH_MUL  = 0x1u,
+	SYNTAX_STATE_RUST_COMMENT_DEPTH_BITS = 4, // number of bits we allocate for the comment depth.
+	SYNTAX_STATE_RUST_STRING = 0x10u,
+	SYNTAX_STATE_RUST_STRING_IS_RAW = 0x20u,
+};
+
+enum {
+	SYNTAX_STATE_PYTHON_STRING = 0x01u, // multiline strings (''' and """)
+	SYNTAX_STATE_PYTHON_STRING_DBL_QUOTED = 0x02u, // is this a """ string, as opposed to a ''' string?
+};
+
+enum {
+	SYNTAX_STATE_TEX_DOLLAR = 0x01u, // inside math $ ... $
+	SYNTAX_STATE_TEX_DOLLARDOLLAR = 0x02u, // inside math $$ ... $$
+	SYNTAX_STATE_TEX_VERBATIM = 0x04u, // inside \begin{verbatim} ... \end{verbatim}
+};
+
+enum {
+	SYNTAX_STATE_MARKDOWN_CODE = 0x01u, // inside ``` ``` code section
+};
+
+enum {
+	SYNTAX_STATE_HTML_COMMENT = 0x01u
+};
+
+enum {
+	SYNTAX_STATE_JAVASCRIPT_TEMPLATE_STRING = 0x01u,
+	SYNTAX_STATE_JAVASCRIPT_MULTILINE_COMMENT = 0x02u,
+};
+
+enum {
+	SYNTAX_STATE_JAVA_MULTILINE_COMMENT = 0x01u
+};
+
+enum {
+	SYNTAX_STATE_GO_RAW_STRING = 0x01u, // backtick-enclosed string
+	SYNTAX_STATE_GO_MULTILINE_COMMENT = 0x02u
+};
+
+enum {
+	SYNTAX_STATE_TED_CFG_STRING = 0x01u, // ` or "-delimited string
+	SYNTAX_STATE_TED_CFG_STRING_BACKTICK = 0x01u, // `-delimited string
+};
+
 typedef struct {
 	Language lang;
 	const char *name;
@@ -1146,6 +1205,7 @@ static void syntax_highlight_xml(SyntaxState *state, const char32_t *line, u32 l
 
 static void syntax_highlight_config(SyntaxState *state, const char32_t *line, u32 line_len, SyntaxCharType *char_types, bool is_ted_cfg) {
 	bool string = (*state & SYNTAX_STATE_TED_CFG_STRING) != 0;
+	char32_t string_delimiter = (*state & SYNTAX_STATE_TED_CFG_STRING_BACKTICK) ? '`' : '"';
 	
 	if (line_len == 0) return;
 	
@@ -1165,21 +1225,27 @@ static void syntax_highlight_config(SyntaxState *state, const char32_t *line, u3
 			char_types[i] = string ? SYNTAX_STRING : SYNTAX_NORMAL;
 		switch (line[i]) {
 		case '"':
-			if (string && backslashes % 2 == 0) {
-				string = false;
+		case '`':
+			if (string) {
+				if (backslashes % 2 == 0 && line[i] == string_delimiter) {
+					string = false;
+				}
 			} else {
 				string = true;
+				string_delimiter = line[i];
 			}
 			if (char_types)
 				char_types[i] = SYNTAX_STRING;
 			break;
 		case '#':
-			// don't try highlighting the rest of the line.
-			// for ted.cfg, this could be a color, but for other cfg files,
-			// it might be a comment
-			if (char_types)
-				memset(&char_types[i], 0, line_len - i);
-			i = line_len;
+			if (!string) {
+				// don't try highlighting the rest of the line.
+				// for ted.cfg, this could be a color, but for other cfg files,
+				// it might be a comment
+				if (char_types)
+					memset(&char_types[i], 0, line_len - i);
+				i = line_len;
+			}
 			break;
 		case ANY_DIGIT:
 			if (char_types && i > 0 && !string) {
@@ -1194,6 +1260,8 @@ static void syntax_highlight_config(SyntaxState *state, const char32_t *line, u3
 		default: {
 			if (!char_types)
 				break; // don't care
+			if (string)
+				break;
 			if (i == 0) // none of the keywords in syntax_all_keywords_config should appear at the start of the line
 				break;
 			if (is32_word(line[i-1]) || line[i-1] == '-' || !is32_word(line[i]))
@@ -1219,7 +1287,12 @@ static void syntax_highlight_config(SyntaxState *state, const char32_t *line, u3
 	}
 	
 	if (is_ted_cfg) {
-		*state = SYNTAX_STATE_TED_CFG_STRING * string;
+		*state = 0;
+		if (string) {
+			*state |= SYNTAX_STATE_TED_CFG_STRING;
+			if (string_delimiter == '`')
+				*state |= SYNTAX_STATE_TED_CFG_STRING_BACKTICK;
+		}
 	}
 }
 

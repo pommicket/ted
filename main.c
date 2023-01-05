@@ -1,6 +1,8 @@
 /*
 @TODO:
-- can we display publishDiagnostics notifications from rust-analyzer (& others)?
+- LSP configuration in ted.cfg
+        - remove LSP_REQUEST_JDTLS_CONFIGURATION
+	- disable publishDiagnostics for rust-analyzer (& others)?
 - phantom completions
 - debug-lsp option (which logs LSP messages)
 - check LSP process status (TEST: what happens if LSP server is not installed)
@@ -13,7 +15,6 @@
 - grep -i -n TODO *.[ch]
 - when searching files, put exact matches at the top
 - auto-set build command for cmake (both for windows and unix)
---- LSP MERGE ---
 - some way of opening + closing all C files in directory for clangd
    textDocument/references to work?
 	- maybe it can be done with the clangd config instead.

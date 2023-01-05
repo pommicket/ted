@@ -521,10 +521,10 @@ static i64 config_read_string(Ted *ted, ConfigReader *cfg, char **ptext) {
 	char *p;
 	int backslashes = 0;
 	u32 start_line = cfg->line_number;
+	char delimiter = **ptext;
 	char *start = *ptext + 1;
 	char *str = NULL;
 	for (p = start; ; ++p) {
-		bool done = false;
 		switch (*p) {
 		case '\\':
 			++backslashes;
@@ -532,6 +532,7 @@ static i64 config_read_string(Ted *ted, ConfigReader *cfg, char **ptext) {
 			switch (*p) {
 			case '\\':
 			case '"':
+			case '`':
 				break;
 			case 'n':
 				arr_add(str, '\n');
@@ -551,9 +552,6 @@ static i64 config_read_string(Ted *ted, ConfigReader *cfg, char **ptext) {
 				return -1;
 			}
 			break;
-		case '"':
-			done = true;
-			break;
 		case '\n':
 			++cfg->line_number;
 			break;
@@ -565,7 +563,8 @@ static i64 config_read_string(Ted *ted, ConfigReader *cfg, char **ptext) {
 			arr_clear(str);
 			return -1;
 		}
-		if (done) break;
+		if (*p == delimiter)
+			break;
 		arr_add(str, *p);
 	}
 	
@@ -747,7 +746,7 @@ static void config_parse_line(ConfigReader *cfg, Settings *settings, const Confi
 			char *endp;
 			argument = strtoll(value, &endp, 10);
 			value = endp;
-		} else if (*value == '"') {
+		} else if (*value == '"' || *value == '`') {
 			// string argument
 			
 			// restore newline to handle multi-line strings
@@ -816,7 +815,7 @@ static void config_parse_line(ConfigReader *cfg, Settings *settings, const Confi
 			boolean = false;
 		}
 		
-		if (value[0] == '"') {
+		if (value[0] == '"' || value[0] == '`') {
 			// restore newline to handle multi-line strings
 			// a little bit hacky oh well
 			*newline = '\n';

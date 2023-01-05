@@ -26,64 +26,6 @@
 // max number of LSPs running at once
 #define TED_LSP_MAX 200
 
-
-// ---- syntax state constants ----
-// syntax state is explained in development.md
-
-// these all say "CPP" but really they're C/C++
-enum {
-	SYNTAX_STATE_CPP_MULTI_LINE_COMMENT = 0x1u, // are we in a multi-line comment? (delineated by /* */)
-	SYNTAX_STATE_CPP_SINGLE_LINE_COMMENT = 0x2u, // if you add a \ to the end of a single-line comment, it is continued to the next line.
-	SYNTAX_STATE_CPP_PREPROCESSOR = 0x4u, // similar to above
-	SYNTAX_STATE_CPP_STRING = 0x8u,
-	SYNTAX_STATE_CPP_RAW_STRING = 0x10u,
-};
-
-enum {
-	SYNTAX_STATE_RUST_COMMENT_DEPTH_MASK = 0xfu, // in rust, /* */ comments can nest.
-	SYNTAX_STATE_RUST_COMMENT_DEPTH_MUL  = 0x1u,
-	SYNTAX_STATE_RUST_COMMENT_DEPTH_BITS = 4, // number of bits we allocate for the comment depth.
-	SYNTAX_STATE_RUST_STRING = 0x10u,
-	SYNTAX_STATE_RUST_STRING_IS_RAW = 0x20u,
-};
-
-enum {
-	SYNTAX_STATE_PYTHON_STRING = 0x01u, // multiline strings (''' and """)
-	SYNTAX_STATE_PYTHON_STRING_DBL_QUOTED = 0x02u, // is this a """ string, as opposed to a ''' string?
-};
-
-enum {
-	SYNTAX_STATE_TEX_DOLLAR = 0x01u, // inside math $ ... $
-	SYNTAX_STATE_TEX_DOLLARDOLLAR = 0x02u, // inside math $$ ... $$
-	SYNTAX_STATE_TEX_VERBATIM = 0x04u, // inside \begin{verbatim} ... \end{verbatim}
-};
-
-enum {
-	SYNTAX_STATE_MARKDOWN_CODE = 0x01u, // inside ``` ``` code section
-};
-
-enum {
-	SYNTAX_STATE_HTML_COMMENT = 0x01u
-};
-
-enum {
-	SYNTAX_STATE_JAVASCRIPT_TEMPLATE_STRING = 0x01u,
-	SYNTAX_STATE_JAVASCRIPT_MULTILINE_COMMENT = 0x02u,
-};
-
-enum {
-	SYNTAX_STATE_JAVA_MULTILINE_COMMENT = 0x01u
-};
-
-enum {
-	SYNTAX_STATE_GO_RAW_STRING = 0x01u, // backtick-enclosed string
-	SYNTAX_STATE_GO_MULTILINE_COMMENT = 0x02u
-};
-
-enum {
-	SYNTAX_STATE_TED_CFG_STRING = 0x01u,
-};
-
 typedef u8 SyntaxState;
 
 // types of syntax highlighting
