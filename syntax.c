@@ -123,7 +123,6 @@ static bool syntax_keyword_matches(const char32_t *text, size_t len, const char 
 	}
 }
 
-// returns ')' for '(', etc., or 0 if c is not an opening bracket
 char32_t syntax_matching_bracket(Language lang, char32_t c) {
 	(void)lang; // not needed yet
 	switch (c) {
@@ -137,7 +136,6 @@ char32_t syntax_matching_bracket(Language lang, char32_t c) {
 	return 0;
 }
 
-// returns true for opening brackets, false for closing brackets/non-brackets
 bool syntax_is_opening_bracket(Language lang, char32_t c) {
 	(void)lang;
 	switch (c) {
@@ -1641,10 +1639,6 @@ static void syntax_highlight_go(SyntaxState *state_ptr, const char32_t *line, u3
 	);
 }
 
-// This is the main syntax highlighting function. It will determine which colors to use for each character.
-// Rather than returning colors, it returns a character type (e.g. comment) which can be converted to a color.
-// To highlight multiple lines, start out with a zeroed SyntaxState, and pass a pointer to it each time.
-// You can set char_types to NULL if you just want to advance the state, and don't care about the character types.
 void syntax_highlight(SyntaxState *state, Language lang, const char32_t *line, u32 line_len, SyntaxCharType *char_types) {
 	switch (lang) {
 	case LANG_NONE:

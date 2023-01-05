@@ -171,7 +171,6 @@ static void context_copy(SettingsContext *dest, const SettingsContext *src) {
 		dest->path = str_dup(src->path);
 }
 
-// score is higher if context is closer match.
 long context_score(const char *path, Language lang, const SettingsContext *context) {
 	long score = 0;
 	
@@ -1058,8 +1057,6 @@ static char *last_separator(char *path) {
 	return NULL;
 }
 
-// returns the best guess for the root directory of the project containing `path` (which should be an absolute path)
-// the return value should be freed.
 char *settings_get_root_dir(Settings *settings, const char *path) {
 	char best_path[TED_PATH_MAX];
 	*best_path = '\0';

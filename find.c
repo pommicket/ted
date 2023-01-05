@@ -15,7 +15,6 @@ static u32 find_replace_flags(Ted *ted) {
 	return (ted->find_regex ? 0 : PCRE2_SUBSTITUTE_LITERAL);
 }
 
-// which buffer will be searched?
 TextBuffer *find_search_buffer(Ted *ted) {
 	if (ted->active_buffer && ted->active_buffer != &ted->find_buffer && ted->active_buffer != &ted->replace_buffer) {
 		return ted->active_buffer;
@@ -132,7 +131,7 @@ void find_update(Ted *ted, bool force) {
 	TextBuffer *find_buffer = &ted->find_buffer;
 	u32 flags = find_compilation_flags(ted);
 	if (!force
-		&& !find_buffer->modified // check if buffer has been modified,
+		&& !find_buffer->modified // check if pattern has been modified,
 		&& ted->find_flags == flags) // or checkboxes have been (un)checked
 		return;
 	ted->find_flags = flags;
@@ -267,7 +266,6 @@ static bool find_replace_match(Ted *ted, u32 match_idx) {
 	return success;
 }
 
-// replace the match we are currently highlighting, or do nothing if there is no highlighted match
 void find_replace(Ted *ted) {
 	TextBuffer *buffer = find_search_buffer(ted);
 	if (!buffer) return;
@@ -278,8 +276,7 @@ void find_replace(Ted *ted) {
 		find_update(ted, true);
 	}
 }
-	
-// go to next find result
+
 void find_next(Ted *ted) {
 	if (ted->replace) {
 		find_replace(ted);

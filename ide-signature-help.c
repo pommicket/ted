@@ -14,7 +14,7 @@ static void signature_help_clear(SignatureHelp *help) {
 	help->signature_count = 0;
 }
 
-void signature_help_send_request(Ted *ted) {
+static void signature_help_send_request(Ted *ted) {
 	SignatureHelp *help = &ted->signature_help;
 	Settings *settings = ted_active_settings(ted);
 	if (!settings->signature_help_enabled) {
@@ -44,7 +44,7 @@ void signature_help_retrigger(Ted *ted) {
 	ted->signature_help.retrigger = true;
 }
 
-void signature_help_open(Ted *ted, char32_t trigger) {
+void signature_help_open(Ted *ted, uint32_t trigger) {
 	(void)trigger; // for now we don't send context
 	signature_help_send_request(ted);
 }

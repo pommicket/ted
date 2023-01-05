@@ -2362,8 +2362,6 @@ Status buffer_load_file(TextBuffer *buffer, const char *path) {
 	return success;
 }
 
-// Reloads the file loaded in the buffer.
-// Note that this clears undo history, etc.
 void buffer_reload(TextBuffer *buffer) {
 	if (buffer_is_named_file(buffer)) {
 		BufferPos cursor_pos = buffer->cursor_pos;
@@ -2382,7 +2380,6 @@ void buffer_reload(TextBuffer *buffer) {
 	}
 }
 
-// has this buffer been changed by another program since last save?
 bool buffer_externally_changed(TextBuffer *buffer) {
 	if (!buffer_is_named_file(buffer))
 		return false;

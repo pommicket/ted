@@ -412,10 +412,13 @@ typedef struct {
 } Autocompletion;
 
 enum {
-	// autocomplete was triggered by :autocomplete command
+	// autocomplete/signature help was manually triggered
 	TRIGGER_INVOKED = 0x12000,
 	// autocomplete list needs to be updated because more characters were typed
 	TRIGGER_INCOMPLETE = 0x12001,
+	// signtaure help needs to be updated because the cursor was moved or
+	// the buffer's contents changed.
+	TRIGGER_CONTENT_CHANGE = 0x12002,
 };
 
 // data needed for autocompletion
@@ -925,7 +928,9 @@ void buffer_paste(TextBuffer *buffer);
 // Load the file `path`. If `path` is not an absolute path,
 // this function will fail.
 bool buffer_load_file(TextBuffer *buffer, const char *path);
+// Reloads the file loaded in the buffer.
 void buffer_reload(TextBuffer *buffer);
+// has this buffer been changed by another program since last save?
 bool buffer_externally_changed(TextBuffer *buffer);
 // Clear `buffer`, and set its path to `path`.
 // if `path` is NULL, this will turn `buffer` into an untitled buffer.
@@ -935,23 +940,40 @@ void buffer_new_file(TextBuffer *buffer, const char *path);
 bool buffer_save(TextBuffer *buffer);
 // save, but with a different path
 bool buffer_save_as(TextBuffer *buffer, const char *new_filename);
+// index of first line that will be displayed on screen
 u32 buffer_first_rendered_line(TextBuffer *buffer);
+// index of last line that will be displayed on screen
 u32 buffer_last_rendered_line(TextBuffer *buffer);
+// go to the definition/declaration/etc of the word at the cursor.
 void buffer_goto_word_at_cursor(TextBuffer *buffer, GotoType type);
+// process a mouse click.
+// returns true if the event was consumed.
 bool buffer_handle_click(Ted *ted, TextBuffer *buffer, vec2 click, u8 times);
+// render the buffer in the given rectangle
 void buffer_render(TextBuffer *buffer, Rect r);
+// indent the given lines
 void buffer_indent_lines(TextBuffer *buffer, u32 first_line, u32 last_line);
+// de-indent the given lines
 void buffer_dedent_lines(TextBuffer *buffer, u32 first_line, u32 last_line);
+// indent the selected lines
 void buffer_indent_selection(TextBuffer *buffer);
+// de-indent the selected lines
 void buffer_dedent_selection(TextBuffer *buffer);
+// indent the line the cursor is on
 void buffer_indent_cursor_line(TextBuffer *buffer);
+// de-indent the line the cursor is on
 void buffer_dedent_cursor_line(TextBuffer *buffer);
+// comment the lines from `first_line` to `last_line`
 void buffer_comment_lines(TextBuffer *buffer, u32 first_line, u32 last_line);
+// uncomment the lines from `first_line` to `last_line`
 void buffer_uncomment_lines(TextBuffer *buffer, u32 first_line, u32 last_line);
+// comment the lines from `first_line` to `last_line`, or uncomment them if they're all commented.
 void buffer_toggle_comment_lines(TextBuffer *buffer, u32 first_line, u32 last_line);
+// comment the selected lines, or uncomment them if they're all commented
 void buffer_toggle_comment_selection(TextBuffer *buffer);
 // make sure to call gl_geometry_draw after this
 void buffer_highlight_lsp_range(TextBuffer *buffer, LSPRange range);
+// returns true if p1 and p2 are equal
 bool buffer_pos_eq(BufferPos p1, BufferPos p2);
 
 // returns:
@@ -990,6 +1012,8 @@ void build_frame(Ted *ted, float x1, float y1, float x2, float y2);
 ColorSetting color_setting_from_str(const char *str);
 const char *color_setting_to_str(ColorSetting s);
 Status color_from_str(const char *str, u32 *color);
+// which color setting should be used for the given symbol kind.
+// this is the color used in the autocomplete selector, for example.
 ColorSetting color_for_symbol_kind(SymbolKind kind);
 
 // === command.c ===
@@ -1012,25 +1036,41 @@ void command_execute(Ted *ted, Command c, i64 argument);
 //   ---config file 2---
 //     [core]
 //     tab-width = 4
-void config_read(Ted *ted, ConfigPart **parts, const char *filename);
+void config_read(Ted *ted, ConfigPart **pparts, const char *filename);
 void config_parse(Ted *ted, ConfigPart **pparts);
 void config_free(Ted *ted);
+// returns the best guess for the root directory of the project containing `path`
+// (which should be an absolute path).
+// the return value should be freed.
 char *settings_get_root_dir(Settings *settings, const char *path);
+// how well does this settings context fit the given path and language?
+// the context with the highest score will be chosen.
 long context_score(const char *path, Language lang, const SettingsContext *context);
 
 // === find.c ===
+// which buffer will be searched?
 TextBuffer *find_search_buffer(Ted *ted);
+// height of the find/find+replace menu in pixels
 float find_menu_height(Ted *ted);
+// update find results.
+// if `force` is true, the results will be updated even if the pattern & flags have not been changed.
 void find_update(Ted *ted, bool force);
+// replace the match we are currently highlighting, or do nothing if there is no highlighted match
 void find_replace(Ted *ted);
+// go to next find result
 void find_next(Ted *ted);
+// go to previous find result
 void find_prev(Ted *ted);
+// replace all matches
 void find_replace_all(Ted *ted);
 void find_menu_frame(Ted *ted, Rect menu_bounds);
+// open the find/find+replace menu.
 void find_open(Ted *ted, bool replace);
+// close the find/find+replace menu.
 void find_close(Ted *ted);
 
 // === gl.c ===
+// set by main()
 extern float gl_window_width, gl_window_height;
 // set by main()
 extern int gl_version_major, gl_version_minor;
@@ -1096,24 +1136,39 @@ extern int gl_version_major, gl_version_minor;
 gl_for_each_proc(gl_declare_proc)
 #undef gl_declare_proc
 
+// get addresses of GL functions
 void gl_get_procs(void);
+// create a new reference-counted shader-array-buffer object.
 GlRcSAB *gl_rc_sab_new(GLuint shader, GLuint array, GLuint buffer);
+// increase reference count on `s`.
 void gl_rc_sab_incref(GlRcSAB *s);
+// decrease reference count on `*ps`, and set `*ps` to NULL if the reference count is 0.
 void gl_rc_sab_decref(GlRcSAB **ps);
+// create a new reference-counted texture.
 GlRcTexture *gl_rc_texture_new(GLuint texture);
+// increase reference count on `t`.
 void gl_rc_texture_incref(GlRcTexture *t);
+// decrease reference count on `*t`, and set `*t` to NULL if the reference count is 0.
 void gl_rc_texture_decref(GlRcTexture **pt);
+// create and compile a shader
 GLuint gl_compile_shader(char error_buf[256], const char *code, GLenum shader_type);
+// create new shader program from shaders
 GLuint gl_link_program(char error_buf[256], GLuint *shaders, size_t count);
+// create a shader program from vertex shader and fragment shader source
 GLuint gl_compile_and_link_shaders(char error_buf[256], const char *vshader_code, const char *fshader_code);
 // prints a debug message if `attrib` is not found
 GLuint gl_attrib_location(GLuint program, const char *attrib);
 // prints a debug message if `uniform` is not found
 GLint gl_uniform_location(GLuint program, const char *uniform);
+// initialize geometry stuff
 void gl_geometry_init(void);
+// queue a filled rectangle with the given color.
 void gl_geometry_rect(Rect r, u32 color_rgba);
+// queue the border of a rectangle with the given color.
 void gl_geometry_rect_border(Rect r, float border_thickness, u32 color);
+// draw all queued geometry
 void gl_geometry_draw(void);
+// create an OpenGL texture object from an image file.
 GLuint gl_load_texture_from_image(const char *path);
 
 // === ide-autocomplete.c ===
@@ -1122,11 +1177,14 @@ GLuint gl_load_texture_from_image(const char *path);
 void autocomplete_open(Ted *ted, uint32_t trigger);
 void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *response); 
 void autocomplete_select_cursor_completion(Ted *ted);
+// scroll completion list
 void autocomplete_scroll(Ted *ted, i32 by);
+// move cursor to next completion
 void autocomplete_next(Ted *ted);
+// move cursor to previous completion
 void autocomplete_prev(Ted *ted);
+// close completion menu
 void autocomplete_close(Ted *ted);
-void autocomplete_update_suggested(Ted *ted);
 void autocomplete_frame(Ted *ted);
 
 // === ide-definitions.c ===
@@ -1135,11 +1193,15 @@ void autocomplete_frame(Ted *ted);
 // Note: the document position is required for LSP requests because of overloading (where the name
 // alone isn't sufficient)
 void definition_goto(Ted *ted, LSP *lsp, const char *name, LSPDocumentPosition pos, GotoType type);
+// cancel the last go-to-definition / find symbols request.
 void definition_cancel_lookup(Ted *ted);
 void definitions_process_lsp_response(Ted *ted, LSP *lsp, const LSPResponse *response);
+// open the definitions menu
 void definitions_selector_open(Ted *ted);
+// update the definitions menu
 void definitions_selector_update(Ted *ted);
 void definitions_selector_render(Ted *ted, Rect bounds);
+// close the definitions menu
 void definitions_selector_close(Ted *ted);
 void definitions_frame(Ted *ted);
 
@@ -1154,25 +1216,32 @@ void hover_process_lsp_response(Ted *ted, LSPResponse *response);
 void hover_frame(Ted *ted, double dt);
 
 // === ide-signature-help.c ===
-void signature_help_send_request(Ted *ted);
+// figure out new signature help
 void signature_help_retrigger(Ted *ted);
-void signature_help_open(Ted *ted, char32_t trigger);
+// open signature help. `trigger` should either be the trigger character (e.g. ',')
+// or one of the TRIGGER_* constants.
+void signature_help_open(Ted *ted, uint32_t trigger);
 bool signature_help_is_open(Ted *ted);
 void signature_help_close(Ted *ted);
 void signature_help_process_lsp_response(Ted *ted, const LSPResponse *response);
 void signature_help_frame(Ted *ted);
 
 // === ide-usages.c ===
+// cancel the last "find usages" request
 void usages_cancel_lookup(Ted *ted);
+// find usages for word under the cursor in the active buffer.
 void usages_find(Ted *ted);
-void usages_process_lsp_response(Ted *ted, LSPResponse *response);
+void usages_process_lsp_response(Ted *ted, const LSPResponse *response);
 void usages_frame(Ted *ted);
 
 // === menu.c ===
 void menu_close(Ted *ted);
 void menu_open(Ted *ted, Menu menu);
+// process a :escape command (by default this happens when the escape key is pressed)
 void menu_escape(Ted *ted);
+// get width of menu in pixels
 float menu_get_width(Ted *ted);
+// get rectangle which menu takes up
 Rect menu_rect(Ted *ted);
 void menu_update(Ted *ted);
 void menu_render(Ted *ted);
@@ -1185,8 +1254,13 @@ void menu_shell_down(Ted *ted);
 
 // === node.c ===
 void node_switch_to_tab(Ted *ted, Node *node, u16 new_tab_index);
+// go to the `n`th next tab (e.g. `n=1` goes to the next tab)
+// going past the end of the tabs will "wrap around" to the first one.
 void node_tab_next(Ted *ted, Node *node, i64 n);
+// go to the `n`th previous tab (e.g. `n=1` goes to the previous tab)
+// going before the first tab will "wrap around" to the last one.
 void node_tab_prev(Ted *ted, Node *node, i64 n);
+// switch to a specific tab. if `tab` is out of range, nothing happens.
 void node_tab_switch(Ted *ted, Node *node, i64 tab);
 // swap the position of two tabs
 void node_tabs_swap(Node *node, u16 tab1, u16 tab2);
@@ -1195,13 +1269,17 @@ void node_free(Node *node);
 i32 node_parent(Ted *ted, u16 node_idx);
 // join this node with its sibling
 void node_join(Ted *ted, Node *node);
+// close a node, WITHOUT checking for unsaved changes
 void node_close(Ted *ted, u16 node_idx);
 // close tab, WITHOUT checking for unsaved changes!
 // returns true if the node is still open
 bool node_tab_close(Ted *ted, Node *node, u16 index);
 void node_frame(Ted *ted, Node *node, Rect r);
+// make a split
 void node_split(Ted *ted, Node *node, bool vertical);
+// switch to the other side of the current split.
 void node_split_switch(Ted *ted);
+// swap the two sides of the current split.
 void node_split_swap(Ted *ted);
 
 // === session.c ===
@@ -1211,11 +1289,20 @@ void session_read(Ted *ted);
 // === syntax.c ===
 Language language_from_str(const char *str);
 const char *language_to_str(Language language);
+// string which should be put before comments in the given language
 const char *language_comment_start(Language l);
+// string which should be put after comments in the given language
 const char *language_comment_end(Language l);
+// get the color setting associated with the given syntax highlighting type
 ColorSetting syntax_char_type_to_color_setting(SyntaxCharType t);
+// returns ')' for '(', etc., or 0 if c is not an opening bracket
 char32_t syntax_matching_bracket(Language lang, char32_t c);
+// returns true for opening brackets, false for closing brackets/non-brackets
 bool syntax_is_opening_bracket(Language lang, char32_t c);
+// This is the main syntax highlighting function. It will determine which colors to use for each character.
+// Rather than returning colors, it returns a character type (e.g. comment) which can be converted to a color.
+// To highlight multiple lines, start out with a zeroed SyntaxState, and pass a pointer to it each time.
+// You can set char_types to NULL if you just want to advance the state, and don't care about the character types.
 void syntax_highlight(SyntaxState *state, Language lang, const char32_t *line, u32 line_len, SyntaxCharType *char_types);
 
 // === tags.c ===
@@ -1225,6 +1312,7 @@ void tags_generate(Ted *ted, bool run_in_build_window);
 // (still maxing out at `out_size`).
 // each element in `out` should be freed when you're done with them.
 size_t tags_beginning_with(Ted *ted, const char *prefix, char **out, size_t out_size);
+// go to the definition of the given tag
 bool tag_goto(Ted *ted, const char *tag);
 // get all tags in the tags file as SymbolInfos.
 SymbolInfo *tags_get_symbols(Ted *ted);

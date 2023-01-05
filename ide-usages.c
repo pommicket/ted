@@ -29,14 +29,14 @@ void usages_find(Ted *ted) {
 }
 
 
-void usages_process_lsp_response(Ted *ted, LSPResponse *response) {
+void usages_process_lsp_response(Ted *ted, const LSPResponse *response) {
 	Usages *usages = &ted->usages;
 	if (response->request.type != LSP_REQUEST_REFERENCES)
 		return; // not for us
 	if (response->request.id != usages->last_request_id)
 		return;
 	LSP *lsp = ted_get_lsp_by_id(ted, usages->last_request_lsp);
-	LSPResponseReferences *refs = &response->data.references;
+	const LSPResponseReferences *refs = &response->data.references;
 	if (lsp && arr_len(refs->locations)) { 
 		TextBuffer *buffer = &ted->build_buffer;
 		build_setup_buffer(ted);

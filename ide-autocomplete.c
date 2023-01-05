@@ -86,7 +86,7 @@ void autocomplete_close(Ted *ted) {
 	}
 }
 
-void autocomplete_update_suggested(Ted *ted) {
+static void autocomplete_update_suggested(Ted *ted) {
 	Autocomplete *ac = &ted->autocomplete;
 	arr_clear(ac->suggested);
 	char *word = str32_to_utf8_cstr(

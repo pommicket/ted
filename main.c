@@ -18,10 +18,10 @@
    textDocument/references to work?
 	- maybe it can be done with the clangd config instead.
 	- does vscode have the same problem?
-- more documentation generally (development.md or something?)
+- more documentation generally
 - rust-analyzer bug reports:
     - bad json can give "Unexpected error: client exited without proper shutdown sequence"
-    - containerName not always given
+    - containerName not always given in textDocument/references
 - clangd bug report:
     - textDocumemt/definition on ted.h declarations just gives you the declaration
 FUTURE FEATURES:
