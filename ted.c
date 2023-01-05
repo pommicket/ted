@@ -110,7 +110,7 @@ char *ted_get_root_dir_of(Ted *ted, const char *path) {
 char *ted_get_root_dir(Ted *ted) {
 	TextBuffer *buffer = ted->active_buffer;
 	if (buffer) {
-		return ted_get_root_dir_of(ted, buffer->filename);
+		return ted_get_root_dir_of(ted, buffer->path);
 	} else {
 		return ted_get_root_dir_of(ted, ted->cwd);
 	}
@@ -407,11 +407,13 @@ static Status ted_open_buffer(Ted *ted, u16 *buffer_idx, u16 *tab) {
 }
 
 TextBuffer *ted_get_buffer_with_file(Ted *ted, const char *path) {
+	if (!path) return NULL;
+	
 	bool *buffers_used = ted->buffers_used;
 	TextBuffer *buffers = ted->buffers;
 	for (u16 i = 0; i < TED_MAX_BUFFERS; ++i) {
 		if (buffers_used[i]) {
-			if (buffers[i].filename && paths_eq(path, buffers[i].filename)) {
+			if (buffers[i].path && paths_eq(path, buffers[i].path)) {
 				return &buffers[i];
 			}
 		}
@@ -432,7 +434,7 @@ bool ted_open_file(Ted *ted, const char *filename) {
 	
 	// not open; we need to load it
 	u16 buffer_idx, tab_idx;
-	if (ted->active_buffer && buffer_is_untitled(ted->active_buffer) && buffer_empty(ted->active_buffer)) {
+	if (ted->active_buffer && !ted->active_buffer->path && buffer_empty(ted->active_buffer)) {
 		// the active buffer is just an empty untitled buffer. open it here.
 		return buffer_load_file(ted->active_buffer, path);
 	} else if (ted_open_buffer(ted, &buffer_idx, &tab_idx)) {
@@ -456,10 +458,14 @@ bool ted_new_file(Ted *ted, const char *filename) {
 	if (filename)
 		ted_path_full(ted, filename, path, sizeof path);
 	else
-		strbuf_cpy(path, TED_UNTITLED);
-	if (ted_open_buffer(ted, &buffer_idx, &tab_idx)) {
-		TextBuffer *buffer = &ted->buffers[buffer_idx];
-		buffer_new_file(buffer, path);
+		*path = '\0';
+	TextBuffer *buffer = ted_get_buffer_with_file(ted, path);
+	if (buffer) {
+		ted_switch_to_buffer(ted, buffer);
+		return true;
+	} else if (ted_open_buffer(ted, &buffer_idx, &tab_idx)) {
+		buffer = &ted->buffers[buffer_idx];
+		buffer_new_file(buffer, *path ? path : NULL);
 		if (!buffer_has_error(buffer)) {
 			return true;
 		} else {
@@ -481,7 +487,7 @@ bool ted_save_all(Ted *ted) {
 		if (buffers_used[i]) {
 			TextBuffer *buffer = &ted->buffers[i];
 			if (buffer_unsaved_changes(buffer)) {
-				if (buffer->filename && buffer_is_untitled(buffer)) {
+				if (!buffer->path) {
 					ted_switch_to_buffer(ted, buffer);
 					menu_open(ted, MENU_SAVE_AS);
 					success = false; // we haven't saved this buffer yet; we've just opened the "save as" menu.

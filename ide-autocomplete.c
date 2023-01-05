@@ -112,6 +112,9 @@ static void autocomplete_no_suggestions(Ted *ted) {
 }
 
 static void autocomplete_send_completion_request(Ted *ted, TextBuffer *buffer, BufferPos pos, uint32_t trigger) {
+	if (!buffer->path)
+		return; // no can do
+	
 	LSP *lsp = buffer_lsp(buffer);
 	Autocomplete *ac = &ted->autocomplete;
 
@@ -129,7 +132,7 @@ static void autocomplete_send_completion_request(Ted *ted, TextBuffer *buffer, B
 	
 	request.data.completion = (LSPRequestCompletion) {
 		.position = {
-			.document = lsp_document_id(lsp, buffer->filename),
+			.document = lsp_document_id(lsp, buffer->path),
 			.pos = buffer_pos_to_lsp_position(buffer, pos)
 		},
 		.context = {
@@ -295,7 +298,7 @@ void autocomplete_open(Ted *ted, uint32_t trigger) {
 	if (ac->open) return;
 	if (!ted->active_buffer) return;
 	TextBuffer *buffer = ted->active_buffer;
-	if (!buffer->filename) return;
+	if (!buffer->path) return;
 	if (buffer->view_only) return;
 	
 	ted->cursor_error_time = 0;

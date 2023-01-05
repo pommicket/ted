@@ -341,7 +341,7 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 	case CMD_SAVE:
 		ted->last_save_time = ted->frame_time;
 		if (buffer) {
-			if (buffer_is_untitled(buffer)) {
+			if (!buffer->path) {
 				command_execute(ted, CMD_SAVE_AS, 1);
 				return;
 			}
@@ -374,7 +374,8 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 				if (buffers_used[i]) {
 					buffer = &ted->buffers[i];
 					if (buffer_unsaved_changes(buffer)) {
-						strbuf_catf(ted->warn_unsaved_names, "%s%s", first ? "" : ", ", path_filename(buffer->filename));
+						const char *path = buffer_display_filename(buffer);
+						strbuf_catf(ted->warn_unsaved_names, "%s%s", first ? "" : ", ", path);
 						first = false;
 					}
 				}
@@ -484,7 +485,7 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 			if (argument != 2 && buffer_unsaved_changes(buffer)) {
 				// there are unsaved changes!
 				ted->warn_unsaved = CMD_TAB_CLOSE;
-				strbuf_printf(ted->warn_unsaved_names, "%s", path_filename(buffer->filename));
+				strbuf_printf(ted->warn_unsaved_names, "%s", buffer_display_filename(buffer));
 				menu_open(ted, MENU_WARN_UNSAVED);
 			} else {
 				node_tab_close(ted, node, node->active_tab);

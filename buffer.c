@@ -4,7 +4,7 @@
 
 #include "ted.h"
 
-
+#define BUFFER_UNTITLED "Untitled" // what to call untitled buffers
 
 // this is a macro so we get -Wformat warnings
 #define buffer_error(buffer, ...) \
@@ -60,15 +60,12 @@ bool buffer_empty(TextBuffer *buffer) {
 	return buffer->nlines == 1 && buffer->lines[0].len == 0;
 }
 
-bool buffer_is_untitled(TextBuffer *buffer) {
-	if (buffer->filename)
-		return streq(buffer->filename, TED_UNTITLED);
-	else
-		return false;
+bool buffer_is_named_file(TextBuffer *buffer) {
+	return buffer->path != NULL;
 }
 
-bool buffer_is_named_file(TextBuffer *buffer) {
-	return buffer->filename && !buffer_is_untitled(buffer);
+const char *buffer_display_filename(TextBuffer *buffer) {
+	return buffer->path ? path_filename(buffer->path) : BUFFER_UNTITLED;
 }
 
 // add this edit to the undo history
@@ -170,7 +167,7 @@ bool buffer_pos_valid(TextBuffer *buffer, BufferPos p) {
 
 // are there any unsaved changes?
 bool buffer_unsaved_changes(TextBuffer *buffer) {
-	if (buffer_is_untitled(buffer) && buffer_empty(buffer))
+	if (!buffer->path && buffer_empty(buffer))
 		return false; // don't worry about empty untitled buffers
 	return arr_len(buffer->undo_history) != buffer->undo_history_write_pos;
 }
@@ -220,14 +217,15 @@ static Font *buffer_font(TextBuffer *buffer) {
 
 // what programming language is this?
 Language buffer_language(TextBuffer *buffer) {
+	if (!buffer->path)
+		return LANG_NONE;
+	
 	// @TODO(optimization): cache this?
 	//         (we're calling buffer_lsp on every edit and that calls this)
 	if (buffer->manual_language >= 1 && buffer->manual_language <= LANG_COUNT)
 		return (Language)(buffer->manual_language - 1);
 	const Settings *settings = buffer->ted->default_settings; // important we don't use buffer_settings here since that would cause a loop!
-	const char *filename = buffer->filename;
-	if (!filename)
-		return LANG_NONE;
+	const char *filename = path_filename(buffer->path);
 	size_t filename_len = strlen(filename);
 
 	int match_score = 0;
@@ -257,11 +255,15 @@ Language buffer_language(TextBuffer *buffer) {
 	return match;
 }
 
-// set filename = NULL to default to buffer->filename
-static void buffer_send_lsp_did_close(TextBuffer *buffer, LSP *lsp, const char *filename) {
+// set path = NULL to default to buffer->path
+static void buffer_send_lsp_did_close(TextBuffer *buffer, LSP *lsp, const char *path) {
+	if (path && !path_is_absolute(path)) {
+		assert(0);
+		return;
+	}
 	LSPRequest did_close = {.type = LSP_REQUEST_DID_CLOSE};
 	did_close.data.close = (LSPRequestDidClose){
-		.document = lsp_document_id(lsp, filename ? filename : buffer->filename)
+		.document = lsp_document_id(lsp, path ? path : buffer->path)
 	};
 	lsp_send_request(lsp, &did_close);
 	buffer->lsp_opened_in = 0;
@@ -276,7 +278,7 @@ static void buffer_send_lsp_did_open(TextBuffer *buffer, LSP *lsp, char *buffer_
 	LSPRequest request = {.type = LSP_REQUEST_DID_OPEN};
 	LSPRequestDidOpen *open = &request.data.open;
 	open->file_contents = buffer_contents;
-	open->document = lsp_document_id(lsp, buffer->filename);
+	open->document = lsp_document_id(lsp, buffer->path);
 	open->language = buffer_language(buffer);
 	lsp_send_request(lsp, &request);
 	buffer->lsp_opened_in = lsp->id;
@@ -289,7 +291,7 @@ LSP *buffer_lsp(TextBuffer *buffer) {
 		return NULL;
 	if (buffer->view_only)
 		return NULL; // we don't really want to start up an LSP in /usr/include
-	LSP *true_lsp = ted_get_lsp(buffer->ted, buffer->filename, buffer_language(buffer));
+	LSP *true_lsp = ted_get_lsp(buffer->ted, buffer->path, buffer_language(buffer));
 	LSP *curr_lsp = ted_get_lsp_by_id(buffer->ted, buffer->lsp_opened_in);
 	if (true_lsp != curr_lsp) {
 		if (curr_lsp)
@@ -303,7 +305,7 @@ LSP *buffer_lsp(TextBuffer *buffer) {
 
 
 Settings *buffer_settings(TextBuffer *buffer) {
-	return ted_get_settings(buffer->ted, buffer->filename, buffer_language(buffer));
+	return ted_get_settings(buffer->ted, buffer->path, buffer_language(buffer));
 }
 
 
@@ -723,7 +725,7 @@ void buffer_free(TextBuffer *buffer) {
 		buffer_line_free(&lines[i]);
 	}
 	free(lines);
-	free(buffer->filename);
+	free(buffer->path);
 
 	arr_foreach_ptr(buffer->undo_history, BufferEdit, edit)
 		buffer_edit_free(edit);
@@ -1434,7 +1436,7 @@ static Status buffer_insert_lines(TextBuffer *buffer, u32 where, u32 number) {
 
 LSPDocumentID buffer_lsp_document_id(TextBuffer *buffer) {
 	LSP *lsp = buffer_lsp(buffer);
-	return lsp ? lsp_document_id(lsp, buffer->filename) : 0;
+	return lsp ? lsp_document_id(lsp, buffer->path) : 0;
 }
 
 // LSP uses UTF-16 indices because Microsoft fucking loves UTF-16 and won't let it die
@@ -1499,7 +1501,7 @@ static void buffer_send_lsp_did_change(LSP *lsp, TextBuffer *buffer, BufferPos p
 	event.range.start = buffer_pos_to_lsp_position(buffer, pos);
 	BufferPos pos_end = buffer_pos_advance(buffer, pos, nchars_deleted);
 	event.range.end = buffer_pos_to_lsp_position(buffer, pos_end);
-	lsp_document_changed(lsp, buffer->filename, event);
+	lsp_document_changed(lsp, buffer->path, event);
 }
 
 // inserts the given text, returning the position of the end of the text
@@ -2322,8 +2324,8 @@ Status buffer_load_file(TextBuffer *buffer, const char *path) {
 			}
 				
 			if (success) {
-				char *filename_copy = buffer_strdup(buffer, path);
-				if (!filename_copy) success = false;
+				char *path_copy = buffer_strdup(buffer, path);
+				if (!path_copy) success = false;
 				if (success) {
 					// everything is good
 					buffer_clear(buffer);
@@ -2332,7 +2334,7 @@ Status buffer_load_file(TextBuffer *buffer, const char *path) {
 					buffer->frame_earliest_line_modified = 0;
 					buffer->frame_latest_line_modified = nlines - 1;
 					buffer->lines_capacity = lines_capacity;
-					buffer->filename = filename_copy;
+					buffer->path = path_copy;
 					buffer->last_write_time = modified_time;
 					if (!(fs_path_permission(path) & FS_PERMISSION_WRITE)) {
 						// can't write to this file; make the buffer view only.
@@ -2363,12 +2365,12 @@ Status buffer_load_file(TextBuffer *buffer, const char *path) {
 // Reloads the file loaded in the buffer.
 // Note that this clears undo history, etc.
 void buffer_reload(TextBuffer *buffer) {
-	if (buffer->filename && !buffer_is_untitled(buffer)) {
+	if (buffer_is_named_file(buffer)) {
 		BufferPos cursor_pos = buffer->cursor_pos;
 		float x1 = buffer->x1, y1 = buffer->y1, x2 = buffer->x2, y2 = buffer->y2;
 		double scroll_x = buffer->scroll_x; double scroll_y = buffer->scroll_y;
-		char *filename = str_dup(buffer->filename);
-		if (buffer_load_file(buffer, filename)) {
+		char *path = str_dup(buffer->path);
+		if (buffer_load_file(buffer, path)) {
 			buffer->x1 = x1; buffer->y1 = y1; buffer->x2 = x2; buffer->y2 = y2;
 			buffer->cursor_pos = cursor_pos;
 			buffer->scroll_x = scroll_x;
@@ -2376,7 +2378,7 @@ void buffer_reload(TextBuffer *buffer) {
 			buffer_validate_cursor(buffer);
 			buffer_correct_scroll(buffer);
 		}
-		free(filename);
+		free(path);
 	}
 }
 
@@ -2384,31 +2386,34 @@ void buffer_reload(TextBuffer *buffer) {
 bool buffer_externally_changed(TextBuffer *buffer) {
 	if (!buffer_is_named_file(buffer))
 		return false;
-	return buffer->last_write_time != timespec_to_seconds(time_last_modified(buffer->filename));
+	return buffer->last_write_time != timespec_to_seconds(time_last_modified(buffer->path));
 }
 
-void buffer_new_file(TextBuffer *buffer, const char *filename) {
+void buffer_new_file(TextBuffer *buffer, const char *path) {
+	if (path && !path_is_absolute(path)) {
+		buffer_error(buffer, "Cannot create %s: path is not absolute", path);
+		return;
+	}
+	
 	buffer_clear(buffer);
 
-	if (filename)
-		buffer->filename = buffer_strdup(buffer, filename);
+	if (path)
+		buffer->path = buffer_strdup(buffer, path);
 	buffer->lines_capacity = 4;
 	buffer->lines = buffer_calloc(buffer, buffer->lines_capacity, sizeof *buffer->lines);
 	buffer->nlines = 1;
 }
 
-// Save the buffer to its current filename. This will rewrite the entire file, regardless of
-// whether there are any unsaved changes.
 bool buffer_save(TextBuffer *buffer) {
 	const Settings *settings = buffer_settings(buffer);
 	
-	if (!buffer->is_line_buffer && buffer->filename) {
+	if (buffer_is_named_file(buffer)) {
 		if (buffer->view_only) {
 			buffer_error(buffer, "Can't save view-only file.");
 			return false;
 		}
 
-		FILE *out = fopen(buffer->filename, "wb");
+		FILE *out = fopen(buffer->path, "wb");
 		if (out) {
 			if (settings->auto_add_newline) {
 				Line *last_line = &buffer->lines[buffer->nlines - 1];
@@ -2427,7 +2432,7 @@ bool buffer_save(TextBuffer *buffer) {
 					size_t bytes = unicode_utf32_to_utf8(utf8, *p);
 					if (bytes != (size_t)-1) {
 						if (fwrite(utf8, 1, bytes, out) != bytes) {
-							buffer_error(buffer, "Couldn't write to %s.", buffer->filename);
+							buffer_error(buffer, "Couldn't write to %s.", buffer->path);
 						}
 					}
 				}
@@ -2438,24 +2443,24 @@ bool buffer_save(TextBuffer *buffer) {
 			}
 			if (ferror(out)) {
 				if (!buffer_has_error(buffer))
-					buffer_error(buffer, "Couldn't write to %s.", buffer->filename);
+					buffer_error(buffer, "Couldn't write to %s.", buffer->path);
 			}
 			if (fclose(out) != 0) {
 				if (!buffer_has_error(buffer))
-					buffer_error(buffer, "Couldn't close file %s.", buffer->filename);
+					buffer_error(buffer, "Couldn't close file %s.", buffer->path);
 			}
-			buffer->last_write_time = timespec_to_seconds(time_last_modified(buffer->filename));
+			buffer->last_write_time = timespec_to_seconds(time_last_modified(buffer->path));
 			bool success = !buffer_has_error(buffer);
 			if (success) {
 				buffer->undo_history_write_pos = arr_len(buffer->undo_history);
-				const char *name = buffer->filename ? path_filename(buffer->filename) : TED_UNTITLED;
-				if (streq(name, "ted.cfg") && buffer_settings(buffer)->auto_reload_config) {
+				if (buffer->path && streq(path_filename(buffer->path), "ted.cfg")
+					&& buffer_settings(buffer)->auto_reload_config) {
 					ted_load_configs(buffer->ted, true);
 				}
 			}
 			return success;
 		} else {
-			buffer_error(buffer, "Couldn't open file %s for writing: %s.", buffer->filename, strerror(errno));
+			buffer_error(buffer, "Couldn't open file %s for writing: %s.", buffer->path, strerror(errno));
 			return false;
 		}
 	} else {
@@ -2464,26 +2469,31 @@ bool buffer_save(TextBuffer *buffer) {
 	}
 }
 
-// save, but with a different file name
-bool buffer_save_as(TextBuffer *buffer, const char *new_filename) {
-	LSP *lsp = buffer_lsp(buffer);
-	char *prev_filename = buffer->filename;
-	buffer->filename = buffer_strdup(buffer, new_filename);
+bool buffer_save_as(TextBuffer *buffer, const char *new_path) {
+	if (!path_is_absolute(new_path)) {
+		assert(0);
+		buffer_error(buffer, "New path %s is not absolute.", new_path);
+		return false;
+	}
 	
-	if (buffer->filename && buffer_save(buffer)) {
+	LSP *lsp = buffer_lsp(buffer);
+	char *prev_path = buffer->path;
+	buffer->path = buffer_strdup(buffer, new_path);
+	
+	if (buffer->path && buffer_save(buffer)) {
 		buffer->view_only = false;
-		// ensure whole file is syntax highlighted when saving with a different
+		// ensure whole file is re-highlighted when saving with a different
 		//  file extension
 		buffer->frame_earliest_line_modified = 0;
 		buffer->frame_latest_line_modified = buffer->nlines - 1;
 		if (lsp)
-			buffer_send_lsp_did_close(buffer, lsp, prev_filename);
+			buffer_send_lsp_did_close(buffer, lsp, prev_path);
 		// we'll send a didOpen the next time buffer_lsp is called.
-		free(prev_filename);
+		free(prev_path);
 		return true;
 	} else {
-		free(buffer->filename);
-		buffer->filename = prev_filename;
+		free(buffer->path);
+		buffer->path = prev_path;
 		return false;
 	}
 }

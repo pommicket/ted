@@ -17,15 +17,17 @@
 - some way of opening + closing all C files in directory for clangd
    textDocument/references to work?
 	- maybe it can be done with the clangd config instead.
+	- does vscode have the same problem?
 - more documentation generally (development.md or something?)
-- rename buffer->filename to buffer->path
-    - make buffer->path NULL for untitled buffers & fix resulting mess
 - rust-analyzer bug reports:
     - bad json can give "Unexpected error: client exited without proper shutdown sequence"
     - containerName not always given
 - clangd bug report:
     - textDocumemt/definition on ted.h declarations just gives you the declaration
 FUTURE FEATURES:
+- write first to <path>.tmp then rename to <path>.
+  this prevents freak occurences, e.g. power outage during file write,
+  from losing (all) data.
 - better handling of backspace with space indentation
 - CSS highlighting
 - styles ([color] sections)
@@ -770,7 +772,7 @@ int main(int argc, char **argv) {
 			TextBuffer *buffer = ted->active_buffer;
 			if (buffer) {
 				if (buffer_is_named_file(buffer)) {
-					const char *buffer_path = buffer->filename;
+					const char *buffer_path = buffer->path;
 					assert(*buffer_path);
 					char *last_sep = strrchr(buffer_path, PATH_SEPARATOR);
 					if (last_sep) {
@@ -791,7 +793,7 @@ int main(int argc, char **argv) {
 				if (buffer_settings(active_buffer)->auto_reload)
 					buffer_reload(active_buffer);
 				else {
-					strbuf_cpy(ted->ask_reload, active_buffer->filename);
+					strbuf_cpy(ted->ask_reload, buffer_display_filename(active_buffer));
 					menu_open(ted, MENU_ASK_RELOAD);
 				}
 			}

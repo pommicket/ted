@@ -19,7 +19,6 @@
 #define TED_VERSION "2.0"
 #define TED_VERSION_FULL "ted v. " TED_VERSION
 #define TED_PATH_MAX 256
-#define TED_UNTITLED "Untitled" // what to call untitled buffers
 #define TED_CFG "ted.cfg" // config filename
 
 #define TEXT_SIZE_MIN 6
@@ -255,10 +254,10 @@ typedef struct {
 
 // a buffer - this includes line buffers, unnamed buffers, the build buffer, etc.
 typedef struct {
-	char *filename; // NULL if this buffer doesn't correspond to a file (e.g. line buffers)
+	char *path; // NULL if this buffer is untitled or doesn't correspond to a file (e.g. line buffers)
 	struct Ted *ted; // we keep a back-pointer to the ted instance so we don't have to pass it in to every buffer function
 	double scroll_x, scroll_y; // number of characters scrolled in the x/y direction
-	double last_write_time; // last write time to filename.
+	double last_write_time; // last write time to `path`.
 	i16 manual_language; // 1 + the language the buffer has been manually set to, or 0 if it hasn't been manually set to anything
 	BufferPos cursor_pos;
 	BufferPos selection_pos; // if selection is true, the text between selection_pos and cursor_pos is selected.
@@ -669,8 +668,8 @@ void buffer_clear_error(TextBuffer *buffer);
 void buffer_clear_undo_redo(TextBuffer *buffer);
 // is this buffer empty?
 bool buffer_empty(TextBuffer *buffer);
-// is this buffer normal (i.e. not a line buffer or build buffer), but untitled?
-bool buffer_is_untitled(TextBuffer *buffer);
+// returns the buffer's filename (not full path), or "Untitled" if this buffer is untitled.
+const char *buffer_display_filename(TextBuffer *buffer);
 // does this buffer contained a named file (i.e. not a line buffer, not the build buffer, not untitled)
 bool buffer_is_named_file(TextBuffer *buffer);
 // create a new empty buffer with no file name
@@ -928,8 +927,13 @@ void buffer_paste(TextBuffer *buffer);
 bool buffer_load_file(TextBuffer *buffer, const char *path);
 void buffer_reload(TextBuffer *buffer);
 bool buffer_externally_changed(TextBuffer *buffer);
-void buffer_new_file(TextBuffer *buffer, const char *filename);
+// Clear `buffer`, and set its path to `path`.
+// if `path` is NULL, this will turn `buffer` into an untitled buffer.
+void buffer_new_file(TextBuffer *buffer, const char *path);
+// Save the buffer to its current filename. This will rewrite the entire file,
+// even if there are no unsaved changes.
 bool buffer_save(TextBuffer *buffer);
+// save, but with a different path
 bool buffer_save_as(TextBuffer *buffer, const char *new_filename);
 u32 buffer_first_rendered_line(TextBuffer *buffer);
 u32 buffer_last_rendered_line(TextBuffer *buffer);

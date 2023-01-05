@@ -206,8 +206,8 @@ static void session_write_buffer(Ted *ted, FILE *fp, u16 buffer_idx) {
 	write_u16(fp, buffer_idx);
 	TextBuffer *buffer = &ted->buffers[buffer_idx];
 	// some info about the buffer that should be restored
-	if (buffer->filename && !buffer_is_untitled(buffer))
-		write_cstr(fp, buffer->filename);
+	if (buffer_is_named_file(buffer))
+		write_cstr(fp, buffer->path);
 	else
 		write_char(fp, 0);
 	write_double(fp, buffer->scroll_x);
@@ -233,9 +233,9 @@ static void session_read_buffer(Ted *ted, FILE *fp) {
 	if (!buffer_has_error(buffer)) {
 		if (*filename) {
 			if (!buffer_load_file(buffer, filename))
-				buffer_new_file(buffer, TED_UNTITLED);
+				buffer_new_file(buffer, NULL);
 		} else {
-			buffer_new_file(buffer, TED_UNTITLED);
+			buffer_new_file(buffer, NULL);
 		}
 		buffer->scroll_x = read_double(fp);
 		buffer->scroll_y = read_double(fp);
