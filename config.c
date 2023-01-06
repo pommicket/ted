@@ -82,6 +82,7 @@ static SettingBool const settings_bool[] = {
 	{"indent-with-spaces", &settings_zero.indent_with_spaces, true},
 	{"trigger-characters", &settings_zero.trigger_characters, true},
 	{"identifier-trigger-characters", &settings_zero.identifier_trigger_characters, true},
+	{"phantom-completions", &settings_zero.phantom_completions, true},
 	{"signature-help-enabled", &settings_zero.signature_help_enabled, true},
 	{"lsp-enabled", &settings_zero.lsp_enabled, true},
 	{"hover-enabled", &settings_zero.hover_enabled, true},

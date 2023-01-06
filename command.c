@@ -281,8 +281,8 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 			buffer = &ted->line_buffer;
 			ted_switch_to_buffer(ted, buffer);
 			buffer_select_all(buffer);
-		} else if (ted->autocomplete.open) {
-			autocomplete_select_cursor_completion(ted);
+		} else if (ted->autocomplete.open || ted->autocomplete.phantom) {
+			autocomplete_select_completion(ted);
 		} else if (buffer) {
 			if (buffer->selection)
 				buffer_indent_selection(buffer);

@@ -1,7 +1,5 @@
 /*
 @TODO:
-- LSP configuration in ted.cfg
-	- disable publishDiagnostics for rust-analyzer (& others)?
 - phantom completions
 - debug-lsp option (which logs LSP messages)
 - check LSP process status (TEST: what happens if LSP server is not installed)
@@ -747,11 +745,12 @@ int main(int argc, char **argv) {
 						// NOTE: we are not checking for signature help trigger
 						// characters because currently we ask for signature
 						// help any time a character is inserted.
-						
-						if (settings->identifier_trigger_characters
-							&& is32_word(last_char)
-							&& !is32_digit(last_char))
-							autocomplete_open(ted, last_char);
+						if (is32_word(last_char)
+							&& !is32_digit(last_char)) {
+							if (settings->identifier_trigger_characters) {
+								autocomplete_open(ted, last_char);
+							}
+						}
 					}
 					 
 				}

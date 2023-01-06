@@ -5,8 +5,7 @@
 #define TAGS_MAX_COMPLETIONS 200 // max # of tag completions to scroll through
 #define AUTOCOMPLETE_NCOMPLETIONS_VISIBLE 10 // max # of completions to show at once
 
-static void autocomplete_clear_completions(Ted *ted) {
-	Autocomplete *ac = &ted->autocomplete;
+static void autocomplete_clear_completions(Autocomplete *ac) {
 	arr_foreach_ptr(ac->completions, Autocompletion, completion) {
 		free(completion->label);
 		free(completion->text);
@@ -16,6 +15,11 @@ static void autocomplete_clear_completions(Ted *ted) {
 	}
 	arr_clear(ac->completions);
 	arr_clear(ac->suggested);
+}
+
+static void autocomplete_clear_phantom(Autocomplete *ac) {
+	free(ac->phantom);
+	ac->phantom = NULL;
 }
 
 // do the actual completion
@@ -29,15 +33,19 @@ static void autocomplete_complete(Ted *ted, Autocompletion completion) {
 	autocomplete_close(ted);
 }
 
-void autocomplete_select_cursor_completion(Ted *ted) {
+void autocomplete_select_completion(Ted *ted) {
 	Autocomplete *ac = &ted->autocomplete;
 	if (ac->open) {
 		size_t nsuggestions = arr_len(ac->suggested);
 		if (nsuggestions) {
 			i64 cursor = mod_i64(ac->cursor, (i64)nsuggestions);
 			autocomplete_complete(ted, ac->completions[ac->suggested[cursor]]);
-			autocomplete_close(ted);
 		}
+	} else if (ac->phantom) {
+		Autocompletion fake_completion = {
+			.text = ac->phantom
+		};
+		autocomplete_complete(ted, fake_completion);
 	}
 }
 
@@ -78,12 +86,11 @@ void autocomplete_prev(Ted *ted) {
 
 void autocomplete_close(Ted *ted) {
 	Autocomplete *ac = &ted->autocomplete;
-	if (ac->open) {
-		ac->open = false;
-		autocomplete_clear_completions(ted);
-		ted_cancel_lsp_request(ted, ac->last_request_lsp, ac->last_request_id);
-		ac->last_request_id = 0;
-	}
+	ac->open = false;
+	autocomplete_clear_phantom(ac);
+	autocomplete_clear_completions(ac);
+	ted_cancel_lsp_request(ted, ac->last_request_lsp, ac->last_request_id);
+	ac->last_request_id = 0;
 }
 
 static void autocomplete_update_suggested(Ted *ted) {
@@ -111,7 +118,7 @@ static void autocomplete_no_suggestions(Ted *ted) {
 	autocomplete_close(ted);
 }
 
-static void autocomplete_send_completion_request(Ted *ted, TextBuffer *buffer, BufferPos pos, uint32_t trigger) {
+static void autocomplete_send_completion_request(Ted *ted, TextBuffer *buffer, BufferPos pos, uint32_t trigger, bool phantom) {
 	if (!buffer->path)
 		return; // no can do
 	
@@ -146,6 +153,7 @@ static void autocomplete_send_completion_request(Ted *ted, TextBuffer *buffer, B
 	if (ac->last_request_id) {
 		ac->last_request_lsp = lsp->id;
 		ac->last_request_time = ted->frame_time;
+		ac->last_request_phantom = phantom;
 		// *technically sepaking* this can mess things up if a complete
 		// list arrives only after the user has typed some stuff
 		// (in that case we'll send a TriggerKind = incomplete request even though it makes no sense).
@@ -154,9 +162,11 @@ static void autocomplete_send_completion_request(Ted *ted, TextBuffer *buffer, B
 	}
 }
 
-static void autocomplete_find_completions(Ted *ted, uint32_t trigger) {
+static void autocomplete_find_completions(Ted *ted, uint32_t trigger, bool phantom) {
 	Autocomplete *ac = &ted->autocomplete;
 	TextBuffer *buffer = ted->active_buffer;
+	if (!buffer)
+		return;
 	BufferPos pos = buffer->cursor_pos;
 	if (buffer_pos_eq(pos, ac->last_pos))
 		return; // no need to update completions.
@@ -170,30 +180,40 @@ static void autocomplete_find_completions(Ted *ted, uint32_t trigger) {
 			// so we just need to call autocomplete_update_suggested,
 			// we don't need to send a new request.
 		} else {
-			autocomplete_send_completion_request(ted, buffer, pos, trigger);
+			autocomplete_send_completion_request(ted, buffer, pos, trigger, phantom);
 		}
 	} else {
 		// tag completion
-		autocomplete_clear_completions(ted);
+		autocomplete_clear_completions(ac);
 		
 		char *word_at_cursor = str32_to_utf8_cstr(buffer_word_at_cursor(buffer));
-		char **completions = calloc(TAGS_MAX_COMPLETIONS, sizeof *completions);
-		u32 ncompletions = (u32)tags_beginning_with(ted, word_at_cursor, completions, TAGS_MAX_COMPLETIONS);
-		free(word_at_cursor);
-		
-		arr_set_len(ac->completions, ncompletions);
-		
-		for (size_t i = 0; i < ncompletions; ++i) {
-			ac->completions[i].label = completions[i];
-			ac->completions[i].text = str_dup(completions[i]);
-			ac->completions[i].filter = str_dup(completions[i]);
-			arr_add(ac->suggested, (u32)i);
+		if (phantom) {
+			char *completion = NULL;
+			if (tags_beginning_with(ted, word_at_cursor, &completion, 1) == 1) {
+				// show phantom
+				ac->phantom = completion;
+			} else {
+				free(completion);
+			}
+		} else {
+			char **completions = calloc(TAGS_MAX_COMPLETIONS, sizeof *completions);
+			u32 ncompletions = (u32)tags_beginning_with(ted, word_at_cursor, completions, TAGS_MAX_COMPLETIONS);
+			
+			arr_set_len(ac->completions, ncompletions);
+			
+			for (size_t i = 0; i < ncompletions; ++i) {
+				ac->completions[i].label = completions[i];
+				ac->completions[i].text = str_dup(completions[i]);
+				ac->completions[i].filter = str_dup(completions[i]);
+				arr_add(ac->suggested, (u32)i);
+			}
+			free(completions);
+			
+			// if we got the full list of tags beginning with `word_at_cursor`,
+			// then we don't need to call `tags_beginning_with` again.
+			ac->is_list_complete = ncompletions == TAGS_MAX_COMPLETIONS;
 		}
-		free(completions);
-		
-		// if we got the full list of tags beginning with `word_at_cursor`,
-		// then we don't need to call `tags_beginning_with` again.
-		ac->is_list_complete = ncompletions == TAGS_MAX_COMPLETIONS;
+		free(word_at_cursor);
 	}
 	
 	autocomplete_update_suggested(ted);
@@ -253,13 +273,23 @@ void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *response) {
 	if (request->id != ac->last_request_id)
 		return; // old request
 	ac->last_request_id = 0;
-	if (!ac->open) {
+	if (!ac->open && !ac->last_request_phantom) {
 		// user hit escape or down or something before completions arrived.
+		return;
+	}
+	if (ac->open && ac->last_request_phantom) {
+		// i'm not sure if this is possible, but just in case,
 		return;
 	}
 		
 	const LSPResponseCompletion *completion = &response->data.completion;
 	size_t ncompletions = arr_len(completion->items);
+	printf("got %zu\n",ncompletions);
+	if (ac->last_request_phantom && ncompletions != 1) {
+		// only show phantom completion if there's exactly 1 completion.
+		autocomplete_clear_phantom(ac);
+		return;
+	}
 	arr_set_len(ac->completions, ncompletions);
 	for (size_t i = 0; i < ncompletions; ++i) {
 		const LSPCompletionItem *lsp_completion = &completion->items[i];
@@ -278,6 +308,13 @@ void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *response) {
 		ted_completion->documentation = *documentation ? str_dup(documentation) : NULL;
 		
 	}
+	if (ac->last_request_phantom) {
+		assert(ncompletions == 1);
+		ac->phantom = str_dup(ac->completions[0].text);
+		autocomplete_clear_completions(ac);
+		return;
+	}
+	
 	ac->is_list_complete = completion->is_complete;
 	
 	autocomplete_update_suggested(ted);
@@ -300,11 +337,12 @@ void autocomplete_open(Ted *ted, uint32_t trigger) {
 	TextBuffer *buffer = ted->active_buffer;
 	if (!buffer->path) return;
 	if (buffer->view_only) return;
+	autocomplete_clear_phantom(ac);
 	
 	ted->cursor_error_time = 0;
-	ac->last_pos = (BufferPos){0,0};
+	ac->last_pos = (BufferPos){U32_MAX,0};
 	ac->cursor = 0;
-	autocomplete_find_completions(ted, trigger);
+	autocomplete_find_completions(ted, trigger, false);
 	
 	switch (arr_len(ac->completions)) {
 	case 0:
@@ -323,6 +361,17 @@ void autocomplete_open(Ted *ted, uint32_t trigger) {
 		ac->open = true;
 		break;
 	}
+}
+
+static void autocomplete_find_phantom(Ted *ted) {
+	Autocomplete *ac = &ted->autocomplete;
+	if (ac->open) return;
+	if (!ted->active_buffer) return;
+	TextBuffer *buffer = ted->active_buffer;
+	if (!buffer->path) return;
+	if (buffer->view_only) return;
+	
+	autocomplete_find_completions(ted, TRIGGER_INVOKED, true);
 }
 
 static char symbol_kind_icon(SymbolKind k) {
@@ -346,17 +395,38 @@ static char symbol_kind_icon(SymbolKind k) {
 }
 
 void autocomplete_frame(Ted *ted) {
-	Autocomplete *ac = &ted->autocomplete;
-	if (!ac->open) return;
-	
 	TextBuffer *buffer = ted->active_buffer;
+	if (!buffer) return;
 	Font *font = ted->font;
 	float char_height = text_font_char_height(font);
 	const Settings *settings = buffer_settings(buffer);
 	const u32 *colors = settings->colors;
 	const float padding = settings->padding;
+	if (settings->phantom_completions) {
+		autocomplete_find_phantom(ted);
+	}
+	
+	Autocomplete *ac = &ted->autocomplete;
+	if (!ac->open && ac->phantom) {
+		// display phantom completion
+		char *word_at_cursor = buffer_word_at_cursor_utf8(buffer);
+		if (*word_at_cursor && str_has_prefix(ac->phantom, word_at_cursor)) {
+			const char *completion = ac->phantom + strlen(word_at_cursor);
+			vec2 pos = buffer_pos_to_pixels(buffer, buffer->cursor_pos);
+			text_utf8(font, completion, pos.x, pos.y,
+				colors[COLOR_TEXT] & 0xffffff7f);
+			text_render(font);
+		} else {
+			// this phantom is no longer relevant
+			autocomplete_clear_phantom(ac);
+		}
+		free(word_at_cursor);
+		return;
+	}
+	if (!ac->open)
+		return;
 
-	autocomplete_find_completions(ted, TRIGGER_INCOMPLETE);
+	autocomplete_find_completions(ted, TRIGGER_INCOMPLETE, false);
 	
 	size_t ncompletions = arr_len(ac->suggested);
 	bool waiting_for_lsp = ac->last_request_id != 0;

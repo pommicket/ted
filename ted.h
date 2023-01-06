@@ -123,6 +123,7 @@ typedef struct {
 	bool restore_session;
 	bool regenerate_tags_if_not_found;
 	bool indent_with_spaces;
+	bool phantom_completions;
 	bool trigger_characters;
 	bool identifier_trigger_characters;
 	bool signature_help_enabled;
@@ -385,6 +386,11 @@ typedef struct {
 	BufferPos last_pos; // position of cursor last time completions were generated. if this changes, we need to recompute completions.
 	i32 cursor; // which completion is currently selected (index into suggested)
 	i32 scroll;
+	
+	// was the last request for phantom completion?
+	bool last_request_phantom;
+	// current phantom completion to be displayed
+	char *phantom;
 	
 	Rect rect; // rectangle where the autocomplete menu is (needed to avoid interpreting autocomplete clicks as other clicks)
 } Autocomplete;
@@ -1120,8 +1126,10 @@ GLuint gl_load_texture_from_image(const char *path);
 // open autocomplete
 // trigger should either be a character (e.g. '.') or one of the TRIGGER_* constants.
 void autocomplete_open(Ted *ted, uint32_t trigger);
-void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *response); 
-void autocomplete_select_cursor_completion(Ted *ted);
+void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *response);
+// select the completion the cursor is on,
+// or select the phantom completion if there is one.
+void autocomplete_select_completion(Ted *ted);
 // scroll completion list
 void autocomplete_scroll(Ted *ted, i32 by);
 // move cursor to next completion
