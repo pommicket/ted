@@ -96,9 +96,7 @@ void autocomplete_close(Ted *ted) {
 static void autocomplete_update_suggested(Ted *ted) {
 	Autocomplete *ac = &ted->autocomplete;
 	arr_clear(ac->suggested);
-	char *word = str32_to_utf8_cstr(
-		buffer_word_at_cursor(ted->active_buffer)
-	);
+	char *word = buffer_word_at_cursor_utf8(ted->active_buffer);
 	for (u32 i = 0; i < arr_len(ac->completions); ++i) {
 		Autocompletion *completion = &ac->completions[i];
 		if (str_has_prefix(completion->filter, word))
@@ -282,14 +280,42 @@ void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *response) {
 		return;
 	}
 		
+	TextBuffer *buffer = ted->active_buffer;
+	if (!buffer)
+		return;
+	
 	const LSPResponseCompletion *completion = &response->data.completion;
 	size_t ncompletions = arr_len(completion->items);
-	printf("got %zu\n",ncompletions);
-	if (ac->last_request_phantom && ncompletions != 1) {
-		// only show phantom completion if there's exactly 1 completion.
-		autocomplete_clear_phantom(ac);
+	if (ac->last_request_phantom) {
+		// check for phantom completion
+		// ideally we would just check if ncompletions == 1,
+		// but some completions might not start with the word at the cursor,
+		// and it's best to filter those out.
+		char *word_at_cursor = buffer_word_at_cursor_utf8(buffer);
+		if (*word_at_cursor) {
+			int ncandidates = 0;
+			const char *candidate = NULL;
+			for (size_t i = 0; i < ncompletions; ++i) {
+				const LSPCompletionItem *lsp_completion = &completion->items[i];
+				const char *new_text = lsp_response_string(response, lsp_completion->text_edit.new_text);
+				if (str_has_prefix(new_text, word_at_cursor)) {
+					candidate = new_text;
+					++ncandidates;
+					if (ncandidates >= 2) break;
+				}
+			}
+			
+			// only show phantom if there is exactly 1 possible completion.
+			if (ncandidates == 1) {
+				ac->phantom = str_dup(candidate);
+			} else {
+				autocomplete_clear_phantom(ac);
+			}
+		}
+		free(word_at_cursor);
 		return;
 	}
+	
 	arr_set_len(ac->completions, ncompletions);
 	for (size_t i = 0; i < ncompletions; ++i) {
 		const LSPCompletionItem *lsp_completion = &completion->items[i];
@@ -412,10 +438,17 @@ void autocomplete_frame(Ted *ted) {
 		char *word_at_cursor = buffer_word_at_cursor_utf8(buffer);
 		if (*word_at_cursor && str_has_prefix(ac->phantom, word_at_cursor)) {
 			const char *completion = ac->phantom + strlen(word_at_cursor);
-			vec2 pos = buffer_pos_to_pixels(buffer, buffer->cursor_pos);
-			text_utf8(font, completion, pos.x, pos.y,
-				colors[COLOR_TEXT] & 0xffffff7f);
-			text_render(font);
+			if (*completion) {
+				vec2 pos = buffer_pos_to_pixels(buffer, buffer->cursor_pos);
+				//vec2 size = text_get_size_vec2(font, completion);
+				//Rect r = rect(pos, size);
+				//gl_geometry_rect(r, colors[COLOR_CURSOR_BG] & 0xffffff7f);
+				
+				text_utf8(font, completion, pos.x, pos.y,
+					colors[COLOR_TEXT] & 0xffffff7f);
+				text_render(font);
+				gl_geometry_draw();
+			}
 		} else {
 			// this phantom is no longer relevant
 			autocomplete_clear_phantom(ac);
@@ -595,7 +628,7 @@ void autocomplete_frame(Ted *ted) {
 					char text[128] = {0};
 					strbuf_printf(text, "%.*s%s", amount_detail, detail,
 						(size_t)amount_detail == strlen(detail) ? "" : "...");
-					double width = text_get_size_v2(font, text).x;
+					double width = text_get_size_vec2(font, text).x;
 					if (label_end_x + width + 2 * padding < state.max_x) {
 						strbuf_cpy(show_text, text);
 					}

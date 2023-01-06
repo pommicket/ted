@@ -164,7 +164,7 @@ void selector_render(Ted *ted, Selector *s) {
 			
 			if (entry->detail) {
 				// draw detail
-				float detail_size = text_get_size_v2(font, entry->detail).x;
+				float detail_size = text_get_size_vec2(font, entry->detail).x;
 				TextRenderState detail_state = text_state;
 				detail_state.x = maxd(text_state.x + 2 * padding, x2 - detail_size);
 				
@@ -530,7 +530,7 @@ void file_selector_render(Ted *ted, FileSelector *fs) {
 
 vec2 button_get_size(Ted *ted, const char *text) {
 	float border_thickness = ted_active_settings(ted)->border_thickness;
-	return vec2_add_const(text_get_size_v2(ted->font, text), 2 * border_thickness);
+	return vec2_add_const(text_get_size_vec2(ted->font, text), 2 * border_thickness);
 }
 
 void button_render(Ted *ted, Rect button, const char *text, u32 color) {
@@ -668,7 +668,7 @@ vec2 checkbox_frame(Ted *ted, bool *value, const char *label, vec2 pos) {
 	}
 	
 	vec2 text_pos = vec2_add(pos, Vec2(checkbox_size + padding * 0.5f, 0));
-	vec2 size = text_get_size_v2(font, label);
+	vec2 size = text_get_size_vec2(font, label);
 	text_utf8(font, label, text_pos.x, text_pos.y, colors[COLOR_TEXT]);
 	
 	gl_geometry_draw();

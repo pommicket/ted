@@ -400,7 +400,7 @@ void menu_render(Ted *ted) {
 		gl_geometry_rect(r, colors[COLOR_MENU_BG]);
 		gl_geometry_rect_border(r, settings->border_thickness, colors[COLOR_BORDER]);
 		const char *text = "Go to line...";
-		vec2 text_size = text_get_size_v2(font_bold, text);
+		vec2 text_size = text_get_size_vec2(font_bold, text);
 		rect_coords(r, &x1, &y1, &x2, &y2);
 		x1 += padding;
 		y1 += padding;
@@ -419,7 +419,7 @@ void menu_render(Ted *ted) {
 		// argument field
 		const char *text = "Argument";
 		text_utf8(font_bold, text, x1, y1, colors[COLOR_TEXT]);
-		float x = x1 + text_get_size_v2(font_bold, text).x + padding;
+		float x = x1 + text_get_size_vec2(font_bold, text).x + padding;
 		buffer_render(&ted->argument_buffer, rect4(x, y1, x2, y1 + line_buffer_height));
 
 		y1 += line_buffer_height + padding;
@@ -445,7 +445,7 @@ void menu_render(Ted *ted) {
 		
 		const char *text = "Run";
 		text_utf8(font_bold, text, x1, y1, colors[COLOR_TEXT]);
-		x1 += text_get_size_v2(font_bold, text).x + padding;
+		x1 += text_get_size_vec2(font_bold, text).x + padding;
 		text_render(font_bold);
 		
 		buffer_render(&ted->line_buffer, rect4(x1, y1, x2, y2));

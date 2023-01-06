@@ -395,8 +395,8 @@ static vec2 text_render_utf8_internal(Font *font, const char *text, double x, do
 	rgba_u32_to_floats(color, render_state.color);
 	text_utf8_with_state(font, &render_state, text);
 	return Vec2(
-		(float)(render_state.x_largest - x),
-		(float)(render_state.y_largest - y)
+		maxf(0.0f, (float)(render_state.x_largest - x)),
+		maxf(0.0f, (float)(render_state.y_largest - y))
 	);
 }
 
@@ -429,7 +429,7 @@ void text_get_size(Font *font, const char *text, float *width, float *height) {
 	if (height) *height = size.y + font->char_height;
 }
 
-vec2 text_get_size_v2(Font *font, const char *text) {
+vec2 text_get_size_vec2(Font *font, const char *text) {
 	vec2 v;
 	text_get_size(font, text, &v.x, &v.y);
 	return v;
