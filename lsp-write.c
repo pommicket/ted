@@ -328,7 +328,7 @@ static void message_writer_write_and_free(LSP *lsp, JSONWriter *o) {
 		printf("%s%s%s\n",term_bold(stdout),content,term_clear(stdout));
 	#endif
 	if (lsp->log) {
-		fprintf(lsp->log, "MESSAGE FROM CLIENT TO SERVER\n%s\n\n", content + header_size);
+		fprintf(lsp->log, "LSP MESSAGE FROM CLIENT TO SERVER\n%s\n\n", content + header_size);
 	}
 	
 	process_write(lsp->process, content, strlen(content));

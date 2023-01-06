@@ -278,6 +278,9 @@ static void lsp_receive(LSP *lsp, size_t max_size) {
 			if (nstderr > 0) {
 				// uh oh
 				stderr_buf[nstderr] = '\0';
+				if (lsp->log) {
+					fprintf(lsp->log, "LSP SERVER STDERR\n%s\n\n", stderr_buf);
+				}
 				eprint("%s%s%s%s", term_bold(stderr), term_yellow(stderr), stderr_buf, term_clear(stderr));
 			} else {
 				break;
@@ -309,7 +312,7 @@ static void lsp_receive(LSP *lsp, size_t max_size) {
 		
 		char *copy = strn_dup(lsp->received_data + response_offset, response_size);
 		if (lsp->log) {
-			
+			fprintf(lsp->log, "LSP MESSAGE FROM SERVER TO CLIENT\n%s\n\n", copy);
 		}
 		JSON json = {0};
 		if (json_parse(&json, copy)) {

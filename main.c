@@ -5,17 +5,15 @@
 - check that tags still works
     - check that phantom completions works with tags
 - do we need higher than 1-second resolution in time_last_modified on windows?
+- when searching files, put exact matches at the top
 - TESTING: make rust-analyzer-slow (waits 10s before sending response)
 - TESTING: check all IDE features with different servers
 - run everything through valgrind ideally with leak checking
 - grep -i -n TODO *.[ch]
-- when searching files, put exact matches at the top
-- auto-set build command for cmake (both for windows and unix)
 - some way of opening + closing all C files in directory for clangd
    textDocument/references to work?
 	- maybe it can be done with the clangd config instead.
 	- does vscode have the same problem?
-- more documentation generally
 - rust-analyzer bug reports:
     - bad json can give "Unexpected error: client exited without proper shutdown sequence"
     - containerName not always given in textDocument/references
