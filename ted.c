@@ -191,8 +191,9 @@ LSP *ted_get_lsp(Ted *ted, const char *path, Language language) {
 		return NULL; // why are there so many LSP open???
 	if (*settings->lsp) {
 		// start up this LSP
+		FILE *log = settings->lsp_log ? ted->log : NULL;
 		char *root_dir = settings_get_root_dir(settings, path);
-		ted->lsps[i] = lsp_create(root_dir, settings->lsp, settings->lsp_configuration);
+		ted->lsps[i] = lsp_create(root_dir, settings->lsp, settings->lsp_configuration, log);
 		free(root_dir);
 		// don't actually return it yet, since it's still initializing (see above)
 	}

@@ -85,6 +85,7 @@ static SettingBool const settings_bool[] = {
 	{"phantom-completions", &settings_zero.phantom_completions, true},
 	{"signature-help-enabled", &settings_zero.signature_help_enabled, true},
 	{"lsp-enabled", &settings_zero.lsp_enabled, true},
+	{"lsp-log", &settings_zero.lsp_log, true},
 	{"hover-enabled", &settings_zero.hover_enabled, true},
 	{"vsync", &settings_zero.vsync, false},
 	{"highlight-enabled", &settings_zero.highlight_enabled, true},

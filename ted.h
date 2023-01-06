@@ -128,6 +128,7 @@ typedef struct {
 	bool identifier_trigger_characters;
 	bool signature_help_enabled;
 	bool lsp_enabled;
+	bool lsp_log;
 	bool hover_enabled;
 	bool highlight_enabled;
 	bool highlight_auto;

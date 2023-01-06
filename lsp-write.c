@@ -318,19 +318,18 @@ static void message_writer_write_and_free(LSP *lsp, JSONWriter *o) {
 	// this is kind of hacky but it lets us send the whole request with one write call.
 	// probably not *actually* needed. i thought it would help fix an error but it didn't.
 	size_t content_length = str_builder_len(&builder) - max_header_size;
-	char content_length_str[32];
-	sprintf(content_length_str, "%zu", content_length);
-	size_t header_size = strlen("Content-Length: \r\n\r\n") + strlen(content_length_str);
-	char *header = &builder.str[max_header_size - header_size];
-	strcpy(header, "Content-Length: ");
-	strcat(header, content_length_str);
-	// we specifically DON'T want a null byte
-	memcpy(header + strlen(header), "\r\n\r\n", 4);
+	char header_str[64];
+	sprintf(header_str, "Content-Length: %zu\r\n\r\n", content_length);
+	size_t header_size = strlen(header_str);
+	char *content = &builder.str[max_header_size - header_size];
+	memcpy(content, header_str, header_size);
 	
-	char *content = header;
 	#if LSP_SHOW_C2S
 		printf("%s%s%s\n",term_bold(stdout),content,term_clear(stdout));
 	#endif
+	if (lsp->log) {
+		fprintf(lsp->log, "MESSAGE FROM CLIENT TO SERVER\n%s\n\n", content + header_size);
+	}
 	
 	process_write(lsp->process, content, strlen(content));
 

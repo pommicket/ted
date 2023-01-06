@@ -1,9 +1,9 @@
 /*
 @TODO:
-- debug-lsp option (which logs LSP messages)
 - check LSP process status (TEST: what happens if LSP server is not installed)
 - make tags_dir the root folder
 - check that tags still works
+    - check that phantom completions works with tags
 - do we need higher than 1-second resolution in time_last_modified on windows?
 - TESTING: make rust-analyzer-slow (waits 10s before sending response)
 - TESTING: check all IDE features with different servers

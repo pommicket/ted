@@ -308,6 +308,9 @@ static void lsp_receive(LSP *lsp, size_t max_size) {
 		}
 		
 		char *copy = strn_dup(lsp->received_data + response_offset, response_size);
+		if (lsp->log) {
+			
+		}
 		JSON json = {0};
 		if (json_parse(&json, copy)) {
 			assert(json.text == copy);
@@ -453,7 +456,7 @@ const char *lsp_document_path(LSP *lsp, LSPDocumentID document) {
 	return path;
 }
 
-LSP *lsp_create(const char *root_dir, const char *analyzer_command, const char *configuration) {
+LSP *lsp_create(const char *root_dir, const char *command, const char *configuration, FILE *log) {
 	LSP *lsp = calloc(1, sizeof *lsp);
 	if (!lsp) return NULL;
 	
@@ -462,15 +465,15 @@ LSP *lsp_create(const char *root_dir, const char *analyzer_command, const char *
 	
 	static LSPID curr_id = 1;
 	lsp->id = curr_id++;
-	
+	lsp->log = log;
 	
 	#if DEBUG
 		printf("Starting up LSP %p `%s` in %s\n",
-			(void *)lsp, analyzer_command, root_dir);
+			(void *)lsp, command, root_dir);
 	#endif
 	
 	str_hash_table_create(&lsp->document_ids, sizeof(u32));
-	lsp->command = str_dup(analyzer_command);
+	lsp->command = str_dup(command);
 	if (configuration && *configuration)
 		lsp->configuration_to_send = str_dup(configuration);
 	lsp->quit_sem = SDL_CreateSemaphore(0);	
@@ -486,7 +489,7 @@ LSP *lsp_create(const char *root_dir, const char *analyzer_command, const char *
 		.separate_stderr = true,
 		.working_directory = root_dir,
 	};
-	lsp->process = process_run_ex(analyzer_command, &settings);
+	lsp->process = process_run_ex(command, &settings);
 	LSPRequest initialize = {
 		.type = LSP_REQUEST_INITIALIZE
 	};
