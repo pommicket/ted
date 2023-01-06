@@ -268,7 +268,8 @@ const char *lsp_response_string(const LSPResponse *response, LSPString string) {
 }
 
 // receive responses/requests/notifications from LSP, up to max_size bytes.
-static void lsp_receive(LSP *lsp, size_t max_size) {
+// returns false if the process exited
+static bool lsp_receive(LSP *lsp, size_t max_size) {
 
 	{
 		// read stderr. if all goes well, we shouldn't get anything over stderr.
@@ -287,13 +288,26 @@ static void lsp_receive(LSP *lsp, size_t max_size) {
 			}
 		}
 	}
+	
+	{
+		// check process status
+		char text[64] = {0};
+		int status = process_check_status(&lsp->process, text, sizeof text);
+		if (status != 0) {
+			lsp_set_error(lsp, "Can't access LSP server: %s\n"
+				"Run ted in a terminal or set lsp-log = on for more details."
+				, text);
+			return false;
+		}
+		
+	}
 
 	size_t received_so_far = arr_len(lsp->received_data);
 	arr_reserve(lsp->received_data, received_so_far + max_size + 1);
 	long long bytes_read = process_read(lsp->process, lsp->received_data + received_so_far, max_size);
 	if (bytes_read <= 0) {
 		// no data
-		return;
+		return true;
 	}
 	received_so_far += (size_t)bytes_read;
 	// kind of a hack. this is needed because arr_set_len zeroes the data.
@@ -334,6 +348,7 @@ static void lsp_receive(LSP *lsp, size_t max_size) {
 		arr_reserve(lsp->received_data, leftover_data_len + 1);
 		lsp->received_data[leftover_data_len] = '\0';
 	}
+	return true;
 }
 
 // send requests.
@@ -388,9 +403,15 @@ static int lsp_communication_thread(void *data) {
 		bool quit = lsp_send(lsp);
 		if (quit) break;
 		
-		lsp_receive(lsp, (size_t)10<<20);
+		if (!lsp_receive(lsp, (size_t)10<<20))
+			break;
 		if (SDL_SemWaitTimeout(lsp->quit_sem, 5) == 0)
 			break;	
+	}
+	
+	if (!lsp->process) {
+		// process already exited
+		return 0;
 	}
 	
 	if (lsp->initialized) {
@@ -556,7 +577,7 @@ void lsp_free(LSP *lsp) {
 	SDL_DestroyMutex(lsp->workspace_folders_mutex);
 	SDL_DestroyMutex(lsp->error_mutex);
 	SDL_DestroySemaphore(lsp->quit_sem);
-	process_kill(lsp->process);
+	process_kill(&lsp->process);
 	
 	arr_free(lsp->received_data);
 	

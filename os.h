@@ -123,10 +123,12 @@ long long process_read_stderr(Process *process, char *data, size_t size);
 // 1  if the process exited successfully
 // 0  if the process hasn't exited.
 // If message is not NULL, it will be set to a description of what happened (e.g. "exited successfully")
-int process_check_status(Process *process, char *message, size_t message_size);
+// if the process is no longer running, *process will be freed and set to NULL.
+int process_check_status(Process **process, char *message, size_t message_size);
 // kills process if still running
-// this also frees any resources used by `process`.
-void process_kill(Process *process);
+// this also frees any resources used by `*process`.
+// *process will be set to NULL.
+void process_kill(Process **process);
 
 #endif // OS_H_
 

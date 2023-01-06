@@ -6,6 +6,7 @@
 #include <io.h>
 #include <sysinfoapi.h>
 
+
 static FsType windows_file_attributes_to_type(DWORD attrs) {
 	if (attrs == INVALID_FILE_ATTRIBUTES)
 		return FS_NON_EXISTENT;
@@ -129,6 +130,7 @@ void time_sleep_ns(u64 ns) {
 	Sleep((DWORD)(ns / 1000000));
 }
 
+#error "@TODO: fix process functions to take Process**"
 #error "@TODO :  implement process_write, separate_stderr, working_directory"
 #error "@TODO : make sure process_read & process_write do what they're supposed to for both blocking & non-blocking read/writes."
 #include "process.h"
@@ -244,24 +246,30 @@ void process_kill(Process *process) {
 }
 
 int process_check_status(Process *process, char *message, size_t message_size) {
+	assert(!message || message_size);
 	HANDLE hProcess = process->process_info.hProcess;
 	DWORD exit_code = 1;
 	if (GetExitCodeProcess(hProcess, &exit_code)) {
 		if (exit_code == STILL_ACTIVE) {
+			if (message)
+				*message = '\0';
 			return 0;
 		} else {
 			process_kill(process);
 			if (exit_code == 0) {
-				str_printf(message, message_size, "exited successfully");
+				if (message)
+					str_printf(message, message_size, "exited successfully");
 				return +1;
 			} else {
-				str_printf(message, message_size, "exited with code %d", (int)exit_code);
+				if (message)
+					str_printf(message, message_size, "exited with code %d", (int)exit_code);
 				return -1;
 			}
 		}
 	} else {
 		// something has gone wrong.
-		str_printf(message, message_size, "couldn't get process exit status");
+		if (message)
+			str_printf(message, message_size, "couldn't get process exit status");
 		process_kill(process);
 		return -1;
 	}

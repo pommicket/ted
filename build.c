@@ -5,7 +5,7 @@
 
 void build_stop(Ted *ted) {
 	if (ted->building)
-		process_kill(ted->build_process);
+		process_kill(&ted->build_process);
 	ted->building = false;
 	ted->build_shown = false;
 	arr_foreach_ptr(ted->build_errors, BuildError, err) {
@@ -36,6 +36,7 @@ void build_queue_command(Ted *ted, const char *command) {
 static bool build_run_next_command_in_queue(Ted *ted) {
 	if (!ted->build_queue)
 		return false;
+	assert(!ted->build_process);
 	assert(*ted->build_dir);
 	change_directory(ted->build_dir);
 	char *command = ted->build_queue[0];
@@ -243,7 +244,6 @@ void build_check_for_errors(Ted *ted) {
 
 void build_frame(Ted *ted, float x1, float y1, float x2, float y2) {
 	TextBuffer *buffer = &ted->build_buffer;
-	Process *process = ted->build_process;
 	assert(ted->build_shown);
 	char buf[256];
 	if (ted->building) {
@@ -254,9 +254,9 @@ void build_frame(Ted *ted, float x1, float y1, float x2, float y2) {
 			memcpy(incomplete, ted->build_incomplete_codepoint, sizeof incomplete);
 			*ted->build_incomplete_codepoint = 0;
 
-			i64 bytes_read = (i64)process_read(process, buf + 3, sizeof buf - 3);
+			i64 bytes_read = (i64)process_read(ted->build_process, buf + 3, sizeof buf - 3);
 			if (bytes_read == -2) {
-				ted_error(ted, "Error reading command output: %s.", process_geterr(process));
+				ted_error(ted, "Error reading command output: %s.", process_geterr(ted->build_process));
 				build_stop(ted);
 				break;
 			} else if (bytes_read == -1) {
@@ -302,7 +302,7 @@ void build_frame(Ted *ted, float x1, float y1, float x2, float y2) {
 		}
 
 		char message[64];
-		int status = process_check_status(process, message, sizeof message);
+		int status = process_check_status(&ted->build_process, message, sizeof message);
 		if (status == 0) {
 			// hasn't exited yet
 		} else {

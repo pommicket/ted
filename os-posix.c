@@ -245,10 +245,15 @@ Process *process_run(const char *command) {
 
 
 const char *process_geterr(Process *p) {
+	if (!p) return "no such process";
 	return *p->error ? p->error : NULL;
 }
 
 long long process_write(Process *proc, const char *data, size_t size) {
+	if (!proc) {
+		assert(0);
+		return -2;
+	}
 	if (!proc->stdin_pipe) { // check that process hasn't been killed
 		strbuf_printf(proc->error, "Process terminated");
 		return -2;
@@ -299,10 +304,18 @@ static long long process_read_fd(Process *proc, int fd, char *data, size_t size)
 }
 
 long long process_read(Process *proc, char *data, size_t size) {
+	if (!proc) {
+		assert(0);
+		return 0;
+	}
 	return process_read_fd(proc, proc->stdout_pipe, data, size);
 }
 
 long long process_read_stderr(Process *proc, char *data, size_t size) {
+	if (!proc) {
+		assert(0);
+		return 0;
+	}
 	return process_read_fd(proc, proc->stderr_pipe, data, size);
 }
 
@@ -313,44 +326,59 @@ static void process_close_pipes(Process *proc) {
 	proc->stdin_pipe = 0;
 	proc->stdout_pipe = 0;
 	proc->stderr_pipe = 0;
+	proc->pid = 0;
 }
 
-void process_kill(Process *proc) {
+void process_kill(Process **pproc) {
+	Process *proc = *pproc;
+	if (!proc) return;
+	
 	kill(-proc->pid, SIGKILL); // kill everything in process group
 	// get rid of zombie process
 	waitpid(proc->pid, NULL, 0);
-	proc->pid = 0;
 	process_close_pipes(proc);
 	free(proc);
+	*pproc = NULL;
 }
 
-int process_check_status(Process *proc, char *message, size_t message_size) {
+int process_check_status(Process **pproc, char *message, size_t message_size) {
+	Process *proc = *pproc;
+	if (!proc) {
+		assert(0);
+		if (message) str_printf(message, message_size, "checked status twice");
+		return -1;
+	}
+	assert(!message || message_size > 0);
 	int wait_status = 0;
 	int ret = waitpid(proc->pid, &wait_status, WNOHANG);
 	if (ret == 0) {
 		// process still running
+		if (message)
+			*message = '\0';
 		return 0;
 	} else if (ret > 0) {
 		if (WIFEXITED(wait_status)) {
-			process_close_pipes(proc);
+			process_kill(pproc);
 			int code = WEXITSTATUS(wait_status);
 			if (code == 0) {
-				str_printf(message, message_size, "exited successfully");
+				if (message) str_printf(message, message_size, "exited successfully");
 				return +1;
 			} else {
-				str_printf(message, message_size, "exited with code %d", code);
+				if (message) str_printf(message, message_size, "exited with code %d", code);
 				return -1;
 			}
 		} else if (WIFSIGNALED(wait_status)) {
 			process_close_pipes(proc);
-			str_printf(message, message_size, "terminated by signal %d", WTERMSIG(wait_status));
+			if (message)
+				str_printf(message, message_size, "terminated by signal %d", WTERMSIG(wait_status));
 			return -1;
 		}
 		return 0;
 	} else {
 		// this process is gone or something?
 		process_close_pipes(proc);
-		str_printf(message, message_size, "process ended unexpectedly");
+		if (message)
+			str_printf(message, message_size, "process ended unexpectedly");
 		return -1;
 	}
 }
