@@ -320,9 +320,12 @@ long long process_read_stderr(Process *proc, char *data, size_t size) {
 }
 
 static void process_close_pipes(Process *proc) {
-	close(proc->stdin_pipe);
-	close(proc->stdout_pipe);
-	close(proc->stderr_pipe);
+	if (proc->stdin_pipe)
+		close(proc->stdin_pipe);
+	if (proc->stdout_pipe)
+		close(proc->stdout_pipe);
+	if (proc->stderr_pipe)
+		close(proc->stderr_pipe);
 	proc->stdin_pipe = 0;
 	proc->stdout_pipe = 0;
 	proc->stderr_pipe = 0;
