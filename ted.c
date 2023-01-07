@@ -637,11 +637,12 @@ void ted_go_to_lsp_document_position(Ted *ted, LSP *lsp, LSPDocumentPosition pos
 	ted_go_to_position(ted, path, line, character, true);
 }
 
-void ted_cancel_lsp_request(Ted *ted, LSPID lsp, LSPRequestID request) {
+void ted_cancel_lsp_request(Ted *ted, LSPServerRequestID *request) {
 	if (!request) return;
-	LSP *lsp_obj = ted_get_lsp_by_id(ted, lsp);
+	LSP *lsp_obj = ted_get_lsp_by_id(ted, request->lsp);
 	if (!lsp_obj) return;
-	lsp_cancel_request(lsp_obj, request);
+	lsp_cancel_request(lsp_obj, request->id);
+	memset(request, 0, sizeof *request);
 }
 
 

@@ -5,8 +5,7 @@
 void highlights_close(Ted *ted) {
 	Highlights *hls = &ted->highlights;
 	arr_clear(hls->highlights);
-	ted_cancel_lsp_request(ted, hls->last_request_lsp, hls->last_request_id);
-	hls->last_request_id = 0;
+	ted_cancel_lsp_request(ted, &hls->last_request);
 	hls->requested_position = (LSPDocumentPosition){0};
 }
 
@@ -26,9 +25,8 @@ static void highlights_send_request(Ted *ted) {
 	LSPRequest request = {.type = LSP_REQUEST_HIGHLIGHT};
 	request.data.highlight.position = pos;
 	
-	ted_cancel_lsp_request(ted, hls->last_request_lsp, hls->last_request_id);
-	hls->last_request_id = lsp_send_request(lsp, &request);
-	hls->last_request_lsp = lsp->id;
+	ted_cancel_lsp_request(ted, &hls->last_request);
+	hls->last_request = lsp_send_request(lsp, &request);
 	hls->requested_position = pos;
 }
 
@@ -37,7 +35,7 @@ void highlights_process_lsp_response(Ted *ted, LSPResponse *response) {
 	Highlights *hls = &ted->highlights;
 	if (response->request.type != LSP_REQUEST_HIGHLIGHT)
 		return; // not a highlight request
-	if (response->request.id != hls->last_request_id)
+	if (response->request.id != hls->last_request.id)
 		return; // old request
 	const LSPResponseHighlight *hl_response = &response->data.highlight;
 	arr_set_len(hls->highlights, arr_len(hl_response->highlights));

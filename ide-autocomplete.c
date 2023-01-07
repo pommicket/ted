@@ -106,8 +106,7 @@ void autocomplete_close(Ted *ted) {
 	ac->open = false;
 	autocomplete_clear_phantom(ac);
 	autocomplete_clear_completions(ac);
-	ted_cancel_lsp_request(ted, ac->last_request_lsp, ac->last_request_id);
-	ac->last_request_id = 0;
+	ted_cancel_lsp_request(ted, &ac->last_request);
 }
 
 static void autocomplete_update_suggested(Ted *ted) {
@@ -140,7 +139,7 @@ static void autocomplete_send_completion_request(Ted *ted, TextBuffer *buffer, B
 	LSP *lsp = buffer_lsp(buffer);
 	Autocomplete *ac = &ted->autocomplete;
 
-	ted_cancel_lsp_request(ted, ac->last_request_lsp, ac->last_request_id);
+	ted_cancel_lsp_request(ted, &ac->last_request);
 
 	LSPRequest request = {
 		.type = LSP_REQUEST_COMPLETION
@@ -164,9 +163,8 @@ static void autocomplete_send_completion_request(Ted *ted, TextBuffer *buffer, B
 	};
 	if (trigger < UNICODE_CODE_POINTS)
 		unicode_utf32_to_utf8(request.data.completion.context.trigger_character, trigger);
-	ac->last_request_id = lsp_send_request(lsp, &request);
-	if (ac->last_request_id) {
-		ac->last_request_lsp = lsp->id;
+	ac->last_request = lsp_send_request(lsp, &request);
+	if (ac->last_request.id) {
 		ac->last_request_time = ted->frame_time;
 		ac->last_request_phantom = phantom;
 		// *technically sepaking* this can mess things up if a complete
@@ -290,9 +288,9 @@ void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *response) {
 	if (request->type != LSP_REQUEST_COMPLETION)
 		return;
 	Autocomplete *ac = &ted->autocomplete;
-	if (request->id != ac->last_request_id)
+	if (request->id != ac->last_request.id)
 		return; // old request
-	ac->last_request_id = 0;
+	ac->last_request.id = 0;
 	if (!ac->open && !ac->last_request_phantom) {
 		// user hit escape or down or something before completions arrived.
 		return;
@@ -489,7 +487,7 @@ void autocomplete_frame(Ted *ted) {
 	autocomplete_find_completions(ted, TRIGGER_INCOMPLETE, false);
 	
 	size_t ncompletions = arr_len(ac->suggested);
-	bool waiting_for_lsp = ac->last_request_id != 0;
+	bool waiting_for_lsp = ac->last_request.id != 0;
 	
 	if (waiting_for_lsp && ncompletions == 0) {
 		double now = ted->frame_time;

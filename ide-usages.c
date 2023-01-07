@@ -4,10 +4,7 @@
 
 void usages_cancel_lookup(Ted *ted) {
 	Usages *usages = &ted->usages;
-	if (usages->last_request_id) {
-		ted_cancel_lsp_request(ted, usages->last_request_lsp, usages->last_request_id);
-		usages->last_request_id = 0;
-	}
+	ted_cancel_lsp_request(ted, &usages->last_request);
 }
 
 void usages_find(Ted *ted) {
@@ -23,8 +20,7 @@ void usages_find(Ted *ted) {
 	refs->include_declaration = true;
 	refs->position = buffer_cursor_pos_as_lsp_document_position(buffer);
 	usages_cancel_lookup(ted);
-	usages->last_request_lsp = lsp->id;
-	usages->last_request_id = lsp_send_request(lsp, &request);
+	usages->last_request= lsp_send_request(lsp, &request);
 	usages->last_request_time = ted->frame_time;
 }
 
@@ -33,9 +29,9 @@ void usages_process_lsp_response(Ted *ted, const LSPResponse *response) {
 	Usages *usages = &ted->usages;
 	if (response->request.type != LSP_REQUEST_REFERENCES)
 		return; // not for us
-	if (response->request.id != usages->last_request_id)
+	if (response->request.id != usages->last_request.id)
 		return;
-	LSP *lsp = ted_get_lsp_by_id(ted, usages->last_request_lsp);
+	LSP *lsp = ted_get_lsp_by_id(ted, usages->last_request.lsp);
 	const LSPResponseReferences *refs = &response->data.references;
 	if (lsp && arr_len(refs->locations)) { 
 		TextBuffer *buffer = &ted->build_buffer;
@@ -126,11 +122,11 @@ void usages_process_lsp_response(Ted *ted, const LSPResponse *response) {
 	} else {
 		ted_flash_error_cursor(ted);
 	}
-	usages->last_request_id = 0;
+	usages->last_request.id = 0;
 }
 
 void usages_frame(Ted *ted) {
 	Usages *usages = &ted->usages;
-	if (usages->last_request_id && ted->frame_time - usages->last_request_time > 0.2)
+	if (usages->last_request.id && ted->frame_time - usages->last_request_time > 0.2)
 		ted->cursor = ted->cursor_wait; // this request is takin a while
 }

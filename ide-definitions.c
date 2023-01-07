@@ -5,8 +5,7 @@
 
 void definition_cancel_lookup(Ted *ted) {
 	Definitions *defs = &ted->definitions;
-	ted_cancel_lsp_request(ted, defs->last_request_lsp, defs->last_request_id);
-	defs->last_request_id = 0;
+	ted_cancel_lsp_request(ted, &defs->last_request);
 }
 
 static SymbolKind symbol_kind_to_ted(LSPSymbolKind kind) {
@@ -77,14 +76,13 @@ void definition_goto(Ted *ted, LSP *lsp, const char *name, LSPDocumentPosition p
 		// send that request
 		LSPRequest request = {.type = request_type};
 		request.data.definition.position = position;
-		LSPRequestID id = lsp_send_request(lsp, &request);
-		if (id == 0 && request.type == LSP_REQUEST_IMPLEMENTATION) {
+		LSPServerRequestID id = lsp_send_request(lsp, &request);
+		if (id.id == 0 && request.type == LSP_REQUEST_IMPLEMENTATION) {
 			// if we can't go to the implementation, try going to the definition
 			request.type = LSP_REQUEST_DEFINITION;
 			id = lsp_send_request(lsp, &request);
 		}
-		defs->last_request_id = id;
-		defs->last_request_lsp = lsp->id;
+		defs->last_request = id;
 		defs->last_request_time = ted->frame_time;
 	} else {
 		// just go to the tag
@@ -94,7 +92,7 @@ void definition_goto(Ted *ted, LSP *lsp, const char *name, LSPDocumentPosition p
 
 void definitions_frame(Ted *ted) {
 	Definitions *defs = &ted->definitions;
-	if (defs->last_request_id && ted->frame_time - defs->last_request_time > 0.2) {
+	if (defs->last_request.id && ted->frame_time - defs->last_request_time > 0.2) {
 		ted->cursor = ted->cursor_wait;
 	}
 }
@@ -162,12 +160,12 @@ static void definitions_selector_filter_entries(Ted *ted) {
 
 void definitions_process_lsp_response(Ted *ted, LSP *lsp, const LSPResponse *response) {
 	Definitions *defs = &ted->definitions;
-	if (response->request.id != defs->last_request_id) {
+	if (response->request.id != defs->last_request.id) {
 		// response to an old/irrelevant request
 		return;
 	}
 	
-	defs->last_request_id = 0;
+	defs->last_request.id = 0;
 	
 	switch (response->request.type) {
 	case LSP_REQUEST_DEFINITION:
@@ -243,8 +241,7 @@ void definitions_send_request_if_needed(Ted *ted) {
 	syms->query = str_dup(query);
 	// cancel old request
 	definition_cancel_lookup(ted);
-	defs->last_request_id = lsp_send_request(lsp, &request);
-	defs->last_request_lsp = lsp->id;
+	defs->last_request = lsp_send_request(lsp, &request);
 	defs->last_request_time = ted->frame_time;
 	free(defs->last_request_query);
 	defs->last_request_query = query;
@@ -271,8 +268,7 @@ void definitions_selector_open(Ted *ted) {
 void definitions_selector_close(Ted *ted) {
 	Definitions *defs = &ted->definitions;
 	definitions_clear_entries(defs);
-	ted_cancel_lsp_request(ted, defs->last_request_lsp, defs->last_request_id);
-	defs->last_request_id = 0;
+	ted_cancel_lsp_request(ted, &defs->last_request);
 	free(defs->last_request_query);
 	defs->last_request_query = NULL;
 }

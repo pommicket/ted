@@ -18,6 +18,12 @@ typedef struct SDL_mutex *LSPMutex;
 typedef struct SDL_semaphore *LSPSemaphore;
 typedef struct SDL_Thread *LSPThread;
 
+// a struct for keeping track of a LSP server ID and a request ID
+typedef struct {
+	LSPID lsp;
+	LSPRequestID id;
+} LSPServerRequestID;
+
 // interface Position in the LSP spec
 typedef struct {
 	u32 line;
@@ -587,9 +593,9 @@ void lsp_message_free(LSPMessage *message);
 u32 lsp_document_id(LSP *lsp, const char *path);
 // returned pointer lives as long as lsp.
 const char *lsp_document_path(LSP *lsp, LSPDocumentID id);
-// returns the ID of the sent request, or 0 if the request is not supported by the LSP
+// returns the ID of the sent request, or (LSPServerRequestID){0} if the request is not supported by the LSP
 // don't free the contents of this request (even on failure)! let me handle it!
-LSPRequestID lsp_send_request(LSP *lsp, LSPRequest *request);
+LSPServerRequestID lsp_send_request(LSP *lsp, LSPRequest *request);
 // send a $/cancelRequest notification
 // if id = 0, nothing will happen.
 void lsp_cancel_request(LSP *lsp, LSPRequestID id);

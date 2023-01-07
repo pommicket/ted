@@ -241,10 +241,10 @@ static bool request_type_is_notification(LSPRequestType type) {
 	return false;
 }
 
-LSPRequestID lsp_send_request(LSP *lsp, LSPRequest *request) {
+LSPServerRequestID lsp_send_request(LSP *lsp, LSPRequest *request) {
 	if (!lsp_supports_request(lsp, request)) {
 		lsp_request_free(request);
-		return 0;
+		return (LSPServerRequestID){0};
 	}
 	
 	bool is_notification = request_type_is_notification(request->type);
@@ -253,7 +253,10 @@ LSPRequestID lsp_send_request(LSP *lsp, LSPRequest *request) {
 	LSPMessage message = {.type = LSP_REQUEST};
 	message.u.request = *request;
 	lsp_send_message(lsp, &message);
-	return request->id;
+	return (LSPServerRequestID) {
+		.lsp = lsp->id,
+		.id = request->id
+	};
 }
 
 void lsp_send_response(LSP *lsp, LSPResponse *response) {

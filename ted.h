@@ -376,8 +376,7 @@ typedef struct {
 	// or one of the TRIGGER_* constants above
 	uint32_t trigger;
 	
-	LSPID last_request_lsp;
-	LSPRequestID last_request_id;
+	LSPServerRequestID last_request;
 	// when we sent the request to the LSP for completions
 	//  (this is used to figure out when we should display "Loading...")
 	double last_request_time;
@@ -398,8 +397,7 @@ typedef struct {
 
 // data needed for finding usages
 typedef struct {
-	LSPID last_request_lsp;
-	LSPRequestID last_request_id;
+	LSPServerRequestID last_request;
 	double last_request_time;
 } Usages;
 
@@ -457,12 +455,8 @@ typedef enum {
 } GotoType;
 
 typedef struct {
-	LSPID last_request_lsp; // used for cancellation
-	// ID of the last request which was sent out.
-	// used to process responses in chronological order (= ID order).
-	// if we got a response for the last request, or no requests have been made,
-	// last_request_id is set to 0.
-	LSPRequestID last_request_id;
+	// information about last LSP request sent
+	LSPServerRequestID last_request;
 	double last_request_time;
 	
 	char *last_request_query; // last query string which we sent a request for
@@ -473,8 +467,7 @@ typedef struct {
 // "highlight" information from LSP server
 typedef struct {
 	LSPHighlight *highlights;
-	LSPRequestID last_request_id;
-	LSPID last_request_lsp;
+	LSPServerRequestID last_request;
 	LSPDocumentPosition requested_position;
 } Highlights;
 
@@ -1373,9 +1366,8 @@ void ted_flash_error_cursor(Ted *ted);
 void ted_go_to_position(Ted *ted, const char *path, u32 line, u32 index, bool is_lsp);
 // go to this LSP document position, opening a new buffer containing the file if necessary.
 void ted_go_to_lsp_document_position(Ted *ted, LSP *lsp, LSPDocumentPosition position);
-// cancel this LSP request. if `lsp` or `request` is 0,
-// or if `lsp` is not a valid LSP ID, nothing happens.
-void ted_cancel_lsp_request(Ted *ted, LSPID lsp, LSPRequestID request);
+// cancel this LSP request. also zeroes *request
+void ted_cancel_lsp_request(Ted *ted, LSPServerRequestID *request);
 // how tall is a line buffer?
 float ted_line_buffer_height(Ted *ted);
 // check for orphaned nodes and node cycles
