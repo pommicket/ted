@@ -1265,7 +1265,7 @@ void tags_generate(Ted *ted, bool run_in_build_window);
 // you may pass NULL for `out`, in which case just the number of matching tags is returned
 // (still maxing out at `out_size`).
 // each element in `out` should be freed when you're done with them.
-size_t tags_beginning_with(Ted *ted, const char *prefix, char **out, size_t out_size);
+size_t tags_beginning_with(Ted *ted, const char *prefix, char **out, size_t out_size, bool error_if_tags_does_not_exist);
 // go to the definition of the given tag
 bool tag_goto(Ted *ted, const char *tag);
 // get all tags in the tags file as SymbolInfos.

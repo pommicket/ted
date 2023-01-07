@@ -101,7 +101,9 @@ static void tags_generate_at_dir(Ted *ted, bool run_in_build_window, const char 
 void tags_generate(Ted *ted, bool run_in_build_window) {
 	const char *filename = tags_filename(ted, false);
 	if (!filename) {
-		strcpy(ted->tags_dir, ted->cwd);
+		char *root = ted_get_root_dir(ted);
+		strcpy(ted->tags_dir, root);
+		free(root);
 	}
 	change_directory(ted->tags_dir);
 	strcpy(ted->build_dir, ted->tags_dir);
@@ -136,9 +138,9 @@ static int tag_try(FILE *fp, const char *tag) {
 	return -1;
 }
 
-size_t tags_beginning_with(Ted *ted, const char *prefix, char **out, size_t out_size) {
+size_t tags_beginning_with(Ted *ted, const char *prefix, char **out, size_t out_size, bool error_if_tags_does_not_exist) {
 	assert(out_size);
-	const char *tags_name = tags_filename(ted, true);
+	const char *tags_name = tags_filename(ted, error_if_tags_does_not_exist);
 	if (!tags_name) return 0;
 	FILE *file = fopen(tags_name, "rb");
 	if (!file) return 0;

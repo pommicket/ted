@@ -183,19 +183,22 @@ static void autocomplete_find_completions(Ted *ted, uint32_t trigger, bool phant
 	} else {
 		// tag completion
 		autocomplete_clear_completions(ac);
+		autocomplete_clear_phantom(ac);
 		
 		char *word_at_cursor = str32_to_utf8_cstr(buffer_word_at_cursor(buffer));
 		if (phantom) {
-			char *completion = NULL;
-			if (tags_beginning_with(ted, word_at_cursor, &completion, 1) == 1) {
+			char *completions[2] = {NULL, NULL};
+			if (tags_beginning_with(ted, word_at_cursor, completions, 2, false) == 1) {
 				// show phantom
-				ac->phantom = completion;
+				ac->phantom = completions[0];
+				free(completions[1]);
 			} else {
-				free(completion);
+				free(completions[0]);
+				free(completions[1]);
 			}
 		} else {
 			char **completions = calloc(TAGS_MAX_COMPLETIONS, sizeof *completions);
-			u32 ncompletions = (u32)tags_beginning_with(ted, word_at_cursor, completions, TAGS_MAX_COMPLETIONS);
+			u32 ncompletions = (u32)tags_beginning_with(ted, word_at_cursor, completions, TAGS_MAX_COMPLETIONS, true);
 			
 			arr_set_len(ac->completions, ncompletions);
 			
@@ -396,7 +399,6 @@ static void autocomplete_find_phantom(Ted *ted) {
 	TextBuffer *buffer = ted->active_buffer;
 	if (!buffer->path) return;
 	if (buffer->view_only) return;
-	
 	autocomplete_find_completions(ted, TRIGGER_INVOKED, true);
 }
 

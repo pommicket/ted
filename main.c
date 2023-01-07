@@ -1,8 +1,5 @@
 /*
 @TODO:
-- make tags_dir the root folder
-- check that tags still works
-    - check that phantom completions works with tags
 - do we need higher than 1-second resolution in time_last_modified on windows?
 - when searching files, put exact matches at the top
 - TESTING: make rust-analyzer-slow (waits 10s before sending response)
