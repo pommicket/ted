@@ -394,11 +394,28 @@ void autocomplete_open(Ted *ted, uint32_t trigger) {
 
 static void autocomplete_find_phantom(Ted *ted) {
 	Autocomplete *ac = &ted->autocomplete;
-	if (ac->open) return;
-	if (!ted->active_buffer) return;
+	if (ac->open) {
+		autocomplete_clear_phantom(ac);
+		return;
+	}
+	if (!ted->active_buffer) {
+		autocomplete_clear_phantom(ac);
+		return;
+	}
 	TextBuffer *buffer = ted->active_buffer;
-	if (!buffer->path) return;
-	if (buffer->view_only) return;
+	if (!buffer->path) {
+		autocomplete_clear_phantom(ac);
+		return;
+	}
+	if (buffer->view_only) {
+		autocomplete_clear_phantom(ac);
+		return;
+	}
+	char32_t after_cursor = buffer_char_after_cursor(buffer);
+	if (is32_word(after_cursor)) {
+		autocomplete_clear_phantom(ac);
+		return;
+	}
 	autocomplete_find_completions(ted, TRIGGER_INVOKED, true);
 }
 
@@ -450,6 +467,9 @@ void autocomplete_frame(Ted *ted) {
 					colors[COLOR_TEXT] & 0xffffff7f);
 				text_render(font);
 				gl_geometry_draw();
+			} else {
+				// this phantom is no longer relevant
+				autocomplete_clear_phantom(ac);
 			}
 		} else {
 			// this phantom is no longer relevant

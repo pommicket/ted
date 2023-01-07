@@ -1,6 +1,5 @@
 /*
 @TODO:
-- do we need higher than 1-second resolution in time_last_modified on windows?
 - when searching files, put exact matches at the top
 - TESTING: make rust-analyzer-slow (waits 10s before sending response)
 - TESTING: check all IDE features with different servers
@@ -22,15 +21,14 @@ FUTURE FEATURES:
 - manual.md
 - better handling of backspace with space indentation
 - CSS highlighting
+- option for separate colors for read/write highlights
 - styles ([color] sections)
 - make go-to-definition/hover/highlight modifier key configurable
-- option for separate colors for read/write highlights
 - return to previous location in buffer
 - font setting & support for multiple fonts to cover more characters
 - comment-start & comment-end settings
 - robust find (results shouldn't move around when you type things)
-- multiple files with command line arguments
-- :set-build-command
+- open multiple files with command line arguments
 - document links using LSP textDocument/documentLink request
 - rename using LSP (textDocument/rename)
        - we have request writing & response parsing support for it, but that hasn't been tested yet

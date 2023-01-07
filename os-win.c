@@ -109,12 +109,29 @@ int os_get_cwd(char *buf, size_t buflen) {
 	return 1;
 }
 
+#error "@TODO: test this"
 struct timespec time_last_modified(const char *filename) {
-	// windows' _stat does not have st_mtim
-	struct _stat statbuf = {0};
 	struct timespec ts = {0};
-	_stat(filename, &statbuf);
-	ts.tv_sec = statbuf.st_mtime;
+	FILETIME write_time = {0};
+	WCHAR wide_path[4100];
+	if (MultiByteToWideChar(CP_UTF8, 0, path, -1, wide_path, sizeof wide_path) == 0)
+		return ts;
+	HANDLE file = CreateFileW(wide_path, GENERIC_WRITE, FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE, NULL,
+		OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL);
+	if (file == INVALID_HANDLE)
+		return ts;
+	
+	if (GetFileTime(file, NULL, NULL, &write_time)) {
+		u64 qword = (u64)write_time.dwLowDateTime
+			| (u64)write_time.dwHighDateTime << 32;
+		// annoyingly, windows gives time since jan 1, 1601 not 1970
+		// https://www.wolframalpha.com/input?i=number+of+days+between+jan+1%2C+1601+and+jan+1%2C+1970
+		qword -= (u64)10000000 * 134774 * 60 * 60 * 24;
+		ts.tv_sec = qword / 10000000;
+		ts.tv_nsec = (qword % 10000000) * 100;
+	}
+	
+	CloseHandle(file);
 	return ts;
 }
 
