@@ -46,7 +46,10 @@ void hover_process_lsp_response(Ted *ted, LSPResponse *response) {
 	TextBuffer *buffer=0;
 	LSPDocumentPosition pos={0};
 	LSP *lsp=0;
-	get_hover_position(ted, &pos, &buffer, &lsp);
+	if (!get_hover_position(ted, &pos, &buffer, &lsp)) {
+		free(hover->text); hover->text = NULL;
+		return;
+	}
 	
 	if (hover->text // we already have hover text
 		&& (

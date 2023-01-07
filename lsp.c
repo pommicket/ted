@@ -492,8 +492,8 @@ LSP *lsp_create(const char *root_dir, const char *command, const char *configura
 	lsp->log = log;
 	
 	#if DEBUG
-		printf("Starting up LSP %p `%s` in %s\n",
-			(void *)lsp, command, root_dir);
+		printf("Starting up LSP %p (ID %u) `%s` in %s\n",
+			(void *)lsp, (unsigned)lsp->id, command, root_dir);
 	#endif
 	
 	str_hash_table_create(&lsp->document_ids, sizeof(u32));
@@ -657,8 +657,31 @@ bool lsp_covers_path(LSP *lsp, const char *path) {
 void lsp_cancel_request(LSP *lsp, LSPRequestID id) {
 	if (!id) return;
 	if (!lsp) return;
-	
-	LSPRequest request = {.type = LSP_REQUEST_CANCEL};
-	request.data.cancel.id = id;
-	lsp_send_request(lsp, &request);
+	bool sent = false;
+	SDL_LockMutex(lsp->messages_mutex);
+		for (u32 i = 0; i < arr_len(lsp->requests_sent); ++i) {
+			LSPRequest *req = &lsp->requests_sent[i];
+			if (req->id == id) {
+				// we sent this request but haven't received a response
+				sent = true;
+				arr_remove(lsp->requests_sent, i);
+				break;
+			}
+		}
+		
+		for (u32 i = 0; i < arr_len(lsp->messages_client2server); ++i) {
+			LSPMessage *message = &lsp->messages_client2server[i];
+			if (message->type == LSP_REQUEST && message->u.request.id == id) {
+				// we haven't sent this request yet
+				arr_remove(lsp->messages_client2server, i);
+				break;
+			}
+		
+		}
+	SDL_UnlockMutex(lsp->messages_mutex);
+	if (sent) {
+		LSPRequest request = {.type = LSP_REQUEST_CANCEL};
+		request.data.cancel.id = id;
+		lsp_send_request(lsp, &request);
+	}
 }
