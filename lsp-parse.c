@@ -540,15 +540,21 @@ static bool parse_hover(LSP *lsp, const JSON *json, LSPResponse *response) {
 	return true;
 }
 
-// parse a Location:  {uri: DocumentUri, range: Range}
+// parse a Location or a LocationLink
 static bool parse_location(LSP *lsp, const JSON *json, JSONValue value, LSPLocation *location) {
 	if (!lsp_expect_object(lsp, value, "Location"))
 		return false;
 	JSONObject object = value.val.object;
 	JSONValue uri = json_object_get(json, object, "uri");
+	JSONValue range = json_object_get(json, object, "range");
+	if (uri.type == JSON_UNDEFINED) {
+		// maybe it's a LocationLink
+		uri = json_object_get(json, object, "targetUri");
+		range = json_object_get(json, object, "targetRange");
+	}
+	
 	if (!parse_document_uri(lsp, json, uri, &location->document))
 		return false;
-	JSONValue range = json_object_get(json, object, "range");
 	if (!parse_range(lsp, json, range, &location->range))
 		return false;
 	return true;

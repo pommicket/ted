@@ -10,7 +10,9 @@
     - bad json can give "Unexpected error: client exited without proper shutdown sequence"
     - containerName not always given in workspace/symbols
 - clangd bug report:
-    - textDocumemt/definition on ted.h declarations just gives you the declaration
+    - textDocument/definition on ted.h declarations just gives you the declaration
+- texlab bug report:
+    - textDocument/definition gives LocationLink regardless of client capabilities
 FUTURE FEATURES:
 - write first to <path>.tmp then rename to <path>.
   this prevents freak occurences, e.g. power outage during file write,
