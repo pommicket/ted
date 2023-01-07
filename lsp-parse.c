@@ -495,7 +495,8 @@ static bool parse_hover(LSP *lsp, const JSON *json, LSPResponse *response) {
 	JSONObject result = json_force_object(result_value);
 	
 	JSONValue range = json_object_get(json, result, "range");
-	parse_range(lsp, json, range, &hover->range);
+	if (range.type != JSON_UNDEFINED)
+		parse_range(lsp, json, range, &hover->range);
 	
 	JSONValue contents = json_object_get(json, result, "contents");
 	

@@ -1,17 +1,14 @@
 /*
 @TODO:
-- when searching files, put exact matches at the top
-- TESTING: make rust-analyzer-slow (waits 10s before sending response)
 - TESTING: check all IDE features with different servers
 - run everything through valgrind ideally with leak checking
-- grep -i -n TODO *.[ch]
 - some way of opening + closing all C files in directory for clangd
    textDocument/references to work?
 	- maybe it can be done with the clangd config instead.
 	- does vscode have the same problem?
 - rust-analyzer bug reports:
     - bad json can give "Unexpected error: client exited without proper shutdown sequence"
-    - containerName not always given in textDocument/references
+    - containerName not always given in workspace/symbols
 - clangd bug report:
     - textDocumemt/definition on ted.h declarations just gives you the declaration
 FUTURE FEATURES:

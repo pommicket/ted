@@ -460,8 +460,8 @@ void autocomplete_frame(Ted *ted) {
 			const char *completion = ac->phantom + strlen(word_at_cursor);
 			if (*completion) {
 				vec2 pos = buffer_pos_to_pixels(buffer, buffer->cursor_pos);
-				vec2 size = text_get_size_vec2(font, completion);
 				#if 0
+				vec2 size = text_get_size_vec2(font, completion);
 				// this makes the text below the phantom less visible.
 				// doesn't look very good, so I'm not doing it.
 				Rect r = rect(pos, size);
