@@ -7,6 +7,7 @@ void hover_close(Ted *ted) {
 	hover->open = false;
 	free(hover->text);
 	hover->text = NULL;
+	ted_cancel_lsp_request(ted, &hover->last_request);
 }
 
 static bool get_hover_position(Ted *ted, LSPDocumentPosition *pos, TextBuffer **pbuffer, LSP **lsp) {
@@ -26,13 +27,14 @@ static bool get_hover_position(Ted *ted, LSPDocumentPosition *pos, TextBuffer **
 
 static void hover_send_request(Ted *ted) {
 	Hover *hover = &ted->hover;
+	
+	ted_cancel_lsp_request(ted, &hover->last_request);
 	LSPRequest request = {.type = LSP_REQUEST_HOVER};
 	LSPRequestHover *h = &request.data.hover;
 	LSP *lsp = NULL;
 	if (get_hover_position(ted, &h->position, NULL, &lsp)) {
 		hover->requested_position = h->position;
-		hover->requested_lsp = lsp->id;
-		lsp_send_request(lsp, &request);
+		hover->last_request = lsp_send_request(lsp, &request);
 	}	
 }
 
@@ -41,6 +43,12 @@ void hover_process_lsp_response(Ted *ted, LSPResponse *response) {
 	if (response->request.type != LSP_REQUEST_HOVER) return;
 	
 	Hover *hover = &ted->hover;
+	if (response->request.id != hover->last_request.id) {
+		// stale request
+		return;
+	}
+	
+	hover->last_request.id = 0;
 	LSPResponseHover *hover_response = &response->data.hover;
 	
 	TextBuffer *buffer=0;
@@ -53,7 +61,7 @@ void hover_process_lsp_response(Ted *ted, LSPResponse *response) {
 	
 	if (hover->text // we already have hover text
 		&& (
-		lsp->id != hover->requested_lsp // this request is from a different LSP
+		lsp->id != hover->last_request.lsp // this request is from a different LSP
 		|| !lsp_document_position_eq(response->request.data.hover.position, pos) // this request is for a different position
 		)) {
 		// this is a stale request. ignore it
@@ -104,7 +112,7 @@ void hover_frame(Ted *ted, double dt) {
 		LSPDocumentPosition pos={0};
 		LSP *lsp=0;
 		if (get_hover_position(ted, &pos, &buffer, &lsp)) {
-			if (lsp->id != hover->requested_lsp
+			if (lsp->id != hover->last_request.lsp
 				|| !lsp_document_position_eq(pos, hover->requested_position)) {
 				// refresh hover
 				hover_send_request(ted);

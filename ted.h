@@ -416,6 +416,7 @@ typedef struct {
 
 // "signature help" (LSP) is thing that shows the current parameter, etc.
 typedef struct {
+	LSPServerRequestID last_request;
 	// should we resend a signature help request this frame?
 	bool retrigger;
 	// if signature_count = 0, signature help is closed
@@ -425,6 +426,7 @@ typedef struct {
 
 // "hover" information from LSP server
 typedef struct {
+	LSPServerRequestID last_request;
 	// is some hover info being displayed?
 	bool open;
 	// text to display
@@ -432,7 +434,6 @@ typedef struct {
 	// where the hover data is coming from.
 	// we use this to check if we need to refresh it.
 	LSPDocumentPosition requested_position;
-	LSPID requested_lsp;
 	LSPRange range;
 	double time; // how long the cursor has been hovering for
 } Hover;
@@ -1367,6 +1368,7 @@ void ted_go_to_position(Ted *ted, const char *path, u32 line, u32 index, bool is
 // go to this LSP document position, opening a new buffer containing the file if necessary.
 void ted_go_to_lsp_document_position(Ted *ted, LSP *lsp, LSPDocumentPosition position);
 // cancel this LSP request. also zeroes *request
+// if *request is zeroed, this does nothing.
 void ted_cancel_lsp_request(Ted *ted, LSPServerRequestID *request);
 // how tall is a line buffer?
 float ted_line_buffer_height(Ted *ted);

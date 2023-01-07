@@ -34,7 +34,8 @@ static void signature_help_send_request(Ted *ted) {
 	LSPRequest request  = {.type = LSP_REQUEST_SIGNATURE_HELP};
 	LSPRequestSignatureHelp *s = &request.data.signature_help;
 	s->position = buffer_cursor_pos_as_lsp_document_position(buffer);
-	lsp_send_request(lsp, &request);
+	ted_cancel_lsp_request(ted, &help->last_request);
+	help->last_request = lsp_send_request(lsp, &request);
 	help->retrigger = false;
 }
 
@@ -55,16 +56,24 @@ bool signature_help_is_open(Ted *ted) {
 
 
 void signature_help_close(Ted *ted) {
-	signature_help_clear(&ted->signature_help);
+	SignatureHelp *help = &ted->signature_help;
+	signature_help_clear(help);
+	ted_cancel_lsp_request(ted, &help->last_request);
 }
 
 void signature_help_process_lsp_response(Ted *ted, const LSPResponse *response) {
+	SignatureHelp *help = &ted->signature_help;
 	Settings *settings = ted_active_settings(ted);
 	if (!settings->signature_help_enabled) return;
 	
 	if (response->request.type != LSP_REQUEST_SIGNATURE_HELP)
 		return;
-	SignatureHelp *help = &ted->signature_help;
+	if (response->request.id != help->last_request.id) {
+		// stale request
+		return;
+	}
+	help->last_request.id = 0;
+	
 	const LSPResponseSignatureHelp *lsp_help = &response->data.signature_help;
 	u32 signature_count = arr_len(lsp_help->signatures);
 	if (signature_count > SIGNATURE_HELP_MAX)
