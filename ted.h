@@ -966,6 +966,10 @@ Status color_from_str(const char *str, u32 *color);
 // which color setting should be used for the given symbol kind.
 // this is the color used in the autocomplete selector, for example.
 ColorSetting color_for_symbol_kind(SymbolKind kind);
+// perform SRC_ALPHA, ONE_MINUS_SRC_ALPHA blending with `bg` and `fg`.
+u32 color_blend(u32 bg, u32 fg);
+// multiply color's alpha value by `opacity`.
+u32 color_apply_opacity(u32 color, float opacity);
 
 // === command.c ===
 void command_init(void);

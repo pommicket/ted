@@ -149,3 +149,22 @@ ColorSetting color_for_symbol_kind(SymbolKind kind) {
 	}
 	return COLOR_TEXT;
 }
+
+u32 color_blend(u32 bg, u32 fg) {
+	u32 r1 = bg >> 24;
+	u32 g1 = (bg >> 16) & 0xff;
+	u32 b1 = (bg >> 8) & 0xff;
+	u32 r2 = fg >> 24;
+	u32 g2 = (fg >> 16) & 0xff;
+	u32 b2 = (fg >> 8) & 0xff;
+	u32 a2 = fg & 0xff;
+	u32 r = (r1 * (255 - a2) + r2 * a2 + 127) / 255;
+	u32 g = (g1 * (255 - a2) + g2 * a2 + 127) / 255;
+	u32 b = (b1 * (255 - a2) + b2 * a2 + 127) / 255;
+	return r << 24 | g << 16 | b << 8 | 0xff;
+}
+
+u32 color_apply_opacity(u32 color, float opacity) {
+	opacity = clampf(opacity, 0.0f, 1.0f);
+	return (color & 0xffffff00) | (u32)((color & 0xff) * opacity);
+}

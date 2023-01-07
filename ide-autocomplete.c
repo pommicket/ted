@@ -5,6 +5,7 @@
 #define TAGS_MAX_COMPLETIONS 200 // max # of tag completions to scroll through
 #define AUTOCOMPLETE_NCOMPLETIONS_VISIBLE 10 // max # of completions to show at once
 
+
 static void autocomplete_clear_completions(Autocomplete *ac) {
 	arr_foreach_ptr(ac->completions, Autocompletion, completion) {
 		free(completion->label);
@@ -20,6 +21,22 @@ static void autocomplete_clear_completions(Autocomplete *ac) {
 static void autocomplete_clear_phantom(Autocomplete *ac) {
 	free(ac->phantom);
 	ac->phantom = NULL;
+}
+
+// should a phantom completion be displayed?
+static bool autocomplete_should_display_phantom(Ted *ted) {
+	Autocomplete *ac = &ted->autocomplete;
+	TextBuffer *buffer = ted->active_buffer;
+	bool show = !ac->open
+		&& buffer
+		&& !buffer->view_only
+		&& !buffer->is_line_buffer
+		&& buffer_settings(buffer)->phantom_completions
+		&& is32_word(buffer_char_before_cursor(buffer))
+		&& !is32_word(buffer_char_after_cursor(buffer));
+	if (!show)
+		autocomplete_clear_phantom(ac);
+	return show;
 }
 
 // do the actual completion
@@ -187,14 +204,16 @@ static void autocomplete_find_completions(Ted *ted, uint32_t trigger, bool phant
 		
 		char *word_at_cursor = str32_to_utf8_cstr(buffer_word_at_cursor(buffer));
 		if (phantom) {
-			char *completions[2] = {NULL, NULL};
-			if (tags_beginning_with(ted, word_at_cursor, completions, 2, false) == 1) {
-				// show phantom
-				ac->phantom = completions[0];
-				free(completions[1]);
-			} else {
-				free(completions[0]);
-				free(completions[1]);
+			if (autocomplete_should_display_phantom(ted)) {
+				char *completions[2] = {NULL, NULL};
+				if (tags_beginning_with(ted, word_at_cursor, completions, 2, false) == 1) {
+					// show phantom
+					ac->phantom = completions[0];
+					free(completions[1]);
+				} else {
+					free(completions[0]);
+					free(completions[1]);
+				}
 			}
 		} else {
 			char **completions = calloc(TAGS_MAX_COMPLETIONS, sizeof *completions);
@@ -279,7 +298,8 @@ void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *response) {
 		return;
 	}
 	if (ac->open && ac->last_request_phantom) {
-		// i'm not sure if this is possible, but just in case,
+		// shouldn't be possible, since we should never request phantom completions while autocomplete is open
+		assert(0);
 		return;
 	}
 		
@@ -290,6 +310,9 @@ void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *response) {
 	const LSPResponseCompletion *completion = &response->data.completion;
 	size_t ncompletions = arr_len(completion->items);
 	if (ac->last_request_phantom) {
+		if (!autocomplete_should_display_phantom(ted))
+			return;
+		
 		// check for phantom completion
 		// ideally we would just check if ncompletions == 1,
 		// but some completions might not start with the word at the cursor,
@@ -393,29 +416,8 @@ void autocomplete_open(Ted *ted, uint32_t trigger) {
 }
 
 static void autocomplete_find_phantom(Ted *ted) {
-	Autocomplete *ac = &ted->autocomplete;
-	if (ac->open) {
-		autocomplete_clear_phantom(ac);
+	if (!autocomplete_should_display_phantom(ted))
 		return;
-	}
-	if (!ted->active_buffer) {
-		autocomplete_clear_phantom(ac);
-		return;
-	}
-	TextBuffer *buffer = ted->active_buffer;
-	if (!buffer->path) {
-		autocomplete_clear_phantom(ac);
-		return;
-	}
-	if (buffer->view_only) {
-		autocomplete_clear_phantom(ac);
-		return;
-	}
-	char32_t after_cursor = buffer_char_after_cursor(buffer);
-	if (is32_word(after_cursor)) {
-		autocomplete_clear_phantom(ac);
-		return;
-	}
 	autocomplete_find_completions(ted, TRIGGER_INVOKED, true);
 }
 
@@ -447,26 +449,29 @@ void autocomplete_frame(Ted *ted) {
 	const Settings *settings = buffer_settings(buffer);
 	const u32 *colors = settings->colors;
 	const float padding = settings->padding;
-	if (settings->phantom_completions) {
-		autocomplete_find_phantom(ted);
-	}
+	
+	autocomplete_find_phantom(ted);
 	
 	Autocomplete *ac = &ted->autocomplete;
-	if (!ac->open && ac->phantom) {
+	if (autocomplete_should_display_phantom(ted) && ac->phantom) {
 		// display phantom completion
 		char *word_at_cursor = buffer_word_at_cursor_utf8(buffer);
 		if (*word_at_cursor && str_has_prefix(ac->phantom, word_at_cursor)) {
 			const char *completion = ac->phantom + strlen(word_at_cursor);
 			if (*completion) {
 				vec2 pos = buffer_pos_to_pixels(buffer, buffer->cursor_pos);
-				//vec2 size = text_get_size_vec2(font, completion);
-				//Rect r = rect(pos, size);
-				//gl_geometry_rect(r, colors[COLOR_CURSOR_BG] & 0xffffff7f);
-				
-				text_utf8(font, completion, pos.x, pos.y,
-					colors[COLOR_TEXT] & 0xffffff7f);
-				text_render(font);
+				vec2 size = text_get_size_vec2(font, completion);
+				#if 0
+				// this makes the text below the phantom less visible.
+				// doesn't look very good, so I'm not doing it.
+				Rect r = rect(pos, size);
+				u32 bg_color = color_apply_opacity(color_blend(colors[COLOR_BG], colors[COLOR_CURSOR_LINE_BG]), 0.8f);
+				gl_geometry_rect(r, bg_color);
+				#endif
+				u32 text_color = color_apply_opacity(colors[COLOR_TEXT], 0.5);
+				text_utf8(font, completion, pos.x, pos.y, text_color);
 				gl_geometry_draw();
+				text_render(font);
 			} else {
 				// this phantom is no longer relevant
 				autocomplete_clear_phantom(ac);
