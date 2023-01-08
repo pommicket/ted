@@ -233,6 +233,7 @@ void build_check_for_errors(Ted *ted) {
 						.build_output_line = line_idx
 					};
 					arr_add(ted->build_errors, error);
+					free(filename);
 				}
 			}
 		}

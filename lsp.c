@@ -6,18 +6,11 @@
 
 const char *language_to_str(Language language);
 
-static LSPMutex id_mutex;
-
 // it's nice to have request IDs be totally unique, including across LSP servers.
 static LSPRequestID get_request_id(void) {
 	// it's important that this never returns 0, since that's reserved for "no ID"
-	static LSPRequestID last_request_id;
-	LSPRequestID id = 0;
-	assert(id_mutex);
-	SDL_LockMutex(id_mutex);
-		id = ++last_request_id;
-	SDL_UnlockMutex(id_mutex);
-	return id;
+	static _Atomic LSPRequestID last_request_id;
+	return ++last_request_id;
 }
 
 bool lsp_get_error(LSP *lsp, char *error, size_t error_size, bool clear) {
@@ -503,10 +496,7 @@ const char *lsp_document_path(LSP *lsp, LSPDocumentID document) {
 LSP *lsp_create(const char *root_dir, const char *command, const char *configuration, FILE *log) {
 	LSP *lsp = calloc(1, sizeof *lsp);
 	if (!lsp) return NULL;
-	
-	if (!id_mutex)
-		id_mutex = SDL_CreateMutex();
-	
+		
 	static LSPID curr_id = 1;
 	lsp->id = curr_id++;
 	lsp->log = log;

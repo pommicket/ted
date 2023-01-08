@@ -340,6 +340,7 @@ void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *response) {
 		return;
 	}
 	
+	autocomplete_clear_completions(ac);
 	arr_set_len(ac->completions, ncompletions);
 	for (size_t i = 0; i < ncompletions; ++i) {
 		const LSPCompletionItem *lsp_completion = &completion->items[i];

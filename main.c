@@ -1,8 +1,8 @@
 /*
 @TODO:
-- run everything through valgrind ideally with leak checking
 - some way of opening + closing all C files in directory for clangd
    textDocument/references to work?
+        - does adding compile_commands.json help?
 	- maybe it can be done with the clangd config instead.
 	- does vscode have the same problem?
 - rust-analyzer bug reports:

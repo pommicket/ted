@@ -55,6 +55,13 @@
    ...
 }
 {
+   nvidia_driver
+   Memcheck:Leak
+   ...
+   obj:/usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.*
+   ...
+}
+{
    <insert_a_suppression_name_here>
    Memcheck:Leak
    match-leak-kinds: reachable
