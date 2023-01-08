@@ -43,6 +43,11 @@ int fs_mkdir(const char *path);
 // 0  if buf is too short to hold the cwd
 // -1 if we can't get the cwd for whatever reason.
 int os_get_cwd(char *buf, size_t buflen);
+// Unlike ISO C rename() function, this will overwrite `newname` if it exists.
+// Returns:
+// >= 0 if successful
+// < 0 on error
+int os_rename_overwrite(const char *oldname, const char *newname);
 struct timespec time_last_modified(const char *filename);
 struct timespec time_get(void);
 // sleep for a certain number of nanoseconds

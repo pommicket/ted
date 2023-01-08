@@ -2459,7 +2459,7 @@ bool buffer_save(TextBuffer *buffer) {
 				success = false;
 			}
 			if (success) {
-				if (rename(tmp_path, buffer->path) != 0) {
+				if (os_rename_overwrite(tmp_path, buffer->path) < 0) {
 					if (!buffer_has_error(buffer))
 						buffer_error(buffer, "Couldn't rename %s => %s.", tmp_path, buffer->path);
 					success = false;

@@ -110,6 +110,12 @@ int os_get_cwd(char *buf, size_t buflen) {
 	return 1;
 }
 
+int os_rename_overwrite(const char *oldname, const char *newname) {
+	wchar_t wide_oldname[4100];
+	wchar_t wide_newname[4100];
+	
+}
+
 struct timespec time_last_modified(const char *path) {
 	struct timespec ts = {0};
 	FILETIME write_time = {0};
