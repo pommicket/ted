@@ -344,44 +344,46 @@ void process_kill(Process **pproc) {
 	*pproc = NULL;
 }
 
-int process_check_status(Process **pproc, char *message, size_t message_size) {
+int process_check_status(Process **pproc, ProcessExitInfo *info) {
 	Process *proc = *pproc;
+	memset(info, 0, sizeof *info);
+	
 	if (!proc) {
 		assert(0);
-		if (message) str_printf(message, message_size, "checked status twice");
+		strbuf_printf(info->message, "checked status twice");
 		return -1;
 	}
-	assert(!message || message_size > 0);
 	int wait_status = 0;
 	int ret = waitpid(proc->pid, &wait_status, WNOHANG);
 	if (ret == 0) {
 		// process still running
-		if (message)
-			*message = '\0';
 		return 0;
 	} else if (ret > 0) {
 		if (WIFEXITED(wait_status)) {
 			process_kill(pproc);
 			int code = WEXITSTATUS(wait_status);
+			info->exit_code = code;
+			info->exited = true;
 			if (code == 0) {
-				if (message) str_printf(message, message_size, "exited successfully");
+				strbuf_printf(info->message, "exited successfully");
 				return +1;
 			} else {
-				if (message) str_printf(message, message_size, "exited with code %d", code);
+				strbuf_printf(info->message, "exited with code %d", code);
 				return -1;
 			}
 		} else if (WIFSIGNALED(wait_status)) {
+			int signal = WTERMSIG(wait_status);
+			info->signal = signal;
+			info->signalled = true;
 			process_close_pipes(proc);
-			if (message)
-				str_printf(message, message_size, "terminated by signal %d", WTERMSIG(wait_status));
+			strbuf_printf(info->message, "terminated by signal %d", info->signal);
 			return -1;
 		}
 		return 0;
 	} else {
 		// this process is gone or something?
 		process_close_pipes(proc);
-		if (message)
-			str_printf(message, message_size, "process ended unexpectedly");
+		strbuf_printf(info->message, "process ended unexpectedly");
 		return -1;
 	}
 }

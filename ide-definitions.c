@@ -286,8 +286,7 @@ void definitions_selector_update(Ted *ted) {
 	
 	char *chosen = selector_update(ted, sel);
 	if (chosen) {
-		free(chosen), chosen = NULL;
-		// we ignore `chosen` and use the cursor instead.
+		// for LSP go-to-definition, we ignore `chosen` and use the cursor instead.
 		// this is because a single symbol can have multiple definitions,
 		// e.g. with overloading.
 		if (sel->cursor >= sel->n_entries) {
@@ -311,6 +310,7 @@ void definitions_selector_update(Ted *ted) {
 			menu_close(ted);
 			tag_goto(ted, chosen);
 		}
+		free(chosen);
 	}
 }
 

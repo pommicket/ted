@@ -301,12 +301,12 @@ void build_frame(Ted *ted, float x1, float y1, float x2, float y2) {
 			buffer_scroll_to_cursor(buffer);
 		}
 
-		char message[64];
-		int status = process_check_status(&ted->build_process, message, sizeof message);
+		ProcessExitInfo info = {0};
+		int status = process_check_status(&ted->build_process, &info);
 		if (status == 0) {
 			// hasn't exited yet
 		} else {
-			buffer_insert_utf8_at_cursor(buffer, message);
+			buffer_insert_utf8_at_cursor(buffer, info.message);
 			buffer_insert_utf8_at_cursor(buffer, "\n");
 			if (!build_run_next_command_in_queue(ted)) {
 				ted->building = false;

@@ -294,12 +294,27 @@ static bool lsp_receive(LSP *lsp, size_t max_size) {
 	
 	{
 		// check process status
-		char text[64] = {0};
-		int status = process_check_status(&lsp->process, text, sizeof text);
+		ProcessExitInfo info = {0};
+		int status = process_check_status(&lsp->process, &info);
 		if (status != 0) {
-			lsp_set_error(lsp, "Can't access LSP server: %s\n"
-				"Run ted in a terminal or set lsp-log = on for more details."
-				, text);
+			bool not_found =
+			#if _WIN32
+			#error "@TODO: what status does cmd return if the program is not found?"
+			#else
+				info.exit_code == 127;
+			#endif
+			
+			if (not_found) {
+				// don't give an error if the server is not found.
+				// still log it though.
+				if (lsp->log)
+					fprintf(lsp->log, "LSP server exited: %s. Probably the server is not installed.",
+						info.message);
+			} else {
+				lsp_set_error(lsp, "Can't access LSP server: %s\n"
+					"Run ted in a terminal or set lsp-log = on for more details."
+					, info.message);
+			}
 			return false;
 		}
 		
@@ -392,6 +407,7 @@ static bool lsp_send(LSP *lsp) {
 			quit = true;
 		}
 	}
+	lsp->died = true;
 
 	free(messages);
 	return quit;

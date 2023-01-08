@@ -91,6 +91,17 @@ typedef struct {
 	const char *working_directory;
 } ProcessSettings;
 
+typedef struct {
+	// string like "exited with code 9"
+	char message[62];
+	// it might be possible that both signalled and exited are false,
+	// if something weird happens.
+	bool signalled;
+	bool exited;
+	int exit_code;
+	int signal;
+} ProcessExitInfo;
+
 // get process ID of this process
 int process_get_id(void);
 // execute the given command (like if it was passed to system()), creating a new Process object.
@@ -122,9 +133,9 @@ long long process_read_stderr(Process *process, char *data, size_t size);
 // -1 if the process returned a non-zero exit code, or got a signal.
 // 1  if the process exited successfully
 // 0  if the process hasn't exited.
-// If message is not NULL, it will be set to a description of what happened (e.g. "exited successfully")
+// If the process has exited, *info will be filled out with details.
 // if the process is no longer running, *process will be freed and set to NULL.
-int process_check_status(Process **process, char *message, size_t message_size);
+int process_check_status(Process **process, ProcessExitInfo *info);
 // kills process if still running
 // this also frees any resources used by `*process`.
 // *process will be set to NULL.

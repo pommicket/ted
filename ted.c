@@ -149,20 +149,13 @@ Settings *ted_get_settings(Ted *ted, const char *path, Language language) {
 
 LSP *ted_get_lsp_by_id(Ted *ted, LSPID id) {
 	for (int i = 0; ted->lsps[i]; ++i) {
-		if (ted->lsps[i]->id == id)
-			return ted->lsps[i];
+		LSP *lsp = ted->lsps[i];
+		if (lsp->id == id)
+			return lsp->died ? NULL : lsp;
 	}
 	return NULL;
 }
 
-// IMPORTANT NOTE ABOUT CACHING LSPs:
-//     - be careful if you want to cache LSPs, e.g. adding  a LSP *lsp member to `buffer`.
-//     - right now we pretend that the server has workspace folder support until the initialize response is sent.
-//     - specifically, this means that:
-//                 ted_get_lsp("/path1/a") =>  new LSP 0x12345
-//                 ted_get_lsp("/path2/b") => same LSP 0x12345
-//                 (receive initialize request, realize we don't have workspace folder support)
-//                 ted_get_lsp("/path2/b") =>  new LSP 0x6789A
 LSP *ted_get_lsp(Ted *ted, const char *path, Language language) {
 	Settings *settings = ted_get_settings(ted, path, language);
 	if (!settings->lsp_enabled)
@@ -180,6 +173,8 @@ LSP *ted_get_lsp(Ted *ted, const char *path, Language language) {
 			// if the server supports workspaceFolders.
 			return NULL;
 		}
+		if (lsp->died)
+			return NULL;
 		
 		// check if root matches up or if we can add a workspace folder
 		char *root = ted_get_root_dir_of(ted, path);

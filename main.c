@@ -55,6 +55,9 @@ FUTURE FEATURES:
 #if __linux__
 #include <execinfo.h>
 #endif
+#if __unix__
+#include <unistd.h>
+#endif
 #if _WIN32
 #include <shellapi.h>
 #pragma comment(lib, "dbghelp.lib")
