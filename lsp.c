@@ -525,6 +525,7 @@ LSP *lsp_create(const char *root_dir, const char *command, const char *configura
 	
 	// document ID 0 is reserved
 	LSPDocumentID zero_id = lsp_document_id(lsp, "");
+	(void)zero_id;
 	assert(zero_id == 0);
 	
 	arr_add(lsp->workspace_folders, lsp_document_id(lsp, root_dir));
