@@ -557,10 +557,10 @@ typedef struct LSP {
 	// has the response to the initialize request been sent?
 	// thread-safety: this starts out false, and only gets set to true once
 	//                (when the initialize response is received)
-	_Atomic bool initialized;
+	bool initialized;
 	// has the LSP server exited?
-	// thread-safety: atomic
-	_Atomic bool exited;
+	// thread-safety: this starts out false, and only gets set to true once (when the server exits)
+	bool exited;
 	// thread-safety: only set once in lsp_create.
 	char *command;
 	// this is set in lsp_create, then later set to NULL when we send over the configuration (after the initialized notification).
@@ -628,6 +628,10 @@ LSPDocumentPosition lsp_location_start_position(LSPLocation location);
 // get the end of location's range as a LSPDocumentPosition
 LSPDocumentPosition lsp_location_end_position(LSPLocation location);
 void lsp_free(LSP *lsp);
+// call this to free any global resources used by lsp*.c
+// not strictly necessary, but prevents valgrind errors & stuff.
+// make sure you call lsp_free on every LSP you create before calling this.
+void lsp_quit(void);
 
 #endif // LSP_H_
 

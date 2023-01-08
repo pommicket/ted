@@ -1115,6 +1115,8 @@ int main(int argc, char **argv) {
 		lsp_free(ted->lsps[i]);
 		ted->lsps[i] = NULL;
 	}
+	lsp_quit();
+	
 	arr_foreach_ptr(ted->shell_history, char *, cmd) {
 		free(*cmd);
 	}

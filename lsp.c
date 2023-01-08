@@ -6,11 +6,17 @@
 
 const char *language_to_str(Language language);
 
+static LSPMutex request_id_mutex;
+
 // it's nice to have request IDs be totally unique, including across LSP servers.
 static LSPRequestID get_request_id(void) {
 	// it's important that this never returns 0, since that's reserved for "no ID"
-	static _Atomic LSPRequestID last_request_id;
-	return ++last_request_id;
+	static LSPRequestID last_request_id;
+	assert(request_id_mutex);
+	SDL_LockMutex(request_id_mutex);
+		u32 id = ++last_request_id;
+	SDL_UnlockMutex(request_id_mutex);
+	return id;
 }
 
 bool lsp_get_error(LSP *lsp, char *error, size_t error_size, bool clear) {
@@ -271,7 +277,7 @@ static bool lsp_receive(LSP *lsp, size_t max_size) {
 		// read stderr. if all goes well, we shouldn't get anything over stderr.
 		char stderr_buf[1024] = {0};
 		for (size_t i = 0; i < (max_size + sizeof stderr_buf) / sizeof stderr_buf; ++i) {
-			ssize_t nstderr = process_read_stderr(lsp->process, stderr_buf, sizeof stderr_buf - 1);
+			long long nstderr = process_read_stderr(lsp->process, stderr_buf, sizeof stderr_buf - 1);
 			if (nstderr > 0) {
 				// uh oh
 				stderr_buf[nstderr] = '\0';
@@ -496,7 +502,9 @@ const char *lsp_document_path(LSP *lsp, LSPDocumentID document) {
 LSP *lsp_create(const char *root_dir, const char *command, const char *configuration, FILE *log) {
 	LSP *lsp = calloc(1, sizeof *lsp);
 	if (!lsp) return NULL;
-		
+	if (!request_id_mutex)
+		request_id_mutex = SDL_CreateMutex();
+	
 	static LSPID curr_id = 1;
 	lsp->id = curr_id++;
 	lsp->log = log;
@@ -698,5 +706,12 @@ void lsp_cancel_request(LSP *lsp, LSPRequestID id) {
 		LSPRequest request = {.type = LSP_REQUEST_CANCEL};
 		request.data.cancel.id = id;
 		lsp_send_request(lsp, &request);
+	}
+}
+
+void lsp_quit(void) {
+	if (request_id_mutex) {
+		SDL_DestroyMutex(request_id_mutex);
+		request_id_mutex = NULL;
 	}
 }
