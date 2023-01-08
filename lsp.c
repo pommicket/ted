@@ -298,10 +298,11 @@ static bool lsp_receive(LSP *lsp, size_t max_size) {
 		if (status != 0) {
 			bool not_found =
 			#if _WIN32
-			#error "@TODO: what status does cmd return if the program is not found?"
+				false // @TODO
 			#else
-				info.exit_code == 127;
+				info.exit_code == 127
 			#endif
+				;
 			
 			if (not_found) {
 				// don't give an error if the server is not found.
@@ -530,21 +531,26 @@ LSP *lsp_create(const char *root_dir, const char *command, const char *configura
 	lsp->workspace_folders_mutex = SDL_CreateMutex();
 	
 	ProcessSettings settings = {
-		.stdin_blocking = true,
-		.stdout_blocking = false,
-		.stderr_blocking = false,
 		.separate_stderr = true,
 		.working_directory = root_dir,
 	};
 	lsp->process = process_run_ex(command, &settings);
-	LSPRequest initialize = {
-		.type = LSP_REQUEST_INITIALIZE
-	};
-	initialize.id = get_request_id();
-	// immediately send the request rather than queueing it.
-	// this is a small request, so it shouldn't be a problem.
-	write_request(lsp, &initialize);
-	lsp->communication_thread = SDL_CreateThread(lsp_communication_thread, "LSP communicate", lsp);
+	const char *error = process_geterr(lsp->process);
+	if (error) {
+		lsp_set_error(lsp, "Couldn't start LSP server: %s", error);
+		lsp->exited = true;
+		process_kill(&lsp->process);
+	} else {
+	
+		LSPRequest initialize = {
+			.type = LSP_REQUEST_INITIALIZE
+		};
+		initialize.id = get_request_id();
+		// immediately send the request rather than queueing it.
+		// this is a small request, so it shouldn't be a problem.
+		write_request(lsp, &initialize);
+		lsp->communication_thread = SDL_CreateThread(lsp_communication_thread, "LSP communicate", lsp);
+	}
 	return lsp;
 }
 
@@ -595,7 +601,8 @@ bool lsp_next_message(LSP *lsp, LSPMessage *message) {
 
 void lsp_free(LSP *lsp) {
 	SDL_SemPost(lsp->quit_sem);
-	SDL_WaitThread(lsp->communication_thread, NULL);
+	if (lsp->communication_thread)
+		SDL_WaitThread(lsp->communication_thread, NULL);
 	SDL_DestroyMutex(lsp->messages_mutex);
 	SDL_DestroyMutex(lsp->workspace_folders_mutex);
 	SDL_DestroyMutex(lsp->error_mutex);

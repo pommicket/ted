@@ -1,6 +1,7 @@
 // windows implementation of OS functions
 
 #include "os.h"
+#include "util.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <io.h>
@@ -109,16 +110,16 @@ int os_get_cwd(char *buf, size_t buflen) {
 	return 1;
 }
 
-#error "@TODO: test this"
-struct timespec time_last_modified(const char *filename) {
+struct timespec time_last_modified(const char *path) {
 	struct timespec ts = {0};
 	FILETIME write_time = {0};
 	WCHAR wide_path[4100];
-	if (MultiByteToWideChar(CP_UTF8, 0, path, -1, wide_path, sizeof wide_path) == 0)
+	if (MultiByteToWideChar(CP_UTF8, 0, path, -1, wide_path, (int)sizeof wide_path) == 0)
 		return ts;
-	HANDLE file = CreateFileW(wide_path, GENERIC_WRITE, FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE, NULL,
-		OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL);
-	if (file == INVALID_HANDLE)
+	HANDLE file = CreateFileW(wide_path, GENERIC_READ,
+		FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE, NULL,
+		OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (file == INVALID_HANDLE_VALUE)
 		return ts;
 	
 	if (GetFileTime(file, NULL, NULL, &write_time)) {
@@ -147,13 +148,11 @@ void time_sleep_ns(u64 ns) {
 	Sleep((DWORD)(ns / 1000000));
 }
 
-#error "@TODO: fix process functions to take Process**"
-#error "@TODO :  implement process_write, separate_stderr, working_directory"
-#error "@TODO : make sure process_read & process_write do what they're supposed to for both blocking & non-blocking read/writes."
-#include "process.h"
-
 struct Process {
-	HANDLE pipe_read, pipe_write;
+	// NOTE: we do need to keep the ends of the pipes we aren't using open too
+	HANDLE pipe_stdin_read, pipe_stdin_write,
+		pipe_stdout_read, pipe_stdout_write,
+		pipe_stderr_read, pipe_stderr_write;
 	HANDLE job;
 	PROCESS_INFORMATION process_info;
 	char error[200];
@@ -167,17 +166,11 @@ static void get_last_error_str(char *out, size_t out_sz) {
 	if (cr) *cr = '\0'; // get rid of carriage return+newline at end of error
 }
 
-bool process_run(Process *process, const char *command) {
-	// thanks to https://stackoverflow.com/a/35658917 for the pipe code
+Process *process_run_ex(const char *command, const ProcessSettings *settings) {
 	// thanks to https://devblogs.microsoft.com/oldnewthing/20131209-00/?p=2433 for the job code
-
-	bool success = false;
-	memset(process, 0, sizeof *process);
+	Process *process = calloc(1, sizeof *process);
 	char *command_line = str_dup(command);
-	if (!command_line) {
-		strbuf_printf(process->error, "Out of memory.");
-		return false;
-	}
+
 	// we need to create a "job" for this, because when you kill a process on windows,
 	// all its children just keep going. so cmd.exe would die, but not the actual build process.
 	// jobs fix this, apparently.
@@ -186,28 +179,43 @@ bool process_run(Process *process, const char *command) {
 		JOBOBJECT_EXTENDED_LIMIT_INFORMATION job_info = {0};
 		job_info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
 		SetInformationJobObject(job, JobObjectExtendedLimitInformation, &job_info, sizeof job_info);
-		HANDLE pipe_read, pipe_write;
+		HANDLE pipe_stdin_read = 0, pipe_stdin_write = 0, pipe_stdout_read = 0,
+			pipe_stdout_write = 0, pipe_stderr_read = 0, pipe_stderr_write = 0;
 		SECURITY_ATTRIBUTES security_attrs = {sizeof(SECURITY_ATTRIBUTES)};
 		security_attrs.bInheritHandle = TRUE;
-		if (CreatePipe(&pipe_read, &pipe_write, &security_attrs, 0)) {
+		bool created_pipes = true;
+		created_pipes &= CreatePipe(&pipe_stdin_read, &pipe_stdin_write, &security_attrs, 0) != 0;
+		created_pipes &= CreatePipe(&pipe_stdout_read, &pipe_stdout_write, &security_attrs, 0) != 0;
+		if (settings->separate_stderr)
+			created_pipes &= CreatePipe(&pipe_stderr_read, &pipe_stderr_write, &security_attrs, 0) != 0;
+		
+		if (created_pipes) {
 			STARTUPINFOA startup = {sizeof(STARTUPINFOA)};
 			startup.dwFlags = STARTF_USESHOWWINDOW | STARTF_USESTDHANDLES;
-			startup.hStdOutput = pipe_write;
-			startup.hStdError = pipe_write;
+			startup.hStdOutput = pipe_stdout_write;
+			startup.hStdError = settings->separate_stderr ? pipe_stderr_write : pipe_stdout_write;
+			startup.hStdInput = pipe_stdin_read;
 			startup.wShowWindow = SW_HIDE;
 			PROCESS_INFORMATION *process_info = &process->process_info;
 			if (CreateProcessA(NULL, command_line, NULL, NULL, TRUE, CREATE_NEW_CONSOLE | CREATE_SUSPENDED,
-				NULL, NULL, &startup, process_info)) {
+				NULL, settings->working_directory, &startup, process_info)) {
 				// create a suspended process, add it to the job, then resume (unsuspend) the process
 				if (AssignProcessToJobObject(job, process_info->hProcess)) {
 					if (ResumeThread(process_info->hThread) != (DWORD)-1) {
 						process->job = job;
-						process->pipe_read = pipe_read;
-						process->pipe_write = pipe_write;
-						success = true;
+						process->pipe_stdin_read   = pipe_stdin_read;
+						process->pipe_stdin_write  = pipe_stdin_write;
+						process->pipe_stdout_read  = pipe_stdout_read;
+						process->pipe_stdout_write = pipe_stdout_write;
+						process->pipe_stderr_read  = pipe_stderr_read;
+						process->pipe_stderr_write = pipe_stderr_write;
+					} else {
+						strbuf_printf(process->error, "Couldn't start thread");
 					}
+				} else {
+					strbuf_printf(process->error, "Couldn't assign process to job object.");
 				}
-				if (!success) {
+				if (*process->error) {
 					TerminateProcess(process_info->hProcess, 1);
 					CloseHandle(process_info->hProcess);
 					CloseHandle(process_info->hThread);
@@ -217,33 +225,51 @@ bool process_run(Process *process, const char *command) {
 				get_last_error_str(buf, sizeof buf);
 				strbuf_printf(process->error, "Couldn't run `%s`: %s", command, buf);
 			}
-			free(command_line);
-			if (!success) {
-				CloseHandle(pipe_read);
-				CloseHandle(pipe_write);
+			if (*process->error) {
+				if (pipe_stdin_read)   CloseHandle(pipe_stdin_read);
+				if (pipe_stdin_write)  CloseHandle(pipe_stdin_write);
+				if (pipe_stdout_read)  CloseHandle(pipe_stdout_read);
+				if (pipe_stdout_write) CloseHandle(pipe_stdout_write);
+				if (pipe_stderr_read)  CloseHandle(pipe_stderr_read);
+				if (pipe_stderr_write) CloseHandle(pipe_stderr_write);
 			}
 		} else {
 			char buf[150];
 			get_last_error_str(buf, sizeof buf);
 			strbuf_printf(process->error, "Couldn't create pipe: %s", buf);
 		}
-		if (!success)
+		if (*process->error)
 			CloseHandle(job);
 	}
-	return success;
+	free(command_line);
+	return process;
+}
+
+int process_get_id(void) {
+	return (int)GetCurrentProcessId();
+}
+
+
+Process *process_run(const char *command) {
+	const ProcessSettings settings = {0};
+	return process_run_ex(command, &settings);
 }
 
 const char *process_geterr(Process *p) {
 	return *p->error ? p->error : NULL;
 }
 
-long long process_read(Process *process, char *data, size_t size) {
+static long long process_read_handle(Process *process, HANDLE pipe, char *data, size_t size) {
+	if (size > U32_MAX) {
+		strbuf_printf(process->error, "Too much data to read.");
+		return -2;
+	}
 	DWORD bytes_read = 0, bytes_avail = 0, bytes_left = 0;
-	if (PeekNamedPipe(process->pipe_read, data, (DWORD)size, &bytes_read, &bytes_avail, &bytes_left)) {
+	if (PeekNamedPipe(pipe, data, (DWORD)size, &bytes_read, &bytes_avail, &bytes_left)) {
 		if (bytes_read == 0) {
 			return -1;
 		} else {
-			ReadFile(process->pipe_read, data, (DWORD)size, &bytes_read, NULL); // make sure data is removed from pipe
+			ReadFile(pipe, data, (DWORD)size, &bytes_read, NULL); // make sure data is removed from pipe
 			return bytes_read;
 		}
 	} else {
@@ -254,40 +280,99 @@ long long process_read(Process *process, char *data, size_t size) {
 	}
 }
 
-void process_kill(Process *process) {
-	CloseHandle(process->job);
-	CloseHandle(process->pipe_read);
-	CloseHandle(process->pipe_write);
-	CloseHandle(process->process_info.hProcess);
-	CloseHandle(process->process_info.hThread);
+long long process_read(Process *process, char *data, size_t size) {
+	if (!process) {
+		// already killed
+		assert(0);
+		return -2;
+	}
+	return process_read_handle(process, process->pipe_stdout_read, data, size);
 }
 
-int process_check_status(Process *process, char *message, size_t message_size) {
-	assert(!message || message_size);
+long long process_read_stderr(Process *process, char *data, size_t size) {
+	if (!process) {
+		// already killed
+		assert(0);
+		return -2;
+	}
+	return process_read_handle(process, process->pipe_stderr_read, data, size);
+}
+
+long long process_write(Process *process, const char *data, size_t size) {
+	if (!process) {
+		// already killed
+		assert(0);
+		return -2;
+	}
+	
+	if (size > LLONG_MAX) {
+		strbuf_printf(process->error, "Too much data to read.");
+		return -2;
+	}
+	size_t total_written = 0;
+	DWORD written = 0;
+	while (total_written < size) {
+		bool success = WriteFile(process->pipe_stdin_write, data,
+			size > U32_MAX ? U32_MAX : (DWORD)size,
+			&written,
+			NULL);
+		if (!success) {
+			char buf[150];
+			get_last_error_str(buf, sizeof buf);
+			strbuf_printf(process->error, "Couldn't write to pipe: %s", buf);
+			return -2;
+		}
+		total_written += written;
+	}
+	return (long long)total_written;
+}
+
+void process_kill(Process **pprocess) {
+	Process *process = *pprocess;
+	if (!process) {
+		// already killed
+		return;
+	}
+	CloseHandle(process->job);
+	CloseHandle(process->pipe_stdin_read);
+	CloseHandle(process->pipe_stdin_write);
+	CloseHandle(process->pipe_stdout_read);
+	CloseHandle(process->pipe_stdout_write);
+	if (process->pipe_stderr_read) CloseHandle(process->pipe_stderr_read);
+	if (process->pipe_stderr_write) CloseHandle(process->pipe_stderr_write);
+	CloseHandle(process->process_info.hProcess);
+	CloseHandle(process->process_info.hThread);
+	free(process);
+	*pprocess = NULL;
+}
+
+int process_check_status(Process **pprocess, ProcessExitInfo *info) {
+	Process *process = *pprocess;
+	if (!process) {
+		// already killed
+		return -1;
+	}
 	HANDLE hProcess = process->process_info.hProcess;
 	DWORD exit_code = 1;
 	if (GetExitCodeProcess(hProcess, &exit_code)) {
 		if (exit_code == STILL_ACTIVE) {
-			if (message)
-				*message = '\0';
 			return 0;
 		} else {
-			process_kill(process);
+			process_kill(pprocess);
+			info->exited = true;
+			info->exit_code = (int)exit_code;
 			if (exit_code == 0) {
-				if (message)
-					str_printf(message, message_size, "exited successfully");
+				strbuf_printf(info->message, "exited successfully");
 				return +1;
 			} else {
-				if (message)
-					str_printf(message, message_size, "exited with code %d", (int)exit_code);
+				strbuf_printf(info->message, "exited with code %d", (int)exit_code);
 				return -1;
 			}
 		}
 	} else {
 		// something has gone wrong.
-		if (message)
-			str_printf(message, message_size, "couldn't get process exit status");
-		process_kill(process);
+		strbuf_printf(info->message, "couldn't get process exit status");
+		process_kill(pprocess);
 		return -1;
 	}
 }

@@ -1,5 +1,10 @@
 /*
 @TODO:
+- test LSP on windows
+- what status does cmd return if the program is not found? (lsp.c:301)
+- switch to CreateProcessW
+- are we freeing process if process_run(_ex) fails?
+- test time_last_modified (windows)
 - some way of opening + closing all C files in directory for clangd
    textDocument/references to work?
         - does adding compile_commands.json help?

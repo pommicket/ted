@@ -223,12 +223,9 @@ Process *process_run_ex(const char *command, const ProcessSettings *settings) {
 			close(stderr_pipe[1]);
 		close(stdin_pipe[0]);
 		// set pipes to non-blocking
-		if (!settings->stdout_blocking)
-			set_nonblocking(stdout_pipe[0]);
-		if (stderr_pipe[0] && !settings->stderr_blocking)
+		set_nonblocking(stdout_pipe[0]);
+		if (stderr_pipe[0])
 			set_nonblocking(stderr_pipe[0]);
-		if (!settings->stdin_blocking)
-			set_nonblocking(stdin_pipe[1]);
 		proc->pid = pid;
 		proc->stdout_pipe = stdout_pipe[0];
 		if (stderr_pipe[0])
