@@ -2409,8 +2409,14 @@ bool buffer_save(TextBuffer *buffer) {
 			buffer_error(buffer, "Can't save view-only file.");
 			return false;
 		}
+		char tmp_path[TED_PATH_MAX+10];
+		strbuf_printf(tmp_path, "%s.ted-tmp", buffer->path);
+		if (strlen(tmp_path) != strlen(buffer->path) + 8) {
+			buffer_error(buffer, "File name too long.");
+			return false;
+		}
 
-		FILE *out = fopen(buffer->path, "wb");
+		FILE *out = fopen(tmp_path, "wb");
 		if (out) {
 			if (settings->auto_add_newline) {
 				Line *last_line = &buffer->lines[buffer->nlines - 1];
@@ -2421,7 +2427,9 @@ bool buffer_save(TextBuffer *buffer) {
 					buffer_insert_text_at_pos(buffer, buffer_pos_end_of_file(buffer), s);
 				}
 			}
-
+			
+			bool success = true;
+			
 			for (u32 i = 0; i < buffer->nlines; ++i) {
 				Line *line = &buffer->lines[i];
 				for (char32_t *p = line->str, *p_end = p + line->len; p != p_end; ++p) {
@@ -2429,7 +2437,8 @@ bool buffer_save(TextBuffer *buffer) {
 					size_t bytes = unicode_utf32_to_utf8(utf8, *p);
 					if (bytes != (size_t)-1) {
 						if (fwrite(utf8, 1, bytes, out) != bytes) {
-							buffer_error(buffer, "Couldn't write to %s.", buffer->path);
+							buffer_error(buffer, "Couldn't write to %s.", tmp_path);
+							success = false;
 						}
 					}
 				}
@@ -2438,16 +2447,25 @@ bool buffer_save(TextBuffer *buffer) {
 					putc('\n', out);
 				}
 			}
+			
 			if (ferror(out)) {
 				if (!buffer_has_error(buffer))
-					buffer_error(buffer, "Couldn't write to %s.", buffer->path);
+					buffer_error(buffer, "Couldn't write to %s.", tmp_path);
+				success = false;
 			}
 			if (fclose(out) != 0) {
 				if (!buffer_has_error(buffer))
-					buffer_error(buffer, "Couldn't close file %s.", buffer->path);
+					buffer_error(buffer, "Couldn't close file %s.", tmp_path);
+				success = false;
+			}
+			if (success) {
+				if (rename(tmp_path, buffer->path) != 0) {
+					if (!buffer_has_error(buffer))
+						buffer_error(buffer, "Couldn't rename %s => %s.", tmp_path, buffer->path);
+					success = false;
+				}
 			}
 			buffer->last_write_time = timespec_to_seconds(time_last_modified(buffer->path));
-			bool success = !buffer_has_error(buffer);
 			if (success) {
 				buffer->undo_history_write_pos = arr_len(buffer->undo_history);
 				if (buffer->path && streq(path_filename(buffer->path), "ted.cfg")

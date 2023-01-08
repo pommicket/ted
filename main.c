@@ -13,9 +13,6 @@
 - texlab bug report:
     - textDocument/definition gives LocationLink regardless of client capabilities
 FUTURE FEATURES:
-- write first to <path>.tmp then rename to <path>.
-  this prevents freak occurences, e.g. power outage during file write,
-  from losing (all) data.
 - manual.md
 - better handling of backspace with space indentation
 - CSS highlighting
