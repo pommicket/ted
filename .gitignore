@@ -3,6 +3,8 @@ ted
 !windows_installer/ted/ted
 Debug
 Release
+debug
+release
 scratch
 obj
 *~
