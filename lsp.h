@@ -8,7 +8,7 @@
 #include "ds.h"
 #include "os.h"
 
-// an ID specific to a path. 0 is a valid document ID, currently.
+// an ID specific to a path. a document's ID is never 0 (thanks to lsp_create).
 typedef u32 LSPDocumentID;
 // ID of an LSP server. a server's ID is never 0.
 typedef u32 LSPID;

@@ -523,6 +523,11 @@ LSP *lsp_create(const char *root_dir, const char *command, const char *configura
 	lsp->quit_sem = SDL_CreateSemaphore(0);	
 	lsp->error_mutex = SDL_CreateMutex();
 	lsp->messages_mutex = SDL_CreateMutex();
+	
+	// document ID 0 is reserved
+	LSPDocumentID zero_id = lsp_document_id(lsp, "");
+	assert(zero_id == 0);
+	
 	arr_add(lsp->workspace_folders, lsp_document_id(lsp, root_dir));
 	lsp->workspace_folders_mutex = SDL_CreateMutex();
 	

@@ -1,7 +1,5 @@
 /*
 @TODO:
-- don't let 0 be a valid LSPDocumentID
-- TESTING: check all IDE features with different servers
 - run everything through valgrind ideally with leak checking
 - some way of opening + closing all C files in directory for clangd
    textDocument/references to work?
