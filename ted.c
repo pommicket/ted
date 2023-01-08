@@ -151,7 +151,7 @@ LSP *ted_get_lsp_by_id(Ted *ted, LSPID id) {
 	for (int i = 0; ted->lsps[i]; ++i) {
 		LSP *lsp = ted->lsps[i];
 		if (lsp->id == id)
-			return lsp->died ? NULL : lsp;
+			return lsp->exited ? NULL : lsp;
 	}
 	return NULL;
 }
@@ -173,8 +173,10 @@ LSP *ted_get_lsp(Ted *ted, const char *path, Language language) {
 			// if the server supports workspaceFolders.
 			return NULL;
 		}
-		if (lsp->died)
+		if (lsp_covers_path(lsp, path) && lsp->exited) {
+			// this server died. give up.
 			return NULL;
+		}
 		
 		// check if root matches up or if we can add a workspace folder
 		char *root = ted_get_root_dir_of(ted, path);

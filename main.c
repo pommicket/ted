@@ -1,6 +1,5 @@
 /*
 @TODO:
-- test that signature help requests and  hover requests are cancelled
 - don't let 0 be a valid LSPDocumentID
 - TESTING: check all IDE features with different servers
 - run everything through valgrind ideally with leak checking

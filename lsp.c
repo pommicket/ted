@@ -407,7 +407,6 @@ static bool lsp_send(LSP *lsp) {
 			quit = true;
 		}
 	}
-	lsp->died = true;
 
 	free(messages);
 	return quit;
@@ -427,6 +426,8 @@ static int lsp_communication_thread(void *data) {
 		if (SDL_SemWaitTimeout(lsp->quit_sem, 5) == 0)
 			break;	
 	}
+	
+	lsp->exited = true;
 	
 	if (!lsp->process) {
 		// process already exited

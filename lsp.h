@@ -559,8 +559,8 @@ typedef struct LSP {
 	//                (when the initialize response is received)
 	_Atomic bool initialized;
 	// has the LSP server exited?
-	// thread-safety: only set to false once when the process dies
-	_Atomic bool died;
+	// thread-safety: atomic
+	_Atomic bool exited;
 	// thread-safety: only set once in lsp_create.
 	char *command;
 	// this is set in lsp_create, then later set to NULL when we send over the configuration (after the initialized notification).
