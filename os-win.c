@@ -190,7 +190,21 @@ static void get_last_error_str(char *out, size_t out_sz) {
 Process *process_run_ex(const char *command, const ProcessSettings *settings) {
 	// thanks to https://devblogs.microsoft.com/oldnewthing/20131209-00/?p=2433 for the job code
 	Process *process = calloc(1, sizeof *process);
-	char *command_line = str_dup(command);
+	WCHAR *command_line = calloc(strlen(command) + 1, sizeof *command_line);
+	if (MultiByteToWideChar(CP_UTF8, 0, command, -1, command_line, (int)strlen(command) + 1) == 0) {
+		strbuf_printf(process->error, "Bad UTF-8 in command.");
+		return process;
+	}
+	WCHAR wdbuf[4100];
+	const WCHAR *working_directory = NULL;
+	if (settings->working_directory) {
+		if (MultiByteToWideChar(CP_UTF8, 0, settings->working_directory, -1, wdbuf, (int)arr_count(wdbuf)) == 0) {
+			strbuf_printf(process->error, "Bad UTF-8 in working directory.");
+			return process;
+		}
+		working_directory = wdbuf;
+	}
+	
 
 	// we need to create a "job" for this, because when you kill a process on windows,
 	// all its children just keep going. so cmd.exe would die, but not the actual build process.
@@ -211,15 +225,15 @@ Process *process_run_ex(const char *command, const ProcessSettings *settings) {
 			created_pipes &= CreatePipe(&pipe_stderr_read, &pipe_stderr_write, &security_attrs, 0) != 0;
 		
 		if (created_pipes) {
-			STARTUPINFOA startup = {sizeof(STARTUPINFOA)};
+			STARTUPINFOW startup = {sizeof(STARTUPINFOW)};
 			startup.dwFlags = STARTF_USESHOWWINDOW | STARTF_USESTDHANDLES;
 			startup.hStdOutput = pipe_stdout_write;
 			startup.hStdError = settings->separate_stderr ? pipe_stderr_write : pipe_stdout_write;
 			startup.hStdInput = pipe_stdin_read;
 			startup.wShowWindow = SW_HIDE;
 			PROCESS_INFORMATION *process_info = &process->process_info;
-			if (CreateProcessA(NULL, command_line, NULL, NULL, TRUE, CREATE_NEW_CONSOLE | CREATE_SUSPENDED,
-				NULL, settings->working_directory, &startup, process_info)) {
+			if (CreateProcessW(NULL, command_line, NULL, NULL, TRUE, CREATE_NEW_CONSOLE | CREATE_SUSPENDED,
+				NULL, working_directory, &startup, process_info)) {
 				// create a suspended process, add it to the job, then resume (unsuspend) the process
 				if (AssignProcessToJobObject(job, process_info->hProcess)) {
 					if (ResumeThread(process_info->hThread) != (DWORD)-1) {

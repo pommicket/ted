@@ -1,7 +1,6 @@
 /*
 @TODO:
-- switch to CreateProcessW
-- why are all requests failing?
+- why are all requests failing on windows?
 - are we freeing process if process_run(_ex) fails?
 - test time_last_modified (windows)
 - some way of opening + closing all C files in directory for clangd
