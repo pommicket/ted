@@ -538,7 +538,13 @@ LSP *lsp_create(const char *root_dir, const char *command, const char *configura
 	lsp->process = process_run_ex(command, &settings);
 	const char *error = process_geterr(lsp->process);
 	if (error) {
-		lsp_set_error(lsp, "Couldn't start LSP server: %s", error);
+		// don't show an error box if the server is not installed
+		#if _WIN32
+			if (strstr(error, " 2)")) {
+				if (lsp->log) fprintf(lsp->log, "Couldn't start LSP server %s: file not found.", command);
+			} else
+		#endif
+			lsp_set_error(lsp, "Couldn't start LSP server: %s", error);
 		lsp->exited = true;
 		process_kill(&lsp->process);
 	} else {

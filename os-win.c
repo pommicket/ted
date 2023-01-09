@@ -119,13 +119,14 @@ int os_rename_overwrite(const char *oldname, const char *newname) {
 		return -1;
 	if (CopyFileW(wide_oldname, wide_newname, false) == 0)
 		return -1;
+	// ideally we would do this instead but clangd seems to have a problem with this:
+	// it's keeping an open handle to main.c in ted. presumably blocks deletion but not writing.
+	// ReplaceFileW has the same problem.
+// 	if (CreateHardLinkW(wide_oldname, wide_newname, NULL) == 0)
+// 		return -1;
 	if (remove(oldname) != 0)
 		return -1;
-	
-	// ideally we would just do this but clangd seems to have a problem with this:
-	// it's keeping an open handle to main.c in ted. presumably blocks deletion but not writing.
-//	return ReplaceFileW(wide_newname, wide_oldname, NULL, REPLACEFILE_IGNORE_MERGE_ERRORS|REPLACEFILE_IGNORE_ACL_ERRORS, NULL, NULL)
-//		? 0 : -1;
+	return 0;
 }
 
 struct timespec time_last_modified(const char *path) {
@@ -177,11 +178,13 @@ struct Process {
 };
 
 static void get_last_error_str(char *out, size_t out_sz) {
+	DWORD errnum = GetLastError();
 	size_t size = FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-         NULL, GetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), out, (DWORD)out_sz - 1, NULL);
+		NULL, errnum, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), out, (DWORD)out_sz - 1, NULL);
 	out[size] = 0;
 	char *cr = strchr(out, '\r');
 	if (cr) *cr = '\0'; // get rid of carriage return+newline at end of error
+	str_printf(out + strlen(out), out_sz - strlen(out), " (error code %u)", (unsigned)errnum);
 }
 
 Process *process_run_ex(const char *command, const ProcessSettings *settings) {

@@ -1,12 +1,7 @@
 /*
 @TODO:
-- set commit authors correctly
-- finish fixing buffer backup (windows)
-- fix calls to WideCharToMultiByte and reverse
-- get rid of ninja warnings
-- test LSP on windows
-- what status does cmd return if the program is not found? (lsp.c:301)
 - switch to CreateProcessW
+- why are all requests failing?
 - are we freeing process if process_run(_ex) fails?
 - test time_last_modified (windows)
 - some way of opening + closing all C files in directory for clangd
