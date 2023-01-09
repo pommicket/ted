@@ -19,7 +19,7 @@ static FsType windows_file_attributes_to_type(DWORD attrs) {
 
 FsType fs_path_type(const char *path) {
 	WCHAR wide_path[4100];
-	if (MultiByteToWideChar(CP_UTF8, 0, path, -1, wide_path, sizeof wide_path) == 0) {
+	if (MultiByteToWideChar(CP_UTF8, 0, path, -1, wide_path, arr_count(wide_path)) == 0) {
 		return FS_NON_EXISTENT;
 	}
 	return windows_file_attributes_to_type(GetFileAttributesW(wide_path));
@@ -37,15 +37,16 @@ bool fs_file_exists(const char *path) {
 }
 
 FsDirectoryEntry **fs_list_directory(const char *dirname) {
-	char file_pattern[1000] = {0};
+	char file_pattern[4100];
 	FsDirectoryEntry **files = NULL;
 	WIN32_FIND_DATAW find_data;
 	HANDLE fhandle;
 	assert(*dirname);
 	sprintf_s(file_pattern, sizeof file_pattern, "%s%s*", dirname,
 		dirname[strlen(dirname) - 1] == PATH_SEPARATOR ? "" : PATH_SEPARATOR_STR);
-	wchar_t wide_pattern[1024] = {0};
-	MultiByteToWideChar(CP_UTF8, 0, file_pattern, -1, wide_pattern, sizeof wide_pattern - 1);
+	wchar_t wide_pattern[4100] = {0};
+	if (MultiByteToWideChar(CP_UTF8, 0, file_pattern, -1, wide_pattern, arr_count(wide_pattern)) == 0)
+		return NULL;
 	
 	fhandle = FindFirstFileW(wide_pattern, &find_data);
 	if (fhandle != INVALID_HANDLE_VALUE) {
@@ -86,7 +87,7 @@ FsDirectoryEntry **fs_list_directory(const char *dirname) {
 
 int fs_mkdir(const char *path) {
 	WCHAR wide_path[4100];
-	if (MultiByteToWideChar(CP_UTF8, 0, path, -1, wide_path, sizeof wide_path) == 0)
+	if (MultiByteToWideChar(CP_UTF8, 0, path, -1, wide_path, arr_count(wide_path)) == 0)
 		return -1;
 	
 	if (CreateDirectoryW(wide_path, NULL)) {
@@ -113,14 +114,25 @@ int os_get_cwd(char *buf, size_t buflen) {
 int os_rename_overwrite(const char *oldname, const char *newname) {
 	wchar_t wide_oldname[4100];
 	wchar_t wide_newname[4100];
+	if (MultiByteToWideChar(CP_UTF8, 0, oldname, -1, wide_oldname, arr_count(wide_oldname)) == 0
+		|| MultiByteToWideChar(CP_UTF8, 0, newname, -1, wide_newname, arr_count(wide_newname)) == 0)
+		return -1;
+	if (CopyFileW(wide_oldname, wide_newname, false) == 0)
+		return -1;
+	if (remove(oldname) != 0)
+		return -1;
 	
+	// ideally we would just do this but clangd seems to have a problem with this:
+	// it's keeping an open handle to main.c in ted. presumably blocks deletion but not writing.
+//	return ReplaceFileW(wide_newname, wide_oldname, NULL, REPLACEFILE_IGNORE_MERGE_ERRORS|REPLACEFILE_IGNORE_ACL_ERRORS, NULL, NULL)
+//		? 0 : -1;
 }
 
 struct timespec time_last_modified(const char *path) {
 	struct timespec ts = {0};
 	FILETIME write_time = {0};
 	WCHAR wide_path[4100];
-	if (MultiByteToWideChar(CP_UTF8, 0, path, -1, wide_path, (int)sizeof wide_path) == 0)
+	if (MultiByteToWideChar(CP_UTF8, 0, path, -1, wide_path, arr_count(wide_path)) == 0)
 		return ts;
 	HANDLE file = CreateFileW(wide_path, GENERIC_READ,
 		FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE, NULL,
