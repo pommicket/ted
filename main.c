@@ -1,11 +1,8 @@
 /*
 @TODO:
-- get Makefile to use ninja
 - rust-analyzer bug reports:
     - bad json can give "Unexpected error: client exited without proper shutdown sequence"
     - containerName not always given in workspace/symbols
-- clangd bug report:
-    - textDocument/definition on ted.h declarations just gives you the declaration
 - texlab bug report:
     - textDocument/definition gives LocationLink regardless of client capabilities
 FUTURE FEATURES:
@@ -17,6 +14,7 @@ FUTURE FEATURES:
 - make go-to-definition/hover/highlight modifier key configurable
 - return to previous location in buffer
 - font setting & support for multiple fonts to cover more characters
+- support for variable-width fonts
 - comment-start & comment-end settings
 - robust find (results shouldn't move around when you type things)
 - open multiple files with command line arguments

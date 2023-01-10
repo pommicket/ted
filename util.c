@@ -128,7 +128,7 @@ bool str_has_prefix(const char *str, const char *prefix) {
 
 bool str_has_path_prefix(const char *path, const char *prefix) {
 	size_t prefix_len = strlen(prefix);
-	for (int i = 0; i < prefix_len; ++i) {
+	for (size_t i = 0; i < prefix_len; ++i) {
 		if (strchr(ALL_PATH_SEPARATORS, path[i]) && strchr(ALL_PATH_SEPARATORS, prefix[i]))
 			continue; // treat all path separators as the same
 		if (prefix[i] != path[i])

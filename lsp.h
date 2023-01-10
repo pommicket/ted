@@ -584,7 +584,7 @@ typedef struct LSP {
 		// dynamic array of root directories of LSP workspace folders
 		LSPDocumentID *workspace_folders;
 	LSPMutex error_mutex;
-		char error[256];
+		char error[512];
 } LSP;
 
 // returns true if there's an error.

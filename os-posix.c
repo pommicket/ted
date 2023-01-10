@@ -116,6 +116,10 @@ int os_get_cwd(char *buf, size_t buflen) {
 	}
 }
 
+int os_rename_overwrite(const char *oldname, const char *newname) {
+	return rename(oldname, newname) == 0 ? 0 : -1;
+}
+
 struct timespec time_last_modified(const char *filename) {
 	struct stat statbuf = {0};
 	stat(filename, &statbuf);

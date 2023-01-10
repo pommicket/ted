@@ -312,7 +312,8 @@ static bool lsp_receive(LSP *lsp, size_t max_size) {
 						info.message);
 			} else {
 				lsp_set_error(lsp, "Can't access LSP server: %s\n"
-					"Run ted in a terminal or set lsp-log = on for more details."
+					"Run ted in a terminal or set lsp-log = on for more details.\n"
+					"Run the :lsp-reset command to restart the server."
 					, info.message);
 			}
 			return false;
