@@ -387,6 +387,7 @@ static Status ted_open_buffer(Ted *ted, u16 *buffer_idx, u16 *tab) {
 		if (arr_len(node->tabs) < TED_MAX_TABS) {
 			arr_add(node->tabs, (u16)new_buffer_index);
 			TextBuffer *new_buffer = &ted->buffers[new_buffer_index];
+			buffer_create(new_buffer, ted);
 			node->active_tab = (u16)(arr_len(node->tabs) - 1);
 			*buffer_idx = (u16)new_buffer_index;
 			*tab = node->active_tab;
@@ -445,7 +446,6 @@ bool ted_open_file(Ted *ted, const char *filename) {
 		} else {
 			ted_error_from_buffer(ted, buffer);
 			node_tab_close(ted, ted->active_node, tab_idx);
-			ted_delete_buffer(ted, (u16)buffer_idx);
 			return false;
 		}
 	} else {
@@ -472,7 +472,6 @@ bool ted_new_file(Ted *ted, const char *filename) {
 		} else {
 			ted_error_from_buffer(ted, buffer);
 			node_tab_close(ted, ted->active_node, tab_idx);
-			ted_delete_buffer(ted, (u16)buffer_idx);
 			return false;
 		}
 	} else {

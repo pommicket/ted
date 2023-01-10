@@ -181,24 +181,20 @@ static void write_arr_elem_string(JSONWriter *o, const char *s) {
 	write_string(o, s);
 }
 
-static void write_file_uri_direct(JSONWriter *o, const char *path) {
+static void write_file_uri(JSONWriter *o, LSPDocumentID document) {
+	const char *path = lsp_document_path(o->lsp, document);
 	str_builder_append(&o->builder, "\"file://");
+	#if _WIN32
+		// why the fuck is there another slash it makes no goddamn sense
+		str_builder_append(&o->builder, "/");
+	#endif
 	write_escaped(o, path);
 	str_builder_append(&o->builder, "\"");
-}
-
-static void write_file_uri(JSONWriter *o, LSPDocumentID document) {
-	write_file_uri_direct(o, lsp_document_path(o->lsp, document));
 }
 
 static void write_key_file_uri(JSONWriter *o, const char *key, LSPDocumentID document) {
 	write_key(o, key);
 	write_file_uri(o, document);
-}
-
-static void write_key_file_uri_direct(JSONWriter *o, const char *key, const char *path) {
-	write_key(o, key);
-	write_file_uri_direct(o, path);
 }
 
 static void write_position(JSONWriter *o, LSPPosition position) {

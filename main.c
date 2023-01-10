@@ -1,13 +1,10 @@
 /*
 @TODO:
+- make sure buffer_load_file/buffer_new_file handle paths with forward slashes on windows
 - why are all requests failing on windows?
 - are we freeing process if process_run(_ex) fails?
 - test time_last_modified (windows)
-- some way of opening + closing all C files in directory for clangd
-   textDocument/references to work?
-        - does adding compile_commands.json help?
-	- maybe it can be done with the clangd config instead.
-	- does vscode have the same problem?
+- add note to README about compile_commands.json
 - rust-analyzer bug reports:
     - bad json can give "Unexpected error: client exited without proper shutdown sequence"
     - containerName not always given in workspace/symbols

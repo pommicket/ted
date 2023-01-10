@@ -16,7 +16,8 @@ if _%1 == _ (
 	pushd debug
 	cmake -DCMAKE_BUILD_TYPE=Debug -GNinja ..
 	ninja
-	copy ted.exe ..
+	ninja -t compdb C_COMPILER__ted_Debug > ..\compile_commands.json
+	copy /y ted.exe ..
 	popd
 )
 if _%1 == _release cl main.c ted.res /O2 /wd4702 %C_FLAGS% /Fe:ted

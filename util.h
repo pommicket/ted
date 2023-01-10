@@ -76,6 +76,7 @@ const char32_t *util_mem32chr_const(const char32_t *s, char32_t c, size_t n);
 // does `str` have this prefix?
 bool str_has_prefix(const char *str, const char *prefix);
 // like str_has_prefix, but for paths. "ab/cd" is a path-prefix of "ab/cd/ef", but not "ab/cde".
+// also handles the fact that \ and / are the same on windows
 bool str_has_path_prefix(const char *path, const char *prefix);
 // are these two strings equal?
 bool streq(const char *a, const char *b);

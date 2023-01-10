@@ -29,3 +29,4 @@ SDL2
 test.txt
 log.txt
 UpgradeLog.htm
+compile_commands.json

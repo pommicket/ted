@@ -101,7 +101,17 @@ static bool parse_document_uri(LSP *lsp, const JSON *json, JSONValue value, LSPD
 		free(string);
 		return false;
 	}
-	*id = lsp_document_id(lsp, string + strlen("file://"));
+	char *path;
+	#if _WIN32
+	path = string + strlen("file:///");
+	// replace slashes with backslashes
+	for (char *p = path; *p; ++p)
+		if (*p == '/')
+			*p = '\\';
+	#else
+	path = string + strlen("file://");
+	#endif
+	*id = lsp_document_id(lsp, path);
 	free(string);
 	return true;
 }

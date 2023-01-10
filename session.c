@@ -338,7 +338,7 @@ void session_write(Ted *ted) {
 		success &= fclose(fp) == 0;
 		if (success) {
 			remove(filename2);
-			rename(filename1, filename2); // overwrite old session
+			os_rename_overwrite(filename1, filename2); // overwrite old session
 		}
 	}
 }

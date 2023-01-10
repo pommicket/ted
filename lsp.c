@@ -481,6 +481,12 @@ u32 lsp_document_id(LSP *lsp, const char *path) {
 			*value = id;
 			LSPDocumentData *data = arr_addp(lsp->document_data);
 			data->path = str_dup(path);
+			#if _WIN32
+			// file URIs use slashes: https://en.wikipedia.org/wiki/File_URI_scheme
+			for (char *p = data->path; *p; ++p)
+				if (*p == '\\')
+					*p = '/';
+			#endif
 		}
 		u32 id = *value;
 	SDL_UnlockMutex(lsp->document_mutex);

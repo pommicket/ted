@@ -123,7 +123,7 @@ int os_rename_overwrite(const char *oldname, const char *newname) {
 	// it's keeping an open handle to main.c in ted. presumably blocks deletion but not writing.
 	// ReplaceFileW has the same problem.
 // 	if (CreateHardLinkW(wide_oldname, wide_newname, NULL) == 0)
-// 		return -1;
+// 		return -1
 	if (remove(oldname) != 0)
 		return -1;
 	return 0;
