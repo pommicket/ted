@@ -133,12 +133,6 @@ ted has support for [LSPs](https://microsoft.github.io/language-server-protocol/
 You can Ctrl+Click on an identifier to go to its definition, or Ctrl+Shift+Click to go
 to its declaration, or Ctrl+Alt+Click to go to its type's definition.
 
-(clangd seems to sometimes go to the declaration even
-when the definition should be available, e.g.
-when Ctrl+clicking on the function declarations
-in `ted.h`. This is Not My Fault,
-and VSCode's clangd extension suffers from the same problem.)
-
 You can also press Ctrl+D to get a searchable list of all functions/types where you can select one to go to
 its definition. 
 
@@ -176,6 +170,9 @@ is enabled by default. On Debian/Ubuntu you can install it with:
 sudo apt install clangd-15  # replace 15 with the highest number you can get
 sudo ln -s /usr/bin/clangd-15 /usr/bin/clangd
 ```
+
+For "go to definition" and "find usages" to work properly, you may need to
+create a compile\_commands.json file.
 
 ### Go
 

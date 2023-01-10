@@ -2326,6 +2326,12 @@ Status buffer_load_file(TextBuffer *buffer, const char *path) {
 			if (success) {
 				char *path_copy = buffer_strdup(buffer, path);
 				if (!path_copy) success = false;
+				#if _WIN32
+				// only use \ as a path separator
+				for (char *p = path_copy; *p; ++p)
+					if (*p == '/')
+						*p = '\\';
+				#endif
 				if (success) {
 					// everything is good
 					buffer_clear(buffer);

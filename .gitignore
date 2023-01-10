@@ -30,3 +30,5 @@ test.txt
 log.txt
 UpgradeLog.htm
 compile_commands.json
+# clangd creates .cache on windows at least
+.cache

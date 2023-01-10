@@ -13,6 +13,7 @@ if not exist pcre2-32-static.lib (
 SET C_FLAGS=/nologo /W4 /MD /wd4200 /wd4204 /wd4221 /wd4706 /wd4214 /D_CRT_SECURE_NO_WARNINGS /I SDL2/include /I pcre2 SDL2/lib/x64/SDL2main.lib SDL2/lib/x64/SDL2.lib pcre2-32-static.lib
 rc /nologo ted.rc 
 if _%1 == _ (
+	if not exist debug mkdir debug
 	pushd debug
 	cmake -DCMAKE_BUILD_TYPE=Debug -GNinja ..
 	ninja

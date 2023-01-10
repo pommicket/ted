@@ -1,10 +1,6 @@
 /*
 @TODO:
-- make sure buffer_load_file/buffer_new_file handle paths with forward slashes on windows
-- why are all requests failing on windows?
-- are we freeing process if process_run(_ex) fails?
-- test time_last_modified (windows)
-- add note to README about compile_commands.json
+- get Makefile to use ninja
 - rust-analyzer bug reports:
     - bad json can give "Unexpected error: client exited without proper shutdown sequence"
     - containerName not always given in workspace/symbols
@@ -247,7 +243,18 @@ static LONG WINAPI error_signal_handler(EXCEPTION_POINTERS *info) {
 	} else {
 		die(CRASH_STARTUP_MESSAGE);
 	}
+	
+	// MSVC is smart here and realizes this code is unreachable.
+	// that said, I'm worried about not returning a value here for older MSVC versions
+	// and just in general.
+	#if _MSC_VER
+	#pragma warning(push)
+	#pragma warning(disable:4702)
+	#endif
 	return EXCEPTION_EXECUTE_HANDLER;
+	#if _MSC_VER
+	#pragma warning(pop)
+	#endif
 }
 #endif
 
@@ -308,6 +315,7 @@ int main(int argc, char **argv) {
 	
 	command_init();
 	color_init();
+	
 	
 	// read command-line arguments
 	const char *starting_filename = NULL;

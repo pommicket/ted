@@ -1,19 +1,57 @@
 (work in progress)
 
+## Building
+
+To build the debug version of `ted`, you will need ninja-build (package `ninja` on Debian/Ubuntu).
+On Windows you don't need to install it since it comes with MSVC. Then run just `make` (or `make.bat`).
+
+## Header files
+
+TODO
+
 As much as possible, OS-dependent functions should be put in `os.h/os-*.c`.
 (But "pure" functions like `qsort_with_context`, which could
 in theory be implemented on any platform with just plain C, should be put
 in `util.c` even if they use OS-specific library functions.)
 
-## Header files
-
 ## Unicode
 
-- UTF-32
-- codepoints are characters
-- stuff outside BMP on windows
+ted stores text as UTF-32. We assume that code points are characters.
+This is not correct for combining diacritics and will hopefully be fixed at some point.
+
+All paths are stored as UTF-8, and annoyingly have to be converted to UTF-16 for Windows
+functions (why hasn't Windows made UTF-8 versions of all their API functions yet to save
+everyone the trouble...)
 
 ## Drawing
+
+## Build details
+
+Currently, ted uses cmake for debug builds and plain old make (batch on windows) for
+release builds. My hope is that `ted` will always be compilable with:
+```
+cc main.c
+```
+Of course this is not possible because ted uses libraries. But at least we have
+```
+cc main.c libpcre.a -lSDL2 -lm
+```
+or something.
+
+
+I don't like complicated build systems, and I'm only using cmake because it can
+(through ninja) output `compile_commands.json` which is used for clangd.
+
+Both `make.bat` and `Makefile` will run all the right cmake and ninja commands
+for you (including generating `compile_commands.json`),
+so you shouldn't have to worry about that.
+
+## Adding source files
+
+When you add a source file to ted, make sure you:
+
+1. `#include` it in main.c
+2. Add it to the `SOURCES` variable in CMakeLists.txt
 
 ## Adding settings
 
