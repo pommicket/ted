@@ -188,7 +188,30 @@ static void write_file_uri(JSONWriter *o, LSPDocumentID document) {
 		// why the fuck is there another slash it makes no goddamn sense
 		str_builder_append(&o->builder, "/");
 	#endif
-	write_escaped(o, path);
+	for (const char *p = path; *p; ++p) {
+		char c = *p;
+		#if _WIN32
+		// i think file URIs have to use slashes?
+		if (c == '\\') c = '/';
+		#endif
+		
+		// see https://www.rfc-editor.org/rfc/rfc3986#page-12
+		// these are the only allowed un-escaped characters in URIs
+		bool escaped = !(
+			   (c >= '0' && c <= '9')
+			|| (c >= 'a' && c <= 'z')
+			|| (c >= 'A' && c <= 'Z')
+			|| c == '_' || c == '-' || c == '.' || c == '~' || c == '/'
+			#if _WIN32
+			|| c == ':' // i dont think you're supposed to escape the : in C:\...
+			#endif
+			);
+		if (escaped) {
+			str_builder_appendf(&o->builder, "%%%02x", (uint8_t)c);
+		} else {
+			str_builder_appendf(&o->builder, "%c", c);
+		}
+	}
 	str_builder_append(&o->builder, "\"");
 }
 

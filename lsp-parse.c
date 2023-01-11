@@ -104,13 +104,36 @@ static bool parse_document_uri(LSP *lsp, const JSON *json, JSONValue value, LSPD
 	char *path;
 	#if _WIN32
 	path = string + strlen("file:///");
-	// replace slashes with backslashes
-	for (char *p = path; *p; ++p)
-		if (*p == '/')
-			*p = '\\';
 	#else
 	path = string + strlen("file://");
 	#endif
+	
+	// replace percent-encoded sequences (e.g. replace %20 with ' ')
+	char *out = path;
+	for (const char *in = path; *in; ) {
+		char c = *in++;
+		if (c == '%') {
+			char sequence[3] = {0};
+			if (!in[0] || !in[1] || !isxdigit(in[0]) || !isxdigit(in[1])) {
+				lsp_set_error(lsp, "Bad escape sequence in URI.");
+				free(string);
+				return false;
+			}
+			sequence[0] = in[0];
+			sequence[1] = in[1];
+			in += 2;
+			long byte = strtol(sequence, NULL, 16);
+			assert(byte >= 0 && byte <= 255);
+			c = (char)byte;
+		}
+		#if _WIN32
+		// replace forward slashes with backslashes for consistency
+		if (c == '/') c = '\\';
+		#endif
+		*out++ = c;
+	}
+	*out = '\0';
+	
 	*id = lsp_document_id(lsp, path);
 	free(string);
 	return true;
