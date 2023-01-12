@@ -86,26 +86,29 @@ void build_start_with_command(Ted *ted, const char *command) {
 
 void build_start(Ted *ted) {
 	Settings *settings = ted_active_settings(ted);
-	char *command = settings->build_default_command;
+	char *command = settings->build_command;
 	char *root = ted_get_root_dir(ted);
 	strbuf_cpy(ted->build_dir, root);
-	change_directory(root);
-	free(root);
-
-#if _WIN32
-	if (fs_file_exists("make.bat")) {
-		command = "make.bat";
-	} else
-#endif
-	if (fs_file_exists("Cargo.toml")) {
-		command = "cargo build";
-	} else if (fs_file_exists("Makefile")) {
-		command = "make -j12";
-	} else if (fs_file_exists("go.mod")) {
-		command = "go build";
-	}
+	if (*command == 0) {
+		command = settings->build_default_command;
+		change_directory(root);
 	
-	build_start_with_command(ted, command);
+	#if _WIN32
+		if (fs_file_exists("make.bat")) {
+			command = "make.bat";
+		} else
+	#endif
+		if (fs_file_exists("Cargo.toml")) {
+			command = "cargo build";
+		} else if (fs_file_exists("Makefile")) {
+			command = "make -j16";
+		} else if (fs_file_exists("go.mod")) {
+			command = "go build";
+		}
+	}
+	free(root);
+	if (*command)
+		build_start_with_command(ted, command);
 }
 
 static void build_go_to_error(Ted *ted) {

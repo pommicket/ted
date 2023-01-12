@@ -147,7 +147,8 @@ typedef struct {
 	char root_identifiers[4096];
 	char lsp[512];
 	char lsp_configuration[4096];
-	char build_default_command[256];
+	char build_command[1024];
+	char build_default_command[1024];
 	// [i] = comma-separated string of file extensions for language i, or NULL for none
 	char *language_extensions[LANG_COUNT];
 	KeyAction *key_actions; // dynamic array, sorted by KEY_COMBO(modifier, key)

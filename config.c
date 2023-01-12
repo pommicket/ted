@@ -117,6 +117,7 @@ static SettingFloat const settings_float[] = {
 };
 static SettingString const settings_string[] = {
 	{"build-default-command", settings_zero.build_default_command, sizeof settings_zero.build_default_command, true},
+	{"build-command", settings_zero.build_command, sizeof settings_zero.build_command, true},
 	{"bg-shader", settings_zero.bg_shader_text, sizeof settings_zero.bg_shader_text, true},
 	{"bg-texture", settings_zero.bg_shader_image, sizeof settings_zero.bg_shader_image, true},
 	{"root-identifiers", settings_zero.root_identifiers, sizeof settings_zero.root_identifiers, true},
@@ -159,6 +160,8 @@ typedef struct {
 
 static void config_err(ConfigReader *cfg, PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRINTF(2, 3);
 static void config_err(ConfigReader *cfg, const char *fmt, ...) {
+	if (cfg->error) return;
+	cfg->error = true;
 	char error[1024] = {0};
 	strbuf_printf(error, "%s:%u: ", cfg->filename, cfg->line_number);
 	va_list args;
@@ -177,9 +180,13 @@ static void context_copy(SettingsContext *dest, const SettingsContext *src) {
 long context_score(const char *path, Language lang, const SettingsContext *context) {
 	long score = 0;
 	
+	// currently contexts are ranked by:
+	//   1. path matching, the more specific the better
+	//   2. language
+	
 	if (context->language) {
 		if (lang == context->language) {
-			score += 10000;
+			score += 1;
 		} else {
 			// dont use this. it's language-specific and for the wrong language.
 			return INT_MIN;
@@ -188,7 +195,7 @@ long context_score(const char *path, Language lang, const SettingsContext *conte
 	
 	if (context->path) {
 		if (path && str_has_path_prefix(path, context->path)) {
-			score += (long)strlen(context->path);
+			score += 2 * (long)strlen(context->path);
 		} else {
 			// dont use this. it's path-specific and for the wrong path.
 			return INT_MIN;
@@ -335,6 +342,12 @@ static void parse_section_header(ConfigReader *cfg, char *line, ConfigPart *part
 				--path_len;
 			}
 			strn_cat(path, sizeof path, section, path_len);
+			#if _WIN32
+			// replace forward slashes with backslashes
+			for (char *p = path; *p; ++p)
+				if (*p == '/')
+					*p = '\\';
+			#endif
 			part->context.path = str_dup(path);
 			section = path_end + 2;
 		}
