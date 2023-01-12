@@ -9,7 +9,7 @@ void build_stop(Ted *ted) {
 	ted->building = false;
 	ted->build_shown = false;
 	arr_foreach_ptr(ted->build_errors, BuildError, err) {
-		free(err->filename);
+		free(err->path);
 	}
 	arr_clear(ted->build_errors);
 	arr_foreach_ptr(ted->build_queue, char *, cmd) {
@@ -112,7 +112,7 @@ static void build_go_to_error(Ted *ted) {
 	if (ted->build_error < arr_len(ted->build_errors)) {
 		BuildError error = ted->build_errors[ted->build_error];
 		// open the file where the error happened
-		if (ted_open_file(ted, error.filename)) {
+		if (ted_open_file(ted, error.path)) {
 			TextBuffer *buffer = ted->active_buffer;
 			assert(buffer);
 			// move cursor to error
@@ -226,9 +226,22 @@ void build_check_for_errors(Ted *ted) {
 				char *filename = str32_to_utf8_cstr(str32(filename_start, filename_len));
 				if (filename) {
 					char full_path[TED_PATH_MAX];
-					path_full(ted->build_dir, filename, full_path, sizeof full_path);
+					const char *pfilename = filename;
+					path_full(ted->build_dir, pfilename, full_path, sizeof full_path);
+					// if the file does not exist, try stripping ../
+					// this can solve "file not found" problems if your build command involves
+					// cd'ing to a directory inside build_dir
+					while (fs_path_type(full_path) == FS_NON_EXISTENT
+						&& (str_has_prefix(pfilename, "../")
+						#if _WIN32
+						|| str_has_prefix(pfilename, "..\\")
+						#endif
+						)) {
+						pfilename += 3;
+						path_full(ted->build_dir, pfilename, full_path, sizeof full_path);
+					}
 					BuildError error = {
-						.filename = str_dup(full_path),
+						.path = str_dup(full_path),
 						.pos = {.line = (u32)line_number, .index = (u32)column_number},
 						.build_output_line = line_idx
 					};

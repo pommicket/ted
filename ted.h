@@ -329,7 +329,7 @@ typedef struct {
 } FindResult;
 
 typedef struct {
-	char *filename;
+	char *path;
 	BufferPos pos;
 	u32 build_output_line; // which line in the build output corresponds to this error
 } BuildError;
