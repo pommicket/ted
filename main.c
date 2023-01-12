@@ -1,5 +1,6 @@
 /*
 @TODO:
+- strip ../ if file is not found (go to error)
 - rust-analyzer bug reports:
     - bad json can give "Unexpected error: client exited without proper shutdown sequence"
     - containerName not always given in workspace/symbols

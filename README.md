@@ -127,8 +127,9 @@ I would recommend trying out an LSP server if you're unsure about which one to u
 
 ## LSP support
 
-ted has support for [LSPs](https://microsoft.github.io/language-server-protocol/)!
+ted has support for [LSP servers](https://microsoft.github.io/language-server-protocol/)!
 
+All the functionality listed below is only available if the server supports it.
 
 You can Ctrl+Click on an identifier to go to its definition, or Ctrl+Shift+Click to go
 to its declaration, or Ctrl+Alt+Click to go to its type's definition.
@@ -136,9 +137,12 @@ to its declaration, or Ctrl+Alt+Click to go to its type's definition.
 You can also press Ctrl+D to get a searchable list of all functions/types where you can select one to go to
 its definition. 
 
-Press Ctrl+space to autocomplete. If there is only one possible completion from the tags file, it will be selected automatically.
+Press Ctrl+space to autocomplete. If there is only one possible completion, it will be selected automatically.
 Otherwise, you'll get a popup showing all possible completions. You can press tab to select a completion (or click on it), and press
 Ctrl+space/Ctrl+shift+space to cycle between suggestions.
+
+When there is only one possible completion and the autocomplete window isn't open, a "phantom completion" will appear in gray text.
+Press tab to use it or continue typing if it isn't what you want. (This can be turned off in the settings if you don't like it.)
 
 Hover over an identifier and press F1 to see its type and documentation ("hover information").
 
@@ -150,15 +154,16 @@ Press Ctrl+U to see usages of the identifier under the cursor. You can use Ctrl+
 to navigate between them, just like build errors.
 
 If these features aren't working properly and you don't know why, try running ted in a terminal (non-Windows) or a debugger (Windows)
-so you can see the stderr output from the server.
+so you can see the stderr output from the server, or turn on the `lsp-log` setting and inspect ted's log (which is called `log.txt`
+and is in the same directory as your local `ted.cfg`).
 
 If an LSP server crashes or is having difficulty, you can run the `lsp-reset` command (via the command palette)
 to reset all running LSP servers.
 
 You can integrate any LSP server with ted by setting the `lsp` option in the `[core.<language>]` section of `ted.cfg`
 to the command which starts the server. Some defaults will already be there, and are listed below. Make
-sure you install the LSP(s) you want and put the executables in your PATH (or change the `lsp` variable
-to include the absolute path if not). You can also set configuration options with the `lsp-configuration` option.
+sure you install the LSP server(s) you want and put the executables in your PATH (or change the `lsp` variable
+to use the absolute path if not). You can also set configuration options with the `lsp-configuration` option.
 Make sure the configuration you provide is valid JSON.
 
 ### C/C++
@@ -171,8 +176,10 @@ sudo apt install clangd-15  # replace 15 with the highest number you can get
 sudo ln -s /usr/bin/clangd-15 /usr/bin/clangd
 ```
 
+On Windows it can be downloaded [from here](https://github.com/clangd/clangd/releases).
+
 For "go to definition" and "find usages" to work properly, you may need to
-create a compile\_commands.json file.
+create [a compile\_commands.json file](https://clangd.llvm.org/installation#compile_commandsjson).
 
 ### Go
 
@@ -212,6 +219,7 @@ curl -L https://github.com/rust-lang/rust-analyzer/releases/latest/download/rust
 chmod +x ~/.local/bin/rust-analyzer
 ```
 
+(Assuming `~/.local/bin` is in your PATH.)
 
 ## Tags (lightweight LSP alternative)
 
@@ -240,8 +248,8 @@ These can be installed on Ubuntu/Debian with:
 sudo apt install clang libsdl2-dev cmake imagemagick
 ```
 
-Then run `make -j4 release` to build or `sudo make install -j4` to build and install.
-You can also run `make ted.deb` to build the .deb installer.
+Then run `make -j8 release` to build or `sudo make install -j8` to build and install.
+You can also run `make -j8 ted.deb` to build the .deb installer.
 
 On Windows (64-bit), you will need to install Microsoft Visual Studio, then find and add vcvarsall.bat to your PATH.
 Next you will need the SDL2 VC development libraries: https://www.libsdl.org/download-2.0.php  
@@ -279,6 +287,7 @@ Then, open windows\_installer\\ted\\ted.sln, and build.
 <tr><td>1.3</td> <td>Custom background shader, some bugfixes.</td> <td>2022 Nov 3</td></tr>
 <tr><td>1.3r1</td> <td>Fixed rust, python syntax highlighting.</td> <td>2022 Nov 4</td></tr>
 <tr><td>1.3r2</td> <td>Fixed high CPU usage on some devices.</td> <td>2022 Dec 7</td></tr>
+<tr><td>2.0</td> <td>LSP support and a bunch of other things.</td> <td>2023 Jan 11</td></tr>
 </table>
 
 ## License
@@ -289,7 +298,7 @@ ted is in the public domain (see `LICENSE.txt`).
 
 You can report a bug by sending an email to `pommicket at pommicket.com`.
 
-If ted is crashing on startup try doing these things:
+If ted is crashing on startup try doing these things as temporary fixes:
 
 - Delete `~/.local/share/ted/session.txt` or `C:\Users\<your user name>\AppData\Local\ted\session.txt`
 - Reset your ted configuration by moving `ted.cfg` somewhere else.
