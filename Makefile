@@ -12,12 +12,12 @@ INSTALL_BIN_DIR=/usr/bin
 debug-build: ted compile_commands.json
 ted: debug/ted
 	cp debug/ted .
-compile_commands.json: debug/compile_commands.json
+compile_commands.json: debug/ted
 	cp debug/compile_commands.json .
 debug/ted: *.[ch] libpcre2-32.a CMakeLists.txt
 	mkdir -p debug
-	cd debug && cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DCMAKE_BUILD_TYPE=Debug ..
-	$(MAKE) -C debug
+	cd debug && cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DCMAKE_BUILD_TYPE=Debug -GNinja ..
+	ninja -C debug
 release: *.[ch] libpcre2-32.a
 	$(CC) main.c -o ted $(RELEASE_CFLAGS) $(LIBS)
 release_debug: *.[ch] libpcre2-32.a

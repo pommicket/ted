@@ -9,17 +9,10 @@ else()
 	set(SOURCES main.c)
 endif()
 
-# make the file names absolute so we can go-to-error.
-set(SOURCES_ABSOLUTE )
-foreach(SOURCE ${SOURCES})
-	get_filename_component(S ${CMAKE_SOURCE_DIR}/${SOURCE} ABSOLUTE)
-	set(SOURCES_ABSOLUTE ${SOURCES_ABSOLUTE};${S})
-endforeach()
-
 if (MSVC)
-	add_executable(ted WIN32 ${SOURCES_ABSOLUTE})
+	add_executable(ted WIN32 ${SOURCES})
 else()
-	add_executable(ted ${SOURCES_ABSOLUTE})
+	add_executable(ted ${SOURCES})
 endif()
 
 

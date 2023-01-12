@@ -3,6 +3,7 @@
 ## Building
 
 To build the debug version of ted, run `make` (or `make.bat` on Windows).
+By default we use the `ninja` build system (`sudo apt install ninja` or similar).
 
 ## Files
 
