@@ -218,7 +218,7 @@ static Font *buffer_font(TextBuffer *buffer) {
 // what programming language is this?
 Language buffer_language(TextBuffer *buffer) {
 	if (!buffer->path)
-		return LANG_NONE;
+		return LANG_TEXT;
 	
 	// @TODO(optimization): cache this?
 	//         (we're calling buffer_lsp on every edit and that calls this)
@@ -229,7 +229,7 @@ Language buffer_language(TextBuffer *buffer) {
 	size_t filename_len = strlen(filename);
 
 	int match_score = 0;
-	Language match = LANG_NONE;
+	Language match = LANG_TEXT;
 	
 	for (u16 l = 0; l < LANG_COUNT; ++l) {
 		const char *extensions = settings->language_extensions[l];
@@ -2759,7 +2759,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	Language language = buffer_language(buffer);
 	// dynamic array of character types, to be filled by syntax_highlight
 	SyntaxCharType *char_types = NULL;
-	bool syntax_highlighting = language && settings->syntax_highlighting;
+	bool syntax_highlighting = language && language != LANG_TEXT && settings->syntax_highlighting;
 
 	if (buffer->frame_latest_line_modified >= buffer->frame_earliest_line_modified
 		&& syntax_highlighting) {
@@ -2991,6 +2991,8 @@ void buffer_dedent_cursor_line(TextBuffer *buffer) {
 void buffer_comment_lines(TextBuffer *buffer, u32 first_line, u32 last_line) {
 	Language lang = buffer_language(buffer);
 	const char *start = language_comment_start(lang), *end = language_comment_end(lang);
+	if (!start[0] && !end[0])
+		return;
 	String32 start32 = str32_from_utf8(start), end32 = str32_from_utf8(end);
 	
 	buffer_start_edit_chain(buffer);
@@ -3044,6 +3046,8 @@ static bool buffer_line_ends_with_ascii(TextBuffer *buffer, u32 line_idx, const 
 void buffer_uncomment_lines(TextBuffer *buffer, u32 first_line, u32 last_line) {
 	Language lang = buffer_language(buffer);
 	const char *start = language_comment_start(lang), *end = language_comment_end(lang);
+	if (!start[0] && !end[0])
+		return;
 	u32 start_len = (u32)strlen(start), end_len = (u32)strlen(end);
 	buffer_start_edit_chain(buffer);
 	for (u32 line_idx = first_line; line_idx <= last_line; ++line_idx) {
@@ -3066,6 +3070,8 @@ void buffer_uncomment_lines(TextBuffer *buffer, u32 first_line, u32 last_line) {
 void buffer_toggle_comment_lines(TextBuffer *buffer, u32 first_line, u32 last_line) {
 	Language lang = buffer_language(buffer);
 	const char *start = language_comment_start(lang), *end = language_comment_end(lang);
+	if (!start[0] && !end[0])
+		return;
 	// if first line is a comment, uncomment lines, otherwise, comment lines
 	if (buffer_line_starts_with_ascii(buffer, first_line, start)
 		&& buffer_line_ends_with_ascii(buffer, first_line, end))

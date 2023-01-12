@@ -183,7 +183,7 @@ static void print(const char *fmt, ...) {
 // If you are adding new languages, DO NOT change the constant values
 // of the previous languages. It will mess up config files which use :set-language!
 typedef enum {
-	LANG_NONE = 0,
+	LANG_NONE = 0, // avoid using this and use LANG_TEXT instead.
 	LANG_C = 1,
 	LANG_CPP = 2,
 	LANG_RUST = 3,
@@ -200,6 +200,7 @@ typedef enum {
 	LANG_JSON = 14,
 	LANG_XML = 15,
 	LANG_GLSL = 16,
+	LANG_TEXT = 17, // plain text
 	LANG_COUNT
 } Language;
 

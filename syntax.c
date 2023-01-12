@@ -88,6 +88,7 @@ static const LanguageName language_names[] = {
 	{LANG_JSON, "JSON"},
 	{LANG_XML, "XML"},
 	{LANG_GLSL, "GLSL"},
+	{LANG_TEXT, "Text"},
 };
 
 static_assert_if_possible(arr_count(language_names) == LANG_COUNT)
@@ -135,6 +136,7 @@ const char *language_comment_start(Language l) {
 		return "<!-- ";
 	case LANG_NONE:
 	case LANG_MARKDOWN:
+	case LANG_TEXT:
 	case LANG_COUNT:
 		break;
 	}
@@ -1728,6 +1730,7 @@ static void syntax_highlight_go(SyntaxState *state_ptr, const char32_t *line, u3
 void syntax_highlight(SyntaxState *state, Language lang, const char32_t *line, u32 line_len, SyntaxCharType *char_types) {
 	switch (lang) {
 	case LANG_NONE:
+	case LANG_TEXT:
 		if (char_types)
 			memset(char_types, 0, line_len * sizeof *char_types);
 		break;

@@ -10,6 +10,7 @@ static const char *lsp_language_id(Language lang) {
 	switch (lang) {
 	case LANG_CONFIG:
 	case LANG_TED_CFG:
+	case LANG_TEXT:
 	case LANG_NONE:
 		return "text";
 	case LANG_C:
