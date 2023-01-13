@@ -185,7 +185,7 @@ static bool syntax_keyword_matches(const char32_t *text, size_t len, const char 
 }
 
 char32_t syntax_matching_bracket(Language lang, char32_t c) {
-	if (lang == LANG_HTML) {
+	if (lang == LANG_HTML || lang == LANG_XML) {
 		// for most languages, this would look weird since
 		//                       v cursor
 		//       if (x < 5 && y >| 6)
@@ -208,7 +208,7 @@ char32_t syntax_matching_bracket(Language lang, char32_t c) {
 }
 
 bool syntax_is_opening_bracket(Language lang, char32_t c) {
-	if (lang == LANG_HTML) {
+	if (lang == LANG_HTML || lang == LANG_XML) {
 		if (c == '<')
 			return true;
 	}

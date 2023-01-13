@@ -6,6 +6,7 @@
 - texlab bug report:
     - textDocument/definition gives LocationLink regardless of client capabilities
 FUTURE FEATURES:
+- better interaction between language-specific and path-specific settings
 - manual.md
 - better handling of backspace with space indentation
 - CSS highlighting
