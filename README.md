@@ -63,7 +63,7 @@ to open the command palette, and select "open-config". There are several section
 - `[extensions]` for which file extensions should be mapped to which programming languages
 
 Comments begin with `#`, and all other lines are of the form `key = value`.
-Strings can span multiple lines and can either be delimited with `"` or `\``.
+Strings can span multiple lines and can either be delimited with " or \`.
 
 By default ted's settings will automatically update when you save the config file.
 
