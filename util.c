@@ -384,11 +384,15 @@ void path_full(const char *dir, const char *relpath, char *abspath, size_t abspa
 		} else if (component_len == 2 && relpath[0] == '.' && relpath[1] == '.') {
 			// ..
 			char *lastsep = strrchr(abspath, PATH_SEPARATOR);
-			assert(lastsep);
-			if (lastsep == abspath)
-				lastsep[1] = '\0';
-			else
-				lastsep[0] = '\0';
+			if (lastsep) {
+				if (lastsep == abspath)
+					lastsep[1] = '\0'; // e.g.  /abc
+				else
+					lastsep[0] = '\0';
+			} else {
+				// e.g. if abspath is currently C:
+				// (do nothing)
+			}
 		} else {
 			if (len == 0 || abspath[len - 1] != PATH_SEPARATOR)
 				str_cat(abspath, abspath_size, PATH_SEPARATOR_STR);
