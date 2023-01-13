@@ -187,18 +187,18 @@ The Go team's `go-pls` is enabled by default. You can download it
 [here](https://github.com/golang/tools/tree/master/gopls).
 
 
-## Java
+### Java
 
 Eclipse's `jdtls` is enabled by default.
 You can download it [here](download.eclipse.org/jdtls/milestones/?d).
 
-## JavaScript/TypeScript
+### JavaScript/TypeScript
 
 `typescript-language-server` is enabled by default.
 You can download it by following
 [the instructions here](https://github.com/typescript-language-server/typescript-language-server).
 
-## LaTeX
+### LaTeX
 
 `texlab` is enabled by default. You can download it
 [here](https://github.com/latex-lsp/texlab).
