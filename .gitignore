@@ -26,6 +26,7 @@ TAGS
 pcre2*
 SDL2
 *.deb
+.vs
 test.txt
 log.txt
 UpgradeLog.htm

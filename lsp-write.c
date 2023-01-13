@@ -192,7 +192,7 @@ static void write_file_uri(JSONWriter *o, LSPDocumentID document) {
 	for (const char *p = path; *p; ++p) {
 		char c = *p;
 		#if _WIN32
-		// i think file URIs have to use slashes?
+		// file URIs use slashes: https://en.wikipedia.org/wiki/File_URI_scheme
 		if (c == '\\') c = '/';
 		#endif
 		

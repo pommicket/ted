@@ -338,9 +338,10 @@ void qsort_with_context(void *base, size_t nmemb, size_t size,
 #endif
 
 const char *path_filename(const char *path) {
-	const char *last_path_sep = strrchr(path, PATH_SEPARATOR);
-	if (last_path_sep)
-		return last_path_sep + 1;
+	for (int i = (int)strlen(path) - 1; i >= 0; --i) {
+		if (strchr(ALL_PATH_SEPARATORS, path[i]))
+			return &path[i+1];
+	}
 	// (a relative path with no path separators)
 	return path;
 }
