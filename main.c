@@ -6,12 +6,13 @@
 - texlab bug report:
     - textDocument/definition gives LocationLink regardless of client capabilities
 FUTURE FEATURES:
+- doxygen documentation for ted.h
 - better interaction between language-specific and path-specific settings
 - manual.md
-- better handling of backspace with space indentation
 - CSS highlighting
 - option for separate colors for read/write highlights
 - styles ([color] sections)
+- handle non-UTF8 file by using 0xD800-0xD8FF or something for raw bytes
 - make go-to-definition/hover/highlight modifier key configurable
 - return to previous location in buffer
 - font setting & support for multiple fonts to cover more characters

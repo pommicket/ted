@@ -308,6 +308,13 @@ Settings *buffer_settings(TextBuffer *buffer) {
 	return ted_get_settings(buffer->ted, buffer->path, buffer_language(buffer));
 }
 
+u8 buffer_tab_width(TextBuffer *buffer) {
+	return buffer_settings(buffer)->tab_width;
+}
+
+bool buffer_indent_with_spaces(TextBuffer *buffer) {
+	return buffer_settings(buffer)->indent_with_spaces;
+}
 
 String32 buffer_get_line(TextBuffer *buffer, u32 line_number) {
 	Line *line = &buffer->lines[line_number];
@@ -643,6 +650,12 @@ static void buffer_remove_last_edit_if_empty(TextBuffer *buffer) {
 	}
 }
 
+u32 buffer_line_len(TextBuffer *buffer, u32 line_number) {
+	if (line_number >= buffer->nlines)
+		return 0;
+	return buffer->lines[line_number].len;
+}
+
 // returns true if allocation was succesful
 static Status buffer_line_set_len(TextBuffer *buffer, Line *line, u32 new_len) {
 	if (new_len >= 8) {
@@ -774,7 +787,7 @@ static void buffer_print(TextBuffer const *buffer) {
 static u32 buffer_index_to_column(TextBuffer *buffer, u32 line, u32 index) {
 	char32_t *str = buffer->lines[line].str;
 	u32 col = 0;
-	uint tab_width = buffer_settings(buffer)->tab_width;
+	uint tab_width = buffer_tab_width(buffer);
 	for (u32 i = 0; i < index && i < buffer->lines[line].len; ++i) {
 		switch (str[i]) {
 		case '\t': {
@@ -798,7 +811,7 @@ static u32 buffer_column_to_index(TextBuffer *buffer, u32 line, u32 column) {
 	char32_t *str = buffer->lines[line].str;
 	u32 len = buffer->lines[line].len;
 	u32 col = 0;
-	uint tab_width = buffer_settings(buffer)->tab_width;
+	uint tab_width = buffer_tab_width(buffer);
 	for (u32 i = 0; i < len; ++i) {
 		switch (str[i]) {
 		case '\t': {
@@ -2001,10 +2014,9 @@ void buffer_insert_utf8_at_cursor(TextBuffer *buffer, const char *utf8) {
 }
 
 void buffer_insert_tab_at_cursor(TextBuffer *buffer) {
-	const Settings *settings = buffer_settings(buffer);
-	
-	if (settings->indent_with_spaces) {
-		for (int i = 0; i < settings->tab_width; ++i)
+	if (buffer_indent_with_spaces(buffer)) {
+		u16 tab_width = buffer_tab_width(buffer);
+		for (int i = 0; i < tab_width; ++i)
 			buffer_insert_char_at_cursor(buffer, ' ');
 	} else {
 		buffer_insert_char_at_cursor(buffer, '\t');
@@ -2042,10 +2054,29 @@ void buffer_newline(TextBuffer *buffer) {
 }
 
 void buffer_delete_chars_at_cursor(TextBuffer *buffer, i64 nchars) {
-	if (buffer->selection)
+	if (buffer->selection) {
 		buffer_delete_selection(buffer);
-	else
-		buffer_delete_chars_at_pos(buffer, buffer->cursor_pos, nchars);
+	} else {
+		BufferPos cursor_pos = buffer->cursor_pos;
+		u16 tab_width = buffer_tab_width(buffer);
+		bool delete_soft_tab = false;
+		if (buffer_indent_with_spaces(buffer)
+			&& cursor_pos.index + tab_width <= buffer_line_len(buffer, cursor_pos.line)
+			&& cursor_pos.index % tab_width == 0) {
+			delete_soft_tab = true;
+			// check that all characters deleted + all characters before cursor are ' '
+			for (u32 i = 0; i < cursor_pos.index + tab_width; ++i) {
+				BufferPos p = {.line = cursor_pos.line, .index = i };
+				if (buffer_char_at_pos(buffer, p) != ' ')
+					delete_soft_tab = false;
+			}
+		}
+		
+		if (delete_soft_tab)
+			nchars = tab_width;
+		buffer_delete_chars_at_pos(buffer, cursor_pos, nchars);
+		
+	}
 	buffer_scroll_to_cursor(buffer);
 }
 
@@ -2055,13 +2086,27 @@ i64 buffer_backspace_at_pos(TextBuffer *buffer, BufferPos *pos, i64 ntimes) {
 	return n;
 }
 
-// returns number of characters backspaced
 i64 buffer_backspace_at_cursor(TextBuffer *buffer, i64 ntimes) {
 	i64 ret=0;
 	if (buffer->selection) {
 		ret = buffer_delete_selection(buffer);
 	} else {
 		BufferPos cursor_pos = buffer->cursor_pos;
+		// check whether to delete the "soft tab" if indent-with-spaces is enabled
+		u16 tab_width = buffer_tab_width(buffer);
+		bool delete_soft_tab = false;
+		if (buffer_indent_with_spaces(buffer) && cursor_pos.index > 0
+			&& cursor_pos.index % tab_width == 0) {
+			delete_soft_tab = true;
+			// check that all characters before cursor are ' '
+			for (u32 i = 0; i + 1 < cursor_pos.index; ++i) {
+				BufferPos p = {.line = cursor_pos.line, .index = i };
+				if (buffer_char_at_pos(buffer, p) != ' ')
+					delete_soft_tab = false;
+			}
+		}
+		if (delete_soft_tab)
+			ntimes = tab_width;
 		ret = buffer_backspace_at_pos(buffer, &cursor_pos, ntimes);
 		buffer_cursor_move_to_pos(buffer, cursor_pos);
 	}
@@ -2818,7 +2863,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 			case '\n': assert(0); break;
 			case '\r': break; // for CRLF line endings
 			case '\t': {
-				uint tab_width = settings->tab_width;
+				uint tab_width = buffer_tab_width(buffer);
 				do {
 					text_char_with_state(font, &text_state, ' ');
 					++column;
@@ -2913,13 +2958,13 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 
 void buffer_indent_lines(TextBuffer *buffer, u32 first_line, u32 last_line) {
 	assert(first_line <= last_line);
-	const Settings *settings = buffer_settings(buffer);
 	
 	buffer_start_edit_chain(buffer);
 	for (u32 l = first_line; l <= last_line; ++l) {
 		BufferPos pos = {.line = l, .index = 0};
-		if (settings->indent_with_spaces) {
-			for (int i = 0; i < settings->tab_width; ++i)
+		if (buffer_indent_with_spaces(buffer)) {
+			u16 tab_width = buffer_tab_width(buffer);
+			for (int i = 0; i < tab_width; ++i)
 				buffer_insert_char_at_pos(buffer, pos, ' ');
 		} else {
 			buffer_insert_char_at_pos(buffer, pos, '\t');
@@ -2934,8 +2979,7 @@ void buffer_dedent_lines(TextBuffer *buffer, u32 first_line, u32 last_line) {
 	buffer_validate_line(buffer, &last_line);
 	
 	buffer_start_edit_chain(buffer);
-	const Settings *settings = buffer_settings(buffer);
-	const u8 tab_width = settings->tab_width;
+	const u8 tab_width = buffer_tab_width(buffer);
 	
 	for (u32 line_idx = first_line; line_idx <= last_line; ++line_idx) {
 		Line *line = &buffer->lines[line_idx];

@@ -651,6 +651,10 @@ bool buffer_clip_rect(TextBuffer *buffer, Rect *r);
 LSP *buffer_lsp(TextBuffer *buffer);
 // Get the settings used for this buffer.
 Settings *buffer_settings(TextBuffer *buffer);
+// Get tab width for this buffer
+u8 buffer_tab_width(TextBuffer *buffer);
+// Get whether or not to indent with spaces for this buffer.
+bool buffer_indent_with_spaces(TextBuffer *buffer);
 // NOTE: this string will be invalidated when the line is edited!!!
 // only use it briefly!!
 String32 buffer_get_line(TextBuffer *buffer, u32 line_number);
@@ -678,6 +682,9 @@ void buffer_check_valid(TextBuffer *buffer);
 void buffer_free(TextBuffer *buffer);
 // clear buffer contents
 void buffer_clear(TextBuffer *buffer);
+// returns the length of the `line_number`th line (0-indexed),
+// or 0 if `line_number` is out of range.
+u32 buffer_line_len(TextBuffer *buffer, u32 line_number);
 // returns the number of lines of text in the buffer into *lines (if not NULL),
 // and the number of columns of text, i.e. the number of columns in the longest line displayed, into *cols (if not NULL)
 void buffer_text_dimensions(TextBuffer *buffer, u32 *lines, u32 *columns);
