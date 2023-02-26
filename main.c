@@ -299,7 +299,7 @@ int main(int argc, char **argv) {
 		sigaction(SIGFPE, &act, NULL);
 		sigaction(SIGABRT, &act, NULL);
 		sigaction(SIGILL, &act, NULL);
-		sigaction(SIGPIPE, &act, NULL);
+		signal(SIGPIPE, SIG_IGN);
 	}
 #elif _WIN32
 	SetUnhandledExceptionFilter(error_signal_handler);
