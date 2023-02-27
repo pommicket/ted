@@ -62,7 +62,7 @@ enum {
 
 enum {
 	SYNTAX_STATE_TED_CFG_STRING = 0x01u, // ` or "-delimited string
-	SYNTAX_STATE_TED_CFG_STRING_BACKTICK = 0x01u, // `-delimited string
+	SYNTAX_STATE_TED_CFG_STRING_BACKTICK = 0x02u, // `-delimited string
 };
 
 typedef struct {
