@@ -143,8 +143,6 @@ typedef struct {
 	u8 tags_max_depth;
 	GlRcSAB *bg_shader;
 	GlRcTexture *bg_texture;
-	char bg_shader_text[4096];
-	char bg_shader_image[TED_PATH_MAX];
 	char root_identifiers[4096];
 	char lsp[512];
 	char lsp_configuration[4096];
@@ -186,7 +184,6 @@ typedef struct {
 	char *file;
 	u32 line;
 	char *text;
-	u32 settings; // index into ted->all_settings. only used in config_parse
 } ConfigPart;
 
 // this refers to replacing prev_len characters (found in prev_text) at pos with new_len characters

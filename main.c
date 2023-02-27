@@ -1,17 +1,13 @@
 /*
 @TODO:
-- rust-analyzer bug reports:
-    - bad json can give "Unexpected error: client exited without proper shutdown sequence"
-    - containerName not always given in workspace/symbols
-- texlab bug report:
-    - textDocument/definition gives LocationLink regardless of client capabilities
+- test new settings system
 FUTURE FEATURES:
 - doxygen documentation for ted.h
-- better interaction between language-specific and path-specific settings
 - manual.md
 - CSS highlighting
 - option for separate colors for read/write highlights
 - styles ([color] sections)
+  - for this, it would be nice to have #include in ted.cfg
 - make go-to-definition/hover/highlight modifier key configurable
 - return to previous location in buffer
 - font setting & support for multiple fonts to cover more characters
@@ -35,6 +31,12 @@ FUTURE FEATURES:
     -  ctrl+9/0 to inc/dec number would be useful here
     - with macros we can really test performance of buffer_insert_text_at_pos, etc. (which should ideally be fast)
 - LSP request timeout
+BUG REPORTS IM TO LAZY TO FILE (RIGHT NOW)
+- rust-analyzer:
+    - bad json can give "Unexpected error: client exited without proper shutdown sequence"
+    - containerName not always given in workspace/symbols
+- texlab:
+    - textDocument/definition gives LocationLink regardless of client capabilities
 */
 
 #include "ted.h"

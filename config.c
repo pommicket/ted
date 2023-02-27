@@ -119,8 +119,6 @@ static SettingFloat const settings_float[] = {
 static SettingString const settings_string[] = {
 	{"build-default-command", settings_zero.build_default_command, sizeof settings_zero.build_default_command, true},
 	{"build-command", settings_zero.build_command, sizeof settings_zero.build_command, true},
-	{"bg-shader", settings_zero.bg_shader_text, sizeof settings_zero.bg_shader_text, true},
-	{"bg-texture", settings_zero.bg_shader_image, sizeof settings_zero.bg_shader_image, true},
 	{"root-identifiers", settings_zero.root_identifiers, sizeof settings_zero.root_identifiers, true},
 	{"lsp", settings_zero.lsp, sizeof settings_zero.lsp, true},
 	{"lsp-configuration", settings_zero.lsp_configuration, sizeof settings_zero.lsp_configuration, true},
@@ -497,9 +495,8 @@ void config_read(Ted *ted, ConfigPart **parts, const char *filename) {
 // IMPORTANT REQUIREMENT FOR THIS FUNCTION:
 //     - less specific contexts compare as less
 //            (i.e. if context_is_parent(a.context, b.context), then we return -1, and vice versa.)
-// if total = true, this gives a total ordering
-// if total = false, parts with identical contexts will compare equal.
-static int config_part_cmp(const ConfigPart *ap, const ConfigPart *bp, bool total) {
+//     - this gives a total ordering; ties are broken by order of appearance
+static int config_part_cmp(const ConfigPart *ap, const ConfigPart *bp) {
 	const SettingsContext *a = &ap->context, *b = &bp->context;
 	if (a->language == 0 && b->language != 0)
 		return -1;
@@ -520,18 +517,16 @@ static int config_part_cmp(const ConfigPart *ap, const ConfigPart *bp, bool tota
 		return +1;
 	int cmp = strcmp(a_path, b_path);
 	if (cmp != 0) return cmp;
-	if (total) {
-		if (ap->index < bp->index)
-			return -1;
-		if (ap->index > bp->index)
-			return +1;
-	}
+	if (ap->index < bp->index)
+		return -1;
+	if (ap->index > bp->index)
+		return +1;
 	return 0;
 	
 }
 
 static int config_part_qsort_cmp(const void *av, const void *bv) {
-	return config_part_cmp(av, bv, true);
+	return config_part_cmp(av, bv);
 }
 
 static i64 config_read_string(Ted *ted, ConfigReader *cfg, char **ptext) {
@@ -596,7 +591,7 @@ static i64 config_read_string(Ted *ted, ConfigReader *cfg, char **ptext) {
 	return str_idx;
 }
 
-static void settings_load_bg_shader(Ted *ted, Settings *s) {
+static void settings_load_bg_shader(Ted *ted, Settings **applicable_settings, const char *bg_shader_text) {
 	char vshader[8192] ;
 	strbuf_printf(vshader, "attribute vec2 v_pos;\n\
 OUT vec2 t_pos;\n\
@@ -611,46 +606,49 @@ uniform float t_save_time;\n\
 uniform vec2 t_aspect;\n\
 uniform sampler2D t_texture;\n\
 #line 1\n\
-%s", s->bg_shader_text);
+%s", bg_shader_text);
 	
-	gl_rc_sab_decref(&s->bg_shader);
 	
 	char error[512] = {0};
 	GLuint shader = gl_compile_and_link_shaders(error, vshader, fshader);
 	if (*error)
 		ted_error(ted, "%s", error);
-	if (shader) {
-		GLuint buffer = 0, array = 0;
-		glGenBuffers(1, &buffer);
-		if (gl_version_major >= 3) {
-			glGenVertexArrays(1, &array);
-			glBindVertexArray(array);
-		}
-		
-		
-		float buffer_data[][2] = {
-			{0,0},
-			{1,0},
-			{1,1},
-			{0,0},
-			{1,1},
-			{0,1}
-		};
+	if (!shader) return;
+	
+	GLuint buffer = 0, array = 0;
+	glGenBuffers(1, &buffer);
+	if (gl_version_major >= 3) {
+		glGenVertexArrays(1, &array);
+		glBindVertexArray(array);
+	}
+	
+	
+	float buffer_data[][2] = {
+		{0,0},
+		{1,0},
+		{1,1},
+		{0,0},
+		{1,1},
+		{0,1}
+	};
 
-		GLuint v_pos = (GLuint)glGetAttribLocation(shader, "v_pos");
-		glBindBuffer(GL_ARRAY_BUFFER, buffer);
-		glBufferData(GL_ARRAY_BUFFER, sizeof buffer_data, buffer_data, GL_STATIC_DRAW);
-		glVertexAttribPointer(v_pos, 2, GL_FLOAT, 0, 2 * sizeof(float), 0);
-		glEnableVertexAttribArray(v_pos);
-		
-		s->bg_shader = gl_rc_sab_new(shader, array, buffer);
+	GLuint v_pos = (GLuint)glGetAttribLocation(shader, "v_pos");
+	glBindBuffer(GL_ARRAY_BUFFER, buffer);
+	glBufferData(GL_ARRAY_BUFFER, sizeof buffer_data, buffer_data, GL_STATIC_DRAW);
+	glVertexAttribPointer(v_pos, 2, GL_FLOAT, 0, 2 * sizeof(float), 0);
+	glEnableVertexAttribArray(v_pos);
+	
+	GlRcSAB *bg_shader = gl_rc_sab_new(shader, array, buffer);
+	bg_shader->ref_count = arr_len(applicable_settings);
+	arr_foreach_ptr(applicable_settings, Settings *, psettings) {
+		Settings *settings = *psettings;
+		// decrease refcount on previous shader
+		gl_rc_sab_decref(&settings->bg_shader);
+		settings->bg_shader = bg_shader;
 	}
 }
 
-static void settings_load_bg_texture(Ted *ted, Settings *s) {
-	gl_rc_texture_decref(&s->bg_texture);
-	
-	const char *path = s->bg_shader_image;
+static void settings_load_bg_texture(Ted *ted, Settings **applicable_settings, const char *path) {
 	char expanded[TED_PATH_MAX];
 	expanded[0] = '\0';
 	if (path[0] == '~') {
@@ -660,16 +658,26 @@ static void settings_load_bg_texture(Ted *ted, Settings *s) {
 	strbuf_cat(expanded, path);
 	
 	GLuint texture = gl_load_texture_from_image(expanded);
-	if (texture) {
-		s->bg_texture = gl_rc_texture_new(texture);
-	} else {
+	if (!texture) {
 		ted_error(ted, "Couldn't load image %s", path);
+		return;
 	}
+	
+	GlRcTexture *bg_texture = gl_rc_texture_new(texture);
+	bg_texture->ref_count = arr_len(applicable_settings);
+	arr_foreach_ptr(applicable_settings, Settings *, psettings) {
+		Settings *settings = *psettings;
+		// decrease refcount on previous texture
+		gl_rc_texture_decref(&settings->bg_texture);
+		settings->bg_texture = bg_texture;
+	}
+	
 }
 
 // reads a single "line" of the config file, but it may include a multiline string,
 // so it may read multiple lines.
-static void config_parse_line(ConfigReader *cfg, Settings *settings, const ConfigPart *part, char **pline) {
+// applicable_settings is a dynamic array of all settings objects to update
+static void config_parse_line(ConfigReader *cfg, Settings **applicable_settings, const ConfigPart *part, char **pline) {
 	char *line = *pline;
 	Ted *ted = cfg->ted;
 	
@@ -730,7 +738,9 @@ static void config_parse_line(ConfigReader *cfg, Settings *settings, const Confi
 		if (setting != COLOR_UNKNOWN) {
 			u32 color = 0;
 			if (color_from_str(value, &color)) {
-				settings->colors[setting] = color;
+				arr_foreach_ptr(applicable_settings, Settings *, psettings) {
+					(*psettings)->colors[setting] = color;
+				}
 			} else {
 				config_err(cfg, "'%s' is not a valid color. Colors should look like #rgb, #rgba, #rrggbb, or #rrggbbaa.", value);
 			}
@@ -745,18 +755,8 @@ static void config_parse_line(ConfigReader *cfg, Settings *settings, const Confi
 	case SECTION_KEYBOARD: {
 		// lines like Ctrl+Down = 10 :down
 		u32 key_combo = config_parse_key_combo(cfg, key);
-		KeyAction *action = NULL;
-		// check if we already have an action for this key combo
-		arr_foreach_ptr(settings->key_actions, KeyAction, act) {
-			if (act->key_combo == key_combo) {
-				action = act;
-				break;
-			}
-		}
-		// if this is a new key combo, add an element to the key_actions array
-		if (!action)
-			action = arr_addp(settings->key_actions);
-		action->key_combo = key_combo;
+		KeyAction action = {0};
+		action.key_combo = key_combo;
 		llong argument = 1; // default argument = 1
 		if (isdigit(*value)) {
 			// read the argument
@@ -785,13 +785,29 @@ static void config_parse_line(ConfigReader *cfg, Settings *settings, const Confi
 			// read the command
 			Command command = command_from_str(value + 1);
 			if (command != CMD_UNKNOWN) {
-				action->command = command;
-				action->argument = argument;
+				action.command = command;
+				action.argument = argument;
 			} else {
 				config_err(cfg, "Unrecognized command %s", value);
 			}
 		} else {
 			config_err(cfg, "Expected ':' for key action. This line should look something like: %s = :command.", key);
+		}
+		
+		arr_foreach_ptr(applicable_settings, Settings *, psettings) {
+			Settings *settings = *psettings;
+			bool have = false;
+			// check if we already have an action for this key combo
+			arr_foreach_ptr(settings->key_actions, KeyAction, act) {
+				if (act->key_combo == key_combo) {
+					*act = action;
+					have = true;
+					break;
+				}
+			}
+			// if this is a new key combo, add an element to the key_actions array
+			if (!have)
+				arr_add(settings->key_actions, action);
 		}
 	} break;
 	case SECTION_EXTENSIONS: {
@@ -799,20 +815,20 @@ static void config_parse_line(ConfigReader *cfg, Settings *settings, const Confi
 		if (lang == LANG_NONE) {
 			config_err(cfg, "Invalid programming language: %s.", key);
 		} else {
-			char *new_str = malloc(strlen(value) + 1);
-			if (!new_str) {
-				config_err(cfg, "Out of memory.");
-			} else {
-				char *dst = new_str;
-				// get rid of whitespace in extension list
-				for (const char *src = value; *src; ++src)
-					if (!isspace(*src))
-						*dst++ = *src;
-				*dst = 0;
+			char *exts = calloc(1, strlen(value) + 1);
+			char *dst = exts;
+			// get rid of whitespace in extension list
+			for (const char *src = value; *src; ++src)
+				if (!isspace(*src))
+					*dst++ = *src;
+			*dst = 0;
+			arr_foreach_ptr(applicable_settings, Settings *, psettings) {
+				Settings *settings = *psettings;
 				if (settings->language_extensions[lang])
 					free(settings->language_extensions[lang]);
-				settings->language_extensions[lang] = new_str;
+				settings->language_extensions[lang] = str_dup(exts);
 			}
+			free(exts);
 		}
 	} break;
 	case SECTION_CORE: {
@@ -852,78 +868,83 @@ static void config_parse_line(ConfigReader *cfg, Settings *settings, const Confi
 			}
 		}
 
-		// go through all settings
-		bool recognized = false;
-		for (size_t i = 0; i < arr_count(settings_all) && !recognized; ++i) {
-			SettingAny const *any = &settings_all[i];
-			if (any->type == 0) break;
-			if (streq(key, any->name)) {
-				recognized = true;
-				
-				if (part->context.language != 0 && !any->per_language) {
-					config_err(cfg, "Setting %s cannot be controlled for individual languages.", key);
-					break;
-				}
-				
-				switch (any->type) {
-				case SETTING_BOOL: {
-					const SettingBool *setting = &any->u._bool;
-					if (is_bool)
-						setting_bool_set(settings, setting, boolean);
-					else
-						config_err(cfg, "Invalid %s: %s. This should be yes, no, on, or off.", setting->name, value);
-				} break;
-				case SETTING_U8: {
-					const SettingU8 *setting = &any->u._u8;
-					if (is_integer && integer >= setting->min && integer <= setting->max)
-						setting_u8_set(settings, setting, (u8)integer);
-					else
-						config_err(cfg, "Invalid %s: %s. This should be an integer from %u to %u.", setting->name, value, setting->min, setting->max);
-				} break;
-				case SETTING_U16: {
-					const SettingU16 *setting = &any->u._u16;
-					if (is_integer && integer >= setting->min && integer <= setting->max)
-						setting_u16_set(settings, setting, (u16)integer);
-					else
-						config_err(cfg, "Invalid %s: %s. This should be an integer from %u to %u.", setting->name, value, setting->min, setting->max);
-				} break;
-				case SETTING_U32: {
-					const SettingU32 *setting = &any->u._u32;
-					if (is_integer && integer >= setting->min && integer <= setting->max)
-						setting_u32_set(settings, setting, (u32)integer);
-					else
-						config_err(cfg, "Invalid %s: %s. This should be an integer from %" PRIu32 " to %" PRIu32 ".",
-							setting->name, value, setting->min, setting->max);
-				} break;
-				case SETTING_FLOAT: {
-					const SettingFloat *setting = &any->u._float;
-					if (is_floating && floating >= setting->min && floating <= setting->max)
-						setting_float_set(settings, setting, (float)floating);
-					else
-						config_err(cfg, "Invalid %s: %s. This should be a number from %g to %g.", setting->name, value, setting->min, setting->max);
-				} break;
-				case SETTING_STRING: {
-					const SettingString *setting = &any->u._string;
-					if (strlen(value) >= setting->buf_size) {
-						config_err(cfg, "%s is too long (length: %zu, maximum length: %zu).", key, strlen(value), setting->buf_size - 1);
-					} else {
-						setting_string_set(settings, setting, value);
-					}
-				} break;
-				}
+		
+		SettingAny const *setting_any = NULL;
+		for (u32 i = 0; i < arr_count(settings_all); ++i) {
+			SettingAny const *s = &settings_all[i];
+			if (s->type == 0) break;
+			if (streq(key, s->name)) {
+				setting_any = s;
+				break;
 			}
 		}
 		
-		if (streq(key, "bg-shader"))
-			settings_load_bg_shader(ted, settings);
-		if (streq(key, "bg-texture"))
-			settings_load_bg_texture(ted, settings);
+		if (!setting_any) {
+			if (streq(key, "bg-shader"))
+				settings_load_bg_shader(ted, applicable_settings, value);
+			else if (streq(key, "bg-texture"))
+				settings_load_bg_texture(ted, applicable_settings, value);
+			// it's probably a bad idea to error on unrecognized settings
+			// because if we ever remove a setting in the future
+			// everyone will get errors
+			break;
+		}
 		
-		// this is probably a bad idea:
-		//if (!recognized)
-		//	config_err(cfg, "Unrecognized setting: %s", key);
-		// because if we ever remove a setting qin the future
-		// everyone will get errors
+		arr_foreach_ptr(applicable_settings, Settings *, psettings) {
+			Settings *settings = *psettings;
+			if (part->context.language != 0 && !setting_any->per_language) {
+				config_err(cfg, "Setting %s cannot be controlled for individual languages.", key);
+				break;
+			}
+			
+			switch (setting_any->type) {
+			case SETTING_BOOL: {
+				const SettingBool *setting = &setting_any->u._bool;
+				if (is_bool)
+					setting_bool_set(settings, setting, boolean);
+				else
+					config_err(cfg, "Invalid %s: %s. This should be yes, no, on, or off.", setting->name, value);
+			} break;
+			case SETTING_U8: {
+				const SettingU8 *setting = &setting_any->u._u8;
+				if (is_integer && integer >= setting->min && integer <= setting->max)
+					setting_u8_set(settings, setting, (u8)integer);
+				else
+					config_err(cfg, "Invalid %s: %s. This should be an integer from %u to %u.", setting->name, value, setting->min, setting->max);
+			} break;
+			case SETTING_U16: {
+				const SettingU16 *setting = &setting_any->u._u16;
+				if (is_integer && integer >= setting->min && integer <= setting->max)
+					setting_u16_set(settings, setting, (u16)integer);
+				else
+					config_err(cfg, "Invalid %s: %s. This should be an integer from %u to %u.", setting->name, value, setting->min, setting->max);
+			} break;
+			case SETTING_U32: {
+				const SettingU32 *setting = &setting_any->u._u32;
+				if (is_integer && integer >= setting->min && integer <= setting->max)
+					setting_u32_set(settings, setting, (u32)integer);
+				else
+					config_err(cfg, "Invalid %s: %s. This should be an integer from %" PRIu32 " to %" PRIu32 ".",
+						setting->name, value, setting->min, setting->max);
+			} break;
+			case SETTING_FLOAT: {
+				const SettingFloat *setting = &setting_any->u._float;
+				if (is_floating && floating >= setting->min && floating <= setting->max)
+					setting_float_set(settings, setting, (float)floating);
+				else
+					config_err(cfg, "Invalid %s: %s. This should be a number from %g to %g.", setting->name, value, setting->min, setting->max);
+			} break;
+			case SETTING_STRING: {
+				const SettingString *setting = &setting_any->u._string;
+				if (strlen(value) >= setting->buf_size) {
+					config_err(cfg, "%s is too long (length: %zu, maximum length: %zu).", key, strlen(value), setting->buf_size - 1);
+				} else {
+					setting_string_set(settings, setting, value);
+				}
+			} break;
+			}
+		}
+		
 	} break;
 	}
 }
@@ -952,42 +973,62 @@ void config_parse(Ted *ted, ConfigPart **pparts) {
 	ConfigPart *const parts = *pparts;
 	qsort(parts, arr_len(parts), sizeof *parts, config_part_qsort_cmp);
 	
-	Settings *settings = NULL;
-	
+	const char **paths = NULL;
+	Language *languages = NULL;
+	arr_add(languages, 0);
+	// find all paths and languages referenced in config files
 	arr_foreach_ptr(parts, ConfigPart, part) {
-		cfg->filename = part->file;
-		cfg->line_number = part->line;
-		
-		if (part == parts || config_part_cmp(part, part - 1, false) != 0) {
-			// new settings
-			settings = arr_addp(ted->all_settings);
-			
-			// go backwards to find most specific parent
-			ConfigPart *parent = part;
-			while (1) {
-				if (parent <= parts) {
-					parent = NULL;
-					break;
-				}
-				--parent;
-				if (context_is_parent(&parent->context, &part->context)) {
-					// copy parent's settings
-					settings_copy(settings, &ted->all_settings[parent->settings]);
+		bool already_have = false;
+		if (part->context.path) {
+			for (u32 i = 0; i < arr_len(paths); ++i) {
+				if (paths_eq(paths[i], part->context.path)) {
+					already_have = true;
 					break;
 				}
 			}
-			
-			context_free(&settings->context);
-			context_copy(&settings->context, &part->context);
+			if (!already_have)
+				arr_add(paths, part->context.path);
 		}
-		part->settings = arr_len(ted->all_settings) - 1;
+		already_have = false;
+		for (u32 i = 0; i < arr_len(languages); ++i) {
+			if (languages[i] == part->context.language) {
+				already_have = true;
+				break;
+			}
+		}
+		if (!already_have)
+			arr_add(languages, part->context.language);
+	}
+	arr_foreach_ptr(languages, Language, lang) {
+		// pathless settings
+		{
+			Settings *settings = arr_addp(ted->all_settings);
+			settings->context.language = *lang;
+		}
 		
+		arr_foreach_ptr(paths, const char *, path) {
+			Settings *settings = arr_addp(ted->all_settings);
+			settings->context.language = *lang;
+			settings->context.path = str_dup(*path);
+		}
+	}
+	arr_free(paths);
+	arr_free(languages);
+	
+	arr_foreach_ptr(parts, ConfigPart, part) {
 		
 		arr_add(part->text, '\0'); // null termination
 		char *line = part->text;
 		while (*line) {
-			config_parse_line(cfg, settings, part, &line);
-	
+			Settings **applicable_settings = NULL;
+			arr_foreach_ptr(ted->all_settings, Settings, settings) {
+				if (context_is_parent(&part->context, &settings->context)) {
+					arr_add(applicable_settings, settings);
+				}
+			}
+			config_parse_line(cfg, applicable_settings, part, &line);
+			arr_free(applicable_settings);
+			
 			if (cfg->error) break;
 	
 			++cfg->line_number;
