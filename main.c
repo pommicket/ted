@@ -585,6 +585,7 @@ int main(int argc, char **argv) {
 	}
 	
 	double start_time = time_get_seconds();
+	double scroll_wheel_text_size_change = 0.0;
 	
 	while (!ted->quit) {
 		double frame_start = time_get_seconds();
@@ -620,14 +621,20 @@ int main(int argc, char **argv) {
 				command_execute(ted, CMD_QUIT, 1);
 				break;
 			case SDL_MOUSEWHEEL: {
-				// scroll with mouse wheel
-				Sint32 dx = event.wheel.x, dy = -event.wheel.y;
-				Autocomplete *ac = &ted->autocomplete;
-				if (ac->open && rect_contains_point(ac->rect, ted->mouse_pos)) {
-					autocomplete_scroll(ted, dy);
-				} else {
-					ted->scroll_total_x += dx;
-					ted->scroll_total_y += dy;
+				if (ctrl_down) {
+					// adjust text size with ctrl+scroll
+					Settings *settings = ted_active_settings(ted);
+					scroll_wheel_text_size_change += settings->ctrl_scroll_adjust_text_size * event.wheel.preciseY;
+				} else if (key_modifier == 0) {
+					// scroll with mouse wheel
+					Sint32 dx = event.wheel.x, dy = -event.wheel.y;
+					Autocomplete *ac = &ted->autocomplete;
+					if (ac->open && rect_contains_point(ac->rect, ted->mouse_pos)) {
+						autocomplete_scroll(ted, dy);
+					} else {
+						ted->scroll_total_x += dx;
+						ted->scroll_total_y += dy;
+					}
 				}
 			} break;
 			case SDL_MOUSEBUTTONDOWN: {
@@ -803,6 +810,20 @@ int main(int argc, char **argv) {
 			Uint32 time_this_frame = SDL_GetTicks();
 			frame_dt = 0.001 * (time_this_frame - time_at_last_frame);
 			time_at_last_frame = time_this_frame;
+			
+			
+		}
+		
+		{
+			// when the user ctrl+scrolls, only actually change the text size
+			// every 100ms, to avoid loading the font over and over again super fast
+			static double last_font_adjust = 0;
+			if (ted->frame_time - last_font_adjust > 0.1) {
+				last_font_adjust = ted->frame_time;
+				int dsize = (int)floor(scroll_wheel_text_size_change);
+				command_execute(ted, CMD_TEXT_SIZE_INCREASE, dsize);
+				scroll_wheel_text_size_change -= dsize;
+			}
 		}
 
 		TextBuffer *active_buffer = ted->active_buffer;
