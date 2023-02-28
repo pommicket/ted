@@ -65,7 +65,6 @@ void gl_rc_texture_decref(GlRcTexture **pt) {
 	GlRcTexture *t = *pt;
 	if (!t) return;
 	if (--t->ref_count == 0) {
-		debug_println("Delete texture %u", t->texture);
 		glDeleteTextures(1, &t->texture);
 		free(t);
 	}

@@ -11,10 +11,12 @@ LOCAL_DATA_DIR=/home/`logname`/.local/share/ted
 INSTALL_BIN_DIR=/usr/bin
 debug-build: ted compile_commands.json
 ted: debug/ted
-	@# note: doing cp would fail if `ted` is busy
-	cat debug/ted > ted
+	@# note: needed so cp doesn't fail if `ted` is busy
+	rm -f ted
+	cp debug/ted .
 compile_commands.json: debug/ted
-	cat debug/compile_commands.json > compile_commands.json
+	rm -f compile_commands.json
+	cp debug/compile_commands.json .
 debug/ted: *.[ch] libpcre2-32.a CMakeLists.txt
 	mkdir -p debug
 	cd debug && cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DCMAKE_BUILD_TYPE=Debug -GNinja ..

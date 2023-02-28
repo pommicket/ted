@@ -1,6 +1,4 @@
 /*
-@TODO:
-- test new settings system
 FUTURE FEATURES:
 - doxygen documentation for ted.h
 - manual.md
