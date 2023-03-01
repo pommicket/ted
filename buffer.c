@@ -441,8 +441,7 @@ static BufferPos buffer_pos_advance(TextBuffer *buffer, BufferPos pos, size_t nc
 }
 
 
-// returns "p2 - p1", that is, the number of characters between p1 and p2.
-static i64 buffer_pos_diff(TextBuffer *buffer, BufferPos p1, BufferPos p2) {
+i64 buffer_pos_diff(TextBuffer *buffer, BufferPos p1, BufferPos p2) {
 	assert(buffer_pos_valid(buffer, p1));
 	assert(buffer_pos_valid(buffer, p2));
 

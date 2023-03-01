@@ -1,8 +1,7 @@
-#ifndef DS_H_
-#define DS_H_
+/*!
+\file
+\brief VARIOUS DATA STRUCTURES
 
-/*
-VARIOUS DATA STRUCTURES
 - dynamic array
 - string builder
 - string hash table
@@ -13,7 +12,7 @@ any reasonable compiler will ignore the unused code.
 functions in this file suffixed with _ are not meant to be used outside here, unless you
 know what you're doing
 
-NOTE: even on 64-bit platforms, dynamic arrays can only hold ~2^32 elements.
+NOTE: even on 64-bit platforms, dynamic arrays can only hold ~2<sup>32</sup> elements.
 
 IMPORTANT NOTE: If you are using this with structures containing `long double`s, do
        #define ARR_LONG_DOUBLE
@@ -22,6 +21,9 @@ IMPORTANT NOTE: If you are using this with structures containing `long double`s,
   this does mean that arrays waste 8 bytes of memory.
   which isnt important unless you're making a lot of arrays.)
 */
+
+#ifndef DS_H_
+#define DS_H_
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -208,19 +210,18 @@ static void *arr_copy_(const void *arr, size_t member_size) {
 #endif
 
 #define arr__join2(a,b) a##b
-#define arr__join(a,b) arr__join2(a,b) // macro used internally
-// if the array is not NULL, free it and set it to NULL
+/// macro used internally
+#define arr__join(a,b) arr__join2(a,b)
+/// if the array is not NULL, free it and set it to NULL
 #define arr_free(a) do { if (a) { free(arr_hdr_(a)); (a) = NULL; } } while (0)
-// a nice alias
+/// a nice alias
 #define arr_clear(a) arr_free(a)
-// add an item to the array - if allocation fails, the array will be freed and set to NULL.
-// (how this works: if we can successfully grow the array, increase the length and add the item.)
+/// add an item to the array - if allocation fails, the array will be freed and set to NULL.
+/// (how this works: if we can successfully grow the array, increase the length and add the item.)
 #define arr_add(a, x) do { if (((a) = arr_cast_typeof(a) arr_grow1_((a), sizeof *(a)))) ((a)[arr_hdr_(a)->len++] = (x)); } while (0)
-// like arr_add, but instead of passing it the value, it returns a pointer to the value. returns NULL if allocation failed.
-// the added item will be zero-initialized.
+/// like arr_add, but instead of passing it the value, it returns a pointer to the value. returns NULL if allocation failed.
+/// the added item will be zero-initialized.
 #define arr_addp(a) arr_cast_typeof(a) arr_add_ptr_((void **)&(a), sizeof *(a))
-// set the length of `a` to `n`, increasing the capacity if necessary.
-// the newly-added elements are zero-initialized.
 #define arr_qsort(a, cmp) qsort((a), arr_len(a), sizeof *(a), (cmp))
 #define arr_remove_last(a) do { assert(a); if (--arr_hdr_(a)->len == 0) arr_free(a); } while (0)
 #define arr_remove(a, i) (void)((a) = arr_remove_((a), sizeof *(a), (i)))
@@ -234,15 +235,21 @@ static void *arr_copy_(const void *arr, size_t member_size) {
 #define arr_copy(a) arr_cast_typeof(a) arr_copy_((a), sizeof *(a))
 #define arr_foreach_ptr_end(a, type, var, end) type *end = (a) + arr_len(a); \
 	for (type *var = (a); var != end; ++var)
-// Iterate through each element of the array, setting var to a pointer to the element.
-// You can't use this like, e.g.:
-// if (something)
-//   arr_foreach_ptr(a, int, i);
-// You'll get an error. You will need to use braces because it expands to multiple statements.
-// (we need to name the end pointer something unique, which is why there's that arr__join thing
-// we can't just declare it inside the for loop, because type could be something like char *.)
+/// Iterate through each element of the array, setting `var` to a pointer to the element.
+///
+/// You can't use this like, e.g.:
+/// ```
+/// if (something)
+///     arr_foreach_ptr(a, int, i)
+///         thing(*i);
+/// ```
+/// You'll get an error. You will need to use braces because it expands to multiple statements.
+/// (we need to name the end pointer something unique, which is why there's that `arr__join` thing
+/// we can't just declare it inside the for loop, because type could be something like `char *`.)
 #define arr_foreach_ptr(a, type, var) arr_foreach_ptr_end(a, type, var, arr__join(_foreach_end,__LINE__))
-
+/// Reverse array.
+///
+/// You need to pass in the type because we don't have `typeof` in C yet (coming in C23 supposedly!)
 #define arr_reverse(a, type) do { \
 	u64 _i, _len = arr_len(a); \
 	for (_i = 0; 2*_i < _len; ++_i) { \
@@ -255,9 +262,10 @@ static void *arr_copy_(const void *arr, size_t member_size) {
 	} \
 	} while (0)
 
-// Ensure that enough space is allocated for n elements.
+/// Ensure that enough space is allocated for `n` elements.
 #define arr_reserve(a, n) arr_reserve_((void **)&(a), sizeof *(a), (n)) 
-// Similar to arr_reserve, but also sets the length of the array to n.
+/// set the length of `a` to `n`, increasing the capacity if necessary.
+/// the newly-added elements are zero-initialized.
 #define arr_set_len(a, n) arr_set_len_((void **)&(a), sizeof *(a), (n))
 
 #ifndef NDEBUG

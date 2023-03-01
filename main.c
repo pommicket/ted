@@ -1,6 +1,5 @@
 /*
 FUTURE FEATURES:
-- doxygen documentation for ted.h
 - manual.md
 - CSS highlighting
 - option for separate colors for read/write highlights
@@ -25,6 +24,9 @@ FUTURE FEATURES:
 - config variables
 - bind key to multiple commands
 - plugins?
+   - TED_PLUGIN macro defined before including ted.h
+     this can remove struct definitions to guarantee forwards compatibility
+   - language dynamic registration
 - keyboard macros
     -  ctrl+9/0 to inc/dec number would be useful here
     - with macros we can really test performance of buffer_insert_text_at_pos, etc. (which should ideally be fast)

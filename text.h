@@ -1,11 +1,16 @@
-// A text-rendering interface.
-// Example usage:
-// Font *font = text_font_load("font.ttf", 18);
-// if (font) {
-//     text_utf8(font, "Hello", 5, 5, 0xFF0000FF);
-//     text_utf8(font, "Goodbye", 5, 100, 0x00FF00FF);
-//     text_render(font);
-// }
+/// \file
+/// A text-rendering interface.
+///
+/// Example usage:
+///
+/// ```
+/// Font *font = text_font_load("font.ttf", 18);
+/// if (font) {
+///     text_utf8(font, "Hello", 5, 5, 0xFF0000FF);
+///     text_utf8(font, "Goodbye", 5, 100, 0x00FF00FF);
+///     text_render(font);
+/// }
+/// ```
 
 #ifndef TEXT_H_
 #define TEXT_H_
@@ -13,24 +18,34 @@
 #include "base.h"
 #include "util.h"
 
+/// a font
 typedef struct Font Font;
 
+/// text render state.
+///
+/// do not construct this directly instead use \ref text_render_state_default.
 typedef struct {
-	// should the text actually be rendered (set to false to get text size)
+	/// should the text actually be rendered (set to false to get text size)
 	bool render;
-	bool wrap; // should the text wrap around to min_x when it reaches max_x? NOTE: this is character-by-character wrapping, not word wrap
-
+	/// should the text wrap around to min_x when it reaches max_x? NOTE: this is character-by-character wrapping, not word wrap
+	bool wrap;
+	/// where to draw
 	double x, y;
-	// points where the text should be cut off
+	/// points where the text should be cut off
 	float min_x, max_x, min_y, max_y;
-	// [0] = r, [1] = g, [2] = b, [3] = a.
+	/// `[0] = r, [1] = g, [2] = b, [3] = a`.
 	float color[4];
 	
-	// largest x & y achieved (for computing size)
+	/// largest x achieved (for computing size)
 	double x_largest;
+	/// largest y achieved (for computing size)
 	double y_largest;
+	
+	/// used for forwards-compatibility
+	char _reserved[64];
 } TextRenderState;
 
+/// text anchor
 typedef enum {
 	ANCHOR_TOP_LEFT,
 	ANCHOR_TOP_MIDDLE,
@@ -43,38 +58,48 @@ typedef enum {
 	ANCHOR_BOTTOM_RIGHT,
 } Anchor;
 
+/// returns false on error.
 bool text_init(void);
+/// is there error?
 bool text_has_err(void);
-// Get the current error. Errors will NOT be overwritten with newer errors.
+/// Get the current error. Errors will NOT be overwritten with newer errors.
 const char *text_get_err(void);
-// Clear the current error.
+/// Clear the current error.
 void text_clear_err(void);
-// Load a TTF font found in ttf_filename with the given font size (character pixel height)
+/// Load a TTF font found in ttf_filename with the given font size (character pixel height)
 Font *text_font_load(const char *ttf_filename, float font_size);
-// Height of a character of this font in pixels.
+/// Height of a character of this font in pixels.
 float text_font_char_height(Font *font);
-// Width of the character 'a' of this font in pixels.
-// This is meant to be only used for monospace fonts.
+/// Width of the character 'a' of this font in pixels.
+/// This is meant to be only used for monospace fonts.
 float text_font_char_width(Font *font);
-// Force text to advance by text_font_char_width(font) pixels per character (actually, per code point).
+/// Force text to advance by text_font_char_width(font) pixels per character (actually, per code point).
 void text_font_set_force_monospace(Font *font, bool force);
-// Get the dimensions of some text.
+/// Get the dimensions of some text.
 void text_get_size(Font *font, const char *text, float *width, float *height);
+/// Get the dimensions of some text.
 vec2 text_get_size_vec2(Font *font, const char *text);
+/// Get the dimensions of some text.
 void text_get_size32(Font *font, const char32_t *text, u64 len, float *width, float *height);
+/// Draw some text.
 void text_utf8(Font *font, const char *text, double x, double y, u32 color);
+/// Draw some text with an anchor.
 void text_utf8_anchored(Font *font, const char *text, double x, double y, u32 color, Anchor anchor);
+/// Draw a single character.
 void text_char_with_state(Font *font, TextRenderState *state, char32_t c);
+/// Draw some UTF-8 text with a \ref TextRenderState.
 void text_utf8_with_state(Font *font, TextRenderState *state, const char *str);
-// Free memory used by font.
+/// Free memory used by font.
 void text_font_free(Font *font);
+/// Render all text drawn with \ref text_utf8, etc.
 void text_render(Font *font);
-
-// The "default" text rendering state - everything you need to just render text normally.
-// This lets you do stuff like:
-// TextRenderState state = text_render_state_default;
-//    (set a few options)
-// text_render_with_state(font, &state, ...)
+/// The "default" text rendering state - everything you need to just render text normally.
+/// This lets you do stuff like:
+/// ```
+/// TextRenderState state = text_render_state_default;
+///    (set a few options)
+/// text_render_with_state(font, &state, ...)
+/// ```
 extern const TextRenderState text_render_state_default;
 
 #endif

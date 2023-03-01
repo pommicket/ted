@@ -1,5 +1,7 @@
-// basic types and macros.
-// this file is included almost everywhere.
+/// \file
+/// basic types and macros.
+///
+/// this file is included almost everywhere.
 
 #ifndef BASE_H_
 #define BASE_H_
@@ -90,20 +92,14 @@ typedef unsigned long ulong;
 typedef long long llong;
 typedef unsigned long long ullong;
 
-// allows 
-// switch (c) {
-//     case ANY_DIGIT:
-//        ...
-// }
+/// allows 
+/// ```
+/// switch (c) {
+/// case ANY_DIGIT:
+///     ...
+/// }
+/// ```
 #define ANY_DIGIT '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9'
-
-#if __clang__
-#define ENUM_U8 typedef enum : u8
-#define ENUM_U8_END(name) name
-#else
-#define ENUM_U8 enum
-#define ENUM_U8_END(name) ; typedef u8 name
-#endif
 
 #ifdef __GNUC__
 #define WarnUnusedResult __attribute__((warn_unused_result))
@@ -114,28 +110,22 @@ typedef unsigned long long ullong;
 #if __GNUC__
 #define ATTRIBUTE_PRINTF(fmt_idx, arg_idx) __attribute__ ((format(printf, fmt_idx, arg_idx)))
 #else
+/// attribute for functions which are like `printf` (to give `-Wformat` warnings)
 #define ATTRIBUTE_PRINTF(fmt_idx, arg_idx)
 #endif
 #if _MSC_VER > 1400
 #define PRINTF_FORMAT_STRING _Printf_format_string_
 #else
+/// needed to give format warnings for MSVC for custom functions
 #define PRINTF_FORMAT_STRING
 #endif
 
-// this type is an alias for bool, except that it
-// produces a warning if it's not used.
-// false = error, true = success
+/// this type is an alias for bool, except that it
+/// produces a warning if it's not used.
+/// false = error, true = success
 #define Status bool WarnUnusedResult
 
 #define arr_count(a) (sizeof (a) / sizeof *(a))
-
-
-// usage: if UNLIKELY (x > 2) ...
-#if __GNUC__
-#define UNLIKELY(x) (__builtin_expect(x,0))
-#else
-#define UNLIKELY(x) (x)
-#endif
 
 #ifdef __GNUC__
 #define no_warn_start _Pragma("GCC diagnostic push") \
@@ -183,7 +173,8 @@ static void print(const char *fmt, ...) {
 // If you are adding new languages, DO NOT change the constant values
 // of the previous languages. It will mess up config files which use :set-language!
 typedef enum {
-	LANG_NONE = 0, // avoid using this and use LANG_TEXT instead.
+	/// avoid using this and use LANG_TEXT instead.
+	LANG_NONE = 0,
 	LANG_C = 1,
 	LANG_CPP = 2,
 	LANG_RUST = 3,
@@ -191,16 +182,19 @@ typedef enum {
 	LANG_TEX = 5,
 	LANG_MARKDOWN = 6,
 	LANG_HTML = 7,
-	LANG_CONFIG = 8, // .cfg files
+	/// .cfg files
+	LANG_CONFIG = 8,
 	LANG_JAVASCRIPT = 9,
 	LANG_JAVA = 10,
 	LANG_GO = 11,
-	LANG_TED_CFG = 12, // like LANG_CONFIG, but with multiline strings.
+	/// like \ref LANG_CONFIG, but with multiline strings.
+	LANG_TED_CFG = 12,
 	LANG_TYPESCRIPT = 13,
 	LANG_JSON = 14,
 	LANG_XML = 15,
 	LANG_GLSL = 16,
-	LANG_TEXT = 17, // plain text
+	/// plain text
+	LANG_TEXT = 17,
 	LANG_COUNT
 } Language;
 

@@ -1,8 +1,12 @@
-// colors enum.
+/// \file
+/// colors enum.
 
 #ifndef COLORS_H_
 #define COLORS_H_
 
+/// colors enum.
+///
+/// See `ted.cfg` for what these mean.
 typedef enum {
 	COLOR_UNKNOWN,
 
