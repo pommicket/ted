@@ -43,22 +43,106 @@ extern "C" {
 /// max number of LSPs running at once
 #define TED_LSP_MAX 200
 
+// If you are adding new languages, DO NOT change the constant values
+// of the previous languages. It will mess up config files which use :set-language!
+enum {
+	/// avoid using this and use LANG_TEXT instead.
+	LANG_NONE = 0,
+	/// C
+	LANG_C = 1,
+	/// C++
+	LANG_CPP = 2,
+	/// Rust
+	LANG_RUST = 3,
+	/// Python
+	LANG_PYTHON = 4,
+	/// TeX/LaTeX
+	LANG_TEX = 5,
+	/// Markdown
+	LANG_MARKDOWN = 6,
+	/// HTML
+	LANG_HTML = 7,
+	/// .cfg files
+	LANG_CONFIG = 8,
+	/// JavaScript
+	LANG_JAVASCRIPT = 9,
+	/// Java
+	LANG_JAVA = 10,
+	/// Go
+	LANG_GO = 11,
+	/// like \ref LANG_CONFIG, but with multiline strings.
+	LANG_TED_CFG = 12,
+	/// TypeScript
+	LANG_TYPESCRIPT = 13,
+	/// JSON
+	LANG_JSON = 14,
+	/// XML
+	LANG_XML = 15,
+	/// GL shading language
+	LANG_GLSL = 16,
+	/// plain text
+	LANG_TEXT = 17,
+	
+	/// all user-defined languages are greater than this.
+	LANG_USER_MIN = 100000,
+	/// all user-defined languages are less than this.
+	LANG_USER_MAX = 2000000000,
+};
+
+/// A programming language
+///
+/// May be one of the `LANG_*` constants, or a dynamically registered language.
+typedef u32 Language;
+
+/// Maximum number of languages available.
+#define LANG_COUNT_MAX 511
+
+
 /// Current state of syntax highlighting.
 typedef u32 SyntaxState;
 
 /// types of syntax highlighting
 enum SyntaxCharType {
-	SYNTAX_NORMAL,
-	SYNTAX_KEYWORD,
-	SYNTAX_BUILTIN,
-	SYNTAX_COMMENT,
-	SYNTAX_PREPROCESSOR,
-	SYNTAX_STRING,
-	SYNTAX_CHARACTER,
-	SYNTAX_CONSTANT,
+	// do not change these numbers as it will break backwards compatibility
+	SYNTAX_NORMAL = 0,
+	SYNTAX_KEYWORD = 1,
+	SYNTAX_BUILTIN = 2,
+	SYNTAX_COMMENT = 3,
+	SYNTAX_PREPROCESSOR = 4,
+	SYNTAX_STRING = 5,
+	SYNTAX_CHARACTER = 6,
+	SYNTAX_CONSTANT = 7,
 };
 /// Type of syntax highlighting.
 typedef u8 SyntaxCharType;
+/// Function for syntax highlighting.
+/// If you want to add a language to `ted`, you will need to implement this function.
+///
+/// `state` is used to keep track of state between lines (e.g. whether or not we are in a multiline comment)\n
+/// `line` is the UTF-32 text of the line (not guaranteed to be null-terminated).\n
+/// `line_len` is the length of the line, in UTF-32 codepoints.\n
+/// `char_types` is either `NULL` (in which case only `state` should be updated), or a pointer to `line_len` SyntaxCharTypes, which should be filled out using the `SYNTAX_*` constants.
+///
+/// no guarantees are made about which order lines will be highlighted in. the only guarantee is that `*state = 0` for the first line, and for line `n > 0`,
+/// `*state` was derived from calling this function on line `n-1`.
+typedef void (*SyntaxHighlightFunction)(SyntaxState *state, const char32_t *line, u32 line_len, SyntaxCharType *char_types);
+
+/// Information about a programming language
+///
+/// Used for dynamic language registration.
+/// Please zero all the fields of the struct which you aren't using.
+///
+/// The fields `id` and `name` MUST NOT be 0, or `ted` will reject your language.
+typedef struct {
+	/// Language ID number. For user-defined languages, this must be `>= LANG_USER_MIN` and `< LANG_USER_MAX`.
+	///
+	/// To avoid conflict, try picking a unique number.
+	Language id;
+	char name[30];
+	char lsp_identifier[32];
+	SyntaxHighlightFunction highlighter;
+	char reserved[128];
+} LanguageInfo;
 
 /// for tex
 #define SYNTAX_MATH SYNTAX_STRING
@@ -133,6 +217,10 @@ typedef struct {
 	GLuint buffer;
 } GlRcSAB;
 
+typedef struct {
+	Language language;
+	char extension[16];
+} LanguageExtension;
 
 /// All of ted's settings
 ///
@@ -188,8 +276,7 @@ typedef struct {
 	char build_command[1024];
 	/// Default build command for if `Cargo.toml`, `Makefile`, etc. do not exist.
 	char build_default_command[1024];
-	/// `[i]` = comma-separated string of file extensions for language `i`, or `NULL` for none
-	char *language_extensions[LANG_COUNT];
+	LanguageExtension *language_extensions;
 	/// dynamic array, sorted by KEY_COMBO(modifier, key)
 	KeyAction *key_actions;
 } Settings;
@@ -250,7 +337,7 @@ typedef struct {
 	/// last write time to `path`
 	double last_write_time;
 	/// 1 + the language the buffer has been manually set to, or 0 if it hasn't been manually set to anything
-	i16 manual_language;
+	i64 manual_language;
 	/// position of cursor
 	BufferPos cursor_pos;
 	/// if `selection` is true, the text between `selection_pos` and `cursor_pos` is selected.
@@ -1401,6 +1488,10 @@ void session_write(Ted *ted);
 void session_read(Ted *ted);
 
 // === syntax.c ===
+/// register a new language for `ted`.
+///
+/// this should be done before loading configs so language-specific settings are recognized properly.
+void syntax_register_language(const LanguageInfo *info);
 Language language_from_str(const char *str);
 const char *language_to_str(Language language);
 /// string which should be put before comments in the given language

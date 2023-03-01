@@ -168,34 +168,4 @@ static void print(const char *fmt, ...) {
 #define debug_println(...)
 #endif
 
-// NOTE: these have to be defined here because lsp.h uses Language
-
-// If you are adding new languages, DO NOT change the constant values
-// of the previous languages. It will mess up config files which use :set-language!
-typedef enum {
-	/// avoid using this and use LANG_TEXT instead.
-	LANG_NONE = 0,
-	LANG_C = 1,
-	LANG_CPP = 2,
-	LANG_RUST = 3,
-	LANG_PYTHON = 4,
-	LANG_TEX = 5,
-	LANG_MARKDOWN = 6,
-	LANG_HTML = 7,
-	/// .cfg files
-	LANG_CONFIG = 8,
-	LANG_JAVASCRIPT = 9,
-	LANG_JAVA = 10,
-	LANG_GO = 11,
-	/// like \ref LANG_CONFIG, but with multiline strings.
-	LANG_TED_CFG = 12,
-	LANG_TYPESCRIPT = 13,
-	LANG_JSON = 14,
-	LANG_XML = 15,
-	LANG_GLSL = 16,
-	/// plain text
-	LANG_TEXT = 17,
-	LANG_COUNT
-} Language;
-
 #endif // BASE_H_

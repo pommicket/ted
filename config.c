@@ -226,10 +226,7 @@ static void settings_copy(Settings *dest, const Settings *src) {
 	gl_rc_texture_incref(dest->bg_texture);
 	
 	context_copy(&dest->context, &src->context);
-	for (u32 i = 0; i < LANG_COUNT; ++i) {
-		if (src->language_extensions[i])
-			dest->language_extensions[i] = str_dup(src->language_extensions[i]);
-	}
+	dest->language_extensions = arr_copy(src->language_extensions);
 	dest->key_actions = arr_copy(src->key_actions);
 }
 
@@ -824,9 +821,25 @@ static void config_parse_line(ConfigReader *cfg, Settings **applicable_settings,
 			*dst = 0;
 			arr_foreach_ptr(applicable_settings, Settings *, psettings) {
 				Settings *settings = *psettings;
-				if (settings->language_extensions[lang])
-					free(settings->language_extensions[lang]);
-				settings->language_extensions[lang] = str_dup(exts);
+				// remove old extensions
+				u32 *indices = NULL;
+				arr_foreach_ptr(settings->language_extensions, LanguageExtension, ext) {
+					if (ext->language == lang) {
+						arr_add(indices, (u32)(ext - settings->language_extensions));
+					}
+				}
+				for (u32 i = 0; i < arr_len(indices); ++i)
+					arr_remove(settings->language_extensions, indices[i] - i);
+				arr_free(indices);
+				
+				char *p = exts;
+				while (*p) {
+					size_t len = strcspn(p, ",");
+					LanguageExtension *ext = arr_addp(settings->language_extensions);
+					ext->language = lang;
+					memcpy(ext->extension, p, len);
+					p += len;
+				}
 			}
 			free(exts);
 		}
@@ -1087,8 +1100,7 @@ static void gluint_eliminate_duplicates(GLuint **arr) {
 void config_free(Ted *ted) {
 	arr_foreach_ptr(ted->all_settings, Settings, settings) {
 		context_free(&settings->context);
-		for (u32 i = 0; i < LANG_COUNT; ++i)
-			free(settings->language_extensions[i]);
+		arr_free(settings->language_extensions);
 		gl_rc_sab_decref(&settings->bg_shader);
 		gl_rc_texture_decref(&settings->bg_texture);
 		arr_free(settings->key_actions);

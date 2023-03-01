@@ -4,8 +4,6 @@
 #include "lsp.h"
 #include "util.h"
 
-const char *language_to_str(Language language);
-
 static LSPMutex request_id_mutex;
 
 // it's nice to have request IDs be totally unique, including across LSP servers.

@@ -222,7 +222,7 @@ Language buffer_language(TextBuffer *buffer) {
 	
 	// @TODO(optimization): cache this?
 	//         (we're calling buffer_lsp on every edit and that calls this)
-	if (buffer->manual_language >= 1 && buffer->manual_language <= LANG_COUNT)
+	if (buffer->manual_language >= 1)
 		return (Language)(buffer->manual_language - 1);
 	const Settings *settings = buffer->ted->default_settings; // important we don't use buffer_settings here since that would cause a loop!
 	const char *filename = path_filename(buffer->path);
@@ -230,24 +230,14 @@ Language buffer_language(TextBuffer *buffer) {
 
 	int match_score = 0;
 	Language match = LANG_TEXT;
-	
-	for (u16 l = 0; l < LANG_COUNT; ++l) {
-		const char *extensions = settings->language_extensions[l];
-		
-		if (extensions) {
-			// extensions is a string with commas separating each extension.
-			size_t len = 0;
-			for (const char *p = extensions; *p; p += len) {
-				if (*p == ',') ++p; // move past comma
-				len = strcspn(p, ",");
-				if (filename_len >= len && strncmp(&filename[filename_len - len], p, len) == 0) {
-					int score = (int)len;
-					if (score > match_score) {
-						// found a better match!
-						match_score = score;
-						match = l;
-					}
-				}
+	arr_foreach_ptr(settings->language_extensions, LanguageExtension, ext) {
+		size_t len = strlen(ext->extension);
+		if (filename_len >= len && memcmp(&filename[filename_len - len], ext->extension, len) == 0) {
+			int score = (int)len;
+			if (score > match_score) {
+				// found a better match!
+				match_score = score;
+				match = ext->language;
 			}
 		}
 	}

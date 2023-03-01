@@ -111,7 +111,7 @@ typedef struct {
 } LSPRequestCancel;
 
 typedef struct {
-	Language language;
+	u64 language;
 	LSPDocumentID document;
 	// freed by lsp_request_free
 	char *file_contents;
@@ -587,6 +587,8 @@ typedef struct LSP {
 		char error[512];
 } LSP;
 
+/// Assiociate `id` with the LSP language identifier `lsp_identifier` (see https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#-textdocumentitem-)
+void lsp_register_language(u64 id, const char *lsp_identifier);
 // returns true if there's an error.
 // returns false and sets error to "" if there's no error.
 // if clear = true, the error will be cleared.

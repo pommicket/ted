@@ -67,36 +67,15 @@ enum {
 
 typedef struct {
 	Language lang;
-	const char *name;
+	char name[32];
 } LanguageName;
 
-static const LanguageName language_names[] = {
-	{LANG_NONE, "None"},
-	{LANG_C, "C"},
-	{LANG_CPP, "C++"},
-	{LANG_RUST, "Rust"},
-	{LANG_PYTHON, "Python"},
-	{LANG_TEX, "Tex"},
-	{LANG_MARKDOWN, "Markdown"},
-	{LANG_HTML, "HTML"},
-	{LANG_CONFIG, "Config"},
-	{LANG_JAVASCRIPT, "JavaScript"},
-	{LANG_JAVA, "Java"},
-	{LANG_GO, "Go"},
-	{LANG_TED_CFG, "TedCfg"},
-	{LANG_TYPESCRIPT, "TypeScript"},
-	{LANG_JSON, "JSON"},
-	{LANG_XML, "XML"},
-	{LANG_GLSL, "GLSL"},
-	{LANG_TEXT, "Text"},
-};
-
-static_assert_if_possible(arr_count(language_names) == LANG_COUNT)
+static LanguageName language_names[LANG_COUNT_MAX];
 
 
 // returns the language this string is referring to, or LANG_NONE if it's invalid.
 Language language_from_str(const char *str) {
-	for (int i = 0; i < LANG_COUNT; ++i) {
+	for (int i = 0; language_names[i].name[0]; ++i) {
 		if (strcmp_case_insensitive(language_names[i].name, str) == 0)
 			return language_names[i].lang;
 	}
@@ -104,7 +83,7 @@ Language language_from_str(const char *str) {
 }
 
 const char *language_to_str(Language language) {
-	for (int i = 0; i < LANG_COUNT; ++i) {
+	for (int i = 0; language_names[i].name[0]; ++i) {
 		if (language_names[i].lang == language)
 			return language_names[i].name;
 	}
@@ -137,7 +116,6 @@ const char *language_comment_start(Language l) {
 	case LANG_NONE:
 	case LANG_MARKDOWN:
 	case LANG_TEXT:
-	case LANG_COUNT:
 		break;
 	}
 	return "";
@@ -1091,7 +1069,7 @@ static bool is_html_tag_char(char32_t c) {
 }
 
 // highlights XML and HTML
-static void syntax_highlight_xml(SyntaxState *state, const char32_t *line, u32 line_len, SyntaxCharType *char_types, Language lang) {
+static void syntax_highlight_html_like(SyntaxState *state, const char32_t *line, u32 line_len, SyntaxCharType *char_types, Language lang) {
 	bool comment = (*state & SYNTAX_STATE_HTML_COMMENT) != 0;
 	bool in_sgl_string = false; // 'string'
 	bool in_dbl_string = false; // "string"
@@ -1205,7 +1183,7 @@ static void syntax_highlight_xml(SyntaxState *state, const char32_t *line, u32 l
 	*state = (comment * SYNTAX_STATE_HTML_COMMENT);
 }
 
-static void syntax_highlight_config(SyntaxState *state, const char32_t *line, u32 line_len, SyntaxCharType *char_types, bool is_ted_cfg) {
+static void syntax_highlight_cfg(SyntaxState *state, const char32_t *line, u32 line_len, SyntaxCharType *char_types, bool is_ted_cfg) {
 	bool string = (*state & SYNTAX_STATE_TED_CFG_STRING) != 0;
 	char32_t string_delimiter = (*state & SYNTAX_STATE_TED_CFG_STRING_BACKTICK) ? '`' : '"';
 	
@@ -1727,61 +1705,208 @@ static void syntax_highlight_go(SyntaxState *state_ptr, const char32_t *line, u3
 	);
 }
 
-void syntax_highlight(SyntaxState *state, Language lang, const char32_t *line, u32 line_len, SyntaxCharType *char_types) {
-	switch (lang) {
-	case LANG_NONE:
-	case LANG_TEXT:
-		if (char_types)
-			memset(char_types, 0, line_len * sizeof *char_types);
-		break;
-	case LANG_C:
-		syntax_highlight_c_cpp(state, line, line_len, char_types, LANG_C);
-		break;
-	case LANG_CPP:
-		syntax_highlight_c_cpp(state, line, line_len, char_types, LANG_CPP);
-		break;
-	case LANG_GLSL:
-		syntax_highlight_c_cpp(state, line, line_len, char_types, LANG_GLSL);
-		break;
-	case LANG_RUST:
-		syntax_highlight_rust(state, line, line_len, char_types);
-		break;
-	case LANG_PYTHON:
-		syntax_highlight_python(state, line, line_len, char_types);
-		break;
-	case LANG_TEX:
-		syntax_highlight_tex(state, line, line_len, char_types);
-		break;
-	case LANG_MARKDOWN:
-		syntax_highlight_markdown(state, line, line_len, char_types);
-		break;
-	case LANG_HTML:
-		syntax_highlight_xml(state, line, line_len, char_types, LANG_HTML);
-		break;
-	case LANG_XML:
-		syntax_highlight_xml(state, line, line_len, char_types, LANG_XML);
-		break;
-	case LANG_CONFIG:
-		syntax_highlight_config(state, line, line_len, char_types, false);
-		break;
-	case LANG_TED_CFG:
-		syntax_highlight_config(state, line, line_len, char_types, true);
-		break;
-	case LANG_JAVASCRIPT:
-		syntax_highlight_javascript_like(state, line, line_len, char_types, LANG_JAVASCRIPT);
-		break;
-	case LANG_TYPESCRIPT:
-		syntax_highlight_javascript_like(state, line, line_len, char_types, LANG_TYPESCRIPT);
-		break;
-	case LANG_JSON:
-		syntax_highlight_javascript_like(state, line, line_len, char_types, LANG_JSON);
-		break;
-	case LANG_JAVA:
-		syntax_highlight_java(state, line, line_len, char_types);
-		break;
-	case LANG_GO:
-		syntax_highlight_go(state, line, line_len, char_types);
-		break;
-	case LANG_COUNT: assert(0); break;
+static void syntax_highlight_text(SyntaxState *state, const char32_t *line, u32 line_len, SyntaxCharType *char_types) {
+	(void)state;
+	(void)line;
+	(void)line_len;
+	if (char_types) {
+		memset(char_types, 0, line_len);
 	}
+}
+
+typedef struct {
+	Language lang;
+	SyntaxHighlightFunction func;
+} SyntaxHighlighter;
+
+static SyntaxHighlighter syntax_highlighters[LANG_COUNT_MAX];
+
+void syntax_highlight(SyntaxState *state, Language lang, const char32_t *line, u32 line_len, SyntaxCharType *char_types) {
+	for (int i = 0; syntax_highlighters[i].func; ++i) {
+		if (syntax_highlighters[i].lang == lang) {
+			syntax_highlighters[i].func(state, line, line_len, char_types);
+			return;
+		}
+	}
+	syntax_highlight_text(state, line, line_len, char_types);
+}
+
+static void syntax_highlight_c(SyntaxState *state, const char32_t *line, u32 line_len, SyntaxCharType *char_types) {
+	syntax_highlight_c_cpp(state, line, line_len, char_types, LANG_C);
+}
+static void syntax_highlight_cpp(SyntaxState *state, const char32_t *line, u32 line_len, SyntaxCharType *char_types) {
+	syntax_highlight_c_cpp(state, line, line_len, char_types, LANG_CPP);
+}
+static void syntax_highlight_xml(SyntaxState *state, const char32_t *line, u32 line_len, SyntaxCharType *char_types) {
+	syntax_highlight_html_like(state, line, line_len, char_types, LANG_XML);
+}
+static void syntax_highlight_html(SyntaxState *state, const char32_t *line, u32 line_len, SyntaxCharType *char_types) {
+	syntax_highlight_html_like(state, line, line_len, char_types, LANG_HTML);
+}
+static void syntax_highlight_javascript(SyntaxState *state, const char32_t *line, u32 line_len, SyntaxCharType *char_types) {
+	syntax_highlight_javascript_like(state, line, line_len, char_types, LANG_JAVASCRIPT);
+}
+static void syntax_highlight_typescript(SyntaxState *state, const char32_t *line, u32 line_len, SyntaxCharType *char_types) {
+	syntax_highlight_javascript_like(state, line, line_len, char_types, LANG_TYPESCRIPT);
+}
+static void syntax_highlight_json(SyntaxState *state, const char32_t *line, u32 line_len, SyntaxCharType *char_types) {
+	syntax_highlight_javascript_like(state, line, line_len, char_types, LANG_JSON);
+}
+static void syntax_highlight_config(SyntaxState *state, const char32_t *line, u32 line_len, SyntaxCharType *char_types) {
+	syntax_highlight_cfg(state, line, line_len, char_types, false);
+}
+static void syntax_highlight_ted_cfg(SyntaxState *state, const char32_t *line, u32 line_len, SyntaxCharType *char_types) {
+	syntax_highlight_cfg(state, line, line_len, char_types, true);
+}
+
+
+void syntax_register_builtin_languages(void) {
+	static const LanguageInfo builtins[] = {
+		{
+			.id = LANG_TEXT,
+			.name = "Text",
+			.lsp_identifier = "text",
+			.highlighter = syntax_highlight_text,
+		},
+		{
+			.id = LANG_C,
+			.name = "C",
+			.lsp_identifier = "c",
+			.highlighter = syntax_highlight_c,
+		},
+		{
+			.id = LANG_CPP,
+			.name = "C++",
+			.lsp_identifier = "cpp",
+			.highlighter = syntax_highlight_cpp,
+		},
+		{
+			.id = LANG_RUST,
+			.name = "Rust",
+			.lsp_identifier = "rust",
+			.highlighter = syntax_highlight_rust,
+		},
+		{
+			.id = LANG_JAVA,
+			.name = "Java",
+			.lsp_identifier = "java",
+			.highlighter = syntax_highlight_java,
+		},
+		{
+			.id = LANG_GO,
+			.name = "Go",
+			.lsp_identifier = "go",
+			.highlighter = syntax_highlight_go,
+		},
+		{
+			.id = LANG_PYTHON,
+			.name = "Python",
+			.lsp_identifier = "python",
+			.highlighter = syntax_highlight_python,
+		},
+		{
+			.id = LANG_TEX,
+			.name = "TeX",
+			.lsp_identifier = "latex",
+			.highlighter = syntax_highlight_tex,
+		},
+		{
+			.id = LANG_MARKDOWN,
+			.name = "Markdown",
+			.lsp_identifier = "markdown",
+			.highlighter = syntax_highlight_markdown,
+		},
+		{
+			.id = LANG_HTML,
+			.name = "HTML",
+			.lsp_identifier = "html",
+			.highlighter = syntax_highlight_html,
+		},
+		{
+			.id = LANG_XML,
+			.name = "XML",
+			.lsp_identifier = "xml",
+			.highlighter = syntax_highlight_xml,
+		},
+		{
+			.id = LANG_CONFIG,
+			.name = "Config",
+			.lsp_identifier = "text",
+			.highlighter = syntax_highlight_config,
+		},
+		{
+			.id = LANG_TED_CFG,
+			.name = "TedCfg",
+			.lsp_identifier = "text",
+			.highlighter = syntax_highlight_ted_cfg,
+		},
+		{
+			.id = LANG_JAVASCRIPT,
+			.name = "JavaScript",
+			.lsp_identifier = "javascript",
+			.highlighter = syntax_highlight_javascript,
+		},
+		{
+			.id = LANG_TYPESCRIPT,
+			.name = "TypeScript",
+			.lsp_identifier = "typescript",
+			.highlighter = syntax_highlight_typescript,
+		},
+		{
+			.id = LANG_JSON,
+			.name = "JSON",
+			.lsp_identifier = "json",
+			.highlighter = syntax_highlight_json,
+		},
+		{
+			.id = LANG_GLSL,
+			.name = "GLSL",
+			// not specified as of LSP 3.17, but this seems like the natural choice
+			.lsp_identifier = "glsl",
+			.highlighter = syntax_highlight_html,
+		},
+		
+	};
+	for (size_t i = 0; i < arr_count(builtins); ++i) {
+		syntax_register_language(&builtins[i]);
+	}
+}
+
+
+void syntax_register_language(const LanguageInfo *info) {
+	if (!info->id || info->id > LANG_USER_MAX) {
+		debug_println("Bad language ID: %" PRIu32, info->id);
+		return;
+	}
+	if (!info->name[0]) {
+		debug_println("Language with ID %" PRIu32 " has no name.", info->id);
+		return;
+	}
+	
+	int i;
+	for (i = 0; language_names[i].name[0]; i++) {
+		if (streq(language_names[i].name, info->name) || language_names[i].lang == info->id) {
+			// this language will be overridden i guess
+			break;
+		}
+	}
+	if (i < LANG_COUNT_MAX) {
+		language_names[i].lang = info->id;
+		strbuf_cpy(language_names[i].name, info->name);
+	}
+	if (info->highlighter) {
+		for (i = 0; syntax_highlighters[i].func; i++) {
+			if (syntax_highlighters[i].lang == info->id) {
+				// this language will be overridden i guess
+				break;
+			}
+		}
+		if (i < LANG_COUNT_MAX) {
+			syntax_highlighters[i].lang = info->id;
+			syntax_highlighters[i].func = info->highlighter;
+		}
+	}
+	
+	lsp_register_language(info->id, info->lsp_identifier);
+	
 }

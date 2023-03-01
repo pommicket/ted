@@ -6,43 +6,30 @@
 
 #define write_bool lsp_write_bool // prevent naming conflict
 
-static const char *lsp_language_id(Language lang) {
-	switch (lang) {
-	case LANG_CONFIG:
-	case LANG_TED_CFG:
-	case LANG_TEXT:
-	case LANG_NONE:
-		return "text";
-	case LANG_C:
-		return "c";
-	case LANG_CPP:
-		return "cpp";
-	case LANG_JAVA:
-		return "java";
-	case LANG_JAVASCRIPT:
-		return "javascript";
-	case LANG_JSON:
-		return "json";
-	case LANG_TYPESCRIPT:
-		return "typescript";
-	case LANG_MARKDOWN:
-		return "markdown";
-	case LANG_GO:
-		return "go";
-	case LANG_RUST:
-		return "rust";
-	case LANG_PYTHON:
-		return "python";
-	case LANG_HTML:
-		return "html";
-	case LANG_TEX:
-		return "latex";
-	case LANG_XML:
-		return "xml";
-	case LANG_GLSL:
-		// not specified as of LSP 3.17, but this seems like the natural choice
-		return "glsl";
-	case LANG_COUNT: break;
+typedef struct {
+	u64 number;
+	char identifier[32];
+} LanguageId;
+static LanguageId language_ids[512];
+void lsp_register_language(u64 id, const char *lsp_identifier) {
+	int i;
+	for (i = 0; *language_ids[i].identifier; ++i) {
+		if (language_ids[i].number == id) {
+			break;
+		}
+	}
+	if (i < (int)arr_count(language_ids) - 1) {
+		language_ids[i].number = id;
+		strbuf_cpy(language_ids[i].identifier, lsp_identifier);
+	}
+}
+
+static const char *lsp_language_id(u64 lang) {
+	int i;
+	for (i = 0; *language_ids[i].identifier; ++i) {
+		if (language_ids[i].number == lang) {
+			return language_ids[i].identifier;
+		}
 	}
 	assert(0);
 	return "text";

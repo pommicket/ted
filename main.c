@@ -1,4 +1,7 @@
 /*
+@TODO:
+- check bounds in CMD_SET_LANGUAGE
+- comment-start & comment-end settings
 FUTURE FEATURES:
 - manual.md
 - CSS highlighting
@@ -9,7 +12,6 @@ FUTURE FEATURES:
 - return to previous location in buffer
 - font setting & support for multiple fonts to cover more characters
 - support for variable-width fonts
-- comment-start & comment-end settings
 - robust find (results shouldn't move around when you type things)
 - open multiple files with command line arguments
 - document links using LSP textDocument/documentLink request
