@@ -79,6 +79,9 @@ Update `syntax_register_builtin_languages` accordingly.
 Make sure to define `comment-start` and `comment-end`
 for the language in `ted.cfg`.
 
+You will probably want to update `keywords.py` when implementing
+syntax highlighting.
+
 ### Syntax highlighting
 
 Obviously we don't want to re-highlight the whole file every time a change is made.

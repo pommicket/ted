@@ -1,24 +1,28 @@
 /*
+@TODO:
+- CSS [a=b] selectors
+    - other CSS things?
+- preserve permissions on save
 FUTURE FEATURES:
-- manual.md
 - CSS highlighting
 - option for separate colors for read/write highlights
 - styles ([color] sections)
   - for this, it would be nice to have #include in ted.cfg
+- open multiple files with command line arguments
+- better undo chaining (dechain on backspace?)
+- manual.md
+- regenerate tags for completion too if there are no results
 - make go-to-definition/hover/highlight modifier key configurable
 - font setting & support for multiple fonts to cover more characters
 - support for variable-width fonts
 - robust find (results shouldn't move around when you type things)
-- open multiple files with command line arguments
 - document links using LSP textDocument/documentLink request
 - rename using LSP (textDocument/rename)
        - we have request writing & response parsing support for it, but that hasn't been tested yet
        - i'm putting this off for now since it seems hard to have undo support for it.
            - possible idea: open all files altered, and create undo chains for each of them.
                             if there are too many files, give an error like "use a different tool for this"
-- better undo chaining (dechain on backspace?)
 - allow multiple fonts (fonts directory?)
-- regenerate tags for completion too if there are no results
 - config variables
 - bind key to multiple commands
 - plugins?

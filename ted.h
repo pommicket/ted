@@ -82,6 +82,8 @@ enum {
 	LANG_GLSL = 16,
 	/// plain text
 	LANG_TEXT = 17,
+	/// CSS
+	LANG_CSS = 18,
 	
 	/// all user-defined languages are greater than this.
 	LANG_USER_MIN = 100000,

@@ -65,6 +65,11 @@ enum {
 	SYNTAX_STATE_TED_CFG_STRING_BACKTICK = 0x02u, // `-delimited string
 };
 
+enum {
+	SYNTAX_STATE_CSS_COMMENT = 0x01u,
+	SYNTAX_STATE_CSS_IN_BRACES = 0x02u,
+};
+
 typedef struct {
 	Language lang;
 	char *name;
@@ -193,6 +198,10 @@ static bool syntax_number_continues(Language lang, const char32_t *line, u32 lin
 			return false;
 		}
 	}
+	if (lang == LANG_CSS && line[i] < 128 && isalpha((char)line[i])) {
+		// units
+		return true;
+	}
 	return (line[i] < CHAR_MAX && 
 		(strchr(SYNTAX_DIGITS, (char)line[i])
 		|| (i && line[i-1] == 'e' && (line[i] == '+' || line[i] == '-'))));
@@ -205,6 +214,10 @@ static bool is_keyword(Language lang, char32_t c) {
 	case LANG_RUST:
 		// Rust builtin macros
 		if (c == '!')
+			return true;
+		break;
+	case LANG_CSS:
+		if (c == '-' || c == '@' || c == ':')
 			return true;
 		break;
 	case LANG_HTML:
@@ -1680,6 +1693,115 @@ static void syntax_highlight_text(SyntaxState *state, const char32_t *line, u32 
 	}
 }
 
+static void syntax_highlight_css(SyntaxState *state_ptr, const char32_t *line, u32 line_len, SyntaxCharType *char_types) {
+	SyntaxState state = *state_ptr;
+	bool in_comment = (state & SYNTAX_STATE_CSS_COMMENT) != 0;
+	bool in_braces = (state & SYNTAX_STATE_CSS_IN_BRACES) != 0;
+	
+	for (u32 i = 0; i < line_len; ++i) {
+		bool has_1_char = i + 1 < line_len;
+		bool dealt_with = false;
+		char32_t c = line[i];
+		
+		if (in_comment) {
+			if (c == '/' && i > 0 && line[i - 1] == '*') {
+				in_comment = false;
+				if (char_types) char_types[i] = SYNTAX_COMMENT;
+				dealt_with = true;
+			}
+		} else switch (c) {
+		case '/':
+			if (has_1_char) {
+				if (line[i + 1] == '*') {
+					in_comment = true; // /*
+				}
+			}
+			break;
+		case '{':
+			in_braces = true;
+			break;
+		case '}':
+			in_braces = false;
+			break;
+		case '.':
+		case '#':
+			if (!in_braces && char_types) {
+				char_types[i] = SYNTAX_KEYWORD;		
+				for (++i; i < line_len; ++i) {
+					if (is32_alnum(line[i]) || line[i] == '-' || line[i] == '_') {
+						char_types[i] = SYNTAX_KEYWORD;
+					} else {
+						break;
+					}
+				}
+				--i; // we will increment i in the loop
+				dealt_with = true;
+			}
+			if (c == '#' && in_braces && char_types) {
+				// color which we'll treat as a number.
+				goto number;
+			}
+			break;
+		case ANY_DIGIT:
+		number: {
+			// a number!
+			bool number = false;
+			if (char_types) {
+				number = true;
+				if (i) {
+					if (line[i - 1] == '.') {
+						// support .6, for example
+						char_types[i - 1] = SYNTAX_CONSTANT;
+					} else if (is32_word(line[i - 1])) {
+						// actually, this isn't a number. it's something like a*6* or u3*2*.
+						number = false;
+					}
+				}
+			}
+			if (number) {
+				char_types[i++] = SYNTAX_CONSTANT;
+				while (syntax_number_continues(LANG_CSS, line, line_len, i)) {
+					char_types[i] = SYNTAX_CONSTANT;
+					++i;
+				}
+				--i; // we will increment i in the loop
+				dealt_with = true;
+			}
+			} break;
+		default: {
+			if ((i && is_keyword(LANG_CSS, line[i - 1])) || !is_keyword(LANG_CSS, c) || is32_digit(c))
+				break; // can't be a keyword on its own.
+			
+			if (in_braces && char_types) {
+				u32 keyword_len = syntax_keyword_len(LANG_CSS, line, i, line_len);
+				Keyword const *keyword = syntax_keyword_lookup(syntax_all_keywords_css, &line[i], keyword_len);
+				
+				if (keyword) {
+					SyntaxCharType type = keyword->type;
+					for (size_t j = 0; j < keyword_len; ++j) {
+						char_types[i++] = type;
+					}
+					--i; // we'll increment i from the for loop
+					dealt_with = true;
+					break;
+				}
+			}
+		} break;
+		}
+		if (char_types && !dealt_with) {
+			SyntaxCharType type = SYNTAX_NORMAL;
+			if (in_comment)
+				type = SYNTAX_COMMENT;
+			char_types[i] = type;
+		}
+	}
+	*state_ptr = (SyntaxState)(
+		  (in_comment * SYNTAX_STATE_CSS_COMMENT)
+		  | (in_braces * SYNTAX_STATE_CSS_IN_BRACES)
+	);
+}
+
+
 typedef struct {
 	Language lang;
 	SyntaxHighlightFunction func;
@@ -1831,13 +1953,18 @@ void syntax_register_builtin_languages(void) {
 			.lsp_identifier = "glsl",
 			.highlighter = syntax_highlight_html,
 		},
+		{
+			.id = LANG_CSS,
+			.name = "CSS",
+			.lsp_identifier = "css",
+			.highlighter = syntax_highlight_css
+		},
 		
 	};
 	for (size_t i = 0; i < arr_count(builtins); ++i) {
 		syntax_register_language(&builtins[i]);
 	}
 }
-
 
 void syntax_register_language(const LanguageInfo *info) {
 	if (!info->id || info->id > LANG_USER_MAX) {

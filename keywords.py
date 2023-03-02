@@ -25,13 +25,18 @@ def process_keywords(keywords):
    
 def output_keywords(file, keywords, language):
     keywords = process_keywords(keywords)
+    def escape(c):
+    	if c.isalpha():
+    		return c
+    	else:
+    		return 'x{:x}'.format(ord(c))
     for (c, kwds) in sorted(keywords.items()):
         kwds = list(sorted(kwds))
-        file.write('static const Keyword syntax_keywords_{}_{}[{}] = {{'.format(language, c, len(kwds)))
+        file.write('static const Keyword syntax_keywords_{}_{}[{}] = {{'.format(language, escape(c), len(kwds)))
         file.write(','.join(map(lambda kwd: '{"'+kwd[0]+'", ' + types[kwd[1]] + '}', kwds)) + '};\n')
     file.write('static const KeywordList syntax_all_keywords_{}[128] = {{\n'.format(language))
     file.write('\t'+', '.join(["['{}'] = {{syntax_keywords_{}_{}, arr_count(syntax_keywords_{}_{})}}".format(
-    	c, language, c, language, c) for c in sorted(keywords.keys())]) + '\n')
+    	c, language, escape(c), language, escape(c)) for c in sorted(keywords.keys())]) + '\n')
     file.write('};\n\n')
 
 def cant_overlap(*args):
@@ -407,6 +412,170 @@ builtins_go = [
 	'comparable'
 ]
 
+builtins_css = [
+	'-webkit-line-clamp:', '@annotation:', '@bottom-center:', '@character-variant:', '@charset:', '@counter-style:', 
+	'@font-face:', '@font-feature-values:', '@historical-forms:', '@import:', '@keyframes:', '@layer:', '@left-bottom:', 
+	'@media:', '@namespace:', '@ornaments:', '@page:', '@property:', '@right-bottom:', '@scroll-timeline:', '@styleset:', 
+	'@stylistic:', '@supports:', '@swash:', '@top-center:', '@viewport:', 'abs', 'accent-color:', 'acos', 
+	'additive-symbols:', 'align-content:', 'align-items:', 'align-self:', 'align-tracks:', 'all:', 'animation:', 
+	'animation-composition:', 'animation-delay:', 'animation-direction:', 'animation-duration:', 'animation-fill-mode:', 
+	'animation-iteration-count:', 'animation-name:', 'animation-play-state:', 'animation-timeline:', 
+	'animation-timing-function:', 'annotation', 'appearance:', 'ascent-override:', 'asin', 'aspect-ratio:', 'atan', 
+	'atan2', 'attr', 'backdrop-filter:', 'backface-visibility:', 'background:', 'background-attachment:', 
+	'background-blend-mode:', 'background-clip:', 'background-color:', 'background-image:', 'background-origin:', 
+	'background-position:', 'background-position-x:', 'background-position-y:', 'background-repeat:', 'background-size:', 
+	'bleed:', 'block-overflow:', 'block-size:', 'blur', 'border:', 'border-block:', 'border-block-color:', 
+	'border-block-end:', 'border-block-end-color:', 'border-block-end-style:', 'border-block-end-width:', 
+	'border-block-start:', 'border-block-start-color:', 'border-block-start-style:', 'border-block-start-width:', 
+	'border-block-style:', 'border-block-width:', 'border-bottom:', 'border-bottom-color:', 'border-bottom-left-radius:', 
+	'border-bottom-right-radius:', 'border-bottom-style:', 'border-bottom-width:', 'border-collapse:', 'border-color:', 
+	'border-end-end-radius:', 'border-end-start-radius:', 'border-image:', 'border-image-outset:', 'border-image-repeat:', 
+	'border-image-slice:', 'border-image-source:', 'border-image-width:', 'border-inline:', 'border-inline-color:', 
+	'border-inline-end:', 'border-inline-end-color:', 'border-inline-end-style:', 'border-inline-end-width:', 
+	'border-inline-start:', 'border-inline-start-color:', 'border-inline-start-style:', 'border-inline-start-width:', 
+	'border-inline-style:', 'border-inline-width:', 'border-left:', 'border-left-color:', 'border-left-style:', 
+	'border-left-width:', 'border-radius:', 'border-right:', 'border-right-color:', 'border-right-style:', 
+	'border-right-width:', 'border-spacing:', 'border-start-end-radius:', 'border-start-start-radius:', 'border-style:', 
+	'border-top:', 'border-top-color:', 'border-top-left-radius:', 'border-top-right-radius:', 'border-top-style:', 
+	'border-top-width:', 'border-width:', 'box-decoration-break:', 'box-shadow:', 'box-sizing:', 'break-after:', 
+	'break-before:', 'break-inside:', 'brightness', 'calc', 'caption-side:', 'caret:', 'caret-color:', 'caret-shape:', 
+	'character-variant', 'circle', 'clamp', 'clear:', 'clip:', 'clip-path:', 'color:', 'color-scheme:', 'column-count:', 
+	'column-fill:', 'column-gap:', 'column-rule:', 'column-rule-color:', 'column-rule-style:', 'column-rule-width:', 
+	'column-span:', 'column-width:', 'columns:', 'conic-gradient', 'contain:', 'contain-intrinsic-block-size:', 
+	'contain-intrinsic-height:', 'contain-intrinsic-inline-size:', 'contain-intrinsic-size:', 'contain-intrinsic-width:', 
+	'content:', 'content-visibility:', 'contrast', 'cos', 'counter-increment:', 'counter-reset:', 'counter-set:', 
+	'counters', 'cross-fade', 'cubic-bezier', 'cursor:', 'descent-override:', 'direction:', 'display:', 'drop-shadow', 
+	'element', 'ellipse', 'empty-cells:', 'env', 'exp', 'fallback:', 'filter:', 'flex:', 'flex-basis:', 'flex-direction:', 
+	'flex-flow:', 'flex-grow:', 'flex-shrink:', 'flex-wrap:', 'float:', 'font:', 'font-display:', 'font-family:', 
+	'font-feature-settings:', 'font-kerning:', 'font-language-override:', 'font-optical-sizing:', 'font-size:', 
+	'font-size-adjust:', 'font-stretch:', 'font-style:', 'font-synthesis:', 'font-variant:', 'font-variant-alternates:', 
+	'font-variant-caps:', 'font-variant-east-asian:', 'font-variant-ligatures:', 'font-variant-numeric:', 
+	'font-variant-position:', 'font-variation-settings:', 'font-weight:', 'forced-color-adjust:', 'format', 'gap:', 
+	'grayscale', 'grid:', 'grid-area:', 'grid-auto-columns:', 'grid-auto-flow:', 'grid-auto-rows:', 'grid-column:', 
+	'grid-column-end:', 'grid-column-start:', 'grid-row:', 'grid-row-end:', 'grid-row-start:', 'grid-template:', 
+	'grid-template-areas:', 'grid-template-columns:', 'grid-template-rows:', 'hanging-punctuation:', 'height:', 'hsl', 
+	'hsla', 'hue-rotate', 'hwb', 'hyphenate-character:', 'hyphenate-limit-chars:', 'hyphens:', 'hypot', 'image', 
+	'image-orientation:', 'image-rendering:', 'image-resolution:', 'image-set', 'inherits:', 'initial-letter:', 
+	'initial-letter-align:', 'initial-value:', 'inline-size:', 'input-security:', 'inset', 'inset-block:', 
+	'inset-block-end:', 'inset-block-start:', 'inset-inline:', 'inset-inline-end:', 'inset-inline-start:', 'invert', 
+	'isolation:', 'justify-content:', 'justify-items:', 'justify-self:', 'justify-tracks:', 'lab', 'layer', 'lch', 
+	'leader', 'letter-spacing:', 'line-break:', 'line-clamp:', 'line-gap-override:', 'line-height:', 'line-height-step:', 
+	'linear-gradient', 'list-style:', 'list-style-image:', 'list-style-position:', 'list-style-type:', 'local', 'log', 
+	'margin:', 'margin-block:', 'margin-block-end:', 'margin-block-start:', 'margin-bottom:', 'margin-inline:', 
+	'margin-inline-end:', 'margin-inline-start:', 'margin-left:', 'margin-right:', 'margin-top:', 'margin-trim:', 'marks:', 
+	'mask:', 'mask-border:', 'mask-border-mode:', 'mask-border-outset:', 'mask-border-repeat:', 'mask-border-slice:', 
+	'mask-border-source:', 'mask-border-width:', 'mask-clip:', 'mask-composite:', 'mask-image:', 'mask-mode:', 
+	'mask-origin:', 'mask-position:', 'mask-repeat:', 'mask-size:', 'mask-type:', 'masonry-auto-flow:', 'math-depth:', 
+	'math-shift:', 'math-style:', 'matrix', 'matrix3d', 'max', 'max-block-size:', 'max-height:', 'max-inline-size:', 
+	'max-lines:', 'max-width:', 'max-zoom:', 'min', 'min-block-size:', 'min-height:', 'min-inline-size:', 'min-width:', 
+	'min-zoom:', 'minmax', 'mix-blend-mode:', 'mod', 'negative:', 'object-fit:', 'object-position:', 'offset:', 
+	'offset-anchor:', 'offset-distance:', 'offset-path:', 'offset-position:', 'offset-rotate:', 'opacity', 'order:', 
+	'orientation:', 'ornaments', 'orphans:', 'outline:', 'outline-color:', 'outline-offset:', 'outline-style:', 
+	'outline-width:', 'overflow:', 'overflow-anchor:', 'overflow-block:', 'overflow-clip-margin:', 'overflow-inline:', 
+	'overflow-wrap:', 'overflow-x:', 'overflow-y:', 'overscroll-behavior:', 'overscroll-behavior-block:', 
+	'overscroll-behavior-inline:', 'overscroll-behavior-x:', 'overscroll-behavior-y:', 'pad:', 'padding:', 
+	'padding-block:', 'padding-block-end:', 'padding-block-start:', 'padding-bottom:', 'padding-inline:', 
+	'padding-inline-end:', 'padding-inline-start:', 'padding-left:', 'padding-right:', 'padding-top:', 'page-break-after:', 
+	'page-break-before:', 'page-break-inside:', 'paint', 'paint-order:', 'path', 'perspective', 'perspective-origin:', 
+	'place-content:', 'place-items:', 'place-self:', 'pointer-events:', 'polygon', 'position:', 'pow', 'prefix:', 
+	'print-color-adjust:', 'quotes:', 'radial-gradient', 'range:', 'rect', 'rem', 'repeat', 'repeating-conic-gradient', 
+	'repeating-linear-gradient', 'repeating-radial-gradient', 'resize:', 'reversed', 'rgb', 'rgba', 'rotate', 'rotate3d', 
+	'rotateX', 'rotateY', 'rotateZ', 'row-gap:', 'ruby-align:', 'ruby-merge:', 'ruby-position:', 'saturate', 'scale', 
+	'scale3d', 'scaleX', 'scaleY', 'scaleZ', 'scroll', 'scroll-behavior:', 'scroll-margin:', 'scroll-margin-block:', 
+	'scroll-margin-block-end:', 'scroll-margin-block-start:', 'scroll-margin-bottom:', 'scroll-margin-inline:', 
+	'scroll-margin-inline-end:', 'scroll-margin-inline-start:', 'scroll-margin-left:', 'scroll-margin-right:', 
+	'scroll-margin-top:', 'scroll-padding:', 'scroll-padding-block:', 'scroll-padding-block-end:', 
+	'scroll-padding-block-start:', 'scroll-padding-bottom:', 'scroll-padding-inline:', 'scroll-padding-inline-end:', 
+	'scroll-padding-inline-start:', 'scroll-padding-left:', 'scroll-padding-right:', 'scroll-padding-top:', 
+	'scroll-snap-align:', 'scroll-snap-stop:', 'scroll-snap-type:', 'scroll-timeline:', 'scroll-timeline-axis:', 
+	'scroll-timeline-name:', 'scrollbar-color:', 'scrollbar-gutter:', 'scrollbar-width:', 'selector', 'sepia', 
+	'shape-image-threshold:', 'shape-margin:', 'shape-outside:', 'sign', 'sin', 'size:', 'size-adjust:', 'skew', 'skewX', 
+	'skewY', 'speak-as:', 'sqrt', 'src:', 'steps', 'styleset', 'stylistic', 'suffix:', 'supports', 'swash', 'symbols', 
+	'syntax:', 'system:', 'tab-size:', 'table-layout:', 'tan', 'target-counter', 'target-counters', 'target-text', 
+	'text-align:', 'text-align-last:', 'text-combine-upright:', 'text-decoration:', 'text-decoration-color:', 
+	'text-decoration-line:', 'text-decoration-skip:', 'text-decoration-skip-ink:', 'text-decoration-style:', 
+	'text-decoration-thickness:', 'text-emphasis:', 'text-emphasis-color:', 'text-emphasis-position:', 
+	'text-emphasis-style:', 'text-indent:', 'text-justify:', 'text-orientation:', 'text-overflow:', 'text-rendering:', 
+	'text-shadow:', 'text-size-adjust:', 'text-transform:', 'text-underline-offset:', 'text-underline-position:', 
+	'touch-action:', 'transform:', 'transform-box:', 'transform-origin:', 'transform-style:', 'transition:', 
+	'transition-delay:', 'transition-duration:', 'transition-property:', 'transition-timing-function:', 'translate', 
+	'translate3d', 'translateX', 'translateY', 'translateZ', 'type', 'unicode-bidi:', 'unicode-range:', 'url', 
+	'user-select:', 'user-zoom:', 'var', 'vertical-align:', 'viewport-fit:', 'visibility:', 'white-space:', 'widows:', 
+	'width:', 'will-change:', 'word-break:', 'word-spacing:', 'word-wrap:', 'writing-mode:', 'z-index:', 'zoom:'
+]
+
+constants_css = [
+	'aliceblue', 'antiquewhite', 'aqua', 'aquamarine', 'azure', 'beige', 'bisque', 'black', 'blanchedalmond', 'blue', 
+	'blueviolet', 'brown', 'burlywood', 'cadetblue', 'chartreuse', 'chocolate', 'coral', 'cornflowerblue', 'cornsilk', 
+	'crimson', 'cyan', 'darkblue', 'darkcyan', 'darkgoldenrod', 'darkgray', 'darkgreen', 'darkgrey', 'darkkhaki', 
+	'darkmagenta', 'darkolivegreen', 'darkorange', 'darkorchid', 'darkred', 'darksalmon', 'darkseagreen', 'darkslateblue', 
+	'darkslategray', 'darkslategrey', 'darkturquoise', 'darkviolet', 'deeppink', 'deepskyblue', 'dimgray', 'dimgrey', 
+	'dodgerblue', 'firebrick', 'floralwhite', 'forestgreen', 'fuchsia', 'gainsboro', 'ghostwhite', 'gold', 'goldenrod', 
+	'gray', 'green', 'greenyellow', 'grey', 'honeydew', 'hotpink', 'indianred', 'indigo', 'ivory', 'khaki', 'lavender', 
+	'lavenderblush', 'lawngreen', 'lemonchiffon', 'lightblue', 'lightcoral', 'lightcyan', 'lightgoldenrodyellow', 
+	'lightgray', 'lightgreen', 'lightgrey', 'lightpink', 'lightsalmon', 'lightseagreen', 'lightskyblue', 'lightslategray', 
+	'lightslategrey', 'lightsteelblue', 'lightyellow', 'lime', 'limegreen', 'linen', 'magenta', 'maroon', 
+	'mediumaquamarine', 'mediumblue', 'mediumorchid', 'mediumpurple', 'mediumseagreen', 'mediumslateblue', 
+	'mediumspringgreen', 'mediumturquoise', 'mediumvioletred', 'midnightblue', 'mintcream', 'mistyrose', 'moccasin', 
+	'navajowhite', 'navy', 'oldlace', 'olive', 'olivedrab', 'orange', 'orangered', 'orchid', 'palegoldenrod', 'palegreen', 
+	'paleturquoise', 'palevioletred', 'papayawhip', 'peachpuff', 'peru', 'pink', 'plum', 'powderblue', 'purple', 'red', 
+	'rosybrown', 'royalblue', 'saddlebrown', 'salmon', 'sandybrown', 'seagreen', 'seashell', 'sienna', 'silver', 'skyblue', 
+	'slateblue', 'slategray', 'slategrey', 'snow', 'springgreen', 'steelblue', 'teal', 'thistle', 'tomato', 
+	'turquoise', 'violet', 'wheat', 'white', 'whitesmoke', 'yellow', 'yellowgreen',
+	'above', 'absolute', 'active', 'add', 'additive', 'after-edge', 'alias', 'all-petite-caps', 'all-scroll', 
+	'all-small-caps', 'alpha', 'alphabetic', 'alternate', 'alternate-reverse', 'always', 'antialiased', 'auto', 'auto-pos', 
+	'available', 'avoid', 'avoid-column', 'avoid-page', 'avoid-region', 'backwards', 'balance', 'baseline', 'before-edge', 
+	'below', 'bevel', 'bidi-override', 'blink', 'block', 'block-axis', 'block-start', 'block-end', 'bold', 'bolder', 
+	'border-box', 'both', 'bottom', 'bottom-outside', 'break-all', 'break-word', 'bullets', 'butt', 'capitalize', 
+	'caption', 'cell', 'center', 'central', 'char', 'clone', 'close-quote', 'closest-corner', 
+	'closest-side', 'col-resize', 'collapse', 'color-burn', 'color-dodge', 'column', 'column-reverse', 
+	'common-ligatures', 'compact', 'condensed', 'content-box', 'contents', 'context-menu', 
+	'contextual', 'copy', 'cover', 'crisp-edges', 'crispEdges', 'crosshair', 'cyclic', 'dark', 'darken', 'dashed', 
+	'decimal', 'default', 'dense', 'diagonal-fractions', 'difference', 'digits', 'disabled', 'disc', 
+	'discretionary-ligatures', 'distribute', 'distribute-all-lines', 'distribute-letter', 'distribute-space', 'dot', 
+	'dotted', 'double', 'double-circle', 'downleft', 'downright', 'e-resize', 'each-line', 'ease', 'ease-in', 
+	'ease-in-out', 'ease-out', 'economy', 'ellipsis', 'embed', 'end', 'evenodd', 'ew-resize', 'exact', 
+	'exclude', 'exclusion', 'expanded', 'extends', 'extra-condensed', 'extra-expanded', 'farthest-corner', 
+	'farthest-side', 'fill', 'fill-available', 'fill-box', 'filled', 'fit-content', 'fixed', 'flat',
+	'flip', 'flow-root', 'forwards', 'freeze', 'from-image', 'full-width', 'geometricPrecision', 'georgian', 
+	'grab', 'grabbing', 'groove', 'hand', 'hanging', 'hard-light', 'help', 'hidden', 'hide', 
+	'historical-forms', 'historical-ligatures', 'horizontal', 'horizontal-tb', 'hue', 'icon', 'ideograph-alpha', 
+	'ideograph-numeric', 'ideograph-parenthesis', 'ideograph-space', 'ideographic', 'inactive', 'infinite', 'inherit', 
+	'initial', 'inline', 'inline-axis', 'inline-block', 'inline-end', 'inline-flex', 'inline-grid', 'inline-list-item', 
+	'inline-start', 'inline-table', 'inside', 'inter-character', 'inter-ideograph', 'inter-word', 'intersect', 
+	'isolate', 'isolate-override', 'italic', 'jis04', 'jis78', 'jis83', 'jis90', 'justify', 'justify-all', 
+	'kannada', 'keep-all', 'landscape', 'large', 'larger', 'left', 'light', 'lighten', 'lighter', 'line', 'line-edge', 
+	'line-through', 'linear', 'linearRGB', 'lining-nums', 'list-item', 'loose', 'lowercase', 'lr', 'lr-tb', 'ltr', 
+	'luminance', 'luminosity', 'main-size', 'mandatory', 'manipulation', 'manual', 'margin-box', 'match-parent', 
+	'match-source', 'mathematical', 'max-content', 'medium', 'menu', 'message-box', 'middle', 'min-content', 'miter', 
+	'mixed', 'move', 'multiply', 'n-resize', 'narrower', 'ne-resize', 'nearest-neighbor', 'nesw-resize', 'newspaper', 
+	'no-change', 'no-clip', 'no-close-quote', 'no-common-ligatures', 'no-contextual', 'no-discretionary-ligatures', 
+	'no-drop', 'no-historical-ligatures', 'no-open-quote', 'no-repeat', 'none', 'nonzero', 'normal', 'not-allowed', 
+	'nowrap', 'ns-resize', 'numbers', 'numeric', 'nw-resize', 'nwse-resize', 'oblique', 'oldstyle-nums', 'open', 
+	'open-quote', 'optimizeLegibility', 'optimizeQuality', 'optimizeSpeed', 'optional', 'ordinal', 'outset', 'outside', 
+	'over', 'overlay', 'overline', 'page', 'painted', 'pan-down', 'pan-left', 'pan-right', 
+	'pan-up', 'pan-x', 'pan-y', 'paused', 'petite-caps', 'pixelated', 'plaintext', 'pointer', 'portrait', 'pre', 
+	'pre-line', 'pre-wrap', 'preserve-3d', 'progress', 'progressive', 'proportional-nums', 'proportional-width', 
+	'proximity', 'radial', 'recto', 'region', 'relative', 'remove', 'reset-size', 'reverse', 
+	'revert', 'ridge', 'right', 'rl', 'rl-tb', 'round', 'row', 'row-resize', 'row-reverse', 'row-severse', 'rtl', 'ruby', 
+	'ruby-base', 'ruby-base-container', 'ruby-text', 'ruby-text-container', 'run-in', 'running', 's-resize', 'saturation', 
+	'scale-down', 'screen', 'se-resize', 'semi-condensed', 'semi-expanded', 'separate', 
+	'sesame', 'show', 'sideways', 'sideways-left', 'sideways-lr', 'sideways-right', 'sideways-rl', 'simplified', 
+	'slashed-zero', 'slice', 'small', 'small-caps', 'small-caption', 'smaller', 'smooth', 'soft-light', 'solid', 'space', 
+	'space-around', 'space-between', 'space-evenly', 'spell-out', 'square', 'sRGB', 'stacked-fractions', 'start', 'static', 
+	'status-bar', 'swap', 'step-end', 'step-start', 'sticky', 'stretch', 'strict', 'stroke', 'stroke-box', 'style', 'sub', 
+	'subgrid', 'subpixel-antialiased', 'subtract', 'super', 'sw-resize', 'symbolic', 'table', 'table-caption', 
+	'table-cell', 'table-column', 'table-column-group', 'table-footer-group', 'table-header-group', 'table-row', 
+	'table-row-group', 'tabular-nums', 'tb', 'tb-rl', 'text', 'text-after-edge', 'text-before-edge', 'text-bottom', 
+	'text-top', 'thick', 'thin', 'titling-caps', 'top', 'top-outside', 'touch', 'traditional', 'transparent', 'triangle', 
+	'ultra-condensed', 'ultra-expanded', 'under', 'underline', 'unicase', 'unset', 'upleft', 'uppercase', 'upright', 
+	'use-glyph-orientation', 'use-script', 'verso', 'vertical', 'vertical-ideographic', 'vertical-lr', 'vertical-rl', 
+	'vertical-text', 'view-box', 'visible', 'visibleFill', 'visiblePainted', 'visibleStroke', 'w-resize', 'wait', 'wavy', 
+	'weight', 'whitespace', 'wider', 'words', 'wrap', 'wrap-reverse', 'x', 'x-large', 'x-small', 'xx-large', 'xx-small', 
+	'y', 'zero', 'zoom-in', 'zoom-out'
+]
+
+
 file = open('keywords.h', 'w')
 file.write('''// keywords for all languages ted supports
 // This file was auto-generated by keywords.py
@@ -427,6 +596,8 @@ cant_overlap(keywords_c, constants_c, builtins_c)
 cant_overlap(keywords_rust, builtins_rust, constants_rust)
 cant_overlap(keywords_python, builtins_python)
 cant_overlap(keywords_javascript, builtins_javascript, constants_javascript)
+cant_overlap(constants_css, builtins_css)
+cant_overlap(constants_glsl, builtins_glsl, keywords_glsl)
 c_things = label(keywords_c, SYNTAX_KEYWORD) + label(constants_c, SYNTAX_CONSTANT) + label(builtins_c, SYNTAX_BUILTIN)
 output_keywords(file, c_things, 'c')
 cpp_things = c_things + label(keywords_cpp, SYNTAX_KEYWORD)
@@ -447,4 +618,5 @@ output_keywords(file, label(builtins_html, SYNTAX_BUILTIN), 'html')
 output_keywords(file, label(constants_config, SYNTAX_CONSTANT), 'config')
 output_keywords(file, label(keywords_glsl, SYNTAX_KEYWORD) + label(constants_glsl, SYNTAX_CONSTANT)
 	+ label(builtins_glsl, SYNTAX_BUILTIN), 'glsl')
+output_keywords(file, label(builtins_css, SYNTAX_BUILTIN) + label(constants_css, SYNTAX_CONSTANT), 'css')
 file.close()
