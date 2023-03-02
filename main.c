@@ -1,10 +1,7 @@
 /*
 @TODO:
-- CSS [a=b] selectors
-    - other CSS things?
 - preserve permissions on save
 FUTURE FEATURES:
-- CSS highlighting
 - option for separate colors for read/write highlights
 - styles ([color] sections)
   - for this, it would be nice to have #include in ted.cfg

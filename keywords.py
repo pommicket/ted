@@ -13,7 +13,12 @@ types = [
 exec('\n'.join(['{} = {}'.format(type, i) for (i, type) in enumerate(types)]))
 
 def process_keywords(keywords):
-    assert len(set(keywords)) == len(keywords)
+    keyword_types = {}
+    for (type,kwd) in keywords:
+    	if kwd in keyword_types:
+    		print('repeated keyword:', kwd)
+    	keyword_types[kwd] = type
+    
     keywords_by_c = {}
     for (type,kwd) in keywords:
         c = kwd[0]
@@ -413,10 +418,7 @@ builtins_go = [
 ]
 
 builtins_css = [
-	'-webkit-line-clamp:', '@annotation:', '@bottom-center:', '@character-variant:', '@charset:', '@counter-style:', 
-	'@font-face:', '@font-feature-values:', '@historical-forms:', '@import:', '@keyframes:', '@layer:', '@left-bottom:', 
-	'@media:', '@namespace:', '@ornaments:', '@page:', '@property:', '@right-bottom:', '@scroll-timeline:', '@styleset:', 
-	'@stylistic:', '@supports:', '@swash:', '@top-center:', '@viewport:', 'abs', 'accent-color:', 'acos', 
+	'-webkit-line-clamp:', 'abs', 'accent-color:', 'acos', 
 	'additive-symbols:', 'align-content:', 'align-items:', 'align-self:', 'align-tracks:', 'all:', 'animation:', 
 	'animation-composition:', 'animation-delay:', 'animation-direction:', 'animation-duration:', 'animation-fill-mode:', 
 	'animation-iteration-count:', 'animation-name:', 'animation-play-state:', 'animation-timeline:', 
@@ -501,7 +503,8 @@ builtins_css = [
 	'transition-delay:', 'transition-duration:', 'transition-property:', 'transition-timing-function:', 'translate', 
 	'translate3d', 'translateX', 'translateY', 'translateZ', 'type', 'unicode-bidi:', 'unicode-range:', 'url', 
 	'user-select:', 'user-zoom:', 'var', 'vertical-align:', 'viewport-fit:', 'visibility:', 'white-space:', 'widows:', 
-	'width:', 'will-change:', 'word-break:', 'word-spacing:', 'word-wrap:', 'writing-mode:', 'z-index:', 'zoom:'
+	'width:', 'will-change:', 'word-break:', 'word-spacing:', 'word-wrap:', 'writing-mode:', 'z-index:', 'zoom:',
+	'left:','right:','top:','bottom:',
 ]
 
 constants_css = [
@@ -525,16 +528,16 @@ constants_css = [
 	'above', 'absolute', 'active', 'add', 'additive', 'after-edge', 'alias', 'all-petite-caps', 'all-scroll', 
 	'all-small-caps', 'alpha', 'alphabetic', 'alternate', 'alternate-reverse', 'always', 'antialiased', 'auto', 'auto-pos', 
 	'available', 'avoid', 'avoid-column', 'avoid-page', 'avoid-region', 'backwards', 'balance', 'baseline', 'before-edge', 
-	'below', 'bevel', 'bidi-override', 'blink', 'block', 'block-axis', 'block-start', 'block-end', 'bold', 'bolder', 
+	'below', 'bevel', 'bidi-override', 'block', 'block-axis', 'block-start', 'block-end', 'bold', 'bolder', 
 	'border-box', 'both', 'bottom', 'bottom-outside', 'break-all', 'break-word', 'bullets', 'butt', 'capitalize', 
-	'caption', 'cell', 'center', 'central', 'char', 'clone', 'close-quote', 'closest-corner', 
+	'cell', 'center', 'central', 'char', 'clone', 'close-quote', 'closest-corner', 
 	'closest-side', 'col-resize', 'collapse', 'color-burn', 'color-dodge', 'column', 'column-reverse', 
 	'common-ligatures', 'compact', 'condensed', 'content-box', 'contents', 'context-menu', 
 	'contextual', 'copy', 'cover', 'crisp-edges', 'crispEdges', 'crosshair', 'cyclic', 'dark', 'darken', 'dashed', 
 	'decimal', 'default', 'dense', 'diagonal-fractions', 'difference', 'digits', 'disabled', 'disc', 
 	'discretionary-ligatures', 'distribute', 'distribute-all-lines', 'distribute-letter', 'distribute-space', 'dot', 
 	'dotted', 'double', 'double-circle', 'downleft', 'downright', 'e-resize', 'each-line', 'ease', 'ease-in', 
-	'ease-in-out', 'ease-out', 'economy', 'ellipsis', 'embed', 'end', 'evenodd', 'ew-resize', 'exact', 
+	'ease-in-out', 'ease-out', 'economy', 'ellipsis', 'end', 'evenodd', 'ew-resize', 'exact', 
 	'exclude', 'exclusion', 'expanded', 'extends', 'extra-condensed', 'extra-expanded', 'farthest-corner', 
 	'farthest-side', 'fill', 'fill-available', 'fill-box', 'filled', 'fit-content', 'fixed', 'flat',
 	'flip', 'flow-root', 'forwards', 'freeze', 'from-image', 'full-width', 'geometricPrecision', 'georgian', 
@@ -547,24 +550,24 @@ constants_css = [
 	'kannada', 'keep-all', 'landscape', 'large', 'larger', 'left', 'light', 'lighten', 'lighter', 'line', 'line-edge', 
 	'line-through', 'linear', 'linearRGB', 'lining-nums', 'list-item', 'loose', 'lowercase', 'lr', 'lr-tb', 'ltr', 
 	'luminance', 'luminosity', 'main-size', 'mandatory', 'manipulation', 'manual', 'margin-box', 'match-parent', 
-	'match-source', 'mathematical', 'max-content', 'medium', 'menu', 'message-box', 'middle', 'min-content', 'miter', 
+	'match-source', 'mathematical', 'max-content', 'medium', 'message-box', 'middle', 'min-content', 'miter', 
 	'mixed', 'move', 'multiply', 'n-resize', 'narrower', 'ne-resize', 'nearest-neighbor', 'nesw-resize', 'newspaper', 
 	'no-change', 'no-clip', 'no-close-quote', 'no-common-ligatures', 'no-contextual', 'no-discretionary-ligatures', 
 	'no-drop', 'no-historical-ligatures', 'no-open-quote', 'no-repeat', 'none', 'nonzero', 'normal', 'not-allowed', 
 	'nowrap', 'ns-resize', 'numbers', 'numeric', 'nw-resize', 'nwse-resize', 'oblique', 'oldstyle-nums', 'open', 
 	'open-quote', 'optimizeLegibility', 'optimizeQuality', 'optimizeSpeed', 'optional', 'ordinal', 'outset', 'outside', 
 	'over', 'overlay', 'overline', 'page', 'painted', 'pan-down', 'pan-left', 'pan-right', 
-	'pan-up', 'pan-x', 'pan-y', 'paused', 'petite-caps', 'pixelated', 'plaintext', 'pointer', 'portrait', 'pre', 
-	'pre-line', 'pre-wrap', 'preserve-3d', 'progress', 'progressive', 'proportional-nums', 'proportional-width', 
+	'pan-up', 'pan-x', 'pan-y', 'paused', 'petite-caps', 'pixelated', 'plaintext', 'pointer', 'portrait', 
+	'pre-line', 'pre-wrap', 'preserve-3d', 'progressive', 'proportional-nums', 'proportional-width', 
 	'proximity', 'radial', 'recto', 'region', 'relative', 'remove', 'reset-size', 'reverse', 
-	'revert', 'ridge', 'right', 'rl', 'rl-tb', 'round', 'row', 'row-resize', 'row-reverse', 'row-severse', 'rtl', 'ruby', 
+	'revert', 'ridge', 'right', 'rl', 'rl-tb', 'round', 'row', 'row-resize', 'row-reverse', 'row-severse', 'rtl', 
 	'ruby-base', 'ruby-base-container', 'ruby-text', 'ruby-text-container', 'run-in', 'running', 's-resize', 'saturation', 
 	'scale-down', 'screen', 'se-resize', 'semi-condensed', 'semi-expanded', 'separate', 
 	'sesame', 'show', 'sideways', 'sideways-left', 'sideways-lr', 'sideways-right', 'sideways-rl', 'simplified', 
 	'slashed-zero', 'slice', 'small', 'small-caps', 'small-caption', 'smaller', 'smooth', 'soft-light', 'solid', 'space', 
 	'space-around', 'space-between', 'space-evenly', 'spell-out', 'square', 'sRGB', 'stacked-fractions', 'start', 'static', 
-	'status-bar', 'swap', 'step-end', 'step-start', 'sticky', 'stretch', 'strict', 'stroke', 'stroke-box', 'style', 'sub', 
-	'subgrid', 'subpixel-antialiased', 'subtract', 'super', 'sw-resize', 'symbolic', 'table', 'table-caption', 
+	'status-bar', 'swap', 'step-end', 'step-start', 'sticky', 'stretch', 'strict', 'stroke', 'stroke-box', 'style', 
+	'subgrid', 'subpixel-antialiased', 'subtract', 'super', 'sw-resize', 'symbolic', 'table-caption', 
 	'table-cell', 'table-column', 'table-column-group', 'table-footer-group', 'table-header-group', 'table-row', 
 	'table-row-group', 'tabular-nums', 'tb', 'tb-rl', 'text', 'text-after-edge', 'text-before-edge', 'text-bottom', 
 	'text-top', 'thick', 'thin', 'titling-caps', 'top', 'top-outside', 'touch', 'traditional', 'transparent', 'triangle', 
@@ -572,8 +575,26 @@ constants_css = [
 	'use-glyph-orientation', 'use-script', 'verso', 'vertical', 'vertical-ideographic', 'vertical-lr', 'vertical-rl', 
 	'vertical-text', 'view-box', 'visible', 'visibleFill', 'visiblePainted', 'visibleStroke', 'w-resize', 'wait', 'wavy', 
 	'weight', 'whitespace', 'wider', 'words', 'wrap', 'wrap-reverse', 'x', 'x-large', 'x-small', 'xx-large', 'xx-small', 
-	'y', 'zero', 'zoom-in', 'zoom-out'
+	'y', 'zero', 'zoom-in', 'zoom-out', '!important',
 ]
+keywords_css =  [
+	 '@annotation', '@bottom-center', '@character-variant', '@charset', '@counter-style', 
+	'@font-face', '@font-feature-values', '@historical-forms', '@import', '@keyframes', '@layer', '@left-bottom', 
+	'@media', '@namespace', '@ornaments', '@page', '@property', '@right-bottom', '@scroll-timeline', '@styleset', 
+	'@stylistic', '@supports', '@swash', '@top-center', '@viewport',
+	'a', 'abbr', 'acronym', 'address', 'applet', 'area', 'article', 'aside', 'audio', 'b', 'base', 'bdi', 'bdo', 
+	'bgsound', 'big', 'blink', 'blockquote', 'body', 'br', 'button', 'canvas', 'caption', 'cite', 'code', 'col', 
+	'colgroup', 'content', 'data', 'datalist', 'dd', 'del', 'details', 'dfn', 'dialog', 'dir', 'div', 'dl', 'dt', 'em', 
+	'embed', 'fieldset', 'figcaption', 'figure', 'font', 'footer', 'form', 'frame', 'frameset', 'head', 'header', 
+	'hgroup', 'hr', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'html', 'i', 'iframe', 'img', 'input', 'ins', 'kbd', 'keygen', 'label', 'legend', 'li', 
+	'link', 'main', 'map', 'mark', 'marquee', 'menu', 'menuitem', 'meta', 'meter', 'nav', 'nobr', 'noembed', 'noframes', 
+	'noscript', 'object', 'ol', 'optgroup', 'option', 'output', 'p', 'param', 'picture', 'portal', 'pre', 
+	'progress', 'q', 'rb', 'rp', 'rt', 'rtc', 'ruby', 's', 'samp', 'script', 'section', 'select', 'shadow', 'slot', 
+	'source', 'spacer', 'span', 'strike', 'strong', 'sub', 'summary', 'sup', 'table', 'tbody', 'td', 
+	'template', 'textarea', 'tfoot', 'th', 'thead', 'time', 'title', 'tr', 'track', 'tt', 'u', 'ul', 'video', 'wbr', 
+	'xmp', 'svg'
+]
+
 
 
 file = open('keywords.h', 'w')
@@ -592,12 +613,6 @@ typedef struct {
 def label(kwds, l):
 	return [(l, kwd) for kwd in kwds]
 
-cant_overlap(keywords_c, constants_c, builtins_c)
-cant_overlap(keywords_rust, builtins_rust, constants_rust)
-cant_overlap(keywords_python, builtins_python)
-cant_overlap(keywords_javascript, builtins_javascript, constants_javascript)
-cant_overlap(constants_css, builtins_css)
-cant_overlap(constants_glsl, builtins_glsl, keywords_glsl)
 c_things = label(keywords_c, SYNTAX_KEYWORD) + label(constants_c, SYNTAX_CONSTANT) + label(builtins_c, SYNTAX_BUILTIN)
 output_keywords(file, c_things, 'c')
 cpp_things = c_things + label(keywords_cpp, SYNTAX_KEYWORD)
@@ -618,5 +633,5 @@ output_keywords(file, label(builtins_html, SYNTAX_BUILTIN), 'html')
 output_keywords(file, label(constants_config, SYNTAX_CONSTANT), 'config')
 output_keywords(file, label(keywords_glsl, SYNTAX_KEYWORD) + label(constants_glsl, SYNTAX_CONSTANT)
 	+ label(builtins_glsl, SYNTAX_BUILTIN), 'glsl')
-output_keywords(file, label(builtins_css, SYNTAX_BUILTIN) + label(constants_css, SYNTAX_CONSTANT), 'css')
+output_keywords(file, label(builtins_css, SYNTAX_BUILTIN) + label(constants_css, SYNTAX_CONSTANT) + label(keywords_css, SYNTAX_KEYWORD), 'css')
 file.close()

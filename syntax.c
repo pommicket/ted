@@ -198,10 +198,16 @@ static bool syntax_number_continues(Language lang, const char32_t *line, u32 lin
 			return false;
 		}
 	}
-	if (lang == LANG_CSS && line[i] < 128 && isalpha((char)line[i])) {
-		// units
-		return true;
+	if (lang == LANG_CSS) {
+		if (line[i] < 128 && isalpha((char)line[i])) {
+			// units
+			return true;
+		}
+		if (line[i] == '%') {
+			return true;
+		}
 	}
+	
 	return (line[i] < CHAR_MAX && 
 		(strchr(SYNTAX_DIGITS, (char)line[i])
 		|| (i && line[i-1] == 'e' && (line[i] == '+' || line[i] == '-'))));
@@ -217,7 +223,7 @@ static bool is_keyword(Language lang, char32_t c) {
 			return true;
 		break;
 	case LANG_CSS:
-		if (c == '-' || c == '@' || c == ':')
+		if (c == '-' || c == '@' || c == '!')
 			return true;
 		break;
 	case LANG_HTML:
@@ -236,6 +242,13 @@ static u32 syntax_keyword_len(Language lang, const char32_t *line, u32 i, u32 li
 	for (keyword_end = i; keyword_end < line_len; ++keyword_end) {
 		if (!is_keyword(lang, line[keyword_end]))
 			break;
+	}
+	if (lang == LANG_CSS && keyword_end < line_len && line[keyword_end] == ':') {
+		// in CSS we allow : at the end of keywords only
+		// this is so "font-family:" can be a keyword but "a:hover" is parsed as "a" ":hover"
+		if (keyword_end + 1 == line_len || (!is32_word(line[keyword_end + 1]) && line[keyword_end + 1] != ':')) {
+			++keyword_end;
+		}
 	}
 	return keyword_end - i;
 }	
@@ -1723,19 +1736,111 @@ static void syntax_highlight_css(SyntaxState *state_ptr, const char32_t *line, u
 		case '}':
 			in_braces = false;
 			break;
+		case '*':
+			if (char_types) {
+				char_types[i++] = SYNTAX_KEYWORD;
+				dealt_with = true;
+				goto handle_pseudo;
+			}
+			break;
+		case '[':
+			if (!in_braces) {
+				if (char_types) char_types[i] = SYNTAX_KEYWORD;
+				for (++i; i < line_len; ++i) {
+					if (char_types)
+						char_types[i] = SYNTAX_KEYWORD;
+					if (line[i] == ']') break;
+				}
+				if (i < line_len && char_types){
+					char_types[i++] = SYNTAX_KEYWORD;
+				}
+				dealt_with = true;
+				if (char_types)
+					goto handle_pseudo;
+			}
+			break;
+		case '\'':
+		case '"': {
+			// i'm not handling multiline stirngs
+			// wtf are you doing with multiline strings in css
+			if (char_types) char_types[i] = SYNTAX_STRING;
+			int backslashes = 0;
+			for (++i; i < line_len; ++i) {
+				if (char_types)
+					char_types[i] = SYNTAX_STRING;
+				if (backslashes % 2 == 0 && line[i] == c)
+					break;
+				if (line[i] == '\\')
+					++backslashes;
+				else
+					backslashes = 0;
+			}
+			dealt_with = true;
+			}
+			break;
 		case '.':
 		case '#':
 			if (!in_braces && char_types) {
-				char_types[i] = SYNTAX_KEYWORD;		
-				for (++i; i < line_len; ++i) {
+				char_types[i++] = SYNTAX_KEYWORD;		
+				for (; i < line_len; ++i) {
 					if (is32_alnum(line[i]) || line[i] == '-' || line[i] == '_') {
 						char_types[i] = SYNTAX_KEYWORD;
 					} else {
 						break;
 					}
 				}
-				--i; // we will increment i in the loop
 				dealt_with = true;
+				handle_pseudo:
+				while (i < line_len && line[i] == ':') {
+					// handle pseudo-classes and pseudo-elements
+					static const char *const pseudo[] = {
+						":active", ":any-link", ":autofill", ":blank", ":checked", 
+						":current", ":default", ":defined", ":dir", ":disabled", 
+						":empty", ":enabled", ":first", ":first-child", 
+						":first-of-type", ":fullscreen", ":future", ":focus", 
+						":focus-visible", ":focus-within", ":has", ":host", 
+						":host-context", ":hover", ":indeterminate", ":in-range", 
+						":invalid", ":is", ":lang", ":last-child", ":last-of-type", 
+						":left", ":link", ":local-link", ":modal", ":not", 
+						":nth-child", ":nth-col", ":nth-last-child", 
+						":nth-last-col", ":nth-last-of-type", ":nth-of-type", 
+						":only-child", ":only-of-type", ":optional", 
+						":out-of-range", ":past", ":picture-in-picture", 
+						":placeholder-shown", ":paused", ":playing", ":read-only", 
+						":read-write", ":required", ":right", ":root", ":scope", 
+						":state", ":target", ":target-within", ":user-invalid", 
+						":valid", ":visited", ":where", "::after", "::before", 
+						":after", ":before",
+						"::backdrop", "::cue", "::cue-region", "::first-letter", 
+						"::first-line", "::file-selector-button", 
+						"::grammar-error", "::marker", "::part", "::placeholder", 
+						"::selection", "::slotted", "::spelling-error", 
+						"::target-text", 
+					};
+					String32 s32 = {
+						.len = line_len - i,
+						.str = (char32_t *)(line + i)
+					};
+					bool found = false;
+					for (size_t p = 0; p < arr_count(pseudo); ++p) {
+						size_t len = strlen(pseudo[p]);
+						if (str32_has_ascii_prefix(s32, pseudo[p])
+							&& (
+							i + len >= line_len
+							|| !is_keyword(LANG_CSS, line[i + len])
+							)) {
+							found = true;
+							for (size_t j = 0; j < len; ++j) {
+								assert(i < line_len);// guaranteed by has_ascii_prefix
+								char_types[i++] = SYNTAX_KEYWORD;
+							}
+						}
+					}
+					if (!found) break;
+				}
+				
+				--i; // we will increment i in the loop
+			
 			}
 			if (c == '#' && in_braces && char_types) {
 				// color which we'll treat as a number.
@@ -1772,23 +1877,28 @@ static void syntax_highlight_css(SyntaxState *state_ptr, const char32_t *line, u
 			if ((i && is_keyword(LANG_CSS, line[i - 1])) || !is_keyword(LANG_CSS, c) || is32_digit(c))
 				break; // can't be a keyword on its own.
 			
-			if (in_braces && char_types) {
+			if (char_types) {
 				u32 keyword_len = syntax_keyword_len(LANG_CSS, line, i, line_len);
 				Keyword const *keyword = syntax_keyword_lookup(syntax_all_keywords_css, &line[i], keyword_len);
 				
-				if (keyword) {
+				// in braces, we only accept SYNTAX_KEYWORD, and outside we accept everything else
+				if (keyword && (keyword->type != SYNTAX_KEYWORD) == in_braces) {
 					SyntaxCharType type = keyword->type;
 					for (size_t j = 0; j < keyword_len; ++j) {
 						char_types[i++] = type;
 					}
-					--i; // we'll increment i from the for loop
 					dealt_with = true;
+					if (!in_braces && char_types) {
+						goto handle_pseudo;
+					} else {					
+						--i; // we'll increment i from the for loop
+					}
 					break;
 				}
 			}
 		} break;
 		}
-		if (char_types && !dealt_with) {
+		if (char_types && !dealt_with && i < line_len) {
 			SyntaxCharType type = SYNTAX_NORMAL;
 			if (in_comment)
 				type = SYNTAX_COMMENT;
