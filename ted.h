@@ -262,6 +262,10 @@ typedef struct {
 	u8 tags_max_depth;
 	GlRcSAB *bg_shader;
 	GlRcTexture *bg_texture;
+	/// string used to start comments
+	char comment_start[16];
+	/// string used to end comments
+	char comment_end[16];
 	/// Comma-separated list of file names which identify the project root
 	char root_identifiers[4096];
 	/// LSP server command
@@ -1496,10 +1500,6 @@ bool language_is_valid(Language language);
 Language language_from_str(const char *str);
 /// convert language to string
 const char *language_to_str(Language language);
-/// string which should be put before comments in the given language
-const char *language_comment_start(Language l);
-/// string which should be put after comments in the given language
-const char *language_comment_end(Language l);
 /// get the color setting associated with the given syntax highlighting type
 ColorSetting syntax_char_type_to_color_setting(SyntaxCharType t);
 /// returns ')' for '(', etc., or 0 if c is not an opening bracket

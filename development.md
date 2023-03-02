@@ -72,11 +72,12 @@ go to `command.c` and add the name of the command to the
 `command_names` array,
 and implement the command in the `command_execute` function.
 
-## Adding languages
+## Adding (built-in) languages
 
-Add a new member to the `Language` enum in `base.h`.
-After that you should get a bunch of compiler warnings and errors
-which will tell you what you need to add.
+Add a new member to the `Language` enum in `ted.h`.
+Update `syntax_register_builtin_languages` accordingly.
+Make sure to define `comment-start` and `comment-end`
+for the language in `ted.cfg`.
 
 ### Syntax highlighting
 

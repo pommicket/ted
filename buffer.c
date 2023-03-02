@@ -3023,8 +3023,8 @@ void buffer_dedent_cursor_line(TextBuffer *buffer) {
 
 
 void buffer_comment_lines(TextBuffer *buffer, u32 first_line, u32 last_line) {
-	Language lang = buffer_language(buffer);
-	const char *start = language_comment_start(lang), *end = language_comment_end(lang);
+	Settings *settings = buffer_settings(buffer);
+	const char *start = settings->comment_start, *end = settings->comment_end;
 	if (!start[0] && !end[0])
 		return;
 	String32 start32 = str32_from_utf8(start), end32 = str32_from_utf8(end);
@@ -3078,8 +3078,8 @@ static bool buffer_line_ends_with_ascii(TextBuffer *buffer, u32 line_idx, const 
 }
 
 void buffer_uncomment_lines(TextBuffer *buffer, u32 first_line, u32 last_line) {
-	Language lang = buffer_language(buffer);
-	const char *start = language_comment_start(lang), *end = language_comment_end(lang);
+	Settings *settings = buffer_settings(buffer);
+	const char *start = settings->comment_start, *end = settings->comment_end;
 	if (!start[0] && !end[0])
 		return;
 	u32 start_len = (u32)strlen(start), end_len = (u32)strlen(end);
@@ -3102,8 +3102,8 @@ void buffer_uncomment_lines(TextBuffer *buffer, u32 first_line, u32 last_line) {
 }
 
 void buffer_toggle_comment_lines(TextBuffer *buffer, u32 first_line, u32 last_line) {
-	Language lang = buffer_language(buffer);
-	const char *start = language_comment_start(lang), *end = language_comment_end(lang);
+	Settings *settings = buffer_settings(buffer);
+	const char *start = settings->comment_start, *end = settings->comment_end;
 	if (!start[0] && !end[0])
 		return;
 	// if first line is a comment, uncomment lines, otherwise, comment lines

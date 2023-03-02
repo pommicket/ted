@@ -97,46 +97,6 @@ const char *language_to_str(Language language) {
 	return "???";
 }
 
-// start of single line comment for language l -- used for comment/uncomment selection
-const char *language_comment_start(Language l) {
-	switch (l) {
-	case LANG_C:
-	case LANG_RUST:
-	case LANG_CPP:
-	case LANG_JAVASCRIPT:
-	case LANG_TYPESCRIPT:
-	case LANG_JSON: // JSON technically doesn't have comments but apparently some parsers support this so might as well have this here
-	case LANG_JAVA:
-	case LANG_GO:
-	case LANG_GLSL:
-		return "// ";
-	case LANG_CONFIG:
-	case LANG_TED_CFG:
-	case LANG_PYTHON:
-		return "# ";
-	case LANG_TEX:
-		return "% ";
-	case LANG_HTML:
-	case LANG_XML:
-		return "<!-- ";
-	case LANG_NONE:
-	case LANG_MARKDOWN:
-	case LANG_TEXT:
-		break;
-	}
-	return "";
-}
-
-// end of single line comment for language l
-const char *language_comment_end(Language l) {
-	switch (l) {
-	case LANG_HTML:
-		return " -->";
-	default:
-		return "";
-	}
-}
-
 ColorSetting syntax_char_type_to_color_setting(SyntaxCharType t) {
 	switch (t) {
 	case SYNTAX_NORMAL: return COLOR_TEXT;

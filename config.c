@@ -122,6 +122,8 @@ static SettingString const settings_string[] = {
 	{"root-identifiers", settings_zero.root_identifiers, sizeof settings_zero.root_identifiers, true},
 	{"lsp", settings_zero.lsp, sizeof settings_zero.lsp, true},
 	{"lsp-configuration", settings_zero.lsp_configuration, sizeof settings_zero.lsp_configuration, true},
+	{"comment-start", settings_zero.comment_start, sizeof settings_zero.comment_start, true},
+	{"comment-end", settings_zero.comment_end, sizeof settings_zero.comment_end, true},
 };
 
 

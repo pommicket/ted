@@ -1,7 +1,4 @@
 /*
-@TODO:
-- check validity in CMD_SET_LANGUAGE
-- comment-start & comment-end settings
 FUTURE FEATURES:
 - manual.md
 - CSS highlighting
