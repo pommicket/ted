@@ -411,10 +411,10 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 	
 	case CMD_SET_LANGUAGE:
 		if (buffer && !buffer->is_line_buffer) {
-			if (argument < 0 || argument >= LANG_COUNT_MAX)
-				buffer->manual_language = -1;
+			if (argument <= 0 || argument > LANG_USER_MAX || !language_is_valid((Language)argument))
+				buffer->manual_language = 0;
 			else
-				buffer->manual_language = (i16)(argument + 1);
+				buffer->manual_language = argument;
 		}
 		break;
 	case CMD_AUTOCOMPLETE:

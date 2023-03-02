@@ -67,28 +67,34 @@ enum {
 
 typedef struct {
 	Language lang;
-	char name[32];
+	char *name;
 } LanguageName;
 
-static LanguageName language_names[LANG_COUNT_MAX];
+static LanguageName *language_names = NULL; // dynamic array
 
 
-// returns the language this string is referring to, or LANG_NONE if it's invalid.
 Language language_from_str(const char *str) {
-	for (int i = 0; language_names[i].name[0]; ++i) {
-		if (strcmp_case_insensitive(language_names[i].name, str) == 0)
-			return language_names[i].lang;
+	arr_foreach_ptr(language_names, LanguageName, lname) {
+		if (strcmp_case_insensitive(lname->name, str) == 0)
+			return lname->lang;
 	}
 	return LANG_NONE;
 }
 
+bool language_is_valid(Language language) {
+	arr_foreach_ptr(language_names, LanguageName, lname) {
+		if (lname->lang == language)
+			return true;
+	}
+	return false;
+}
+
 const char *language_to_str(Language language) {
-	for (int i = 0; language_names[i].name[0]; ++i) {
-		if (language_names[i].lang == language)
-			return language_names[i].name;
+	arr_foreach_ptr(language_names, LanguageName, lname) {
+		if (lname->lang == language)
+			return lname->name;
 	}
 	return "???";
-
 }
 
 // start of single line comment for language l -- used for comment/uncomment selection
@@ -1719,12 +1725,12 @@ typedef struct {
 	SyntaxHighlightFunction func;
 } SyntaxHighlighter;
 
-static SyntaxHighlighter syntax_highlighters[LANG_COUNT_MAX];
+static SyntaxHighlighter *syntax_highlighters = NULL; // dynamic array
 
 void syntax_highlight(SyntaxState *state, Language lang, const char32_t *line, u32 line_len, SyntaxCharType *char_types) {
-	for (int i = 0; syntax_highlighters[i].func; ++i) {
-		if (syntax_highlighters[i].lang == lang) {
-			syntax_highlighters[i].func(state, line, line_len, char_types);
+	arr_foreach_ptr(syntax_highlighters, SyntaxHighlighter, highlighter) {
+		if (highlighter->lang == lang) {
+			highlighter->func(state, line, line_len, char_types);
 			return;
 		}
 	}
@@ -1883,30 +1889,28 @@ void syntax_register_language(const LanguageInfo *info) {
 		return;
 	}
 	
-	int i;
-	for (i = 0; language_names[i].name[0]; i++) {
-		if (streq(language_names[i].name, info->name) || language_names[i].lang == info->id) {
-			// this language will be overridden i guess
-			break;
+	arr_foreach_ptr(language_names, LanguageName, lname) {
+		if (streq(lname->name, info->name)) {
+			debug_println("Language named %s registered twice.", info->name);
+			return;
+		}
+		if (lname->lang == info->id) {
+			debug_println("Language with ID %" PRIu32 " registered twice.", info->id);
+			return;
 		}
 	}
-	if (i < LANG_COUNT_MAX) {
-		language_names[i].lang = info->id;
-		strbuf_cpy(language_names[i].name, info->name);
+	{
+		LanguageName *lname = arr_addp(language_names);
+		lname->lang = info->id;
+		lname->name = str_dup(info->name);
 	}
+	
+	
 	if (info->highlighter) {
-		for (i = 0; syntax_highlighters[i].func; i++) {
-			if (syntax_highlighters[i].lang == info->id) {
-				// this language will be overridden i guess
-				break;
-			}
-		}
-		if (i < LANG_COUNT_MAX) {
-			syntax_highlighters[i].lang = info->id;
-			syntax_highlighters[i].func = info->highlighter;
-		}
+		SyntaxHighlighter *highlighter = arr_addp(syntax_highlighters);
+		highlighter->lang = info->id;
+		highlighter->func = info->highlighter;
 	}
 	
 	lsp_register_language(info->id, info->lsp_identifier);
-	
 }

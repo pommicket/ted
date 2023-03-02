@@ -834,6 +834,10 @@ static void config_parse_line(ConfigReader *cfg, Settings **applicable_settings,
 				
 				char *p = exts;
 				while (*p) {
+					while (*p == ',')
+						++p;
+					if (*p == '\0')
+						break;
 					size_t len = strcspn(p, ",");
 					LanguageExtension *ext = arr_addp(settings->language_extensions);
 					ext->language = lang;
@@ -1029,7 +1033,8 @@ void config_parse(Ted *ted, ConfigPart **pparts) {
 	arr_free(languages);
 	
 	arr_foreach_ptr(parts, ConfigPart, part) {
-		
+		cfg->filename = part->file;
+		cfg->line_number = part->line;
 		arr_add(part->text, '\0'); // null termination
 		char *line = part->text;
 		while (*line) {

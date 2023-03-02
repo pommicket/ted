@@ -94,10 +94,6 @@ enum {
 /// May be one of the `LANG_*` constants, or a dynamically registered language.
 typedef u32 Language;
 
-/// Maximum number of languages available.
-#define LANG_COUNT_MAX 511
-
-
 /// Current state of syntax highlighting.
 typedef u32 SyntaxState;
 
@@ -336,7 +332,7 @@ typedef struct {
 	double scroll_x, scroll_y;
 	/// last write time to `path`
 	double last_write_time;
-	/// 1 + the language the buffer has been manually set to, or 0 if it hasn't been manually set to anything
+	/// the language the buffer has been manually set to, or `LANG_NONE` if it hasn't been set to anything
 	i64 manual_language;
 	/// position of cursor
 	BufferPos cursor_pos;
@@ -1492,7 +1488,13 @@ void session_read(Ted *ted);
 ///
 /// this should be done before loading configs so language-specific settings are recognized properly.
 void syntax_register_language(const LanguageInfo *info);
+/// register ted's built-in languages.
+void syntax_register_builtin_languages(void);
+/// returns `true` if `language` is a valid language ID
+bool language_is_valid(Language language);
+/// read language name from `str`. returns `LANG_NONE` if `str` is invalid.
 Language language_from_str(const char *str);
+/// convert language to string
 const char *language_to_str(Language language);
 /// string which should be put before comments in the given language
 const char *language_comment_start(Language l);

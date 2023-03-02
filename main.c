@@ -1,6 +1,6 @@
 /*
 @TODO:
-- check bounds in CMD_SET_LANGUAGE
+- check validity in CMD_SET_LANGUAGE
 - comment-start & comment-end settings
 FUTURE FEATURES:
 - manual.md
@@ -318,7 +318,7 @@ int main(int argc, char **argv) {
 	
 	command_init();
 	color_init();
-	
+	syntax_register_builtin_languages();
 	
 	// read command-line arguments
 	const char *starting_filename = NULL;

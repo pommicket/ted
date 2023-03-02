@@ -8,27 +8,19 @@
 
 typedef struct {
 	u64 number;
-	char identifier[32];
+	char *identifier;
 } LanguageId;
-static LanguageId language_ids[512];
+static LanguageId *language_ids = NULL; // dynamic array
 void lsp_register_language(u64 id, const char *lsp_identifier) {
-	int i;
-	for (i = 0; *language_ids[i].identifier; ++i) {
-		if (language_ids[i].number == id) {
-			break;
-		}
-	}
-	if (i < (int)arr_count(language_ids) - 1) {
-		language_ids[i].number = id;
-		strbuf_cpy(language_ids[i].identifier, lsp_identifier);
-	}
+	LanguageId *lid = arr_addp(language_ids);
+	lid->number = id;
+	lid->identifier = str_dup(lsp_identifier);
 }
 
 static const char *lsp_language_id(u64 lang) {
-	int i;
-	for (i = 0; *language_ids[i].identifier; ++i) {
-		if (language_ids[i].number == lang) {
-			return language_ids[i].identifier;
+	arr_foreach_ptr(language_ids, LanguageId, lid) {
+		if (lid->number == lang) {
+			return lid->identifier;
 		}
 	}
 	assert(0);

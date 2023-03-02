@@ -222,8 +222,9 @@ Language buffer_language(TextBuffer *buffer) {
 	
 	// @TODO(optimization): cache this?
 	//         (we're calling buffer_lsp on every edit and that calls this)
-	if (buffer->manual_language >= 1)
-		return (Language)(buffer->manual_language - 1);
+	
+	if (buffer->manual_language != LANG_NONE)
+		return (Language)buffer->manual_language;
 	const Settings *settings = buffer->ted->default_settings; // important we don't use buffer_settings here since that would cause a loop!
 	const char *filename = path_filename(buffer->path);
 	size_t filename_len = strlen(filename);
