@@ -6,7 +6,6 @@ FUTURE FEATURES:
 - styles ([color] sections)
   - for this, it would be nice to have #include in ted.cfg
 - make go-to-definition/hover/highlight modifier key configurable
-- return to previous location in buffer
 - font setting & support for multiple fonts to cover more characters
 - support for variable-width fonts
 - robust find (results shouldn't move around when you type things)

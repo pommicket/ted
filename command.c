@@ -39,6 +39,7 @@ static CommandName command_names[] = {
 	{"select-down-blank-line", CMD_SELECT_DOWN_BLANK_LINE},
 	{"page-up", CMD_PAGE_UP},
 	{"page-down", CMD_PAGE_DOWN},
+	{"previous-position", CMD_PREVIOUS_POSITION},
 	{"tab", CMD_TAB},
 	{"backtab", CMD_BACKTAB},
 	{"insert-text", CMD_INSERT_TEXT},
@@ -264,6 +265,9 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 	case CMD_SELECT_DOWN_BLANK_LINE:
 		if (buffer) buffer_select_down_blank_lines(buffer, argument);
 		autocomplete_close(ted);
+		break;
+	case CMD_PREVIOUS_POSITION:
+		buffer_cursor_move_to_prev_pos(buffer);
 		break;
 	
 	case CMD_INSERT_TEXT: {

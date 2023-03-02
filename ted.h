@@ -342,6 +342,8 @@ typedef struct {
 	BufferPos cursor_pos;
 	/// if `selection` is true, the text between `selection_pos` and `cursor_pos` is selected.
 	BufferPos selection_pos;
+	/// "previous" position of cursor, for CMD_PREVIOUS_POSITION
+	BufferPos prev_cursor_pos;
 	/// "line buffers" are buffers which can only have one line of text (used for inputs)
 	bool is_line_buffer;
 	/// is anything selected?
@@ -975,6 +977,8 @@ i64 buffer_pos_move_right_words(TextBuffer *buffer, BufferPos *pos, i64 nwords);
 i64 buffer_cursor_move_left_words(TextBuffer *buffer, i64 nwords);
 /// returns the number of words successfully moved by.
 i64 buffer_cursor_move_right_words(TextBuffer *buffer, i64 nwords);
+/// move cursor to "previous" position (i.e. \ref CMD_PREVIOUS_POSITION)
+void buffer_cursor_move_to_prev_pos(TextBuffer *buffer);
 /// Returns a string of word characters (see is32_word) around the position,
 /// or an empty string if neither of the characters to the left and right of the cursor are word characters.
 /// NOTE: The string is invalidated when the buffer is changed!!!

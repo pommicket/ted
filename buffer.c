@@ -1119,10 +1119,20 @@ void buffer_cursor_move_to_pos(TextBuffer *buffer, BufferPos pos) {
 	if (buffer_pos_eq(buffer->cursor_pos, pos)) {
 		return;
 	}
+	
+	if (labs((long)buffer->cursor_pos.line - (long)pos.line) > 20) {
+		// if this is a big jump, update the previous cursor pos
+		buffer->prev_cursor_pos = buffer->cursor_pos;
+	}
+	
 	buffer->cursor_pos = pos;
 	buffer->selection = false;
 	buffer_scroll_to_cursor(buffer);
 	signature_help_retrigger(buffer->ted);
+}
+
+void buffer_cursor_move_to_prev_pos(TextBuffer *buffer) {
+	buffer_cursor_move_to_pos(buffer, buffer->prev_cursor_pos);
 }
 
 i64 buffer_cursor_move_left(TextBuffer *buffer, i64 by) {
