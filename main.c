@@ -1,8 +1,5 @@
 /*
-@TODO
-- what's wrong with session
 FUTURE FEATURES:
-- option for separate colors for read/write highlights
 - styles ([color] sections)
   - for this, it would be nice to have #include in ted.cfg
 - better undo chaining (dechain on backspace?)
@@ -545,11 +542,14 @@ int main(int argc, char **argv) {
 			} else {
 				ted_new_file(ted, filename);
 			}
-		} else {
-			session_read(ted);
 		}
 	}
+	if (arr_len(starting_files) == 0) {
+		session_read(ted);
+	}
+	
 	arr_free(starting_files);
+	
 
 
 
