@@ -3,7 +3,6 @@ FUTURE FEATURES:
 - option for separate colors for read/write highlights
 - styles ([color] sections)
   - for this, it would be nice to have #include in ted.cfg
-- open multiple files with command line arguments
 - better undo chaining (dechain on backspace?)
 - manual.md
 - regenerate tags for completion too if there are no results
@@ -316,27 +315,36 @@ int main(int argc, char **argv) {
 	syntax_register_builtin_languages();
 	
 	// read command-line arguments
-	const char *starting_filename = NULL;
-	switch (argc) {
-	case 0: case 1: break;
-	case 2:
-		if (streq(argv[1], "--help")) {
-			printf("%s\n", TED_VERSION_FULL);
-			printf("Usage: ted [file name]\n");
-			exit(0);
-		} else if (streq(argv[1], "--version")) {
-			printf("%s\n", TED_VERSION_FULL);
-			exit(0);
+	int dash_dash = argc;
+	for (int i = 1; i < argc; ++i) {
+		if (streq(argv[i], "--")) {
+			dash_dash = i;
+			break;
 		}
-		// essentially, replace / with \ on windows.
-		for (char *p = argv[1]; *p; ++p)
-			if (strchr(ALL_PATH_SEPARATORS, *p))
-				*p = PATH_SEPARATOR;
-		starting_filename = argv[1];
-		break;
-	default:	
-		fprintf(stderr, "Usage: %s [filename]\n", argv[0]);
-		return EXIT_FAILURE;
+	}
+	
+	const char **starting_files = NULL;
+	for (int i = 1; i < dash_dash; ++i) {
+		if (streq(argv[i], "--help")) {
+			printf("%s\n", TED_VERSION_FULL);
+			printf("A text editor by pommicket.\n");
+			printf("For more information see https://github.com/pommicket/ted\n");
+			printf("\n");
+			printf("Usage: ted [--help] [--version] [--] [file names]\n");
+			exit(0);
+		} else if (streq(argv[i], "--version")) {
+			printf("%s\n", TED_VERSION_FULL);
+			exit(0);
+		} else if (argv[i][0] == '-') {
+			fprintf(stderr, "Unrecognized option: %s\n", argv[i]);
+			exit(EXIT_FAILURE);
+		} else {
+			arr_add(starting_files, argv[i]);
+		}
+	}
+	
+	for (int i = dash_dash + 1; i < argc; ++i) {
+		arr_add(starting_files, argv[i]);
 	}
 	
 	PROFILE_TIME(basic_init_end)
@@ -527,17 +535,19 @@ int main(int argc, char **argv) {
 	line_buffer_create(&ted->argument_buffer, ted);
 	buffer_create(&ted->build_buffer, ted);
 
-	{
-		if (starting_filename) {
-			if (fs_file_exists(starting_filename)) {
-				ted_open_file(ted, starting_filename);
+	for (u32 i = 0; i < arr_len(starting_files); ++i) {
+		const char *filename = starting_files[i];
+		if (filename) {
+			if (fs_file_exists(filename)) {
+				ted_open_file(ted, filename);
 			} else {
-				ted_new_file(ted, starting_filename);
+				ted_new_file(ted, filename);
 			}
 		} else {
 			session_read(ted);
 		}
 	}
+	arr_free(starting_files);
 
 
 

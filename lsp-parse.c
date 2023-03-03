@@ -911,6 +911,7 @@ void process_message(LSP *lsp, JSON *json) {
 	LSPRequest response_to = {0};
 	if (id_value.type == JSON_NUMBER) {
 		u64 id = (u64)id_value.val.number;
+		SDL_LockMutex(lsp->messages_mutex);
 		arr_foreach_ptr(lsp->requests_sent, LSPRequest, req) {
 			if (req->id == id) {
 				response_to = *req;
@@ -918,6 +919,7 @@ void process_message(LSP *lsp, JSON *json) {
 				break;
 			}
 		}
+		SDL_UnlockMutex(lsp->messages_mutex);
 	}
 	
 	double error_code = json_force_number(json_get(json, "error.code"));
@@ -925,89 +927,93 @@ void process_message(LSP *lsp, JSON *json) {
 	JSONValue result = json_get(json, "result");
 	if (result.type != JSON_UNDEFINED || error.type == JSON_STRING) {
 		// server-to-client response
-		LSPResponse response = {0};
-		bool add_to_messages = false;
-		response.request = response_to;
-		// now response_to is response's responsibility
-		memset(&response_to, 0, sizeof response_to);
-
-		// make sure (LSPString){0} gets treated as an empty string
-		arr_add(response.string_data, '\0');
-		
-		if (error.type == JSON_STRING) {
-			response.error = json_string_get_alloc(json, error.val.string);
-		}
-		
-		if (response.error) {
-			if (error_code != LSP_ERROR_REQUEST_CANCELLED)
-				add_to_messages = true;
-		} else switch (response.request.type) {
-		case LSP_REQUEST_COMPLETION:
-			add_to_messages = parse_completion(lsp, json, &response);
-			break;
-		case LSP_REQUEST_SIGNATURE_HELP:
-			add_to_messages = parse_signature_help(lsp, json, &response);
-			break;
-		case LSP_REQUEST_HOVER:
-			add_to_messages = parse_hover(lsp, json, &response);
-			break;
-		case LSP_REQUEST_DEFINITION:
-		case LSP_REQUEST_DECLARATION:
-		case LSP_REQUEST_TYPE_DEFINITION:
-		case LSP_REQUEST_IMPLEMENTATION:
-			add_to_messages = parse_definition(lsp, json, &response);
-			break;
-		case LSP_REQUEST_HIGHLIGHT:
-			add_to_messages = parse_highlight(lsp, json, &response);
-			break;
-		case LSP_REQUEST_REFERENCES:
-			add_to_messages = parse_references(lsp, json, &response);
-			break;
-		case LSP_REQUEST_WORKSPACE_SYMBOLS:
-			add_to_messages = parse_workspace_symbols(lsp, json, &response);
-			break;
-		case LSP_REQUEST_RENAME:
-			add_to_messages = parse_rename(lsp, json, &response);
-			break;
-		case LSP_REQUEST_INITIALIZE:
-			if (!lsp->initialized) {
-				// it's the response to our initialize request!
-				if (result.type == JSON_OBJECT) {
-					// read server capabilities
-					JSONObject capabilities = json_object_get_object(json, result.val.object, "capabilities");
-					parse_capabilities(lsp, json, capabilities);
-				}
-				
-				LSPRequest initialized = {
-					.type = LSP_REQUEST_INITIALIZED,
-					.data = {{0}},
-				};
-				write_request(lsp, &initialized);
-				// we can now send requests which have nothing to do with initialization
-				lsp->initialized = true;
-				if (lsp->configuration_to_send) {
-					LSPRequest configuration = {
-						.type = LSP_REQUEST_CONFIGURATION
-					};
-					configuration.data.configuration.settings = lsp->configuration_to_send;
-					lsp->configuration_to_send = NULL;
-					lsp_send_request(lsp, &configuration);
-				}
-			}
-			break;
-		default:
-			// it's some response we don't care about
-			break;
-		}
-		
-		if (add_to_messages) {
-			SDL_LockMutex(lsp->messages_mutex);
-			LSPMessage *message = arr_addp(lsp->messages_server2client);
-			message->type = LSP_RESPONSE;
-			message->u.response = response;
-			SDL_UnlockMutex(lsp->messages_mutex);
+		if (!response_to.type) {
+			// response to cancelled request (or invalid response from server)
 		} else {
-			lsp_response_free(&response);
+			LSPResponse response = {0};
+			bool add_to_messages = false;
+			response.request = response_to;
+			// now response_to is response's responsibility
+			memset(&response_to, 0, sizeof response_to);
+	
+			// make sure (LSPString){0} gets treated as an empty string
+			arr_add(response.string_data, '\0');
+			
+			if (error.type == JSON_STRING) {
+				response.error = json_string_get_alloc(json, error.val.string);
+			}
+			
+			if (response.error) {
+				if (error_code != LSP_ERROR_REQUEST_CANCELLED)
+					add_to_messages = true;
+			} else switch (response.request.type) {
+			case LSP_REQUEST_COMPLETION:
+				add_to_messages = parse_completion(lsp, json, &response);
+				break;
+			case LSP_REQUEST_SIGNATURE_HELP:
+				add_to_messages = parse_signature_help(lsp, json, &response);
+				break;
+			case LSP_REQUEST_HOVER:
+				add_to_messages = parse_hover(lsp, json, &response);
+				break;
+			case LSP_REQUEST_DEFINITION:
+			case LSP_REQUEST_DECLARATION:
+			case LSP_REQUEST_TYPE_DEFINITION:
+			case LSP_REQUEST_IMPLEMENTATION:
+				add_to_messages = parse_definition(lsp, json, &response);
+				break;
+			case LSP_REQUEST_HIGHLIGHT:
+				add_to_messages = parse_highlight(lsp, json, &response);
+				break;
+			case LSP_REQUEST_REFERENCES:
+				add_to_messages = parse_references(lsp, json, &response);
+				break;
+			case LSP_REQUEST_WORKSPACE_SYMBOLS:
+				add_to_messages = parse_workspace_symbols(lsp, json, &response);
+				break;
+			case LSP_REQUEST_RENAME:
+				add_to_messages = parse_rename(lsp, json, &response);
+				break;
+			case LSP_REQUEST_INITIALIZE:
+				if (!lsp->initialized) {
+					// it's the response to our initialize request!
+					if (result.type == JSON_OBJECT) {
+						// read server capabilities
+						JSONObject capabilities = json_object_get_object(json, result.val.object, "capabilities");
+						parse_capabilities(lsp, json, capabilities);
+					}
+					
+					LSPRequest initialized = {
+						.type = LSP_REQUEST_INITIALIZED,
+						.data = {{0}},
+					};
+					write_request(lsp, &initialized);
+					// we can now send requests which have nothing to do with initialization
+					lsp->initialized = true;
+					if (lsp->configuration_to_send) {
+						LSPRequest configuration = {
+							.type = LSP_REQUEST_CONFIGURATION
+						};
+						configuration.data.configuration.settings = lsp->configuration_to_send;
+						lsp->configuration_to_send = NULL;
+						lsp_send_request(lsp, &configuration);
+					}
+				}
+				break;
+			default:
+				// it's some response we don't care about
+				break;
+			}
+			
+			if (add_to_messages) {
+				SDL_LockMutex(lsp->messages_mutex);
+				LSPMessage *message = arr_addp(lsp->messages_server2client);
+				message->type = LSP_RESPONSE;
+				message->u.response = response;
+				SDL_UnlockMutex(lsp->messages_mutex);
+			} else {
+				lsp_response_free(&response);
+			}
 		}
 	} else if (json_has(json, "method")) {
 		// server-to-client request

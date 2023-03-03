@@ -221,7 +221,7 @@ void definitions_process_lsp_response(Ted *ted, LSP *lsp, const LSPResponse *res
 		
 		} break;
 	default:
-		debug_println("?? bad request type in %s", __func__);
+		debug_println("?? bad request type in %s : %u:%u", __func__,  response->request.id, response->request.type);
 		break;
 	}
 }
