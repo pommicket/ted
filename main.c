@@ -1,6 +1,4 @@
 /*
-@TODO:
-- preserve permissions on save
 FUTURE FEATURES:
 - option for separate colors for read/write highlights
 - styles ([color] sections)

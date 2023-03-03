@@ -4,6 +4,8 @@
 
 #include "ted.h"
 
+#include <sys/stat.h>
+
 #define BUFFER_UNTITLED "Untitled" // what to call untitled buffers
 
 // this is a macro so we get -Wformat warnings
@@ -2455,84 +2457,97 @@ void buffer_new_file(TextBuffer *buffer, const char *path) {
 bool buffer_save(TextBuffer *buffer) {
 	const Settings *settings = buffer_settings(buffer);
 	
-	if (buffer_is_named_file(buffer)) {
-		if (buffer->view_only) {
-			buffer_error(buffer, "Can't save view-only file.");
-			return false;
-		}
-		char tmp_path[TED_PATH_MAX+10];
-		strbuf_printf(tmp_path, "%s.ted-tmp", buffer->path);
-		if (strlen(tmp_path) != strlen(buffer->path) + 8) {
-			buffer_error(buffer, "File name too long.");
-			return false;
-		}
-
-		FILE *out = fopen(tmp_path, "wb");
-		if (out) {
-			if (settings->auto_add_newline) {
-				Line *last_line = &buffer->lines[buffer->nlines - 1];
-				if (last_line->len) {
-					// if the last line isn't empty, add a newline to the end of the file
-					char32_t c = '\n';
-					String32 s = {&c, 1};
-					buffer_insert_text_at_pos(buffer, buffer_pos_end_of_file(buffer), s);
-				}
-			}
-			
-			bool success = true;
-			
-			for (u32 i = 0; i < buffer->nlines; ++i) {
-				Line *line = &buffer->lines[i];
-				for (char32_t *p = line->str, *p_end = p + line->len; p != p_end; ++p) {
-					char utf8[4] = {0};
-					size_t bytes = unicode_utf32_to_utf8(utf8, *p);
-					if (bytes != (size_t)-1) {
-						if (fwrite(utf8, 1, bytes, out) != bytes) {
-							buffer_error(buffer, "Couldn't write to %s.", tmp_path);
-							success = false;
-						}
-					}
-				}
-
-				if (i != buffer->nlines-1) {
-					putc('\n', out);
-				}
-			}
-			
-			if (ferror(out)) {
-				if (!buffer_has_error(buffer))
-					buffer_error(buffer, "Couldn't write to %s.", tmp_path);
-				success = false;
-			}
-			if (fclose(out) != 0) {
-				if (!buffer_has_error(buffer))
-					buffer_error(buffer, "Couldn't close file %s.", tmp_path);
-				success = false;
-			}
-			if (success) {
-				if (os_rename_overwrite(tmp_path, buffer->path) < 0) {
-					if (!buffer_has_error(buffer))
-						buffer_error(buffer, "Couldn't rename %s => %s.", tmp_path, buffer->path);
-					success = false;
-				}
-			}
-			buffer->last_write_time = timespec_to_seconds(time_last_modified(buffer->path));
-			if (success) {
-				buffer->undo_history_write_pos = arr_len(buffer->undo_history);
-				if (buffer->path && streq(path_filename(buffer->path), "ted.cfg")
-					&& buffer_settings(buffer)->auto_reload_config) {
-					ted_load_configs(buffer->ted, true);
-				}
-			}
-			return success;
-		} else {
-			buffer_error(buffer, "Couldn't open file %s for writing: %s.", buffer->path, strerror(errno));
-			return false;
-		}
-	} else {
+	if (!buffer_is_named_file(buffer)) {
 		// user tried to save line buffer. whatever
 		return true;
 	}
+	if (buffer->view_only) {
+		buffer_error(buffer, "Can't save view-only file.");
+		return false;
+	}
+	char tmp_path[TED_PATH_MAX+10];
+	strbuf_printf(tmp_path, "%s.ted-tmp", buffer->path);
+	if (strlen(tmp_path) != strlen(buffer->path) + 8) {
+		buffer_error(buffer, "File name too long.");
+		return false;
+	}
+
+
+	FILE *out = fopen(tmp_path, "wb");
+	if (!out) {
+		buffer_error(buffer, "Couldn't open file %s for writing: %s.", buffer->path, strerror(errno));
+		return false;
+	}
+	#if __unix__
+	// preserve permissions
+	struct stat statbuf = {0};
+	if (stat(buffer->path, &statbuf) == 0) {
+		mode_t mode = statbuf.st_mode;
+		if (!(mode & 0222)) {
+			// we won't be able to write to buffer->path
+			buffer_error(buffer, "Can't write to %s (file has permissions %04o)", buffer->path, mode);
+			fclose(out);
+			return false;
+		}
+		fchmod(fileno(out), mode);
+	}
+	#endif
+	if (settings->auto_add_newline) {
+		Line *last_line = &buffer->lines[buffer->nlines - 1];
+		if (last_line->len) {
+			// if the last line isn't empty, add a newline to the end of the file
+			char32_t c = '\n';
+			String32 s = {&c, 1};
+			buffer_insert_text_at_pos(buffer, buffer_pos_end_of_file(buffer), s);
+		}
+	}
+	
+	bool success = true;
+	
+	for (u32 i = 0; i < buffer->nlines; ++i) {
+		Line *line = &buffer->lines[i];
+		for (char32_t *p = line->str, *p_end = p + line->len; p != p_end; ++p) {
+			char utf8[4] = {0};
+			size_t bytes = unicode_utf32_to_utf8(utf8, *p);
+			if (bytes != (size_t)-1) {
+				if (fwrite(utf8, 1, bytes, out) != bytes) {
+					buffer_error(buffer, "Couldn't write to %s.", tmp_path);
+					success = false;
+				}
+			}
+		}
+
+		if (i != buffer->nlines-1) {
+			putc('\n', out);
+		}
+	}
+	
+	if (ferror(out)) {
+		if (!buffer_has_error(buffer))
+			buffer_error(buffer, "Couldn't write to %s.", tmp_path);
+		success = false;
+	}
+	if (fclose(out) != 0) {
+		if (!buffer_has_error(buffer))
+			buffer_error(buffer, "Couldn't close file %s.", tmp_path);
+		success = false;
+	}
+	if (success) {
+		if (os_rename_overwrite(tmp_path, buffer->path) < 0) {
+			if (!buffer_has_error(buffer))
+				buffer_error(buffer, "Couldn't rename %s => %s.", tmp_path, buffer->path);
+			success = false;
+		}
+	}
+	buffer->last_write_time = timespec_to_seconds(time_last_modified(buffer->path));
+	if (success) {
+		buffer->undo_history_write_pos = arr_len(buffer->undo_history);
+		if (buffer->path && streq(path_filename(buffer->path), TED_CFG)
+			&& buffer_settings(buffer)->auto_reload_config) {
+			ted_load_configs(buffer->ted, true);
+		}
+	}
+	return success;
 }
 
 bool buffer_save_as(TextBuffer *buffer, const char *new_path) {
