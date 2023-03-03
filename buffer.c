@@ -3152,7 +3152,7 @@ void buffer_toggle_comment_selection(TextBuffer *buffer) {
 }
 
 
-void buffer_highlight_lsp_range(TextBuffer *buffer, LSPRange range) {
+void buffer_highlight_lsp_range(TextBuffer *buffer, LSPRange range, ColorSetting color) {
 	Font *font = buffer_font(buffer);
 	const u32 *colors = buffer_settings(buffer)->colors;
 	const float char_height = text_font_char_height(font);
@@ -3164,7 +3164,7 @@ void buffer_highlight_lsp_range(TextBuffer *buffer, LSPRange range) {
 		vec2 b = buffer_pos_to_pixels(buffer, range_end);
 		b.y += char_height;
 		Rect r = rect_endpoints(a, b); buffer_clip_rect(buffer, &r);
-		gl_geometry_rect(r, colors[COLOR_HOVER_HL]);
+		gl_geometry_rect(r, colors[color]);
 	} else if (range_end.line - range_start.line < 1000) { // prevent gigantic highlights from slowing things down
 		// multiple lines.
 		vec2 a = buffer_pos_to_pixels(buffer, range_start);

@@ -52,6 +52,7 @@ static ColorName color_names[] = {
 	{COLOR_HOVER_BG, "hover-bg"},
 	{COLOR_HOVER_TEXT, "hover-text"},
 	{COLOR_HOVER_HL, "hover-hl"},
+	{COLOR_HL_WRITE, "hl-write"},
 	{COLOR_YES, "yes"},
 	{COLOR_NO, "no"},
 	{COLOR_CANCEL, "cancel"},

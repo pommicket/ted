@@ -133,7 +133,7 @@ void hover_frame(Ted *ted, double dt) {
 	float char_height = text_font_char_height(font);
 	float x = ted->mouse_pos.x, y = ted->mouse_pos.y + char_height;
 	
-	buffer_highlight_lsp_range(buffer, hover->range);
+	buffer_highlight_lsp_range(buffer, hover->range, COLOR_HOVER_HL);
 	
 	if (hover->text) {
 		float max_width = 400;

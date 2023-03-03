@@ -1164,8 +1164,10 @@ void buffer_uncomment_lines(TextBuffer *buffer, u32 first_line, u32 last_line);
 void buffer_toggle_comment_lines(TextBuffer *buffer, u32 first_line, u32 last_line);
 /// comment the selected lines, or uncomment them if they're all commented
 void buffer_toggle_comment_selection(TextBuffer *buffer);
+/// highlight an \ref LSPRange in this buffer.
+///
 /// make sure to call \ref gl_geometry_draw after this
-void buffer_highlight_lsp_range(TextBuffer *buffer, LSPRange range);
+void buffer_highlight_lsp_range(TextBuffer *buffer, LSPRange range, ColorSetting color);
 /// returns true if `p1` and `p2` are equal
 bool buffer_pos_eq(BufferPos p1, BufferPos p2);
 /// returns `-1` if `p1` comes before `p2`

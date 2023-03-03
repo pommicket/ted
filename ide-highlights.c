@@ -66,7 +66,10 @@ void highlights_frame(Ted *ted) {
 	}
 	
 	arr_foreach_ptr(hls->highlights, LSPHighlight, hl) {
-		buffer_highlight_lsp_range(buffer, hl->range);
+		ColorSetting color = COLOR_HOVER_HL;
+		if (hl->kind == LSP_HIGHLIGHT_WRITE)
+			color = COLOR_HL_WRITE;
+		buffer_highlight_lsp_range(buffer, hl->range, color);
 	}
 	gl_geometry_draw();
 }

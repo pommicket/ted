@@ -855,16 +855,37 @@ static bool parse_highlight(LSP *lsp, const JSON *json, LSPResponse *response) {
 	JSONArray result = json_force_array(json_get(json, "result"));
 	for (u32 h = 0; h < result.len; ++h) {
 		JSONObject highlight_in = json_array_get_object(json, result, h);
-		LSPHighlight *highlight_out = arr_addp(hl->highlights);
-		double kind = json_object_get_number(json, highlight_in, "kind");
-		if (isfinite(kind) && kind >= LSP_HIGHLIGHT_MAX && kind <= LSP_HIGHLIGHT_MAX) {
-			highlight_out->kind = (LSPHighlightKind)kind;
-		} else {
-			highlight_out->kind = LSP_HIGHLIGHT_TEXT;
-		}
-		JSONValue range = json_object_get(json, highlight_in, "range");
-		if (!parse_range(lsp, json, range, &highlight_out->range))
+		JSONValue range_value = json_object_get(json, highlight_in, "range");
+		LSPRange range = {0};
+		if (!parse_range(lsp, json, range_value, &range))
 			return false;
+		double lsp_kind = json_object_get_number(json, highlight_in, "kind");
+		LSPHighlightKind kind = LSP_HIGHLIGHT_TEXT;
+		if (isfinite(lsp_kind) && lsp_kind >= LSP_HIGHLIGHT_MAX && lsp_kind <= LSP_HIGHLIGHT_MAX) {
+			kind = (LSPHighlightKind)lsp_kind;
+		}
+		
+		
+		bool already_highlighted = false;
+		arr_foreach_ptr(hl->highlights, LSPHighlight, h2) {
+			if (lsp_ranges_overlap(range, h2->range)) {
+				if (kind > h2->kind) {
+					// replace the old range with this one since it has higher kind (e.g. prefer writes over reads)
+					// technically this is slightly wrong since the new range might overlap with new stuff but whatever idc
+					h2->range = range;
+					h2->kind = kind;
+				}
+				already_highlighted = true;
+			}
+		}
+		if (already_highlighted) {
+			// don't show overlapping highlights
+			continue;
+		}
+		
+		LSPHighlight *highlight_out = arr_addp(hl->highlights);
+		highlight_out->range = range;
+		highlight_out->kind = kind;
 	}
 	return true;
 }

@@ -623,7 +623,12 @@ void lsp_document_changed(LSP *lsp, const char *document, LSPDocumentChangeEvent
 bool lsp_covers_path(LSP *lsp, const char *path);
 // get next message from server
 bool lsp_next_message(LSP *lsp, LSPMessage *message);
+/// returns `-1` if `a` comes before `b`, 0 if `a` and `b` are equal, and `1` if `a` comes after `b`
+int lsp_position_cmp(LSPPosition a, LSPPosition b);
+/// returns `true` if `a` and `b` are equal
 bool lsp_position_eq(LSPPosition a, LSPPosition b);
+/// returns `true` if `a` and `b` overlap
+bool lsp_ranges_overlap(LSPRange a, LSPRange b);
 bool lsp_document_position_eq(LSPDocumentPosition a, LSPDocumentPosition b);
 // get the start of location's range as a LSPDocumentPosition
 LSPDocumentPosition lsp_location_start_position(LSPLocation location);

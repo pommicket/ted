@@ -654,8 +654,28 @@ void lsp_document_changed(LSP *lsp, const char *document, LSPDocumentChangeEvent
 	lsp_send_request(lsp, &request);
 }
 
+int lsp_position_cmp(LSPPosition a, LSPPosition b) {
+	if (a.line < b.line)
+		return -1;
+	if (a.line > b.line)
+		return 1;
+	if (a.character < b.character)
+		return -1;
+	if (a.character > b.character)
+		return 1;
+	return 0;
+}
+
 bool lsp_position_eq(LSPPosition a, LSPPosition b) {
 	return a.line == b.line && a.character == b.character;
+}
+
+bool lsp_ranges_overlap(LSPRange a, LSPRange b) {
+	if (lsp_position_cmp(a.end, b.start) <= 0)
+		return false;
+	if (lsp_position_cmp(b.end, a.start) <= 0)
+		return false;
+	return true;
 }
 
 bool lsp_document_position_eq(LSPDocumentPosition a, LSPDocumentPosition b) {
