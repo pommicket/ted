@@ -70,7 +70,7 @@ enum {
 	LANG_JAVA = 10,
 	/// Go
 	LANG_GO = 11,
-	/// like \ref LANG_CONFIG, but with multiline strings.
+	/// like \ref LANG_CONFIG, but with more highlighting for ted.cfg-specific stuff.
 	LANG_TED_CFG = 12,
 	/// TypeScript
 	LANG_TYPESCRIPT = 13,

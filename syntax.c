@@ -1190,6 +1190,11 @@ static void syntax_highlight_cfg(SyntaxState *state, const char32_t *line, u32 l
 		return;
 	}
 	
+	if (!string && is_ted_cfg && line[0] == '%') {
+		memset(char_types, SYNTAX_PREPROCESSOR, line_len);
+		return;
+	}
+	
 	int backslashes = 0;
 	
 	for (u32 i = 0; i < line_len; ++i) {

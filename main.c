@@ -1,6 +1,4 @@
 /*
-@TODO:
-- higlighlight directives in ted.cfg
 FUTURE FEATURES:
 - styles ([color] sections)
   - for this, it would be nice to have #include in ted.cfg
