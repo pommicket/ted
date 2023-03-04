@@ -5,7 +5,6 @@ FUTURE FEATURES:
 - better undo chaining (dechain on backspace?)
 - auto-reload config even for %included files
 - manual.md
-- regenerate tags for completion too if there are no results
 - font setting & support for multiple fonts to cover more characters
 - support for variable-width fonts
 - robust find (results shouldn't move around when you type things)

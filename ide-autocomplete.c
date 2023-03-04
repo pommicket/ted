@@ -384,12 +384,15 @@ void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *response) {
 void autocomplete_open(Ted *ted, uint32_t trigger) {
 	Autocomplete *ac = &ted->autocomplete;
 	if (ac->open) return;
-	if (!ted->active_buffer) return;
 	TextBuffer *buffer = ted->active_buffer;
+	if (!buffer) return;
 	if (!buffer->path) return;
 	if (buffer->view_only) return;
 	autocomplete_clear_phantom(ac);
+	const Settings *settings = buffer_settings(buffer);
+	bool regenerated = false;
 	
+	find_completions:
 	ted->cursor_error_time = 0;
 	ac->last_pos = (BufferPos){U32_MAX,0};
 	ac->cursor = 0;
@@ -399,7 +402,11 @@ void autocomplete_open(Ted *ted, uint32_t trigger) {
 	case 0:
 		if (autocomplete_using_lsp(ted)) {
 			ac->open = true;
-		} else {
+		} else if (settings->regenerate_tags_if_not_found && !regenerated) {
+			regenerated = true;
+			tags_generate(ted, false);
+			goto find_completions;
+		} else { 
 			autocomplete_no_suggestions(ted);
 		}
 		break;
