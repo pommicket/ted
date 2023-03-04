@@ -73,9 +73,11 @@ bool util_is_power_of_2(u64 x);
 char32_t *util_mem32chr(char32_t *s, char32_t c, size_t n);
 /// like memchr, but 32-bit, and constant.
 const char32_t *util_mem32chr_const(const char32_t *s, char32_t c, size_t n);
-/// does `str` have this prefix?
+/// does `str` start with `prefix`?
 bool str_has_prefix(const char *str, const char *prefix);
-/// like str_has_prefix, but for paths. "ab/cd" is a path-prefix of "ab/cd/ef", but not "ab/cde".
+/// does `str` end with `suffix`?
+bool str_has_suffix(const char *str, const char *suffix);
+/// like \ref str_has_prefix, but for paths. "ab/cd" is a path-prefix of "ab/cd/ef", but not "ab/cde".
 /// also handles the fact that \ and / are the same on windows
 bool str_has_path_prefix(const char *path, const char *prefix);
 /// are these two strings equal?

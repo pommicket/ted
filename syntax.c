@@ -1191,7 +1191,7 @@ static void syntax_highlight_cfg(SyntaxState *state, const char32_t *line, u32 l
 	}
 	
 	if (!string && is_ted_cfg && line[0] == '%') {
-		memset(char_types, SYNTAX_PREPROCESSOR, line_len);
+		if (char_types) memset(char_types, SYNTAX_PREPROCESSOR, line_len);
 		return;
 	}
 	

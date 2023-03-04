@@ -1,9 +1,7 @@
 /*
 FUTURE FEATURES:
 - styles ([color] sections)
-  - for this, it would be nice to have #include in ted.cfg
 - better undo chaining (dechain on backspace?)
-- auto-reload config even for %included files
 - manual.md
 - font setting & support for multiple fonts to cover more characters
 - support for variable-width fonts
@@ -14,7 +12,6 @@ FUTURE FEATURES:
        - i'm putting this off for now since it seems hard to have undo support for it.
            - possible idea: open all files altered, and create undo chains for each of them.
                             if there are too many files, give an error like "use a different tool for this"
-- allow multiple fonts (fonts directory?)
 - config variables
 - bind key to multiple commands
 - plugins?
@@ -24,6 +21,7 @@ FUTURE FEATURES:
 - keyboard macros
     -  ctrl+9/0 to inc/dec number would be useful here
     - with macros we can really test performance of buffer_insert_text_at_pos, etc. (which should ideally be fast)
+- auto-reload config even for %included files
 - LSP request timeout
 BUG REPORTS IM TO LAZY TO FILE (RIGHT NOW)
 - rust-analyzer:
@@ -193,7 +191,6 @@ static const char *windows_exception_to_str(DWORD exception_code) {
 	return "Unknown exception";
 }
 
-
 static LONG WINAPI error_signal_handler(EXCEPTION_POINTERS *info) {
 	if (signal_being_handled)
 		die(CRASH_CRASH_MESSAGE);
@@ -262,23 +259,23 @@ static void ted_update_window_dimensions(Ted *ted) {
 
 #if _WIN32
 INT WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
-    PSTR lpCmdLine, INT nCmdShow) {
+	PSTR lpCmdLine, INT nCmdShow) {
 	(void)hInstance; (void)hPrevInstance; (void)lpCmdLine; (void)nCmdShow;
 	int argc = 0;
-    LPWSTR* wide_argv = CommandLineToArgvW(GetCommandLineW(), &argc);
-    char** argv = calloc(argc + 1, sizeof *argv);
+	LPWSTR* wide_argv = CommandLineToArgvW(GetCommandLineW(), &argc);
+	char** argv = calloc(argc + 1, sizeof *argv);
 	if (!argv) {
 		die("Out of memory.");
 	}
-    for (int i = 0; i < argc; i++) {
-        LPWSTR wide_arg = wide_argv[i];
-        int len = (int)wcslen(wide_arg);
-        int bufsz = len * 4 + 8;
-        argv[i] = calloc((size_t)bufsz, 1);
-	if (!argv[i]) die("Out of memory.");
-	WideCharToMultiByte(CP_UTF8, 0, wide_arg, len, argv[i], bufsz - 1, NULL, NULL);
-    }
-    LocalFree(wide_argv);
+	for (int i = 0; i < argc; i++) {
+		LPWSTR wide_arg = wide_argv[i];
+		int len = (int)wcslen(wide_arg);
+		int bufsz = len * 4 + 8;
+		argv[i] = calloc((size_t)bufsz, 1);
+		if (!argv[i]) die("Out of memory.");
+		WideCharToMultiByte(CP_UTF8, 0, wide_arg, len, argv[i], bufsz - 1, NULL, NULL);
+	}
+	LocalFree(wide_argv);
 #else
 int main(int argc, char **argv) {
 #endif
@@ -996,7 +993,7 @@ int main(int argc, char **argv) {
 			} else {
 				autocomplete_close(ted);
 				text_utf8_anchored(font, "Press Ctrl+O to open a file or Ctrl+N to create a new one.",
-					window_width * 0.5f, window_height * 0.5f, ted_active_color(ted, COLOR_TEXT_SECONDARY), ANCHOR_MIDDLE);
+					window_width * 0.5f, window_height * 0.5f, ted_active_color(ted, COLOR_COMMENT), ANCHOR_MIDDLE);
 				text_render(font);
 			}
 		}

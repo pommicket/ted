@@ -268,10 +268,11 @@ static bool ted_is_regular_buffer(Ted *ted, TextBuffer *buffer) {
 }
 
 Status ted_get_file(Ted const *ted, const char *name, char *out, size_t outsz) {
-	if (ted->search_start_cwd && fs_file_exists(name)) {
+	if (ted->search_start_cwd) {
 		// check in start_cwd
 		path_full(ted->start_cwd, name, out, outsz);
-		return true;
+		if (fs_file_exists(out))
+			return true;
 	}
 	if (*ted->local_data_dir) {
 		str_printf(out, outsz, "%s" PATH_SEPARATOR_STR "%s", ted->local_data_dir, name);

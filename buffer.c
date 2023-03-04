@@ -229,14 +229,12 @@ Language buffer_language(TextBuffer *buffer) {
 		return (Language)buffer->manual_language;
 	const Settings *settings = buffer->ted->default_settings; // important we don't use buffer_settings here since that would cause a loop!
 	const char *filename = path_filename(buffer->path);
-	size_t filename_len = strlen(filename);
 
 	int match_score = 0;
 	Language match = LANG_TEXT;
 	arr_foreach_ptr(settings->language_extensions, LanguageExtension, ext) {
-		size_t len = strlen(ext->extension);
-		if (filename_len >= len && memcmp(&filename[filename_len - len], ext->extension, len) == 0) {
-			int score = (int)len;
+		if (str_has_suffix(filename, ext->extension)) {
+			int score = (int)strlen(ext->extension);
 			if (score > match_score) {
 				// found a better match!
 				match_score = score;
@@ -2542,7 +2540,7 @@ bool buffer_save(TextBuffer *buffer) {
 	buffer->last_write_time = timespec_to_seconds(time_last_modified(buffer->path));
 	if (success) {
 		buffer->undo_history_write_pos = arr_len(buffer->undo_history);
-		if (buffer->path && streq(path_filename(buffer->path), TED_CFG)
+		if (buffer->path && str_has_suffix(path_filename(buffer->path), "ted.cfg")
 			&& buffer_settings(buffer)->auto_reload_config) {
 			ted_load_configs(buffer->ted, true);
 		}

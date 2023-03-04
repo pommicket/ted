@@ -12,7 +12,6 @@ static ColorName color_names[] = {
 	{COLOR_TEXT, "text"},
 	{COLOR_TEXT_SECONDARY, "text-secondary"},
 	{COLOR_BG, "bg"},
-	{COLOR_HL, "hl"},
 	{COLOR_CURSOR, "cursor"},
 	{COLOR_CURSOR_ERROR, "cursor-error"},
 	{COLOR_CURSOR_LINE_BG, "cursor-line-bg"},

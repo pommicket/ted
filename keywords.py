@@ -66,7 +66,7 @@ constants_c = ['CHAR_BIT', 'CHAR_MAX', 'CHAR_MIN', 'DBL_DIG', 'DBL_EPSILON', 'DB
     'UINT_MAX', 'ULLONG_MAX', 'ULONG_MAX', 'USHRT_MAX', 'true', 'false',
     'PTRDIFF_MIN', 'PTRDIFF_MAX', 'SIG_ATOMIC_MIN', 'SIG_ATOMIC_MAX',
     'SIZE_MAX', 'WCHAR_MIN', 'WCHAR_MAX', 'WINT_MIN', 'WINT_MAX',
-    'FILE', 'fpos_t', '_IOFBF', '_IOLBF', '_IONBF', 'BUFSIZ',
+    '_IOFBF', '_IOLBF', '_IONBF', 'BUFSIZ',
     'EOF', 'FOPEN_MAX', 'FILENAME_MAX', 'L_tmpnam',
     'SEEK_CUR', 'SEEK_END', 'SEEK_SET', 'TMP_MAX', 'stderr', 'stdin', 'stdout', 'TIME_UTC', 
     'TMP_MAX_S', 'SIG_DFL', 'SIG_ERR', 'SIG_IGN',
@@ -133,7 +133,11 @@ builtins_c = [
 	'ptrdiff_t', 'max_align_t', 'offsetof', 
     'div_t', 'ldiv_t', 'lldiv_t', 'constraint_handler_t', 'cnd_t', 'thrd_t', 'tss_t', 'mtx_t',
     'tss_dtor_t', 'thrd_start_t', 'once_flag', 'xtime',
-    'clock_t', 'time_t', 'wctrans_t', 'wctype_t',
+    'clock_t', 'time_t', 'wctrans_t', 'wctype_t', 'FILE', 'fpos_t', 'ssize_t',
+    'ino_t', 'dev_t', 'mode_t', 'uid_t', 'pid_t', 'off_t', 'gid_t', 'nlink_t',
+    'id_t', 'off64_t', 'caddr_t', 'daddr_t', 'key_t', 'useconds_t', 'blksize_t',
+    'blkcnt_t', 'fsblkcnt_t', 'fsfilcnt_t',
+    'blkcnt64_t', 'fsblkcnt64_t', 'fsfilcnt64_t',
 ]
 
 # see https://registry.khronos.org/OpenGL/specs/gl/GLSLangSpec.4.60.html#keywords

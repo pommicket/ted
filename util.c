@@ -123,7 +123,19 @@ const char32_t *util_mem32chr_const(const char32_t *s, char32_t c, size_t n) {
 }
 
 bool str_has_prefix(const char *str, const char *prefix) {
-	return strncmp(str, prefix, strlen(prefix)) == 0;
+	size_t prefix_len = strlen(prefix);
+	size_t str_len = strlen(str);
+	if (str_len < prefix_len)
+		return false;
+	return memcmp(str, prefix, prefix_len) == 0;
+}
+
+bool str_has_suffix(const char *str, const char *suffix) {
+	size_t suffix_len = strlen(suffix);
+	size_t str_len = strlen(str);
+	if (str_len < suffix_len)
+		return false;
+	return memcmp(str + str_len - suffix_len, suffix, suffix_len) == 0;
 }
 
 bool str_has_path_prefix(const char *path, const char *prefix) {
