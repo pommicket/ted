@@ -35,6 +35,49 @@ static void ted_vset_message(Ted *ted, MessageType type, const char *fmt, va_lis
 	}
 }
 
+bool ted_is_key_down(Ted *ted, SDL_Keycode key) {
+	// not currently used but there might be a reason for it in the future
+	(void)ted;
+	
+	const Uint8 *kbd_state = SDL_GetKeyboardState(NULL);
+	for (int i = 0; i < SDL_NUM_SCANCODES; ++i) {
+		if (kbd_state[i] && SDL_GetKeyFromScancode((SDL_Scancode)i) == key) {
+			return true;
+		}
+	}
+	return false;
+}
+
+bool ted_is_key_combo_down(Ted *ted, KeyCombo combo) {
+	if (!ted_is_key_down(ted, KEY_COMBO_KEY(combo)))
+		return false;
+	if (KEY_COMBO_MODIFIER(combo) != ted_get_key_modifier(ted))
+		return false;
+	return true;
+}
+
+bool ted_is_ctrl_down(Ted *ted) {
+	return ted_is_key_down(ted, SDLK_LCTRL) || ted_is_key_down(ted, SDLK_RCTRL);
+}
+
+bool ted_is_shift_down(Ted *ted) {
+	return ted_is_key_down(ted, SDLK_LSHIFT) || ted_is_key_down(ted, SDLK_RSHIFT);
+}
+
+bool ted_is_alt_down(Ted *ted) {
+	return ted_is_key_down(ted, SDLK_LALT) || ted_is_key_down(ted, SDLK_RALT);
+}
+
+u32 ted_get_key_modifier(Ted *ted) {
+	u32 ctrl_down = ted_is_ctrl_down(ted);
+	u32 shift_down = ted_is_shift_down(ted);
+	u32 alt_down = ted_is_alt_down(ted);
+	return ctrl_down << KEY_MODIFIER_CTRL_BIT
+		| shift_down << KEY_MODIFIER_SHIFT_BIT
+		| alt_down << KEY_MODIFIER_ALT_BIT;
+}
+
+
 void ted_set_message(Ted *ted, MessageType type, const char *fmt, ...) {
 	va_list args;
 	va_start(args, fmt);
@@ -559,7 +602,7 @@ void ted_load_configs(Ted *ted, bool reloading) {
 }
 
 void ted_press_key(Ted *ted, SDL_Keycode keycode, SDL_Keymod modifier) {
-	u32 key_combo = KEY_COMBO(
+	KeyCombo key_combo = KEY_COMBO(
 		(u32)((modifier & (KMOD_LCTRL|KMOD_RCTRL)) != 0) << KEY_MODIFIER_CTRL_BIT |
 		(u32)((modifier & (KMOD_LSHIFT|KMOD_RSHIFT)) != 0) << KEY_MODIFIER_SHIFT_BIT |
 		(u32)((modifier & (KMOD_LALT|KMOD_RALT)) != 0) << KEY_MODIFIER_ALT_BIT,
@@ -570,9 +613,9 @@ void ted_press_key(Ted *ted, SDL_Keycode keycode, SDL_Keymod modifier) {
 	u32 hi = arr_len(key_actions);
 	while (lo < hi) {
 		u32 mid = (lo + hi) / 2;
-		if (key_actions[mid].key_combo < key_combo) {
+		if (key_actions[mid].key_combo.value < key_combo.value) {
 			lo = mid + 1;
-		} else if (key_actions[mid].key_combo > key_combo) {
+		} else if (key_actions[mid].key_combo.value > key_combo.value) {
 			hi = mid;
 		} else {
 			command_execute(ted, key_actions[mid].command, key_actions[mid].argument);

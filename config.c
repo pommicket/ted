@@ -45,6 +45,11 @@ typedef struct {
 	size_t buf_size;
 	bool per_language;
 } SettingString;
+typedef struct {
+	const char *name;
+	const KeyCombo *control;
+	bool per_language;
+} SettingKeyCombo;
 
 typedef enum {
 	SETTING_BOOL = 1,
@@ -52,7 +57,8 @@ typedef enum {
 	SETTING_U16,
 	SETTING_U32,
 	SETTING_FLOAT,
-	SETTING_STRING
+	SETTING_STRING,
+	SETTING_KEY_COMBO
 } SettingType;
 typedef struct {
 	SettingType type;
@@ -65,12 +71,13 @@ typedef struct {
 		SettingU32 _u32;
 		SettingFloat _float;
 		SettingString _string;
+		SettingKeyCombo _key;
 	} u;
 } SettingAny;
 
 // core settings
 static const Settings settings_zero = {0};
-static SettingBool const settings_bool[] = {
+static const SettingBool settings_bool[] = {
 	{"auto-indent", &settings_zero.auto_indent, true},
 	{"auto-add-newline", &settings_zero.auto_add_newline, true},
 	{"auto-reload", &settings_zero.auto_reload, true},
@@ -91,7 +98,7 @@ static SettingBool const settings_bool[] = {
 	{"highlight-enabled", &settings_zero.highlight_enabled, true},
 	{"highlight-auto", &settings_zero.highlight_auto, true},
 };
-static SettingU8 const settings_u8[] = {
+static const SettingU8 settings_u8[] = {
 	{"tab-width", &settings_zero.tab_width, 1, 100, true},
 	{"cursor-width", &settings_zero.cursor_width, 1, 100, true},
 	{"undo-save-time", &settings_zero.undo_save_time, 1, 200, true},
@@ -100,23 +107,23 @@ static SettingU8 const settings_u8[] = {
 	{"scrolloff", &settings_zero.scrolloff, 1, 100, true},
 	{"tags-max-depth", &settings_zero.tags_max_depth, 1, 100, false},
 };
-static SettingU16 const settings_u16[] = {
+static const SettingU16 settings_u16[] = {
 	{"text-size", &settings_zero.text_size, TEXT_SIZE_MIN, TEXT_SIZE_MAX, false},
 	{"max-menu-width", &settings_zero.max_menu_width, 10, U16_MAX, false},
 	{"error-display-time", &settings_zero.error_display_time, 0, U16_MAX, false},
 	{"framerate-cap", &settings_zero.framerate_cap, 3, 1000, false},
 };
-static SettingU32 const settings_u32[] = {
+static const SettingU32 settings_u32[] = {
 	{"max-file-size", &settings_zero.max_file_size, 100, 2000000000, false},
 	{"max-file-size-view-only", &settings_zero.max_file_size_view_only, 100, 2000000000, false},
 };
-static SettingFloat const settings_float[] = {
+static const SettingFloat settings_float[] = {
 	{"cursor-blink-time-on", &settings_zero.cursor_blink_time_on, 0, 1000, true},
 	{"cursor-blink-time-off", &settings_zero.cursor_blink_time_off, 0, 1000, true},
 	{"hover-time", &settings_zero.hover_time, 0, INFINITY, true},
 	{"ctrl-scroll-adjust-text-size", &settings_zero.ctrl_scroll_adjust_text_size, -10, 10, true},
 };
-static SettingString const settings_string[] = {
+static const SettingString settings_string[] = {
 	{"build-default-command", settings_zero.build_default_command, sizeof settings_zero.build_default_command, true},
 	{"build-command", settings_zero.build_command, sizeof settings_zero.build_command, true},
 	{"root-identifiers", settings_zero.root_identifiers, sizeof settings_zero.root_identifiers, true},
@@ -124,6 +131,10 @@ static SettingString const settings_string[] = {
 	{"lsp-configuration", settings_zero.lsp_configuration, sizeof settings_zero.lsp_configuration, true},
 	{"comment-start", settings_zero.comment_start, sizeof settings_zero.comment_start, true},
 	{"comment-end", settings_zero.comment_end, sizeof settings_zero.comment_end, true},
+};
+static const SettingKeyCombo settings_key_combo[] = {
+	{"hover-key", &settings_zero.hover_key, true},
+	{"highlight-key", &settings_zero.highlight_key, true},
 };
 
 
@@ -149,6 +160,10 @@ static void setting_float_set(Settings *settings, const SettingFloat *set, float
 static void setting_string_set(Settings *settings, const SettingString *set, const char *value) {
 	char *control = (char *)settings + (set->control - (char*)&settings_zero);
 	str_cpy(control, set->buf_size, value);
+}
+static void setting_key_combo_set(Settings *settings, const SettingKeyCombo *set, KeyCombo value) {
+	KeyCombo *control = (KeyCombo *)((char *)settings + ((char*)set->control - (char*)&settings_zero));
+	*control = value;
 }
 
 
@@ -244,29 +259,68 @@ static void config_part_free(ConfigPart *part) {
 	memset(part, 0, sizeof *part);
 }
 
+static SDL_Keycode config_parse_key(ConfigReader *cfg, const char *str) {
+	SDL_Keycode keycode = SDL_GetKeyFromName(str);
+	if (keycode != SDLK_UNKNOWN)
+		return keycode;
+	typedef struct {
+		const char *keyname1;
+		const char *keyname2; // alternate key name
+		SDL_Keycode keycode;
+	} KeyName;
+	static KeyName const key_names[] = {
+		{"X1", NULL, KEYCODE_X1},
+		{"X2", NULL, KEYCODE_X2},
+		{"Enter", NULL, SDLK_RETURN},
+		{"Equals", "Equal", SDLK_EQUALS},
+	};
+	for (size_t i = 0; i < arr_count(key_names); ++i) {
+		KeyName const *k = &key_names[i];
+		if (streq_case_insensitive(str, k->keyname1) || (k->keyname2 && streq_case_insensitive(str, k->keyname2))) {
+			keycode = k->keycode;
+			break;
+		}
+	}
+	if (keycode != SDLK_UNKNOWN)
+		return keycode;
+		
+	if (isdigit(str[0])) { // direct keycode numbers, e.g. Ctrl+24 or Ctrl+08
+		char *endp;
+		long n = strtol(str, &endp, 10);
+		if (*endp == '\0' && n > 0) {
+			return (SDL_Keycode)n;
+		} else {
+			config_err(cfg, "Invalid keycode number: %s", str);
+			return 0;
+		}
+	} else {
+		config_err(cfg, "Unrecognized key name: %s.", str);
+		return 0;
+	}
+}
 // Returns the key combination described by str.
-static u32 config_parse_key_combo(ConfigReader *cfg, const char *str) {
+static KeyCombo config_parse_key_combo(ConfigReader *cfg, const char *str) {
 	u32 modifier = 0;
 	// read modifier
 	while (true) {
 		if (str_has_prefix(str, "Ctrl+")) {
 			if (modifier & KEY_MODIFIER_CTRL) {
 				config_err(cfg, "Ctrl+ written twice");
-				return 0;
+				return (KeyCombo){0};
 			}
 			modifier |= KEY_MODIFIER_CTRL;
 			str += strlen("Ctrl+");
 		} else if (str_has_prefix(str, "Shift+")) {
 			if (modifier & KEY_MODIFIER_SHIFT) {
 				config_err(cfg, "Shift+ written twice");
-				return 0;
+				return (KeyCombo){0};
 			}
 			modifier |= KEY_MODIFIER_SHIFT;
 			str += strlen("Shift+");
 		} else if (str_has_prefix(str, "Alt+")) {
 			if (modifier & KEY_MODIFIER_ALT) {
 				config_err(cfg, "Alt+ written twice");
-				return 0;
+				return (KeyCombo){0};
 			}
 			modifier |= KEY_MODIFIER_ALT;
 			str += strlen("Alt+");
@@ -274,42 +328,9 @@ static u32 config_parse_key_combo(ConfigReader *cfg, const char *str) {
 	}
 
 	// read key
-	SDL_Keycode keycode = SDL_GetKeyFromName(str);
-	if (keycode == SDLK_UNKNOWN) {
-		typedef struct {
-			const char *keyname1;
-			const char *keyname2; // alternate key name
-			SDL_Keycode keycode;
-		} KeyName;
-		static KeyName const key_names[] = {
-			{"X1", NULL, KEYCODE_X1},
-			{"X2", NULL, KEYCODE_X2},
-			{"Enter", NULL, SDLK_RETURN},
-			{"Equals", "Equal", SDLK_EQUALS},
-		};
-		for (size_t i = 0; i < arr_count(key_names); ++i) {
-			KeyName const *k = &key_names[i];
-			if (streq_case_insensitive(str, k->keyname1) || (k->keyname2 && streq_case_insensitive(str, k->keyname2))) {
-				keycode = k->keycode;
-				break;
-			}
-		}
-		if (keycode == SDLK_UNKNOWN) {
-			if (isdigit(str[0])) { // direct keycode numbers, e.g. Ctrl+24 or Ctrl+08
-				char *endp;
-				long n = strtol(str, &endp, 10);
-				if (*endp == '\0' && n > 0) {
-					keycode = (SDL_Keycode)n;
-				} else {
-					config_err(cfg, "Invalid keycode number: %s", str);
-					return 0;
-				}
-			} else {
-				config_err(cfg, "Unrecognized key name: %s.", str);
-				return 0;
-			}
-		}
-	}
+	SDL_Keycode keycode = config_parse_key(cfg, str);
+	if (keycode == SDLK_UNKNOWN)
+		return (KeyCombo){0};
 	return KEY_COMBO(modifier, keycode);
 }
 
@@ -428,6 +449,13 @@ static void config_init_settings(void) {
 		opt->name = settings_string[i].name;
 		opt->per_language = settings_string[i].per_language;
 		opt->u._string = settings_string[i];
+		++opt;
+	}
+	for (size_t i = 0; i < arr_count(settings_key_combo); ++i) {
+		opt->type = SETTING_KEY_COMBO;
+		opt->name = settings_key_combo[i].name;
+		opt->per_language = settings_key_combo[i].per_language;
+		opt->u._key = settings_key_combo[i];
 		++opt;
 	}
 	settings_initialized = true;
@@ -753,7 +781,7 @@ static void config_parse_line(ConfigReader *cfg, Settings **applicable_settings,
 	} break;
 	case SECTION_KEYBOARD: {
 		// lines like Ctrl+Down = 10 :down
-		u32 key_combo = config_parse_key_combo(cfg, key);
+		KeyCombo key_combo = config_parse_key_combo(cfg, key);
 		KeyAction action = {0};
 		action.key_combo = key_combo;
 		llong argument = 1; // default argument = 1
@@ -798,7 +826,7 @@ static void config_parse_line(ConfigReader *cfg, Settings **applicable_settings,
 			bool have = false;
 			// check if we already have an action for this key combo
 			arr_foreach_ptr(settings->key_actions, KeyAction, act) {
-				if (act->key_combo == key_combo) {
+				if (act->key_combo.value == key_combo.value) {
 					*act = action;
 					have = true;
 					break;
@@ -961,6 +989,13 @@ static void config_parse_line(ConfigReader *cfg, Settings **applicable_settings,
 					setting_string_set(settings, setting, value);
 				}
 			} break;
+			case SETTING_KEY_COMBO: {
+				const SettingKeyCombo *setting = &setting_any->u._key;
+				KeyCombo combo = config_parse_key_combo(cfg, value);
+				if (combo.value) {
+					setting_key_combo_set(settings, setting, combo);
+				}
+			} break;
 			}
 		}
 		
@@ -970,9 +1005,9 @@ static void config_parse_line(ConfigReader *cfg, Settings **applicable_settings,
 
 static int key_action_qsort_cmp_combo(const void *av, const void *bv) {
 	const KeyAction *a = av, *b = bv;
-	if (a->key_combo < b->key_combo)
+	if (a->key_combo.value < b->key_combo.value)
 		return -1;
-	if (a->key_combo > b->key_combo)
+	if (a->key_combo.value > b->key_combo.value)
 		return 1;
 	return 0;
 }

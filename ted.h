@@ -155,8 +155,6 @@ enum {
 	KEYCODE_X2
 };
 /// see \ref KEY_COMBO
-#define KEY_COMBO_COUNT (SCANCODE_COUNT << 3)
-/// see \ref KEY_COMBO
 enum {
 	KEY_MODIFIER_CTRL_BIT,
 	KEY_MODIFIER_SHIFT_BIT,
@@ -168,16 +166,24 @@ enum {
 #define KEY_MODIFIER_SHIFT ((u32)1<<KEY_MODIFIER_SHIFT_BIT)
 /// see \ref KEY_COMBO
 #define KEY_MODIFIER_ALT ((u32)1<<KEY_MODIFIER_ALT_BIT)
-/// Create "key combo" from modifier and key.
-///
 /// a "key combo" is some subset of {control, shift, alt} + some key.
-#define KEY_COMBO(modifier, key) ((u32)(modifier) \
-	| ((u32)(key >> 30) << 3)\
-	| ((u32)(key) & ~(1u<<30)) << 4) // annoyingly SDL sets bit 30 for some keycodes
+typedef struct {
+	/// high 32 bits = SDL_Keycode\n
+	/// low 8 bits = key modifier (see e.g. \ref KEY_MODIFIER_SHIFT)\n
+	/// the remaining 24 bits are currently reserved and should be 0.
+	u64 value;
+} KeyCombo;
+/// Create \ref KeyCombo from modifier and key.
+#define KEY_COMBO(modifier, key) ((KeyCombo){.value = (u64)(modifier) \
+	| ((u64)(key) << 32)})
+/// extract `SDL_Keycode` from \ref KeyCombo
+#define KEY_COMBO_KEY(combo) ((SDL_Keycode)((combo.value) >> 32))
+/// extract key modifier from \ref KeyCombo
+#define KEY_COMBO_MODIFIER(combo) ((u32)((combo.value) & 0xff))
 
 /// Thing to do when a key combo is pressed.
 typedef struct {
-	u32 key_combo;
+	KeyCombo key_combo;
 	Command command;
 	i64 argument;
 } KeyAction;
@@ -255,6 +261,8 @@ typedef struct {
 	bool highlight_enabled;
 	bool highlight_auto;
 	bool vsync;
+	KeyCombo hover_key;
+	KeyCombo highlight_key;
 	u8 tab_width;
 	u8 cursor_width;
 	u8 undo_save_time;
@@ -697,8 +705,6 @@ typedef struct Ted {
 	/// settings to use when no buffer is open
 	Settings *default_settings;
 	float window_width, window_height;
-	/// which of shift, alt, ctrl are down right now.
-	u32 key_modifier;
 	vec2 mouse_pos;
 	u32 mouse_state;
 	/// `nmouse_clicks[i]` = length of `mouse_clicks[i]`
@@ -1535,6 +1541,18 @@ SymbolInfo *tags_get_symbols(Ted *ted);
 // === ted.c ===
 /// for fatal errors
 void die(PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRINTF(1, 2);
+/// returns `true` if the given key is down
+bool ted_is_key_down(Ted *ted, SDL_Keycode key);
+/// returns `true` if the given \ref KeyCombo is down
+bool ted_is_key_combo_down(Ted *ted, KeyCombo key_combo);
+/// returns `true` if either ctrl key is down
+bool ted_is_ctrl_down(Ted *ted);
+/// returns `true` if either shift key is down
+bool ted_is_shift_down(Ted *ted);
+/// returns `true` if either alt key is down
+bool ted_is_alt_down(Ted *ted);
+/// see \ref KEY_MODIFIER_CTRL, etc.
+u32 ted_get_key_modifier(Ted *ted);
 /// display a message to the user
 void ted_set_message(Ted *ted, MessageType type, PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRINTF(3, 4);
 /// display an error to the user

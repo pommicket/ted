@@ -89,9 +89,9 @@ void hover_frame(Ted *ted, double dt) {
 		return;
 	Hover *hover = &ted->hover;
 	
-	bool f1_down = SDL_GetKeyboardState(NULL)[SDL_SCANCODE_F1];
+	bool key_down = ted_is_key_combo_down(ted, settings->hover_key);
 	
-	bool open_hover = f1_down || hover->time >= settings->hover_time;
+	bool open_hover = key_down || hover->time >= settings->hover_time;
 	
 	hover->time += dt;
 	

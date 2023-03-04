@@ -2612,7 +2612,7 @@ bool buffer_handle_click(Ted *ted, TextBuffer *buffer, vec2 click, u8 times) {
 			ted_switch_to_buffer(ted, buffer);
 		}
 		if (buffer == ted->active_buffer) {
-			switch (ted->key_modifier) {
+			switch (ted_get_key_modifier(ted)) {
 			case KEY_MODIFIER_SHIFT:
 				// select to position
 				buffer_select_to_pos(buffer, buffer_pos);
@@ -2624,9 +2624,9 @@ bool buffer_handle_click(Ted *ted, TextBuffer *buffer, vec2 click, u8 times) {
 					// go to definition/declaration
 					buffer_cursor_move_to_pos(buffer, buffer_pos);
 					GotoType type = GOTO_DEFINITION;
-					if (ted->key_modifier & KEY_MODIFIER_SHIFT)
+					if (ted_is_shift_down(ted))
 						type = GOTO_DECLARATION;
-					else if (ted->key_modifier & KEY_MODIFIER_ALT)
+					else if (ted_is_alt_down(ted))
 						type = GOTO_TYPE_DEFINITION;
 					buffer_goto_word_at_cursor(buffer, type);
 				}

@@ -52,9 +52,9 @@ void highlights_frame(Ted *ted) {
 		return;
 	}
 	const Settings *settings = buffer_settings(buffer);
-	bool f2_down = SDL_GetKeyboardState(NULL)[SDL_SCANCODE_F2];
+	bool key_down = ted_is_key_combo_down(ted, settings->highlight_key);
 	if (!settings->highlight_enabled
-		|| (!settings->highlight_auto && !f2_down)) {
+		|| (!settings->highlight_auto && !key_down)) {
 		highlights_close(ted);
 		return;
 	}
