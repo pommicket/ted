@@ -478,16 +478,37 @@ static void get_config_path(Ted *ted, char *expanded, size_t expanded_sz, const 
 	
 }
 
-void config_read(Ted *ted, ConfigPart **parts, const char *filename) {
-	FILE *fp = fopen(filename, "rb");
+static void config_read_(Ted *ted, ConfigPart **parts, const char *path, const char ***include_stack) {
+	// check for, e.g. %include ted.cfg inside ted.cfg
+	arr_foreach_ptr(*include_stack, const char *, p_include) {
+		if (streq(path, *p_include)) {
+			char text[1024];
+			strbuf_cpy(text, "%include loop in config files: ");
+			strbuf_cat(text, (*include_stack)[0]);
+			for (u32 i = 1; i < arr_len(*include_stack); ++i) {
+				if (i > 1)
+					strbuf_cat(text, ", which");
+				strbuf_catf(text, " includes %s", (*include_stack)[i]);
+			}
+			if (arr_len(*include_stack) > 1)
+				strbuf_cat(text, ", which");
+			strbuf_catf(text, " includes %s", path);
+			ted_error(ted, "%s", text);
+			return;
+		}
+	}
+	arr_add(*include_stack, path);
+	
+	FILE *fp = fopen(path, "rb");
 	if (!fp) {
-		ted_error(ted, "Couldn't open config file %s: %s.", filename, strerror(errno));
+		ted_error(ted, "Couldn't open config file %s: %s.", path, strerror(errno));
 		return;
 	}
 	
+	
 	ConfigReader cfg_reader = {
 		.ted = ted,
-		.filename = filename,
+		.filename = path,
 		.line_number = 1,
 		.error = false
 	};
@@ -511,18 +532,18 @@ void config_read(Ted *ted, ConfigPart **parts, const char *filename) {
 			// a new part!
 			part = arr_addp(*parts);
 			part->index = (int)arr_len(*parts);
-			part->file = str_dup(filename);
+			part->file = str_dup(path);
 			part->line = cfg->line_number + 1;
 			parse_section_header(&cfg_reader, line, part);
 		} else if (line[0] == '%') {
 			if (str_has_prefix(line, "%include ")) {
-				char path[TED_PATH_MAX];
+				char included[TED_PATH_MAX];
 				char expanded[TED_PATH_MAX];
-				strbuf_cpy(path, line + strlen("%include "));
-				while (*path && isspace(path[strlen(path) - 1]))
-					path[strlen(path) - 1] = '\0';
-				get_config_path(ted, expanded, sizeof expanded, path);
-				config_read(ted, parts, expanded);
+				strbuf_cpy(included, line + strlen("%include "));
+				while (*included && isspace(included[strlen(included) - 1]))
+					included[strlen(included) - 1] = '\0';
+				get_config_path(ted, expanded, sizeof expanded, included);
+				config_read_(ted, parts, expanded, include_stack);
 			}
 		} else if (part) {
 			for (int i = 0; line[i]; ++i) {
@@ -542,8 +563,14 @@ void config_read(Ted *ted, ConfigPart **parts, const char *filename) {
 	}
 	
 	if (ferror(fp))
-		ted_error(ted, "Error reading %s.", filename);
+		ted_error(ted, "Error reading %s.", path);
 	fclose(fp);
+	arr_remove_last(*include_stack);
+}
+
+void config_read(Ted *ted, ConfigPart **parts, const char *filename) {
+	const char **include_stack = NULL;
+	config_read_(ted, parts, filename, &include_stack);
 }
 
 // IMPORTANT REQUIREMENT FOR THIS FUNCTION:

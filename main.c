@@ -1,9 +1,11 @@
 /*
-@TODO: check for %include loops
+@TODO:
+- higlighlight directives in ted.cfg
 FUTURE FEATURES:
 - styles ([color] sections)
   - for this, it would be nice to have #include in ted.cfg
 - better undo chaining (dechain on backspace?)
+- auto-reload config even for %included files
 - manual.md
 - regenerate tags for completion too if there are no results
 - font setting & support for multiple fonts to cover more characters
