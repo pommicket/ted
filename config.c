@@ -461,6 +461,23 @@ static void config_init_settings(void) {
 	settings_initialized = true;
 }
 
+
+static void get_config_path(Ted *ted, char *expanded, size_t expanded_sz, const char *path) {
+	assert(path != expanded);
+	
+	expanded[0] = '\0';
+	if (path[0] == '~' && strchr(ALL_PATH_SEPARATORS, path[1])) {
+		str_printf(expanded, expanded_sz, "%s" PATH_SEPARATOR_STR "%s", ted->home, path + 1);
+	} else if (!path_is_absolute(path)) {
+		if (!ted_get_file(ted, path, expanded, expanded_sz)) {
+			str_cpy(expanded, expanded_sz, path);
+		}
+	} else {
+		str_cpy(expanded, expanded_sz, path);
+	}
+	
+}
+
 void config_read(Ted *ted, ConfigPart **parts, const char *filename) {
 	FILE *fp = fopen(filename, "rb");
 	if (!fp) {
@@ -497,6 +514,16 @@ void config_read(Ted *ted, ConfigPart **parts, const char *filename) {
 			part->file = str_dup(filename);
 			part->line = cfg->line_number + 1;
 			parse_section_header(&cfg_reader, line, part);
+		} else if (line[0] == '%') {
+			if (str_has_prefix(line, "%include ")) {
+				char path[TED_PATH_MAX];
+				char expanded[TED_PATH_MAX];
+				strbuf_cpy(path, line + strlen("%include "));
+				while (*path && isspace(path[strlen(path) - 1]))
+					path[strlen(path) - 1] = '\0';
+				get_config_path(ted, expanded, sizeof expanded, path);
+				config_read(ted, parts, expanded);
+			}
 		} else if (part) {
 			for (int i = 0; line[i]; ++i) {
 				arr_add(part->text, line[i]);
@@ -675,14 +702,10 @@ uniform sampler2D t_texture;\n\
 	}
 }
 
+
 static void settings_load_bg_texture(Ted *ted, Settings **applicable_settings, const char *path) {
 	char expanded[TED_PATH_MAX];
-	expanded[0] = '\0';
-	if (path[0] == '~') {
-		strbuf_cpy(expanded, ted->home);
-		++path;
-	}
-	strbuf_cat(expanded, path);
+	get_config_path(ted, expanded, sizeof expanded, path);
 	
 	GLuint texture = gl_load_texture_from_image(expanded);
 	if (!texture) {

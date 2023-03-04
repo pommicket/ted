@@ -1,4 +1,5 @@
 /*
+@TODO: check for %include loops
 FUTURE FEATURES:
 - styles ([color] sections)
   - for this, it would be nice to have #include in ted.cfg
