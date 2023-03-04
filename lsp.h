@@ -1,5 +1,7 @@
-// functions for dealing with LSP (Language Server Protocol) servers.
-// don't assume any of the public functions defined here are thread-safe.
+/// \file
+/// functions for dealing with LSP (Language Server Protocol) servers.
+///
+/// don't assume any of the public functions defined here are thread-safe.
 
 #ifndef LSP_H_
 #define LSP_H_
@@ -8,30 +10,30 @@
 #include "ds.h"
 #include "os.h"
 
-// an ID specific to a path. a document's ID is never 0 (thanks to lsp_create).
+/// an ID specific to a path. a document's ID is never 0 (thanks to lsp_create).
 typedef u32 LSPDocumentID;
-// ID of an LSP server. a server's ID is never 0.
+/// ID of an LSP server. a server's ID is never 0.
 typedef u32 LSPID;
-// a request ID. this is unique across all servers. a request's ID is never 0.
+/// a request ID. this is unique across all servers. a request's ID is never 0.
 typedef u32 LSPRequestID;
 typedef struct SDL_mutex *LSPMutex;
 typedef struct SDL_semaphore *LSPSemaphore;
 typedef struct SDL_Thread *LSPThread;
 
-// a struct for keeping track of a LSP server ID and a request ID
+/// a struct for keeping track of a LSP server ID and a request ID
 typedef struct {
 	LSPID lsp;
 	LSPRequestID id;
 } LSPServerRequestID;
 
-// interface Position in the LSP spec
+/// `interface Position` in the LSP spec
 typedef struct {
 	u32 line;
 	// NOTE: this is the UTF-16 character index!
 	u32 character;
 } LSPPosition;
 
-// interface TextDocumentPositionParams in the LSP spec
+/// `interface TextDocumentPositionParams` in the LSP spec
 typedef struct {
 	LSPDocumentID document;
 	LSPPosition pos;
@@ -42,19 +44,19 @@ typedef enum {
 	LSP_RESPONSE
 } LSPMessageType;
 
-// A string in a LSPResponse
+/// A string in a `LSPResponse`
 typedef struct {
 	// offset into string_data
 	u32 offset;
 } LSPString;
 
-// interface Range in the LSP spec
+/// `interface Range` in the LSP spec
 typedef struct {
 	LSPPosition start;
 	LSPPosition end;
 } LSPRange;
 
-// interface Location in the LSP spec
+/// `interface Location` in the LSP spec
 typedef struct {
 	LSPDocumentID document;
 	LSPRange range;
@@ -64,32 +66,32 @@ typedef enum {
 	LSP_REQUEST_NONE,
 	
 	// client-to-server
-	LSP_REQUEST_INITIALIZE, // initialize
-	LSP_REQUEST_INITIALIZED, // initialized
-	LSP_REQUEST_CANCEL, // $/cancelRequest
-	LSP_REQUEST_CONFIGURATION, // workspace/didChangeConfiguration
-	LSP_REQUEST_SHUTDOWN, // shutdown
-	LSP_REQUEST_EXIT, // exit
-	LSP_REQUEST_DID_OPEN, // textDocument/didOpen
-	LSP_REQUEST_DID_CLOSE, // textDocument/didClose
-	LSP_REQUEST_DID_CHANGE, // textDocument/didChange
-	LSP_REQUEST_COMPLETION, // textDocument/completion
-	LSP_REQUEST_SIGNATURE_HELP, // textDocument/signatureHelp
-	LSP_REQUEST_HOVER, // textDocument/hover
-	LSP_REQUEST_DEFINITION, // textDocument/definition
-	LSP_REQUEST_DECLARATION, // textDocument/declaration
-	LSP_REQUEST_TYPE_DEFINITION, // textDocument/typeDefinition
-	LSP_REQUEST_IMPLEMENTATION, // textDocument/implementation
-	LSP_REQUEST_HIGHLIGHT, // textDocument/documentHighlight
-	LSP_REQUEST_REFERENCES, // textDocument/references
-	LSP_REQUEST_RENAME, // textDocument/rename
-	LSP_REQUEST_WORKSPACE_SYMBOLS, // workspace/symbol
-	LSP_REQUEST_DID_CHANGE_WORKSPACE_FOLDERS, // workspace/didChangeWorkspaceFolders
+	LSP_REQUEST_INITIALIZE, //< initialize
+	LSP_REQUEST_INITIALIZED, //< initialized
+	LSP_REQUEST_CANCEL, //< $/cancelRequest
+	LSP_REQUEST_CONFIGURATION, //< workspace/didChangeConfiguration
+	LSP_REQUEST_SHUTDOWN, //< shutdown
+	LSP_REQUEST_EXIT, //< exit
+	LSP_REQUEST_DID_OPEN, //< textDocument/didOpen
+	LSP_REQUEST_DID_CLOSE, //< textDocument/didClose
+	LSP_REQUEST_DID_CHANGE, //< textDocument/didChange
+	LSP_REQUEST_COMPLETION, //< textDocument/completion
+	LSP_REQUEST_SIGNATURE_HELP, //< textDocument/signatureHelp
+	LSP_REQUEST_HOVER, //< textDocument/hover
+	LSP_REQUEST_DEFINITION, //< textDocument/definition
+	LSP_REQUEST_DECLARATION, //< textDocument/declaration
+	LSP_REQUEST_TYPE_DEFINITION, //< textDocument/typeDefinition
+	LSP_REQUEST_IMPLEMENTATION, //< textDocument/implementation
+	LSP_REQUEST_HIGHLIGHT, //< textDocument/documentHighlight
+	LSP_REQUEST_REFERENCES, //< textDocument/references
+	LSP_REQUEST_RENAME, //< textDocument/rename
+	LSP_REQUEST_WORKSPACE_SYMBOLS, //< workspace/symbol
+	LSP_REQUEST_DID_CHANGE_WORKSPACE_FOLDERS, //< workspace/didChangeWorkspaceFolders
 	
 	// server-to-client
-	LSP_REQUEST_SHOW_MESSAGE, // window/showMessage and window/showMessageRequest
-	LSP_REQUEST_LOG_MESSAGE, // window/logMessage
-	LSP_REQUEST_WORKSPACE_FOLDERS, // workspace/workspaceFolders - NOTE: this is handled directly in lsp-parse.c (because it only needs information from the LSP struct)
+	LSP_REQUEST_SHOW_MESSAGE, //< window/showMessage and window/showMessageRequest
+	LSP_REQUEST_LOG_MESSAGE, //< window/logMessage
+	LSP_REQUEST_WORKSPACE_FOLDERS, //< workspace/workspaceFolders - NOTE: this is handled directly in lsp-parse.c (because it only needs information from the LSP struct)
 } LSPRequestType;
 
 typedef enum {
@@ -113,7 +115,7 @@ typedef struct {
 typedef struct {
 	u64 language;
 	LSPDocumentID document;
-	// freed by lsp_request_free
+	// freed by \ref lsp_request_free
 	char *file_contents;
 } LSPRequestDidOpen;
 
@@ -124,7 +126,7 @@ typedef struct {
 // see TextDocumentContentChangeEvent in the LSP spec
 typedef struct {
 	LSPRange range;
-	// new text. will be freed. you can use NULL for the empty string.
+	/// new text. will be freed. you can use NULL for the empty string.
 	char *text;
 } LSPDocumentChangeEvent;
 
@@ -142,12 +144,12 @@ typedef enum {
 
 typedef struct {
 	LSPWindowMessageType type;
-	// freed by lsp_request_free
+	// freed by \ref lsp_request_free
 	char *message;
 } LSPRequestMessage;
 
 
-// these triggers are used for completion context and signature help context.
+/// these triggers are used for completion context and signature help context.
 #define LSP_TRIGGER_NONE 0 // not actually defined in LSP spec
 #define LSP_TRIGGER_INVOKED 1
 #define LSP_TRIGGER_CHARACTER 2
@@ -721,9 +723,9 @@ void json_debug_print_object(const JSON *json, JSONObject obj);
 void json_debug_print_string(const JSON *json, JSONString string);
 void json_debug_print_value(const JSON *json, JSONValue value);
 void json_free(JSON *json);
-// NOTE: text must live as long as json!!!
+/// NOTE: text must live as long as json!!!
 bool json_parse(JSON *json, const char *text);
-// like json_parse, but a copy of text is made, so you can free/overwrite it immediately.
+/// like json_parse, but a copy of text is made, so you can free/overwrite it immediately.
 bool json_parse_copy(JSON *json, const char *text);
 JSONValue json_object_get(const JSON *json, JSONObject object, const char *name);
 JSONValue json_array_get(const JSON *json, JSONArray array, u64 i);
@@ -748,15 +750,15 @@ JSONValue json_root(const JSON *json);
 JSONValue json_get(const JSON *json, const char *path);
 bool json_has(const JSON *json, const char *path);
 void json_string_get(const JSON *json, JSONString string, char *buf, size_t buf_sz);
-// returns a malloc'd null-terminated string.
+/// returns a malloc'd null-terminated string.
 char *json_string_get_alloc(const JSON *json, JSONString string);
 void json_debug_print(const JSON *json);
 size_t json_escape_to(char *out, size_t out_sz, const char *in);
 char *json_escape(const char *str);
 
-// print server-to-client communication
+/// print server-to-client communication
 #define LSP_SHOW_S2C 0
-// print client-to-server communication
+/// print client-to-server communication
 #define LSP_SHOW_C2S 0
 
 #endif // LSP_INTERNAL

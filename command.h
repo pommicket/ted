@@ -47,6 +47,7 @@ typedef enum {
 	CMD_START_OF_FILE,
 	/// move cursor to end of buffer
 	CMD_END_OF_FILE,
+	/// go to previous position
 	CMD_PREVIOUS_POSITION,
 	CMD_SELECT_START_OF_FILE,
 	CMD_SELECT_END_OF_FILE,

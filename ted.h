@@ -293,8 +293,12 @@ typedef struct {
 
 /// A position in the buffer
 typedef struct {
+	/// line number (0-indexed)
 	u32 line;
-	u32 index; // index of character in line (not the same as column, since a tab is settings->tab_width columns)
+	/// UTF-32 index of character in line
+	///
+	/// (not the same as column, since a tab is `settings->tab_width` columns)
+	u32 index;
 } BufferPos;
 
 /// A single line in a buffer
@@ -342,17 +346,19 @@ typedef struct {
 	char *path;
 	/// we keep a back-pointer to the ted instance so we don't have to pass it in to every buffer function
 	struct Ted *ted;
-	/// number of characters scrolled in the x/y direction
-	double scroll_x, scroll_y;
-	/// last write time to `path`
+	/// number of characters scrolled in the x direction
+	double scroll_x;
+	/// number of characters scrolled in the y direction
+	double scroll_y;
+	/// last write time to \ref path
 	double last_write_time;
-	/// the language the buffer has been manually set to, or `LANG_NONE` if it hasn't been set to anything
+	/// the language the buffer has been manually set to, or \ref LANG_NONE if it hasn't been set to anything
 	i64 manual_language;
 	/// position of cursor
 	BufferPos cursor_pos;
-	/// if `selection` is true, the text between `selection_pos` and `cursor_pos` is selected.
+	/// if \ref selection is true, the text between \ref selection_pos and \ref cursor_pos is selected.
 	BufferPos selection_pos;
-	/// "previous" position of cursor, for CMD_PREVIOUS_POSITION
+	/// "previous" position of cursor, for \ref CMD_PREVIOUS_POSITION
 	BufferPos prev_cursor_pos;
 	/// "line buffers" are buffers which can only have one line of text (used for inputs)
 	bool is_line_buffer;
@@ -372,13 +378,19 @@ typedef struct {
 	/// (line buffers only) set to true when submitted. you have to reset it to false.
 	bool line_buffer_submitted;
 	/// If set to true, buffer will be scrolled to the cursor position next frame.
-	/// This is to fix the problem that x1,y1,x2,y2 are not updated until the buffer is rendered.
-	bool center_cursor_next_frame; 
-	/// buffer's rectangle on screen
-	float x1, y1, x2, y2;
+	/// This is to fix the problem that \ref x1, \ref y1, \ref x2, \ref y2 are not updated until the buffer is rendered.
+	bool center_cursor_next_frame;
+	/// x coordinate of left side of buffer
+	float x1;
+	/// y coordinate of top side of buffer
+	float y1;
+	/// x coordinate of right side of buffer
+	float x2;
+	/// y coordinate of bottom side of buffer
+	float y2;
 	/// number of lines in buffer
 	u32 nlines;
-	/// capacity of `lines`
+	/// capacity of \ref lines
 	u32 lines_capacity;
 	
 	/// which LSP this document is open in
@@ -389,8 +401,8 @@ typedef struct {
 	/// which lines are on screen? updated when \ref buffer_render is called.
 	u32 first_line_on_screen, last_line_on_screen;
 
-	// to cache syntax highlighting properly, it is important to keep track of the
-	// first and last line modified since last frame.
+	/// to cache syntax highlighting properly, it is important to keep track of the
+	/// first and last line modified since last frame.
 	u32 frame_earliest_line_modified;
 	/// see \ref frame_earliest_line_modified.
 	u32 frame_latest_line_modified;

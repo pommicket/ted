@@ -86,7 +86,7 @@ static void time_sleep_s(u64 s) {
 	time_sleep_ns(s * 1000000000);
 }
 
-
+/// a process
 typedef struct Process Process;
 
 /// zero everything except what you're using
