@@ -1,7 +1,6 @@
 /*
 FUTURE FEATURES:
 - better undo chaining (dechain on backspace?)
-- manual.md
 - font setting & support for multiple fonts to cover more characters
 - support for variable-width fonts
 - robust find (results shouldn't move around when you type things)
@@ -20,6 +19,7 @@ FUTURE FEATURES:
 - keyboard macros
     -  ctrl+9/0 to inc/dec number would be useful here
     - with macros we can really test performance of buffer_insert_text_at_pos, etc. (which should ideally be fast)
+- manual.md
 - auto-reload config even for %included files
 - LSP request timeout
 BUG REPORTS IM TO LAZY TO FILE (RIGHT NOW)

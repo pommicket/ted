@@ -36,6 +36,7 @@ install: release
 	mkdir -p $(GLOBAL_DATA_DIR) $(LOCAL_DATA_DIR)
 	chown `logname`:`logname` $(LOCAL_DATA_DIR)
 	cp -r assets $(GLOBAL_DATA_DIR)
+	cp -r themes $(GLOBAL_DATA_DIR)
 	install -m 644 ted.cfg $(GLOBAL_DATA_DIR)
 	install ted $(INSTALL_BIN_DIR)
 libpcre2-32.a: pcre2
@@ -53,7 +54,7 @@ ted.deb: release
 	mkdir -p /tmp/ted/usr/share/applications
 	cp ted.desktop /tmp/ted/usr/share/applications
 	cp ted /tmp/ted$(INSTALL_BIN_DIR)/
-	cp -r assets ted.cfg /tmp/ted$(GLOBAL_DATA_DIR)/
+	cp -r assets themes ted.cfg /tmp/ted$(GLOBAL_DATA_DIR)/
 	cp control /tmp/ted/DEBIAN
 	dpkg-deb --build /tmp/ted
 	mv /tmp/ted.deb ./
