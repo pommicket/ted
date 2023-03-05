@@ -1,6 +1,5 @@
 /*
 FUTURE FEATURES:
-- styles ([color] sections)
 - better undo chaining (dechain on backspace?)
 - manual.md
 - font setting & support for multiple fonts to cover more characters
