@@ -26,7 +26,7 @@ in other editors.
 - Multiple tabs, each with a different file
 - Split screen
 - Auto-indent
-- Syntax highlighting for C, C++, Go, HTML, Java, JavaScript, LaTeX, Markdown, Python, Rust, and TypeScript.
+- Syntax highlighting for C, C++, CSS, Go, HTML, Java, JavaScript, LaTeX, Markdown, Python, Rust, and TypeScript.
 - Find and replace (with regular expressions!)
 - Run build command, go to errors
 - Run any shell command
@@ -65,6 +65,8 @@ to open the command palette, and select "open-config". There are several section
 Comments begin with `#`, and all other lines are of the form `key = value`.
 Strings can span multiple lines and can either be delimited with " or \`.
 
+You can also include files with `%include` (note: the included file must start with a section header).
+
 By default ted's settings will automatically update when you save the config file.
 
 The `core` section's settings should be pretty familiar (font size, etc.) or should have comments on the previous line
@@ -92,6 +94,26 @@ To reset your ted configuration to the default settings, delete your ted.cfg fil
 
 To change the font, create files called `font.ttf` and `font-bold.ttf` in the same directory as `ted.cfg`.
 At the moment, only monospace fonts are supported.
+
+#### Themes
+
+At the top of `ted.cfg` you will see a line which includes a theme.
+To modify just one color in the theme, you can do something like
+
+```
+%include themes/classic.ted.cfg
+
+[colors]
+# replace background color with solid red!
+bg = #f00
+```
+
+but you can also change to a different theme. Currently `classic`,
+`classic-light`, and `extradark` are available.
+
+No matter what you should include a built-in theme (even if you
+replace every single color), because more colors may be added to ted in the future,
+and you will want them to be set to something reasonable.
 
 ### IDE-like features
 
@@ -281,6 +303,7 @@ Then, open windows\_installer\\ted\\ted.sln, and build.
 <tr><td>1.3r1</td> <td>Fixed rust, python syntax highlighting.</td> <td>2022 Nov 4</td></tr>
 <tr><td>1.3r2</td> <td>Fixed high CPU usage on some devices.</td> <td>2022 Dec 7</td></tr>
 <tr><td>2.0</td> <td>LSP support and a bunch of other things.</td> <td>2023 Jan 11</td></tr>
+<tr><td>2.1</td> <td>Better interaction between path+language specific settings, themes, and other things.</td> <td>2023 Mar 7</td></tr>
 </table>
 
 ## License
