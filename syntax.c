@@ -1937,6 +1937,9 @@ void syntax_highlight(SyntaxState *state, Language lang, const char32_t *line, u
 static void syntax_highlight_c(SyntaxState *state, const char32_t *line, u32 line_len, SyntaxCharType *char_types) {
 	syntax_highlight_c_cpp(state, line, line_len, char_types, LANG_C);
 }
+static void syntax_highlight_glsl(SyntaxState *state, const char32_t *line, u32 line_len, SyntaxCharType *char_types) {
+	syntax_highlight_c_cpp(state, line, line_len, char_types, LANG_GLSL);
+}
 static void syntax_highlight_cpp(SyntaxState *state, const char32_t *line, u32 line_len, SyntaxCharType *char_types) {
 	syntax_highlight_c_cpp(state, line, line_len, char_types, LANG_CPP);
 }
@@ -2066,7 +2069,7 @@ void syntax_register_builtin_languages(void) {
 			.name = "GLSL",
 			// not specified as of LSP 3.17, but this seems like the natural choice
 			.lsp_identifier = "glsl",
-			.highlighter = syntax_highlight_html,
+			.highlighter = syntax_highlight_glsl,
 		},
 		{
 			.id = LANG_CSS,

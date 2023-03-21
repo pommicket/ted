@@ -28,7 +28,7 @@ extern "C" {
 #include "sdl-inc.h"
 
 /// Version number
-#define TED_VERSION "2.1"
+#define TED_VERSION "2.1r1"
 /// Version string
 #define TED_VERSION_FULL "ted v. " TED_VERSION
 /// Maximum path size ted handles.
