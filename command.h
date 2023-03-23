@@ -54,6 +54,7 @@ typedef enum {
 	CMD_SELECT_PAGE_DOWN,
 	CMD_SELECT_UP_BLANK_LINE,
 	CMD_SELECT_DOWN_BLANK_LINE,
+	CMD_CLEAR_SELECTION,
 	
 	// insertion
 	/// insert text

@@ -1,5 +1,5 @@
 /*
-- show "recording macro..." while recording macro
+-  ctrl+9/0 to inc/dec number
 FUTURE FEATURES:
 - better undo chaining (dechain on backspace?)
 - font setting & support for multiple fonts to cover more characters
@@ -17,9 +17,7 @@ FUTURE FEATURES:
    - TED_PLUGIN macro defined before including ted.h
      this can remove struct definitions to guarantee forwards compatibility
    - language dynamic registration
-- keyboard macros
-    -  ctrl+9/0 to inc/dec number would be useful here
-    - with macros we can really test performance of buffer_insert_text_at_pos, etc. (which should ideally be fast)
+- with macros we can really test performance of buffer_insert_text_at_pos, etc. (which should ideally be fast)
 - manual.md
 - LSP request timeout
 BUG REPORTS IM TO LAZY TO FILE (RIGHT NOW)
@@ -638,6 +636,9 @@ int main(int argc, char **argv) {
 				}
 			} break;
 			case SDL_MOUSEBUTTONDOWN: {
+				if (ted->recording_macro)
+					break; // ignore mouse input during macros
+				
 				Uint32 button = event.button.button;
 				u8 times = event.button.clicks; // number of clicks
 				float x = (float)event.button.x, y = (float)event.button.y;
@@ -695,6 +696,9 @@ int main(int argc, char **argv) {
 				}
 			} break;
 			case SDL_MOUSEBUTTONUP: {
+				if (ted->recording_macro)
+					break; // ignore mouse input during macros
+				
 				Uint8 button = event.button.button;
 				if (button < arr_count(ted->nmouse_releases)) {
 					vec2 pos = Vec2((float)event.button.x, (float)event.button.y);
@@ -704,6 +708,9 @@ int main(int argc, char **argv) {
 				}
 			} break;
 			case SDL_MOUSEMOTION: {
+				if (ted->recording_macro)
+					break; // ignore mouse input during macros
+				
 				float x = (float)event.motion.x, y = (float)event.motion.y;
 				if (ted->drag_buffer != ted->active_buffer)
 					ted->drag_buffer = NULL;
@@ -727,7 +734,14 @@ int main(int argc, char **argv) {
 					// unfortunately, some key combinations like ctrl+minus still register as a "-" text input event
 					&& (key_modifier & ~KEY_MODIFIER_SHIFT) == 0) { 
 					// insert the text
-					buffer_insert_utf8_at_cursor(buffer, text);
+					{
+						CommandContext ctx = {0};
+						CommandArgument arg = {
+							.number = 0,
+							.string = text
+						};
+						command_execute_ex(ted, CMD_INSERT_TEXT, arg, ctx);
+					}
 					// check for trigger character
 					LSP *lsp = buffer_lsp(buffer);
 					Settings *settings = buffer_settings(buffer);
@@ -1064,6 +1078,28 @@ int main(int argc, char **argv) {
 				gl_geometry_draw();
 				text_render(font);
 			}
+		}
+		
+		if (ted->recording_macro) {
+			Font *font_bold = ted->font_bold;
+			u32 bg_color = ted_active_color(ted, COLOR_ERROR_BG);
+			u32 color = ted_active_color(ted, COLOR_TEXT);
+			u8 padding = ted_active_settings(ted)->padding;
+			const char *text = "Recording macro...";
+			vec2 size = text_get_size_vec2(font_bold, text);
+			Rect r = {
+				.pos = vec2_sub(Vec2(window_width - 3 * padding, window_height - 3 * padding), size),
+				.size = vec2_add(size, Vec2(padding, padding)),
+			};
+			gl_geometry_rect(r, bg_color);
+			Rect full_screen = {
+				.pos = {0, 0},
+				.size = {window_width, window_height}
+			};
+			gl_geometry_rect(full_screen, bg_color & 0xffffff0f);
+			text_utf8_anchored(font_bold, text, window_width - 2.5f * padding, window_height - 2.5f * padding, color, ANCHOR_BOTTOM_RIGHT);
+			gl_geometry_draw();
+			text_render(font_bold);
 		}
 		
 		ted_check_for_node_problems(ted);

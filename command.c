@@ -37,6 +37,7 @@ static CommandName command_names[] = {
 	{"select-all", CMD_SELECT_ALL},
 	{"select-up-blank-line", CMD_SELECT_UP_BLANK_LINE},
 	{"select-down-blank-line", CMD_SELECT_DOWN_BLANK_LINE},
+	{"clear-selection", CMD_CLEAR_SELECTION},
 	{"page-up", CMD_PAGE_UP},
 	{"page-down", CMD_PAGE_DOWN},
 	{"previous-position", CMD_PREVIOUS_POSITION},
@@ -209,6 +210,9 @@ void command_execute_ex(Ted *ted, Command c, CommandArgument full_argument, Comm
 	case CMD_SELECT_LEFT:
 		if (buffer) buffer_select_left(buffer, argument);
 		autocomplete_close(ted);
+		break;
+	case CMD_CLEAR_SELECTION:
+		if (buffer) buffer_deselect(buffer);
 		break;
 	case CMD_SELECT_RIGHT:
 		if (buffer) buffer_select_right(buffer, argument);

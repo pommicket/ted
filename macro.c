@@ -1,9 +1,26 @@
 #include "ted.h"
 
+static void macro_clear(Macro *macro) {
+	arr_foreach_ptr(macro->actions, Action, act) {
+		free((char *)act->argument.string);
+	}
+	arr_free(macro->actions);
+	
+	memset(macro, 0, sizeof *macro);
+}
+
 void macro_start_recording(Ted *ted, u32 index) {
 	if (index >= TED_MACRO_MAX) return;
 	if (ted->executing_macro) return;
+	if (ted->recording_macro) {
+		macro_stop_recording(ted);
+		return;
+	}
+	
+	command_execute(ted, CMD_CLEAR_SELECTION, 0);
+	
 	ted->recording_macro = &ted->macros[index];
+	macro_clear(ted->recording_macro);
 }
 
 void macro_stop_recording(Ted *ted) {
@@ -43,9 +60,6 @@ void macro_execute(Ted *ted, u32 index) {
 void macros_free(Ted *ted) {
 	for (int i = 0; i < TED_MACRO_MAX; ++i) {
 		Macro *macro = &ted->macros[i];
-		arr_foreach_ptr(macro->actions, Action, act) {
-			free((char *)act->argument.string);
-		}
-		arr_free(macro->actions);
+		macro_clear(macro);
 	}
 }
