@@ -100,6 +100,8 @@ static CommandName command_names[] = {
 	{"macro-record", CMD_MACRO_RECORD},
 	{"macro-stop", CMD_MACRO_STOP},
 	{"macro-execute", CMD_MACRO_EXECUTE},
+	{"increment-number", CMD_INCREMENT_NUMBER},
+	{"decrement-number", CMD_DECREMENT_NUMBER},
 };
 
 static_assert_if_possible(arr_count(command_names) == CMD_COUNT)
@@ -175,6 +177,13 @@ void command_execute_ex(Ted *ted, Command c, CommandArgument full_argument, Comm
 		assert(0);
 		break;
 	case CMD_NOOP:
+		break;
+	
+	case CMD_INCREMENT_NUMBER:
+		buffer_change_number_at_cursor(buffer, argument);
+		break;
+	case CMD_DECREMENT_NUMBER:
+		buffer_change_number_at_cursor(buffer, -argument);
 		break;
 	
 	case CMD_LEFT:

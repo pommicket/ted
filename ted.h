@@ -28,7 +28,7 @@ extern "C" {
 #include "sdl-inc.h"
 
 /// Version number
-#define TED_VERSION "2.1r1"
+#define TED_VERSION "2.2"
 /// Version string
 #define TED_VERSION_FULL "ted v. " TED_VERSION
 /// Maximum path size ted handles.
@@ -1043,6 +1043,8 @@ String32 buffer_word_at_cursor(TextBuffer *buffer);
 /// Get a UTF-8 string consisting of the word at the cursor.
 /// The return value should be freed.
 char *buffer_word_at_cursor_utf8(TextBuffer *buffer);
+/// Used for CMD_INCREMENT_NUMBER/CMD_DECREMENT_NUMBER
+void buffer_change_number_at_cursor(TextBuffer *buffer, i64 argument);
 /// Buffer position corresponding to the start of line `line` (0-indexed).
 BufferPos buffer_pos_start_of_line(TextBuffer *buffer, u32 line);
 /// Buffer position corresponding to the end of line `line` (0-indexed).
@@ -1127,6 +1129,8 @@ i64 buffer_delete_selection(TextBuffer *buffer);
 void buffer_insert_text_at_cursor(TextBuffer *buffer, String32 str);
 /// Insert a single character at the cursor, and move the cursor past it.
 void buffer_insert_char_at_cursor(TextBuffer *buffer, char32_t c);
+/// Insert UTF-8 text at the position.
+void buffer_insert_utf8_at_pos(TextBuffer *buffer, BufferPos pos, const char *utf8);
 /// Insert UTF-8 text at the cursor, and move the cursor to the end of it.
 void buffer_insert_utf8_at_cursor(TextBuffer *buffer, const char *utf8);
 /// Insert a "tab" at the cursor position, and move the cursor past it.

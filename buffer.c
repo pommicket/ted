@@ -1791,6 +1791,153 @@ static void buffer_shorten_line(Line *line, u32 new_len) {
 	line->len = new_len; // @TODO(optimization,memory): decrease line capacity
 }
 
+// returns -1 if c is not a digit of base
+static int base_digit(char c, int base) {
+	int value = -1;
+	if (c >= '0' && c <= '9') {
+		value = c - '0';
+	} else if (c >= 'a' && c <= 'f') {
+		value = c - 'a' + 10;
+	} else if (c >= 'A' && c <= 'F') {
+		value = c - 'A' + 10;
+	}
+	return value >= base ? -1 : value;
+}
+
+// e.g. returns "0x1b"  for num = "0x1a", by = 1
+// turns out it's surprisingly difficult to handle all cases
+static char *change_number(const char *num, i64 by) {
+	if (!isdigit(*num) && *num != '-') {
+		return NULL;
+	}
+	
+	bool negative = *num == '-';
+	if (negative) ++num;
+	
+	int start = 0;
+	int base = 10;
+	if (num[0] == '0') {
+		switch (num[1]) {
+		case '\0':
+			start = 0;
+			break;
+		case 'x':
+		case 'X':
+			start = 2;
+			base = 16;
+			break;
+		case 'o':
+		case 'O':
+			start = 2;
+			base = 8;
+			break;
+		case '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7':
+			start = 1;
+			base = 8;
+			break;
+		case 'b':
+		case 'B':
+			// not handling binary yet since sprintf doesnt have binary gah
+			return NULL;
+		default:
+			return NULL;
+		}
+	}
+	
+	// find end of number
+	int end;
+	for (end = start + 1; base_digit(num[end], base) != -1; ++end);
+	
+	if (base_digit(num[end], 16) != -1) {
+		// we're probably wrong about the base. let's not do anything.
+		return NULL;
+	}
+	
+	if (num[end] != '\0'
+		&& !isalnum(num[end]) // number suffixes e.g. 0xffu
+		) {
+		// probably not a number.
+		// at least not one we understand.
+		return NULL;
+	}
+	
+	bool uppercase = false;
+	for (int i = 0; i < end; ++i)
+		if (isupper(num[i]))
+			uppercase = true;
+	
+	long long number = strtoll(&num[start], NULL, base);
+	if (number == LLONG_MIN || number == LLONG_MAX)
+		return NULL;
+	if (negative) number = -number;
+	// overflow checks
+	if (by > 0 && number > LLONG_MAX - by)
+		return NULL;
+	if (by < 0 && number <= LLONG_MIN - by)
+		return NULL;
+	number += by;
+	printf("%lld\n",number);
+	negative = number < 0;
+	if (negative) number = -number;
+	
+	char new_number[128] = {0};
+	switch (uppercase * 1000 + base) {
+	case 1010: case 10: sprintf(new_number, "%lld", number); break;
+	case 1008: case 8: sprintf(new_number, "%llo", number); break;
+	case 1016: sprintf(new_number, "%llX", number); break;
+	case 16: sprintf(new_number, "%llx", number); break;
+	}
+	
+	size_t capacity = strlen(num) + 128;
+	char *changed = calloc(1, capacity);
+	printf("%s %.*s %s %s\n",negative ? "-" : "", start, num, new_number, &num[end]);
+	str_printf(changed, capacity, "%s%.*s%s%s", negative ? "-" : "", start, num, new_number, &num[end]);
+	return changed;
+	
+}
+
+void buffer_change_number_at_cursor(TextBuffer *buffer, i64 by) {
+	BufferPos pos = buffer->cursor_pos;
+	
+	// move to start of number
+	if (is32_alnum(buffer_char_before_pos(buffer, pos))) {
+		buffer_pos_move_left_words(buffer, &pos, 1);
+	}
+	char32_t c = buffer_char_after_pos(buffer, pos);
+	if (c >= 127 || !isdigit((char)c)) {
+		if (c != '-') {
+			// not a number
+			return;
+		}
+	}
+	
+	BufferPos end = pos;
+	if (c == '-') {
+		buffer_pos_move_right(buffer, &end, 1);
+	}
+	buffer_pos_move_right_words(buffer, &end, 1);
+	if (buffer_char_at_pos(buffer, end) == '.') {
+		// floating-point number. dont try to increment it
+		return;
+	}
+	
+	if (buffer_char_before_pos(buffer, pos) == '-') {
+		// include negative sign
+		buffer_pos_move_left(buffer, &pos, 1);
+	}
+	
+	u32 nchars = (u32)buffer_pos_diff(buffer, pos, end);
+	char *word = buffer_get_utf8_text_at_pos(buffer, pos, nchars);
+	char *newnum = change_number(word, by);
+	if (newnum) {
+		buffer_delete_chars_between(buffer, pos, end);
+		buffer_insert_utf8_at_pos(buffer, pos, newnum);
+		buffer_cursor_move_to_pos(buffer, pos);
+		free(newnum);
+	}
+	free(word);
+}
+
 // decrease the number of lines in the buffer.
 // DOES NOT DO ANYTHING TO THE LINES REMOVED! YOU NEED TO FREE THEM YOURSELF!
 static void buffer_shorten(TextBuffer *buffer, u32 new_nlines) {
@@ -2011,6 +2158,15 @@ void buffer_insert_text_at_cursor(TextBuffer *buffer, String32 str) {
 void buffer_insert_char_at_cursor(TextBuffer *buffer, char32_t c) {
 	String32 s = {&c, 1};
 	buffer_insert_text_at_cursor(buffer, s);
+}
+
+
+void buffer_insert_utf8_at_pos(TextBuffer *buffer, BufferPos pos, const char *utf8) {
+	String32 s32 = str32_from_utf8(utf8);
+	if (s32.str) {
+		buffer_insert_text_at_pos(buffer, pos, s32);
+		str32_free(&s32);
+	}
 }
 
 void buffer_insert_utf8_at_cursor(TextBuffer *buffer, const char *utf8) {

@@ -1,5 +1,6 @@
 /*
 -  ctrl+9/0 to inc/dec number
+- handle leading zeroes
 FUTURE FEATURES:
 - better undo chaining (dechain on backspace?)
 - font setting & support for multiple fonts to cover more characters
