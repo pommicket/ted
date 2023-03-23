@@ -1983,7 +1983,9 @@ bool buffer_change_number_at_pos(TextBuffer *buffer, BufferPos *ppos, i64 by) {
 }
 
 void buffer_change_number_at_cursor(TextBuffer *buffer, i64 by) {
+	buffer_start_edit_chain(buffer);
 	buffer_change_number_at_pos(buffer, &buffer->cursor_pos, by);
+	buffer_end_edit_chain(buffer);
 }
 
 // decrease the number of lines in the buffer.
