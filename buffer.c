@@ -308,6 +308,9 @@ bool buffer_indent_with_spaces(TextBuffer *buffer) {
 }
 
 String32 buffer_get_line(TextBuffer *buffer, u32 line_number) {
+	if (line_number >= buffer->nlines) {
+		return str32(NULL, 0);
+	}
 	Line *line = &buffer->lines[line_number];
 	return (String32) {
 		.str = line->str, .len = line->len

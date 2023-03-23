@@ -531,7 +531,12 @@ typedef struct {
 
 typedef struct {
 	char *path;
-	BufferPos pos;
+	u32 line;
+	u32 column;
+	/// if this is 1, then column == UTF-32 index.
+	/// if this is 4, for example, then column 4 in a line starting with a tab would
+	/// be the character right after the tab.
+	u8 columns_per_tab;
 	/// which line in the build output corresponds to this error
 	u32 build_output_line;
 } BuildError;
@@ -914,6 +919,7 @@ u8 buffer_tab_width(TextBuffer *buffer);
 bool buffer_indent_with_spaces(TextBuffer *buffer);
 /// NOTE: this string will be invalidated when the line is edited!!!
 /// only use it briefly!!
+/// returns an empty string if `line_number` is out of range.
 String32 buffer_get_line(TextBuffer *buffer, u32 line_number);
 /// get at most `nchars` characters starting from position `pos`.
 /// returns the number of characters actually available.

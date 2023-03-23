@@ -1,6 +1,4 @@
 /*
-@TODO:
-- some rust error locations arent detected?
 FUTURE FEATURES:
 - better undo chaining (dechain on backspace?)
 - font setting & support for multiple fonts to cover more characters

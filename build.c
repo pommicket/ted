@@ -118,8 +118,35 @@ static void build_go_to_error(Ted *ted) {
 		if (ted_open_file(ted, error.path)) {
 			TextBuffer *buffer = ted->active_buffer;
 			assert(buffer);
+			
+			u32 index = error.column;
+			
+			if (error.columns_per_tab > 1) {
+				// get correct index
+				String32 line = buffer_get_line(buffer, error.line);
+				u32 column = 0;
+				index = 0;
+				while (column < error.column) {
+					if (index >= line.len)
+						break;
+					if (line.str[index] == '\t') {
+						column += error.columns_per_tab;
+					} else {
+						column += 1;
+					}
+					++index;
+				}
+			}
+			
+			
+			BufferPos pos = {
+				.line = error.line,
+				.index = index,
+			};
+			
+			
 			// move cursor to error
-			buffer_cursor_move_to_pos(buffer, error.pos);
+			buffer_cursor_move_to_pos(buffer, pos);
 			buffer->center_cursor_next_frame = true;
 
 			// move cursor to error in build output
@@ -180,16 +207,30 @@ void build_check_for_errors(Ted *ted) {
 			continue;
 		}
 		bool is_error = true;
+		// well, for a bit of time i thought rust was weird
+		// and treated tabs as 4 columns
+		// apparently its just a bug, which ive filed here
+		// https://github.com/rust-lang/rust/issues/109537
+		// we could treat ::: references as 4-columns-per-tab,
+		// but then that would be wrong if the bug gets fixed.
+		// all this is to say that columns_per_tab is currently always 1,
+		// but might be useful at some point.
+		u8 columns_per_tab = 1;
 		char32_t *p = line->str, *end = p + line->len;
 		
 		{
 			// rust errors look like:
 			// "     --> file:line:column"
+			// and can also include stuff like
+			// "     ::: file:line:column"
 			while (p != end && *p == ' ') {
 				++p;
 			}
-			if (end - p >= 4 && p[0] == '-' && p[1] == '-' && p[2] == '>' && p[3] == ' ') {
-				p += 4;
+			if (end - p >= 4) {
+				String32 first4 = str32(p, 4);
+				if (str32_cmp_ascii(first4, "::: ") == 0 || str32_cmp_ascii(first4, "--> ") == 0) {
+					p += 4;
+				}
 			}
 		}
 	
@@ -243,9 +284,12 @@ void build_check_for_errors(Ted *ted) {
 						pfilename += 3;
 						path_full(ted->build_dir, pfilename, full_path, sizeof full_path);
 					}
+										
 					BuildError error = {
 						.path = str_dup(full_path),
-						.pos = {.line = (u32)line_number, .index = (u32)column_number},
+						.line = (u32)line_number,
+						.column = (u32)column_number,
+						.columns_per_tab = columns_per_tab,
 						.build_output_line = line_idx
 					};
 					arr_add(ted->build_errors, error);
