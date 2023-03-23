@@ -289,9 +289,15 @@ void menu_update(Ted *ted) {
 			Command c = command_from_str(chosen_command);
 			if (c != CMD_UNKNOWN) {
 				char *argument = str32_to_utf8_cstr(buffer_get_line(&ted->argument_buffer, 0)), *endp = NULL;
-				long long arg = strtoll(argument, &endp, 0);
-
-				if (*endp == '\0') {
+				long long arg = 1;
+				bool execute = true;
+				if (*argument) {
+					strtoll(argument, &endp, 0);
+					if (*endp != '\0')
+						execute = false;
+				}
+				
+				if (execute) {
 					menu_close(ted);
 					command_execute(ted, c, arg);
 				}

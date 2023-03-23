@@ -181,12 +181,22 @@ typedef struct {
 /// extract key modifier from \ref KeyCombo
 #define KEY_COMBO_MODIFIER(combo) ((u32)((combo.value) & 0xff))
 
+typedef struct {
+	const char *string;
+	i64 number;
+} CommandArgument;
+
+typedef struct {
+	bool from_macro;
+} CommandContext;
+
 /// Thing to do when a key combo is pressed.
 typedef struct {
 	KeyCombo key_combo;
 	Command command;
-	i64 argument;
+	CommandArgument argument;
 } KeyAction;
+
 
 /// A SettingsContext is a context where a specific set of settings are applied.
 /// this corresponds to `[PATH//LANGUAGE.(section)]` in config files.
@@ -700,12 +710,28 @@ typedef enum {
 	MESSAGE_ERROR
 } MessageType;
 
+typedef struct {
+	Command command;
+	CommandArgument argument;
+} Action;
+
+typedef struct {
+	// dynamic array
+	Action *actions;
+} Macro;
+
+#define TED_MACRO_MAX 256
+
 /// (almost) all data used by the ted application
 typedef struct Ted {
 	/// all running LSP servers
 	LSP *lsps[TED_LSP_MAX + 1];
 	/// current time (see time_get_seconds), as of the start of this frame
 	double frame_time;
+	
+	Macro macros[TED_MACRO_MAX];
+	Macro *recording_macro;
+	bool executing_macro;
 	
 	SDL_Window *window;
 	Font *font_bold;
@@ -1248,6 +1274,7 @@ void command_init(void);
 Command command_from_str(const char *str);
 const char *command_to_str(Command c);
 void command_execute(Ted *ted, Command c, i64 argument);
+void command_execute_ex(Ted *ted, Command c, CommandArgument argument, CommandContext context);
 
 // === config.c ===
 /// first, we read all config files, then we parse them.
@@ -1466,6 +1493,13 @@ void usages_cancel_lookup(Ted *ted);
 void usages_find(Ted *ted);
 void usages_process_lsp_response(Ted *ted, const LSPResponse *response);
 void usages_frame(Ted *ted);
+
+// === macro.c ===
+void macro_start_recording(Ted *ted, u32 index);
+void macro_stop_recording(Ted *ted);
+void macro_add(Ted *ted, Command command, CommandArgument argument);
+void macro_execute(Ted *ted, u32 index);
+void macros_free(Ted *ted);
 
 // === menu.c ===
 void menu_close(Ted *ted);

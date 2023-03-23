@@ -1,4 +1,5 @@
 /*
+- show "recording macro..." while recording macro
 FUTURE FEATURES:
 - better undo chaining (dechain on backspace?)
 - font setting & support for multiple fonts to cover more characters
@@ -20,7 +21,6 @@ FUTURE FEATURES:
     -  ctrl+9/0 to inc/dec number would be useful here
     - with macros we can really test performance of buffer_insert_text_at_pos, etc. (which should ideally be fast)
 - manual.md
-- auto-reload config even for %included files
 - LSP request timeout
 BUG REPORTS IM TO LAZY TO FILE (RIGHT NOW)
 - rust-analyzer:
@@ -84,6 +84,7 @@ BUG REPORTS IM TO LAZY TO FILE (RIGHT NOW)
 #include "ide-highlights.c"
 #include "ide-usages.c"
 #include "command.c"
+#include "macro.c"
 #include "config.c"
 #include "session.c"
 #include "lsp.c"
@@ -1174,6 +1175,7 @@ int main(int argc, char **argv) {
 	text_font_free(ted->font);
 	text_font_free(ted->font_bold);
 	config_free(ted);
+	macros_free(ted);
 	free(ted);
 #if _WIN32
 	for (int i = 0; i < argc; ++i)

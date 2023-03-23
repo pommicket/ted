@@ -4,7 +4,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 	set(SOURCES buffer.c build.c colors.c command.c config.c find.c gl.c ide-autocomplete.c
 		ide-definitions.c ide-highlights.c ide-hover.c ide-signature-help.c ide-usages.c
 		lsp.c lsp-json.c lsp-parse.c lsp-write.c main.c  menu.c node.c os.c session.c
-		stb_image.c stb_truetype.c syntax.c tags.c ted.c text.c ui.c util.c)
+		stb_image.c stb_truetype.c syntax.c tags.c ted.c text.c ui.c util.c macro.c)
 else()
 	set(SOURCES main.c)
 endif()

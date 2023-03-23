@@ -4,9 +4,6 @@
 #ifndef COMMAND_H_
 #define COMMAND_H_
 
-/// `i | ARG_STRING` when used as an argument refers to `ted->strings[i]`
-#define ARG_STRING 0x4000000000000000
-
 /// command enum
 ///
 /// more documentation in `ted.cfg`.
@@ -147,6 +144,10 @@ typedef enum {
 
 	/// by default this is the escape key. closes menus, etc.
 	CMD_ESCAPE,
+	
+	CMD_MACRO_RECORD,
+	CMD_MACRO_STOP,
+	CMD_MACRO_EXECUTE,
 
 	CMD_COUNT
 } Command;

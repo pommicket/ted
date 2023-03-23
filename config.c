@@ -610,7 +610,7 @@ static int config_part_qsort_cmp(const void *av, const void *bv) {
 	return config_part_cmp(av, bv);
 }
 
-static i64 config_read_string(Ted *ted, ConfigReader *cfg, char **ptext) {
+static const char *config_read_string(Ted *ted, ConfigReader *cfg, char **ptext) {
 	char *p;
 	int backslashes = 0;
 	u32 start_line = cfg->line_number;
@@ -642,7 +642,7 @@ static i64 config_read_string(Ted *ted, ConfigReader *cfg, char **ptext) {
 				config_err(cfg, "Unrecognized escape sequence: '\\%c'.", *p);
 				*ptext += strlen(*ptext);
 				arr_clear(str);
-				return -1;
+				return NULL;
 			}
 			break;
 		case '\n':
@@ -654,22 +654,21 @@ static i64 config_read_string(Ted *ted, ConfigReader *cfg, char **ptext) {
 			config_err(cfg, "String doesn't end.");
 			*ptext += strlen(*ptext);
 			arr_clear(str);
-			return -1;
+			return NULL;
 		}
 		if (*p == delimiter)
 			break;
 		arr_add(str, *p);
 	}
 	
-	i64 str_idx = -1;
+	char *s = NULL;
 	if (ted->nstrings < TED_MAX_STRINGS) {
-		char *s = strn_dup(str, arr_len(str));
-		str_idx = ted->nstrings;
+		s = strn_dup(str, arr_len(str));
 		ted->strings[ted->nstrings++] = s;
 	}
 	arr_clear(str);
 	*ptext = p + 1;
-	return str_idx;
+	return s;
 }
 
 static void settings_load_bg_shader(Ted *ted, Settings **applicable_settings, const char *bg_shader_text) {
@@ -834,11 +833,14 @@ static void config_parse_line(ConfigReader *cfg, Settings **applicable_settings,
 		KeyCombo key_combo = config_parse_key_combo(cfg, key);
 		KeyAction action = {0};
 		action.key_combo = key_combo;
-		llong argument = 1; // default argument = 1
+		CommandArgument argument = {
+			.number = 1, // default argument = 1
+			.string = NULL
+		};
 		if (isdigit(*value)) {
 			// read the argument
 			char *endp;
-			argument = strtoll(value, &endp, 10);
+			argument.number = strtoll(value, &endp, 10);
 			value = endp;
 		} else if (*value == '"' || *value == '`') {
 			// string argument
@@ -846,7 +848,7 @@ static void config_parse_line(ConfigReader *cfg, Settings **applicable_settings,
 			// restore newline to handle multi-line strings
 			// a little bit hacky oh well
 			*newline = '\n';
-			argument = config_read_string(ted, cfg, &value);
+			argument.string = config_read_string(ted, cfg, &value);
 			
 			newline = strchr(value, '\n');
 			if (!newline) {
@@ -950,7 +952,7 @@ static void config_parse_line(ConfigReader *cfg, Settings **applicable_settings,
 			// a little bit hacky oh well
 			*newline = '\n';
 			
-			i64 string = config_read_string(ted, cfg, &value);
+			const char *string = config_read_string(ted, cfg, &value);
 			
 			newline = strchr(value, '\n');
 			if (!newline) {
@@ -960,9 +962,8 @@ static void config_parse_line(ConfigReader *cfg, Settings **applicable_settings,
 			}
 			*newline = '\0';
 			*pline = newline + 1;
-			if (string >= 0 && string < TED_MAX_STRINGS) {
-				value = ted->strings[string];
-			}
+			if (string)
+				value = string;
 		}
 
 		
