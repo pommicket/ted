@@ -1998,6 +1998,11 @@ void buffer_insert_text_at_cursor(TextBuffer *buffer, String32 str) {
 	buffer_delete_selection(buffer); // delete any selected text
 	BufferPos endpos = buffer_insert_text_at_pos(buffer, buffer->cursor_pos, str);
 	buffer_cursor_move_to_pos(buffer, endpos);
+	if (str.len) {
+		// this actually isn't handled by the move above since buffer->cursor_pos
+		// should be moved to endpos anyways. might as well keep that there though
+		buffer_scroll_to_cursor(buffer);
+	}
 }
 
 void buffer_insert_char_at_cursor(TextBuffer *buffer, char32_t c) {

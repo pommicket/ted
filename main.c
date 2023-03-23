@@ -1,6 +1,5 @@
 /*
 @TODO:
-- scroll to cursor when text is typed
 - some rust error locations arent detected?
 FUTURE FEATURES:
 - better undo chaining (dechain on backspace?)
