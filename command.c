@@ -267,7 +267,8 @@ void command_execute(Ted *ted, Command c, i64 argument) {
 		autocomplete_close(ted);
 		break;
 	case CMD_PREVIOUS_POSITION:
-		buffer_cursor_move_to_prev_pos(buffer);
+		if (buffer)
+			buffer_cursor_move_to_prev_pos(buffer);
 		break;
 	
 	case CMD_INSERT_TEXT: {
