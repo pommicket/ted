@@ -34,6 +34,7 @@ in other editors.
 - Go to definition
 - Go to line number
 - Indent/dedent selection, comment/uncomment selection
+- Keyboard macros
 
 ## Getting started with ted
 
@@ -114,6 +115,15 @@ but you can also change to a different theme. Currently `classic`,
 No matter what you should include a built-in theme (even if you
 replace every single color), because more colors may be added to ted in the future,
 and you will want them to be set to something reasonable.
+
+## Keyboard macros
+
+To record a macro, press Ctrl+F1/2/3/etc. While recording a macro,
+you won't be able to click or drag (this is to make sure your macro works consistently).
+Then press Ctrl+F*n* again to stop recording. You can execute the macro with Shift+F*n*.
+
+Currently macros are always lost when ted is closed. The ability to save macros will probably
+be added eventually.
 
 ### IDE-like features
 

@@ -13,6 +13,7 @@ FUTURE FEATURES:
                             if there are too many files, give an error like "use a different tool for this"
 - config variables
 - bind key to multiple commands
+   - convert macro to command list
 - plugins?
    - TED_PLUGIN macro defined before including ted.h
      this can remove struct definitions to guarantee forwards compatibility
