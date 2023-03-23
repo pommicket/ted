@@ -258,6 +258,28 @@ char *a_sprintf(const char *fmt, ...) {
 	return str;
 }
 
+void str_binary_number(char s[65], u64 n) {
+	if (n == 0) {
+		strcpy(s, "0");
+		return;
+	}
+	
+	u64 digits = 0;
+	u64 m = n;
+	while (m) {
+		m >>= 1;
+		digits += 1;
+	}
+	
+	m = n;
+	s[digits] = '\0';
+	char *p = s + digits - 1;
+	while (m) {
+		*p-- = (m & 1) + '0';
+		m >>= 1;
+	}
+}
+
 
 // advances str to the start of the next UTF8 character
 static void utf8_next_char_const(const char **str) {

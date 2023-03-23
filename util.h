@@ -98,6 +98,8 @@ void strn_cpy(char *dst, size_t dst_sz, const char *src, size_t src_len);
 void str_cpy(char *dst, size_t dst_sz, const char *src);
 /// equivalent to GNU function asprintf (like sprintf, but allocates the string with malloc).
 char *a_sprintf(const char *fmt, ...);
+/// convert binary number to string. make sure `s` can hold at least 65 bytes!!
+void str_binary_number(char s[65], u64 n);
 /// print some bytes. useful for debugging.
 void print_bytes(const u8 *bytes, size_t n);
 /// like strstr, but case-insensitive

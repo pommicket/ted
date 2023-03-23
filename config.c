@@ -610,7 +610,7 @@ static int config_part_qsort_cmp(const void *av, const void *bv) {
 	return config_part_cmp(av, bv);
 }
 
-static const char *config_read_string(Ted *ted, ConfigReader *cfg, char **ptext) {
+static char *config_read_string(Ted *ted, ConfigReader *cfg, char **ptext) {
 	char *p;
 	int backslashes = 0;
 	u32 start_line = cfg->line_number;
@@ -952,7 +952,7 @@ static void config_parse_line(ConfigReader *cfg, Settings **applicable_settings,
 			// a little bit hacky oh well
 			*newline = '\n';
 			
-			const char *string = config_read_string(ted, cfg, &value);
+			char *string = config_read_string(ted, cfg, &value);
 			
 			newline = strchr(value, '\n');
 			if (!newline) {

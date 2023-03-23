@@ -1807,6 +1807,14 @@ static int base_digit(char c, int base) {
 // e.g. returns "0x1b"  for num = "0x1a", by = 1
 // turns out it's surprisingly difficult to handle all cases
 static char *change_number(const char *num, i64 by) {
+	/*
+	we break up a number like "-0x00ff17u" into 4 parts:
+	- negative        = true   -- sign
+	- num[..start]    = "0x00" -- base and leading zeroes
+	- num[start..end] = "ff17" -- main number
+	- num[end..]      = "u"    -- suffix
+	*/
+	
 	if (!isdigit(*num) && *num != '-') {
 		return NULL;
 	}
@@ -1837,8 +1845,9 @@ static char *change_number(const char *num, i64 by) {
 			break;
 		case 'b':
 		case 'B':
-			// not handling binary yet since sprintf doesnt have binary gah
-			return NULL;
+			start = 2;
+			base = 2;
+			break;
 		default:
 			return NULL;
 		}
@@ -1847,6 +1856,12 @@ static char *change_number(const char *num, i64 by) {
 	// find end of number
 	int end;
 	for (end = start + 1; base_digit(num[end], base) != -1; ++end);
+	
+	int leading_zeroes = 0;
+	while (num[start] == '0' && start + 1 < end) {
+		++leading_zeroes;
+		++start;
+	}
 	
 	if (base_digit(num[end], 16) != -1) {
 		// we're probably wrong about the base. let's not do anything.
@@ -1866,7 +1881,9 @@ static char *change_number(const char *num, i64 by) {
 		if (isupper(num[i]))
 			uppercase = true;
 	
-	long long number = strtoll(&num[start], NULL, base);
+	char numcpy[128] = {0};
+	strn_cpy(numcpy, sizeof numcpy, &num[start], (size_t)(end - start));
+	long long number = strtoll(numcpy, NULL, base);
 	if (number == LLONG_MIN || number == LLONG_MAX)
 		return NULL;
 	if (negative) number = -number;
@@ -1876,28 +1893,48 @@ static char *change_number(const char *num, i64 by) {
 	if (by < 0 && number <= LLONG_MIN - by)
 		return NULL;
 	number += by;
-	printf("%lld\n",number);
 	negative = number < 0;
 	if (negative) number = -number;
 	
 	char new_number[128] = {0};
-	switch (uppercase * 1000 + base) {
-	case 1010: case 10: sprintf(new_number, "%lld", number); break;
-	case 1008: case 8: sprintf(new_number, "%llo", number); break;
-	case 1016: sprintf(new_number, "%llX", number); break;
-	case 16: sprintf(new_number, "%llx", number); break;
+	switch (base) {
+	case 2:
+		// aaa sprintf doesnt have binary yet
+		str_binary_number(new_number, (u64)number);
+		break;
+	case 8: sprintf(new_number, "%llo", number); break;
+	case 10: sprintf(new_number, "%lld", number); break;
+	case 16:
+		if (uppercase)
+			sprintf(new_number, "%llX", number);
+		else
+			sprintf(new_number, "%llx", number);
+		break;
 	}
 	
-	size_t capacity = strlen(num) + 128;
-	char *changed = calloc(1, capacity);
-	printf("%s %.*s %s %s\n",negative ? "-" : "", start, num, new_number, &num[end]);
-	str_printf(changed, capacity, "%s%.*s%s%s", negative ? "-" : "", start, num, new_number, &num[end]);
-	return changed;
+	int digit_diff = (int)strlen(new_number) - (end - start);
+	char extra_leading_zeroes[128] = {0};
+	if (digit_diff > 0) {
+		// e.g. 0x000ff should be incremented to 0x00100
+		start -= min_i32(digit_diff, leading_zeroes);
+	} else if (digit_diff < 0) {
+		if (leading_zeroes) {
+			// e.g. 0x00100 should be decremented to 0x000ff
+			for (int i = 0; i < -digit_diff && i < (int)sizeof extra_leading_zeroes; ++i) {
+				extra_leading_zeroes[i] = '0';
+			}
+		}
+	}
+	
+	// show the parts of the new number:
+	//printf("%s %.*s %s %s %s\n",negative ? "-" : "", start, num, extra_leading_zeroes, new_number, &num[end]);
+	return a_sprintf("%s%.*s%s%s%s", negative ? "-" : "", start, num, extra_leading_zeroes, new_number, &num[end]);
 	
 }
 
-void buffer_change_number_at_cursor(TextBuffer *buffer, i64 by) {
-	BufferPos pos = buffer->cursor_pos;
+bool buffer_change_number_at_pos(TextBuffer *buffer, BufferPos *ppos, i64 by) {
+	bool ret = false;
+	BufferPos pos = *ppos;
 	
 	// move to start of number
 	if (is32_alnum(buffer_char_before_pos(buffer, pos))) {
@@ -1907,7 +1944,7 @@ void buffer_change_number_at_cursor(TextBuffer *buffer, i64 by) {
 	if (c >= 127 || !isdigit((char)c)) {
 		if (c != '-') {
 			// not a number
-			return;
+			return ret;
 		}
 	}
 	
@@ -1918,12 +1955,17 @@ void buffer_change_number_at_cursor(TextBuffer *buffer, i64 by) {
 	buffer_pos_move_right_words(buffer, &end, 1);
 	if (buffer_char_at_pos(buffer, end) == '.') {
 		// floating-point number. dont try to increment it
-		return;
+		return ret;
 	}
 	
 	if (buffer_char_before_pos(buffer, pos) == '-') {
 		// include negative sign
 		buffer_pos_move_left(buffer, &pos, 1);
+	}
+	
+	if (buffer_char_before_pos(buffer, pos) == '.') {
+		// floating-point number. dont try to increment it
+		return ret;
 	}
 	
 	u32 nchars = (u32)buffer_pos_diff(buffer, pos, end);
@@ -1932,10 +1974,16 @@ void buffer_change_number_at_cursor(TextBuffer *buffer, i64 by) {
 	if (newnum) {
 		buffer_delete_chars_between(buffer, pos, end);
 		buffer_insert_utf8_at_pos(buffer, pos, newnum);
-		buffer_cursor_move_to_pos(buffer, pos);
 		free(newnum);
+		*ppos = pos;
+		ret = true;
 	}
 	free(word);
+	return ret;
+}
+
+void buffer_change_number_at_cursor(TextBuffer *buffer, i64 by) {
+	buffer_change_number_at_pos(buffer, &buffer->cursor_pos, by);
 }
 
 // decrease the number of lines in the buffer.

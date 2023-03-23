@@ -1043,7 +1043,12 @@ String32 buffer_word_at_cursor(TextBuffer *buffer);
 /// Get a UTF-8 string consisting of the word at the cursor.
 /// The return value should be freed.
 char *buffer_word_at_cursor_utf8(TextBuffer *buffer);
-/// Used for CMD_INCREMENT_NUMBER/CMD_DECREMENT_NUMBER
+/// Used for \ref CMD_INCREMENT_NUMBER and \ref CMD_DECREMENT_NUMBER
+///
+/// Moves `*ppos` to the start of the (new) number.
+/// returns false if there was no number at `*ppos`.
+bool buffer_change_number_at_pos(TextBuffer *buffer, BufferPos *ppos, i64 by);
+/// Used for \ref CMD_INCREMENT_NUMBER and \ref CMD_DECREMENT_NUMBER
 void buffer_change_number_at_cursor(TextBuffer *buffer, i64 argument);
 /// Buffer position corresponding to the start of line `line` (0-indexed).
 BufferPos buffer_pos_start_of_line(TextBuffer *buffer, u32 line);
@@ -1058,7 +1063,7 @@ void buffer_cursor_move_to_start_of_file(TextBuffer *buffer);
 /// Move cursor to the end of the file, like Ctrl+End does.
 void buffer_cursor_move_to_end_of_file(TextBuffer *buffer);
 /// Get the LSPDocumentID corresponding to the file this buffer contains.
-/// The return value is only useful if buffer_lsp(buffer) != NULL.
+/// The return value is only useful if `buffer_lsp(buffer) != NULL`.
 LSPDocumentID buffer_lsp_document_id(TextBuffer *buffer);
 /// Get LSPPosition corresponding to position in buffer.
 LSPPosition buffer_pos_to_lsp_position(TextBuffer *buffer, BufferPos pos);
