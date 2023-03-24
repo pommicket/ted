@@ -314,6 +314,7 @@ Then, open windows\_installer\\ted\\ted.sln, and build.
 <tr><td>1.3r2</td> <td>Fixed high CPU usage on some devices.</td> <td>2022 Dec 7</td></tr>
 <tr><td>2.0</td> <td>LSP support and a bunch of other things.</td> <td>2023 Jan 11</td></tr>
 <tr><td>2.1</td> <td>Better interaction between path+language specific settings, themes, and other things.</td> <td>2023 Mar 7</td></tr>
+<tr><td>2.2</td> <td>Keyboard macros</td> <td>2023 Mar 23</td></tr>
 </table>
 
 ## License
