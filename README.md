@@ -116,7 +116,7 @@ No matter what you should include a built-in theme (even if you
 replace every single color), because more colors may be added to ted in the future,
 and you will want them to be set to something reasonable.
 
-## Keyboard macros
+### Keyboard macros
 
 To record a macro, press Ctrl+F1/2/3/etc. While recording a macro,
 you won't be able to click or drag (this is to make sure your macro works consistently).
