@@ -179,13 +179,6 @@ void command_execute_ex(Ted *ted, Command c, CommandArgument full_argument, Comm
 	case CMD_NOOP:
 		break;
 	
-	case CMD_INCREMENT_NUMBER:
-		buffer_change_number_at_cursor(buffer, argument);
-		break;
-	case CMD_DECREMENT_NUMBER:
-		buffer_change_number_at_cursor(buffer, -argument);
-		break;
-	
 	case CMD_LEFT:
 		if (buffer) buffer_cursor_move_left(buffer, argument);
 		autocomplete_close(ted);
@@ -302,7 +295,7 @@ void command_execute_ex(Ted *ted, Command c, CommandArgument full_argument, Comm
 	
 	case CMD_INSERT_TEXT: {
 		const char *str = argument_str;
-		if (str) {
+		if (str && buffer) {
 			buffer_insert_utf8_at_cursor(buffer, str);
 		}
 		}
@@ -370,6 +363,13 @@ void command_execute_ex(Ted *ted, Command c, CommandArgument full_argument, Comm
 	case CMD_DELETE_WORD:
 		if (buffer) buffer_delete_words_at_cursor(buffer, argument);
 		break;
+	case CMD_INCREMENT_NUMBER:
+		if (buffer) buffer_change_number_at_cursor(buffer, argument);
+		break;
+	case CMD_DECREMENT_NUMBER:
+		if (buffer) buffer_change_number_at_cursor(buffer, -argument);
+		break;
+	
 
 	case CMD_PAGE_DOWN:
 		if (buffer) buffer_page_down(buffer, argument);
