@@ -2666,44 +2666,13 @@ void buffer_new_file(TextBuffer *buffer, const char *path) {
 	buffer->nlines = 1;
 }
 
-bool buffer_save(TextBuffer *buffer) {
+static bool buffer_write_to_file(TextBuffer *buffer, const char *path) {
 	const Settings *settings = buffer_settings(buffer);
-	
-	if (!buffer_is_named_file(buffer)) {
-		// user tried to save line buffer. whatever
-		return true;
-	}
-	if (buffer->view_only) {
-		buffer_error(buffer, "Can't save view-only file.");
-		return false;
-	}
-	char tmp_path[TED_PATH_MAX+10];
-	strbuf_printf(tmp_path, "%s.ted-tmp", buffer->path);
-	if (strlen(tmp_path) != strlen(buffer->path) + 8) {
-		buffer_error(buffer, "File name too long.");
-		return false;
-	}
-
-
-	FILE *out = fopen(tmp_path, "wb");
+	FILE *out = fopen(path, "wb");
 	if (!out) {
-		buffer_error(buffer, "Couldn't open file %s for writing: %s.", buffer->path, strerror(errno));
+		buffer_error(buffer, "Couldn't open file %s for writing: %s.", path, strerror(errno));
 		return false;
 	}
-	#if __unix__
-	// preserve permissions
-	struct stat statbuf = {0};
-	if (stat(buffer->path, &statbuf) == 0) {
-		mode_t mode = statbuf.st_mode;
-		if (!(mode & 0222)) {
-			// we won't be able to write to buffer->path
-			buffer_error(buffer, "Can't write to %s (file has permissions %04o)", buffer->path, mode);
-			fclose(out);
-			return false;
-		}
-		fchmod(fileno(out), mode);
-	}
-	#endif
 	if (settings->auto_add_newline) {
 		Line *last_line = &buffer->lines[buffer->nlines - 1];
 		if (last_line->len) {
@@ -2723,34 +2692,66 @@ bool buffer_save(TextBuffer *buffer) {
 			size_t bytes = unicode_utf32_to_utf8(utf8, *p);
 			if (bytes != (size_t)-1) {
 				if (fwrite(utf8, 1, bytes, out) != bytes) {
-					buffer_error(buffer, "Couldn't write to %s.", tmp_path);
+					buffer_error(buffer, "Couldn't write to %s.", path);
 					success = false;
 				}
 			}
 		}
 
 		if (i != buffer->nlines-1) {
+		#if _WIN32
+			if (settings->crlf_windows)
+				putc('\r', out);
+		#endif
 			putc('\n', out);
 		}
 	}
 	
 	if (ferror(out)) {
 		if (!buffer_has_error(buffer))
-			buffer_error(buffer, "Couldn't write to %s.", tmp_path);
+			buffer_error(buffer, "Couldn't write to %s.", path);
 		success = false;
 	}
 	if (fclose(out) != 0) {
 		if (!buffer_has_error(buffer))
-			buffer_error(buffer, "Couldn't close file %s.", tmp_path);
+			buffer_error(buffer, "Couldn't close file %s.", path);
 		success = false;
 	}
-	if (success) {
-		if (os_rename_overwrite(tmp_path, buffer->path) < 0) {
-			if (!buffer_has_error(buffer))
-				buffer_error(buffer, "Couldn't rename %s => %s.", tmp_path, buffer->path);
-			success = false;
-		}
+	
+	return success;
+}
+
+bool buffer_save(TextBuffer *buffer) {
+	const Settings *settings = buffer_settings(buffer);
+	
+	if (!buffer_is_named_file(buffer)) {
+		// user tried to save line buffer. whatever
+		return true;
 	}
+	if (buffer->view_only) {
+		buffer_error(buffer, "Can't save view-only file.");
+		return false;
+	}
+	
+	char backup_path[TED_PATH_MAX+10];
+	*backup_path = '\0';
+	
+	if (settings->save_backup) {
+		strbuf_printf(backup_path, "%s.ted-bk", buffer->path);
+		if (strlen(backup_path) != strlen(buffer->path) + 7) {
+			buffer_error(buffer, "File name too long.");
+			return false;
+		}
+		
+	}
+	
+	bool success = true;
+	if (*backup_path)
+		success &= buffer_write_to_file(buffer, backup_path);
+	if (success)
+		success &= buffer_write_to_file(buffer, buffer->path);
+	if (success && *backup_path)
+		remove(backup_path);
 	buffer->last_write_time = timespec_to_seconds(time_last_modified(buffer->path));
 	if (success) {
 		buffer->undo_history_write_pos = arr_len(buffer->undo_history);

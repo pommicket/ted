@@ -1,8 +1,5 @@
 /*
 TODO:
-- fix backup file creation wrt hard links (right now saving a hard-linked file creates a new link)
-    idea: just copy to the backup file, then overwrite the original.
-          also, add a setting for whether or not to back up.
 - option for whether to jump to build error when the build command finishes, and maybe :build-jump, :build-nojump commands
 - highlight TODO, FIXME, XXX, others(?) in comments
 - :go-to-matching-bracket

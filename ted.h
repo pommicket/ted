@@ -271,6 +271,8 @@ typedef struct {
 	bool highlight_enabled;
 	bool highlight_auto;
 	bool vsync;
+	bool save_backup;
+	bool crlf_windows;
 	KeyCombo hover_key;
 	KeyCombo highlight_key;
 	u8 tab_width;
