@@ -99,6 +99,7 @@ static const SettingBool settings_bool[] = {
 	{"highlight-auto", &settings_zero.highlight_auto, true},
 	{"save-backup", &settings_zero.save_backup, true},
 	{"crlf-windows", &settings_zero.crlf_windows, true},
+	{"jump-to-build-error", &settings_zero.jump_to_build_error, true},
 };
 static const SettingU8 settings_u8[] = {
 	{"tab-width", &settings_zero.tab_width, 1, 100, true},

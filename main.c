@@ -1,9 +1,8 @@
 /*
 TODO:
-- option for whether to jump to build error when the build command finishes, and maybe :build-jump, :build-nojump commands
-- highlight TODO, FIXME, XXX, others(?) in comments
 - :go-to-matching-bracket
 FUTURE FEATURES:
+- highlight TODO, FIXME, XXX, others(?) in comments
 - autodetect indentation (tabs vs spaces)
 - better undo chaining (dechain on backspace?)
 - font setting & support for multiple fonts to cover more characters

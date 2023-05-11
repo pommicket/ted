@@ -273,6 +273,7 @@ typedef struct {
 	bool vsync;
 	bool save_backup;
 	bool crlf_windows;
+	bool jump_to_build_error;
 	KeyCombo hover_key;
 	KeyCombo highlight_key;
 	u8 tab_width;

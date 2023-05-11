@@ -199,6 +199,8 @@ static bool is_source_path(char32_t c) {
 
 // make sure you set ted->build_dir before running this!
 void build_check_for_errors(Ted *ted) {
+	const Settings *settings = ted_active_settings(ted);
+	
 	TextBuffer *buffer = &ted->build_buffer;
 	arr_clear(ted->build_errors);
 	for (u32 line_idx = 0; line_idx < buffer->nlines; ++line_idx) {
@@ -298,9 +300,12 @@ void build_check_for_errors(Ted *ted) {
 			}
 		}
 	}
-	// go to the first error (if there is one)
-	ted->build_error = 0;
-	build_go_to_error(ted);
+	
+	if (settings->jump_to_build_error) {
+		// go to the first error (if there is one)
+		ted->build_error = 0;
+		build_go_to_error(ted);
+	}
 }
 
 void build_frame(Ted *ted, float x1, float y1, float x2, float y2) {
