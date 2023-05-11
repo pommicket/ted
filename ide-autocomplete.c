@@ -33,7 +33,7 @@ static bool autocomplete_should_display_phantom(Ted *ted) {
 		&& !buffer->is_line_buffer
 		&& buffer_settings(buffer)->phantom_completions
 		&& is32_word(buffer_char_before_cursor(buffer))
-		&& !is32_word(buffer_char_after_cursor(buffer));
+		&& !is32_word(buffer_char_at_cursor(buffer));
 	if (!show)
 		autocomplete_clear_phantom(ac);
 	return show;

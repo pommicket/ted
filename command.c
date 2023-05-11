@@ -37,6 +37,7 @@ static CommandName command_names[] = {
 	{"select-all", CMD_SELECT_ALL},
 	{"select-up-blank-line", CMD_SELECT_UP_BLANK_LINE},
 	{"select-down-blank-line", CMD_SELECT_DOWN_BLANK_LINE},
+	{"matching-bracket", CMD_MATCHING_BRACKET},
 	{"clear-selection", CMD_CLEAR_SELECTION},
 	{"page-up", CMD_PAGE_UP},
 	{"page-down", CMD_PAGE_DOWN},
@@ -292,7 +293,10 @@ void command_execute_ex(Ted *ted, Command c, CommandArgument full_argument, Comm
 		if (buffer)
 			buffer_cursor_move_to_prev_pos(buffer);
 		break;
-	
+	case CMD_MATCHING_BRACKET:
+		if (buffer)
+			buffer_cursor_move_to_matching_bracket(buffer);
+		break;
 	case CMD_INSERT_TEXT: {
 		const char *str = argument_str;
 		if (str && buffer) {

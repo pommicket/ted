@@ -177,30 +177,25 @@ bool buffer_unsaved_changes(TextBuffer *buffer) {
 char32_t buffer_char_at_pos(TextBuffer *buffer, BufferPos pos) {
 	if (!buffer_pos_valid(buffer, pos))
 		return 0;
-	
 	Line *line = &buffer->lines[pos.line];
+	if (pos.index >= line->len)
+		return 0;
 	return line->str[pos.index];
 }
 
 char32_t buffer_char_before_pos(TextBuffer *buffer, BufferPos pos) {
-	assert(buffer_pos_valid(buffer, pos));
+	if (!buffer_pos_valid(buffer, pos))
+		return 0;
 	if (pos.index == 0) return 0;
 	return buffer->lines[pos.line].str[pos.index - 1];
-}
-
-char32_t buffer_char_after_pos(TextBuffer *buffer, BufferPos pos) {
-	assert(buffer_pos_valid(buffer, pos));
-	Line *line = &buffer->lines[pos.line];
-	if (pos.index >= line->len) return 0;
-	return line->str[pos.index];
 }
 
 char32_t buffer_char_before_cursor(TextBuffer *buffer) {
 	return buffer_char_before_pos(buffer, buffer->cursor_pos);
 }
 
-char32_t buffer_char_after_cursor(TextBuffer *buffer) {
-	return buffer_char_after_pos(buffer, buffer->cursor_pos);
+char32_t buffer_char_at_cursor(TextBuffer *buffer) {
+	return buffer_char_at_pos(buffer, buffer->cursor_pos);
 }
 
 BufferPos buffer_pos_start_of_file(TextBuffer *buffer) {
@@ -1940,7 +1935,7 @@ bool buffer_change_number_at_pos(TextBuffer *buffer, BufferPos *ppos, i64 by) {
 	if (is32_alnum(buffer_char_before_pos(buffer, pos))) {
 		buffer_pos_move_left_words(buffer, &pos, 1);
 	}
-	char32_t c = buffer_char_after_pos(buffer, pos);
+	char32_t c = buffer_char_at_pos(buffer, pos);
 	if (c >= 127 || !isdigit((char)c)) {
 		if (c != '-') {
 			// not a number
@@ -2864,6 +2859,38 @@ bool buffer_handle_click(Ted *ted, TextBuffer *buffer, vec2 click, u8 times) {
 	return false;
 }
 
+bool buffer_pos_move_to_matching_bracket(TextBuffer *buffer, BufferPos *pos) {
+	Language language = buffer_language(buffer);
+	char32_t bracket_char = buffer_char_at_pos(buffer, *pos);
+	char32_t matching_char = syntax_matching_bracket(language, bracket_char);
+	if (bracket_char && matching_char) {
+		int direction = syntax_is_opening_bracket(language, bracket_char) ? +1 : -1;
+		int depth = 1;
+		while (buffer_pos_move_right(buffer, pos, direction)) {
+			char32_t c = buffer_char_at_pos(buffer, *pos);
+			if (c == bracket_char) depth += 1;
+			else if (c == matching_char) depth -= 1;
+			if (depth == 0) break;
+		}
+		return true;
+	} else {
+		return false;
+	}
+}
+
+bool buffer_cursor_move_to_matching_bracket(TextBuffer *buffer) {
+	// it's more natural here to consider the character to the left of the cursor
+	BufferPos pos = buffer->cursor_pos;
+	if (pos.index == 0) return false;
+	buffer_pos_move_left(buffer, &pos, 1);
+	if (buffer_pos_move_to_matching_bracket(buffer, &pos)) {
+		buffer_pos_move_right(buffer, &pos, 1);
+		buffer_cursor_move_to_pos(buffer, pos);
+		return true;
+	}
+	return false;
+}
+
 // Render the text buffer in the given rectangle
 void buffer_render(TextBuffer *buffer, Rect r) {
 	
@@ -3123,25 +3150,11 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	if (ted->active_buffer == buffer) {
 		
 		// highlight matching brackets
-		char32_t cursor_bracket = buffer_char_before_cursor(buffer);
-		char32_t matching_bracket = syntax_matching_bracket(language, cursor_bracket);
-		if (cursor_bracket && matching_bracket) {
-			int direction = syntax_is_opening_bracket(language, cursor_bracket) ? +1 : -1;
-			int depth = 1;
-			BufferPos pos = buffer->cursor_pos;
+		BufferPos pos = buffer->cursor_pos;
+		if (pos.index > 0) {
+			// it's more natural to consider the bracket to the left of the cursor
 			buffer_pos_move_left(buffer, &pos, 1);
-			while (pos.line >= start_line) {
-				if (buffer_pos_move_right(buffer, &pos, direction)) {
-					char32_t c = buffer_char_after_pos(buffer, pos);
-					if (c == cursor_bracket) depth += 1;
-					else if (c == matching_bracket) depth -= 1;
-					if (depth == 0) break;
-				} else {
-					break;
-				}
-			}
-			if (depth == 0) {
-				// highlight it
+			if (buffer_pos_move_to_matching_bracket(buffer, &pos)) {
 				vec2 gl_pos = buffer_pos_to_pixels(buffer, pos);
 				Rect hl_rect = rect(gl_pos, Vec2(char_width, char_height));
 				if (buffer_clip_rect(buffer, &hl_rect)) {

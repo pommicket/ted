@@ -46,6 +46,8 @@ typedef enum {
 	CMD_END_OF_FILE,
 	/// go to previous position
 	CMD_PREVIOUS_POSITION,
+	/// move cursor to matching bracket
+	CMD_MATCHING_BRACKET,
 	CMD_SELECT_START_OF_FILE,
 	CMD_SELECT_END_OF_FILE,
 	/// select entire buffer

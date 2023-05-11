@@ -1,6 +1,4 @@
 /*
-TODO:
-- :go-to-matching-bracket
 FUTURE FEATURES:
 - highlight TODO, FIXME, XXX, others(?) in comments
 - autodetect indentation (tabs vs spaces)

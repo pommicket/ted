@@ -917,20 +917,22 @@ void buffer_create(TextBuffer *buffer, Ted *ted);
 void line_buffer_create(TextBuffer *buffer, Ted *ted);
 /// does this buffer have unsaved changes?
 bool buffer_unsaved_changes(TextBuffer *buffer);
-/// returns the character at position pos, or 0 if pos is invalid
+/// returns the character after position pos, or 0 if pos is invalid
 char32_t buffer_char_at_pos(TextBuffer *buffer, BufferPos pos);
+/// returns the character after the cursor
+char32_t buffer_char_at_cursor(TextBuffer *buffer);
 /// returns the character before position pos, or 0 if pos is invalid or at the start of a line
 char32_t buffer_char_before_pos(TextBuffer *buffer, BufferPos pos);
-/// returns the character after position pos, or 0 if pos is invalid or at the end of a line
-char32_t buffer_char_after_pos(TextBuffer *buffer, BufferPos pos);
 /// returns the character to the left of the cursor, or 0 if the cursor at the start of the line.
 char32_t buffer_char_before_cursor(TextBuffer *buffer);
-/// returns the character to the right of the cursor, 0 if cursor is at end of line
-char32_t buffer_char_after_cursor(TextBuffer *buffer);
 /// buffer position of start of file
 BufferPos buffer_pos_start_of_file(TextBuffer *buffer);
 /// buffer position of end of file
 BufferPos buffer_pos_end_of_file(TextBuffer *buffer);
+/// move position to matching bracket. returns true if there was a bracket at the position, otherwise returns false and does nothing.
+bool buffer_pos_move_to_matching_bracket(TextBuffer *buffer, BufferPos *pos);
+/// move cursor to matching bracket. returns true if cursor was to the right of a bracket.
+bool buffer_cursor_move_to_matching_bracket(TextBuffer *buffer);
 /// ensures that `p` refers to a valid position, moving it if needed.
 void buffer_pos_validate(TextBuffer *buffer, BufferPos *p);
 /// is this a valid buffer position?
