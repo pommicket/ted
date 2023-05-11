@@ -1,5 +1,5 @@
 Package: ted
-Version: 2.2r1
+Version: 2.3
 Section: text
 Priority: optional
 Architecture: amd64
