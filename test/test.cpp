@@ -52,6 +52,7 @@ void print_option(Option<T> const &o) {
 }
 
 int main() {
+	int my_num = 0b10011'101011'1010111lu >> 0x349.4p2;
 	Option<int> o(7);
 	print_option(o);
 	o.clear();

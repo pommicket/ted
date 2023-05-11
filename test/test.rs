@@ -25,6 +25,6 @@ let x = lines.
 	}
 	print!("
 	string
-	");
+	{}", 1usize);
 	Ok(())
 }

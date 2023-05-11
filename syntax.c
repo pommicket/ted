@@ -3,9 +3,6 @@
 #include "ted.h"
 #include "keywords.h"
 
-// all characters that can appear in a number
-#define SYNTAX_DIGITS "0123456789.xXoObBlLuUiIabcdefABCDEF_"
-
 
 // ---- syntax state constants ----
 // syntax state is explained in development.md
@@ -208,8 +205,37 @@ static bool syntax_number_continues(Language lang, const char32_t *line, u32 lin
 		}
 	}
 	
+	// for simplicity, we don't actually recognize integer suffixes.
+	// we just treat any letter in any suffix as a digit.
+	// so 1lllllllllbablalbal will be highlighted as a number in C,
+	// but that's not legal C anyways so it doesn't really matter.
+	const char *digits;
+	switch (lang) {
+	case LANG_RUST:
+		// note: the sz is for 1usize
+		digits = "0123456789.xXoObBuUiIszabcdefABCDEF_";
+		break;
+	case LANG_C:
+	case LANG_CPP:
+		digits = "0123456789.xXbBlLuUiIabcdefABCDEFpP'";
+		break;
+	case LANG_GLSL:
+		digits = "0123456789.xXbBlLuUabcdefABCDEF_";
+		break;
+	case LANG_GO:
+		digits = "0123456789.xXoObBabcdefABCDEFpPi_";
+		break;
+	case LANG_JAVASCRIPT:
+	case LANG_TYPESCRIPT:
+		digits = "0123456789.xXoObBabcdefABCDEFn_";
+		break;
+	default:
+		digits = "0123456789.xXoObBabcdefABCDEF_";
+		break;
+	}
+	
 	return (line[i] < CHAR_MAX && 
-		(strchr(SYNTAX_DIGITS, (char)line[i])
+		(strchr(digits, (char)line[i])
 		|| (i && line[i-1] == 'e' && (line[i] == '+' || line[i] == '-'))));
 }
 

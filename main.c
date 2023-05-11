@@ -1,5 +1,13 @@
 /*
+TODO:
+- fix backup file creation wrt hard links (right now saving a hard-linked file creates a new link)
+    idea: just copy to the backup file, then overwrite the original.
+          also, add a setting for whether or not to back up.
+- option for whether to jump to build error when the build command finishes, and maybe :build-jump, :build-nojump commands
+- highlight TODO, FIXME, XXX, others(?) in comments
+- :go-to-matching-bracket
 FUTURE FEATURES:
+- autodetect indentation (tabs vs spaces)
 - better undo chaining (dechain on backspace?)
 - font setting & support for multiple fonts to cover more characters
 - support for variable-width fonts
@@ -17,6 +25,8 @@ FUTURE FEATURES:
    - TED_PLUGIN macro defined before including ted.h
      this can remove struct definitions to guarantee forwards compatibility
    - language dynamic registration
+   - built-in plugins
+       - "remove file..." menu
 - with macros we can really test performance of buffer_insert_text_at_pos, etc. (which should ideally be fast)
 - manual.md
 - LSP request timeout
