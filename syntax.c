@@ -1340,10 +1340,13 @@ static void syntax_highlight_javascript_like(
 				}
 				if (!dealt_with && !in_multiline_comment && !in_string) {
 					// this is not foolproof for detecting regex literals
-					//  but should handle all "reasonable" uses of regex.
+					//  but should handle all "reasonable" uses of regex,
+					// while not accidentally treating division as regex.
 					bool is_regex = i == 0 // slash is first char in line
-						|| is32_space(line[i-1]) // slash preceded by space
-						|| (line[i-1] <= 128 && strchr(";({[=,:", (char)line[i-1])); // slash preceded by any of these characters
+						// slash preceded by space and followed by non-space
+						|| (is32_space(line[i-1]) && i + 1 < line_len && !is32_space(line[i+1]))
+						// slash preceded by any of these characters
+						|| (line[i-1] <= 128 && strchr(";({[=,:", (char)line[i-1]));
 					if (is_regex) {
 						in_string = true;
 						string_is_regex = true;
