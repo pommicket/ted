@@ -616,7 +616,9 @@ static bool buffer_edit_does_anything(TextBuffer *buffer, BufferEdit *edit) {
 }
 
 // has enough time passed since the last edit that we should create a new one?
-static bool buffer_edit_split(TextBuffer *buffer) {
+//
+// is_deletion should be set to true if the edit involves any deletion.
+static bool buffer_edit_split(TextBuffer *buffer, bool is_deletion) {
 	BufferEdit *last_edit = arr_lastp(buffer->undo_history);
 	if (!last_edit) return true;
 	if (buffer->will_chain_edits) return true;
@@ -624,7 +626,11 @@ static bool buffer_edit_split(TextBuffer *buffer) {
 	double curr_time = buffer->ted->frame_time;
 	double undo_time_cutoff = buffer_settings(buffer)->undo_save_time; // only keep around edits for this long (in seconds).
 	return last_edit->time <= buffer->last_write_time // last edit happened before buffer write (we need to split this so that undo_history_write_pos works)
-		|| curr_time - last_edit->time > undo_time_cutoff;
+		|| curr_time - last_edit->time > undo_time_cutoff
+		|| (curr_time != last_edit->time && (// if the last edit didn't take place on the same frame,
+			(last_edit->prev_len && !is_deletion) || // last edit deleted text but this edit inserts text
+			(last_edit->new_len && is_deletion) // last edit inserted text and this one deletes text
+		));
 }
 
 // removes the last edit in the undo history if it doesn't do anything
@@ -1574,7 +1580,7 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 		i64 where_in_last_edit = last_edit ? buffer_pos_diff(buffer, last_edit->pos, pos) : -1;
 		// create a new edit, rather than adding to the old one if:
 		bool create_new_edit = where_in_last_edit < 0 || where_in_last_edit > last_edit->new_len // insertion is happening outside the previous edit,
-			|| buffer_edit_split(buffer); // or enough time has elapsed/etc to warrant a new one.
+			|| buffer_edit_split(buffer, false); // or enough time has elapsed/etc to warrant a new one.
 
 		if (create_new_edit) {
 			// create a new edit for this insertion
@@ -2066,7 +2072,7 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 			!last_edit || // if there is no previous edit to combine it with
 			buffer_pos_cmp(del_end, edit_start) < 0 || // or if delete does not overlap last_edit
 			buffer_pos_cmp(del_start, edit_end) > 0 ||
-			buffer_edit_split(buffer); // or if enough time has passed to warrant a new edit
+			buffer_edit_split(buffer, true); // or if enough time has passed to warrant a new edit
 
 		if (create_new_edit) {
 			// create a new edit

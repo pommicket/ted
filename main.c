@@ -2,7 +2,6 @@
 FUTURE FEATURES:
 - highlight TODO, FIXME, XXX, others(?) in comments
 - autodetect indentation (tabs vs spaces)
-- better undo chaining (dechain on backspace?)
 - font setting & support for multiple fonts to cover more characters
 - support for variable-width fonts
 - robust find (results shouldn't move around when you type things)
