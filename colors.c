@@ -41,6 +41,7 @@ static ColorName color_names[] = {
 	{COLOR_STRING, "string"},
 	{COLOR_CHARACTER, "character"},
 	{COLOR_CONSTANT, "constant"},
+	{COLOR_TODO, "todo"},
 	{COLOR_AUTOCOMPLETE_BG, "autocomplete-bg"},
 	{COLOR_AUTOCOMPLETE_HL, "autocomplete-hl"},
 	{COLOR_AUTOCOMPLETE_BORDER, "autocomplete-border"},

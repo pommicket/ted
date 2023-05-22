@@ -109,6 +109,7 @@ ColorSetting syntax_char_type_to_color_setting(SyntaxCharType t) {
 	case SYNTAX_CHARACTER: return COLOR_CHARACTER;
 	case SYNTAX_CONSTANT: return COLOR_CONSTANT;
 	case SYNTAX_BUILTIN: return COLOR_BUILTIN;
+	case SYNTAX_TODO: return COLOR_TODO;
 	}
 	return COLOR_TEXT;
 }
@@ -168,7 +169,7 @@ bool syntax_is_opening_bracket(Language lang, char32_t c) {
 }
 
 // lookup the given string in the keywords table
-static Keyword const *syntax_keyword_lookup(const KeywordList *all_keywords, const char32_t *str, size_t len) {
+static const Keyword *syntax_keyword_lookup(const KeywordList *all_keywords, const char32_t *str, size_t len) {
 	if (!len) return NULL;
 
 	const KeywordList *list = &all_keywords[str[0] % 128];
@@ -182,6 +183,48 @@ static Keyword const *syntax_keyword_lookup(const KeywordList *all_keywords, con
 		}
 	}
 	return NULL;
+}
+
+// fast function to figure out if something can be in a comment keyword (like _TODO_)
+static bool can_be_comment_keyword(char32_t c) {
+	return c < 128 && c >= 'A' && c <= 'Z';//fuck you ebcdic
+}
+
+// this is used to highlight comments across languages, for stuff like TODOs
+static SyntaxCharType syntax_highlight_comment(const char32_t *line, u32 i, u32 line_len) {
+	assert(i < line_len);
+	if (!can_be_comment_keyword(line[i]))
+		return SYNTAX_COMMENT; // cannot be a keyword
+	
+	u32 max_len = 10; // maximum length of any comment keyword
+	
+	// find end of keyword
+	u32 end = i + 1;
+	while (end < line_len && i + max_len > end && is32_alpha(line[end])) {
+		if (!can_be_comment_keyword(line[end]))
+			return SYNTAX_COMMENT;
+		++end;
+	}
+	if (end < line_len && (line[end] == '_' || is32_digit(line[end])))
+		return SYNTAX_COMMENT;
+	
+	// find start of keyword
+	u32 start = i;
+	while (start > 0 && start + max_len > i && is32_alpha(line[start])) {
+		if (!can_be_comment_keyword(line[start]))
+			return SYNTAX_COMMENT;
+		--start;
+	}
+	if (!is32_alpha(line[start]))
+		++start;
+	if (start > 0 && (line[start - 1] == '_' || is32_digit(line[start - 1])))
+		return SYNTAX_COMMENT;
+	
+	// look it up
+	const Keyword *kwd = syntax_keyword_lookup(syntax_all_keywords_comment, &line[start], end - start);
+	if (kwd)
+		return kwd->type;
+	return SYNTAX_COMMENT;
 }
 
 // does i continue the number literal from i-1
@@ -423,7 +466,7 @@ static void syntax_highlight_c_cpp(SyntaxState *state_ptr, const char32_t *line,
 		if (char_types && !dealt_with) {
 			SyntaxCharType type = SYNTAX_NORMAL;
 			if (in_single_line_comment || in_multi_line_comment)
-				type = SYNTAX_COMMENT;
+				type = syntax_highlight_comment(line, i, line_len);
 			else if (in_string)
 				type = SYNTAX_STRING;
 			else if (in_char)
@@ -648,7 +691,7 @@ static void syntax_highlight_rust(SyntaxState *state, const char32_t *line, u32 
 		if (char_types && !dealt_with) {
 			SyntaxCharType type = SYNTAX_NORMAL;
 			if (comment_depth) {
-				type = SYNTAX_COMMENT;
+				type = syntax_highlight_comment(line, i, line_len);
 			} else if (in_string) {
 				type = SYNTAX_STRING;
 			} else if (in_number) {
@@ -1451,7 +1494,7 @@ static void syntax_highlight_javascript_like(
 		if (char_types && !dealt_with) {
 			SyntaxCharType type = SYNTAX_NORMAL;
 			if (in_multiline_comment)
-				type = SYNTAX_COMMENT;
+				type = syntax_highlight_comment(line, i, line_len);
 			else if (in_string)
 				type = SYNTAX_STRING;
 			else if (in_number)
@@ -1574,7 +1617,7 @@ static void syntax_highlight_java(SyntaxState *state_ptr, const char32_t *line, 
 		if (char_types && !dealt_with) {
 			SyntaxCharType type = SYNTAX_NORMAL;
 			if (in_multiline_comment)
-				type = SYNTAX_COMMENT;
+				type = syntax_highlight_comment(line, i, line_len);
 			else if (in_string)
 				type = SYNTAX_STRING;
 			else if (in_char)
@@ -1714,7 +1757,7 @@ static void syntax_highlight_go(SyntaxState *state_ptr, const char32_t *line, u3
 		if (char_types && !dealt_with) {
 			SyntaxCharType type = SYNTAX_NORMAL;
 			if (in_multiline_comment)
-				type = SYNTAX_COMMENT;
+				type = syntax_highlight_comment(line, i, line_len);
 			else if (in_string)
 				type = SYNTAX_STRING;
 			else if (in_char)
@@ -1935,7 +1978,7 @@ static void syntax_highlight_css(SyntaxState *state_ptr, const char32_t *line, u
 		if (char_types && !dealt_with && i < line_len) {
 			SyntaxCharType type = SYNTAX_NORMAL;
 			if (in_comment)
-				type = SYNTAX_COMMENT;
+				type = syntax_highlight_comment(line, i, line_len);
 			char_types[i] = type;
 		}
 	}

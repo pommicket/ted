@@ -1,6 +1,7 @@
 /*
+TODO:
+- select sole completion if all completions' textEdits are identical (e.g. SyntaxCharT___ in ted)
 FUTURE FEATURES:
-- highlight TODO, FIXME, XXX, others(?) in comments
 - autodetect indentation (tabs vs spaces)
 - font setting & support for multiple fonts to cover more characters
 - support for variable-width fonts
@@ -23,12 +24,6 @@ FUTURE FEATURES:
 - with macros we can really test performance of buffer_insert_text_at_pos, etc. (which should ideally be fast)
 - manual.md
 - LSP request timeout
-BUG REPORTS IM TO LAZY TO FILE (RIGHT NOW)
-- rust-analyzer:
-    - bad json can give "Unexpected error: client exited without proper shutdown sequence"
-    - containerName not always given in workspace/symbols
-- texlab:
-    - textDocument/definition gives LocationLink regardless of client capabilities
 */
 
 #include "ted.h"

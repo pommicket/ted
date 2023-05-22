@@ -8,7 +8,8 @@
 import ast
 
 types = [
-	'SYNTAX_KEYWORD', 'SYNTAX_CONSTANT', 'SYNTAX_BUILTIN'
+	'SYNTAX_KEYWORD', 'SYNTAX_CONSTANT', 'SYNTAX_BUILTIN',
+	'SYNTAX_TODO'
 ]
 exec('\n'.join(['{} = {}'.format(type, i) for (i, type) in enumerate(types)]))
 
@@ -599,6 +600,9 @@ keywords_css =  [
 	'xmp', 'svg'
 ]
 
+keywords_comment = [
+	'TODO', 'FIXME', 'XXX', 'BUG', 'TEMP', 'OPTIMIZE',
+]
 
 
 file = open('keywords.h', 'w')
@@ -638,4 +642,5 @@ output_keywords(file, label(constants_config, SYNTAX_CONSTANT), 'config')
 output_keywords(file, label(keywords_glsl, SYNTAX_KEYWORD) + label(constants_glsl, SYNTAX_CONSTANT)
 	+ label(builtins_glsl, SYNTAX_BUILTIN), 'glsl')
 output_keywords(file, label(builtins_css, SYNTAX_BUILTIN) + label(constants_css, SYNTAX_CONSTANT) + label(keywords_css, SYNTAX_KEYWORD), 'css')
+output_keywords(file, label(keywords_comment, SYNTAX_TODO), 'comment')
 file.close()

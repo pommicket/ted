@@ -101,7 +101,7 @@ typedef u32 SyntaxState;
 
 /// types of syntax highlighting
 enum SyntaxCharType {
-	// do not change these numbers as it will break backwards compatibility
+	// do not change these numbers as it will break backwards compatibility with plugins
 	SYNTAX_NORMAL = 0,
 	SYNTAX_KEYWORD = 1,
 	SYNTAX_BUILTIN = 2,
@@ -110,6 +110,7 @@ enum SyntaxCharType {
 	SYNTAX_STRING = 5,
 	SYNTAX_CHARACTER = 6,
 	SYNTAX_CONSTANT = 7,
+	SYNTAX_TODO = 8,
 };
 /// Type of syntax highlighting.
 typedef u8 SyntaxCharType;
