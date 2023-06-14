@@ -2872,13 +2872,17 @@ bool buffer_pos_move_to_matching_bracket(TextBuffer *buffer, BufferPos *pos) {
 	if (bracket_char && matching_char) {
 		int direction = syntax_is_opening_bracket(language, bracket_char) ? +1 : -1;
 		int depth = 1;
+		bool found_bracket = false;
 		while (buffer_pos_move_right(buffer, pos, direction)) {
 			char32_t c = buffer_char_at_pos(buffer, *pos);
 			if (c == bracket_char) depth += 1;
 			else if (c == matching_char) depth -= 1;
-			if (depth == 0) break;
+			if (depth == 0) {
+				found_bracket = true;
+				break;
+			}
 		}
-		return true;
+		return found_bracket;
 	} else {
 		return false;
 	}
