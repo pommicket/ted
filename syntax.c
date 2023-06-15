@@ -1390,6 +1390,12 @@ static void syntax_highlight_javascript_like(
 						|| (is32_space(line[i-1]) && i + 1 < line_len && !is32_space(line[i+1]))
 						// slash preceded by any of these characters
 						|| (line[i-1] <= 128 && strchr(";({[=,:", (char)line[i-1]));
+					
+					if (i + 1 < line_len && line[i+1] == '=') {
+						// slash is followed by equals, so this might be /=
+						is_regex = false;
+					}
+					
 					if (is_regex) {
 						in_string = true;
 						string_is_regex = true;
