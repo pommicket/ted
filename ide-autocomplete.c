@@ -322,7 +322,10 @@ void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *response) {
 			for (size_t i = 0; i < ncompletions; ++i) {
 				const LSPCompletionItem *lsp_completion = &completion->items[i];
 				const char *new_text = lsp_response_string(response, lsp_completion->text_edit.new_text);
-				if (str_has_prefix(new_text, word_at_cursor)) {
+				if (str_has_prefix(new_text, word_at_cursor) && (
+					// ignore completions with duplicate text
+					!candidate || !streq(candidate, new_text)
+					)) {
 					candidate = new_text;
 					++ncandidates;
 					if (ncandidates >= 2) break;
@@ -398,8 +401,8 @@ void autocomplete_open(Ted *ted, uint32_t trigger) {
 	ac->cursor = 0;
 	autocomplete_find_completions(ted, trigger, false);
 	
-	switch (arr_len(ac->completions)) {
-	case 0:
+	
+	if (arr_len(ac->completions) == 0) {
 		if (autocomplete_using_lsp(ted)) {
 			ac->open = true;
 		} else if (settings->regenerate_tags_if_not_found && !regenerated) {
@@ -409,16 +412,25 @@ void autocomplete_open(Ted *ted, uint32_t trigger) {
 		} else { 
 			autocomplete_no_suggestions(ted);
 		}
-		break;
-	case 1:
+		return;
+	}
+	
+	bool multiple_completions = false;
+	for (u32 i = 1; i < arr_len(ac->completions); ++i) {
+		if (!streq(ac->completions[i].text, ac->completions[0].text)) {
+			multiple_completions = true;
+			break;
+		}
+	}
+	
+	if (!multiple_completions) {
 		autocomplete_complete(ted, ac->completions[0]);
 		// (^ this calls autocomplete_close)
-		break;
-	default:
-		// open autocomplete menu
-		ac->open = true;
-		break;
+		return;
 	}
+	
+	// open autocomplete menu
+	ac->open = true;
 }
 
 static void autocomplete_find_phantom(Ted *ted) {

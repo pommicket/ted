@@ -1,6 +1,5 @@
 /*
 TODO:
-- select sole completion if all completions' textEdits are identical (e.g. SyntaxCharT___ in ted)
 FUTURE FEATURES:
 - autodetect indentation (tabs vs spaces)
 - font setting & support for multiple fonts to cover more characters
@@ -131,6 +130,7 @@ static void error_signal_handler(int signum, siginfo_t *info, void *context) {
 	Ted *ted = error_signal_handler_ted;
 	if (ted) {
 		FILE *log = ted->log;
+		
 		if (log) {
 			fprintf(log, "Signal %d: %s\n", signum, strsignal(signum));
 			fprintf(log, "errno = %d\n",  info->si_errno);

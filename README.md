@@ -318,6 +318,7 @@ Then, open windows\_installer\\ted\\ted.sln, and build.
 <tr><td>2.2r1</td> <td>Minor bug fixes</td> <td>2023 Mar 27</td></tr>
 <tr><td>2.3</td> <td>`:matching-bracket`, various minor improvements</td> <td>2023 May 11</td></tr>
 <tr><td>2.3.1</td> <td>Bugfixes, better undo chaining, highlight TODOs in comments.</td> <td>2023 May 22</td></tr>
+<tr><td>2.3.2</td> <td>Misc bugfixes</td> <td>2023 Jun 17</td></tr>
 </table>
 
 ## License
