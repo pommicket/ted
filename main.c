@@ -1,6 +1,7 @@
 /*
 TODO:
 - fix TODO highlighting in single-line comments (javascript & others?)
+- highlight "of" (& other ES6 keywords?) in javascript
 FUTURE FEATURES:
 - autodetect indentation (tabs vs spaces)
 - font setting & support for multiple fonts to cover more characters
