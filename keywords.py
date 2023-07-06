@@ -343,14 +343,14 @@ for attr in attributes_html:
 
 
 keywords_javascript = [
-	'break', 'case', 'catch', 'class', 'const',
+	'async', 'await', 'break', 'case', 'catch', 'class', 'const',
 	'continue', 'debugger', 'default', 'delete',
 	'do', 'else', 'export', 'extends', 'finally',
 	'for', 'function', 'if', 'import', 'in',
-	'instanceof', 'new', 'return', 'super',
+	'instanceof', 'new', 'of', 'return', 'super',
 	'switch', 'this', 'throw', 'try', 'typeof',
 	'var', 'void', 'while', 'with', 'yield',
-	'let', 'await'
+	'let',
 ]
 
 constants_json = [
@@ -359,7 +359,7 @@ constants_json = [
 constants_javascript = constants_json + ['undefined']
 
 builtins_javascript = [
-	'AggregateError','Array','ArrayBuffer','AsyncFunction','AsyncGenerator','AsyncGeneratorFunction',
+	'AggregateError','arguments','Array','ArrayBuffer','AsyncFunction','AsyncGenerator','AsyncGeneratorFunction',
 	'Atomics','BigInt','BigInt64Array','BigUint64Array','Boolean','DataView','Date','decodeURI',
 	'decodeURIComponent','encodeURI','encodeURIComponent','Error','eval','EvalError','FinalizationRegistry',
 	'Float32Array','Float64Array','Function','Generator','GeneratorFunction','globalThis','Infinity',
@@ -367,7 +367,15 @@ builtins_javascript = [
 	'NaN','Number','Object','parseFloat','parseInt','Promise','Proxy','RangeError','ReferenceError',
 	'Reflect','RegExp','Set','SharedArrayBuffer','String','Symbol','SyntaxError','TypedArray',
 	'TypeError','Uint16Array','Uint32Array','Uint8Array','Uint8ClampedArray',
-	'URIError','WeakMap','WeakRef','WeakSet','WebAssembly'
+	'URIError','WeakMap','WeakRef','WeakSet','WebAssembly',
+	# window properties
+	'console', 'customElements', 'devicePixelRatio', 'document', 'frameElement',
+	'frames', 'history', 'innerHeight', 'innerWidth', 'length', 'localStorage',
+	'location', 'locationbar', 'menubar', 'name', 'navigator', 'opener',
+	'outerHeight', 'outerWidth', 'pageXOffset', 'pageYOffset', 'parent',
+	'personalbar', 'scheduler', 'screen', 'screenLeft', 'screenTop', 'screenX',
+	'screenY', 'scrollbars', 'scrollX', 'scrollY', 'self', 'sessionStorage',
+	'speechSynthesis', 'statusbar', 'toolbar', 'top', 'visualViewport', 'window'
 ]
 
 keywords_java = [

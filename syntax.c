@@ -523,7 +523,7 @@ static void syntax_highlight_rust(SyntaxState *state, const char32_t *line, u32 
 					// just handle it all now
 					if (char_types) {
 						for (u32 j = i; j < line_len; ++j)
-							char_types[j] = SYNTAX_COMMENT;
+							char_types[j] = syntax_highlight_comment(line, j, line_len);
 					}
 					i = line_len - 1;
 					dealt_with = true;
@@ -731,7 +731,7 @@ static void syntax_highlight_python(SyntaxState *state, const char32_t *line, u3
 				// comment
 				if (char_types) {
 					for (u32 j = i; j < line_len; ++j)
-						char_types[j] = SYNTAX_COMMENT;
+						char_types[j] = syntax_highlight_comment(line, j, line_len);
 					dealt_with = true;
 				}
 				i = line_len - 1;
@@ -895,7 +895,7 @@ static void syntax_highlight_tex(SyntaxState *state, const char32_t *line, u32 l
 			if (!verbatim) {
 				for (; i < line_len; ++i) {
 					if (char_types)
-						char_types[i] = SYNTAX_COMMENT;
+						char_types[i] = syntax_highlight_comment(line, i, line_len);
 				}
 			}
 			break;
@@ -1150,7 +1150,7 @@ static void syntax_highlight_html_like(SyntaxState *state, const char32_t *line,
 				// (don't worry, comments can't nest in HTML)
 				comment = false;
 			} else {
-				if (char_types) char_types[i] = SYNTAX_COMMENT;
+				if (char_types) char_types[i] = syntax_highlight_comment(line, i, line_len);
 			}
 		} else if (!in_sgl_string && !in_dbl_string && str32_has_ascii_prefix(remains, "<!--")) {
 			comment = true;
@@ -1251,7 +1251,11 @@ static void syntax_highlight_cfg(SyntaxState *state, const char32_t *line, u32 l
 	if (line_len == 0) return;
 	
 	if (!string && line[0] == '#') {
-		if (char_types) memset(char_types, SYNTAX_COMMENT, line_len);
+		if (char_types) {
+			for (u32 i = 0; i < line_len; i++) {
+				char_types[i] = syntax_highlight_comment(line, i, line_len);
+			}
+		}
 		return;
 	}
 	if (!string && line[0] == '[' && line[line_len - 1] == ']') {
@@ -1371,7 +1375,11 @@ static void syntax_highlight_javascript_like(
 				if (!dealt_with && i+1 < line_len) {
 					if (line[i+1] == '/') {
 						// single line comment
-						if (char_types) memset(&char_types[i], SYNTAX_COMMENT, line_len - i);
+						if (char_types) {
+							for (u32 j = i; j < line_len; j++) {
+								char_types[j] = syntax_highlight_comment(line, j, line_len);
+							}
+						}
 						i = line_len - 1;
 						dealt_with = true;
 					} else if (line[i+1] == '*') {
@@ -1539,9 +1547,14 @@ static void syntax_highlight_java(SyntaxState *state_ptr, const char32_t *line, 
 		case '/':
 			if (!in_multiline_comment && !in_string && !in_char && has_1_char) {
 				if (line[i + 1] == '/') {
-						if (char_types) memset(&char_types[i], SYNTAX_COMMENT, line_len - i);
-						i = line_len - 1;
-						dealt_with = true;
+					// //
+					if (char_types) {
+						for (u32 j = i; j < line_len; j++) {
+							char_types[j] = syntax_highlight_comment(line, j, line_len);
+						}
+					}
+					i = line_len - 1;
+					dealt_with = true;
 				} else if (line[i + 1] == '*') {
 					in_multiline_comment = true; // /*
 				}
@@ -1665,9 +1678,13 @@ static void syntax_highlight_go(SyntaxState *state_ptr, const char32_t *line, u3
 		case '/':
 			if (!in_multiline_comment && !in_string && !in_char && has_1_char) {
 				if (line[i + 1] == '/') {
-						if (char_types) memset(&char_types[i], SYNTAX_COMMENT, line_len - i);
-						i = line_len - 1;
-						dealt_with = true;
+					// //
+					if (char_types) {
+						for (u32 j = 0; j < line_len; ++j)
+							char_types[j] = syntax_highlight_comment(line, j, line_len);
+					}
+					i = line_len - 1;
+					dealt_with = true;
 				} else if (line[i + 1] == '*') {
 					in_multiline_comment = true; // /*
 				}
