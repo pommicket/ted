@@ -369,13 +369,15 @@ builtins_javascript = [
 	'TypeError','Uint16Array','Uint32Array','Uint8Array','Uint8ClampedArray',
 	'URIError','WeakMap','WeakRef','WeakSet','WebAssembly',
 	# window properties
+	# length, name, self, parent, and top are intentionally missing
+	# because they are more commonly used in other contexts
 	'console', 'customElements', 'devicePixelRatio', 'document', 'frameElement',
-	'frames', 'history', 'innerHeight', 'innerWidth', 'length', 'localStorage',
-	'location', 'locationbar', 'menubar', 'name', 'navigator', 'opener',
-	'outerHeight', 'outerWidth', 'pageXOffset', 'pageYOffset', 'parent',
+	'frames', 'history', 'innerHeight', 'innerWidth', 'localStorage',
+	'location', 'locationbar', 'menubar', 'navigator', 'opener',
+	'outerHeight', 'outerWidth', 'pageXOffset', 'pageYOffset',
 	'personalbar', 'scheduler', 'screen', 'screenLeft', 'screenTop', 'screenX',
-	'screenY', 'scrollbars', 'scrollX', 'scrollY', 'self', 'sessionStorage',
-	'speechSynthesis', 'statusbar', 'toolbar', 'top', 'visualViewport', 'window'
+	'screenY', 'scrollbars', 'scrollX', 'scrollY', 'sessionStorage',
+	'speechSynthesis', 'statusbar', 'toolbar', 'visualViewport', 'window'
 ]
 
 keywords_java = [
