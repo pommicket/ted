@@ -7,6 +7,9 @@ debug
 release
 scratch
 obj
+CMakeFiles
+CMakeCache.txt
+cmake_install.cmake
 *~
 *.swp
 tags
