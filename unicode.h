@@ -142,7 +142,7 @@ static size_t unicode_utf32_to_utf8(char *s, uint32_t c32) {
 		*p++ = (uint8_t)(0xC0 | (c32 >> 6));
 		*p   = (uint8_t)(0x80 | (c32 & 0x3F));
 		return 2;
-	} else if (c32 <= 0x7FFF) {
+	} else if (c32 <= 0xFFFF) {
 		if (c32 < 0xD800 || c32 > 0xDFFF) {
 			*p++ = (uint8_t)(0xE0 | ( c32 >> 12));
 			*p++ = (uint8_t)(0x80 | ((c32 >> 6) & 0x3F));
