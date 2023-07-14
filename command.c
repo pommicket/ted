@@ -70,6 +70,7 @@ static CommandName command_names[] = {
 	{"autocomplete", CMD_AUTOCOMPLETE},
 	{"autocomplete-back", CMD_AUTOCOMPLETE_BACK},
 	{"find-usages", CMD_FIND_USAGES},
+	{"copy-path", CMD_COPY_PATH},
 	{"goto-definition", CMD_GOTO_DEFINITION},
 	{"goto-definition-at-cursor", CMD_GOTO_DEFINITION_AT_CURSOR},
 	{"goto-declaration-at-cursor", CMD_GOTO_DECLARATION_AT_CURSOR},
@@ -302,6 +303,13 @@ void command_execute_ex(Ted *ted, Command c, CommandArgument full_argument, Comm
 		if (str && buffer) {
 			buffer_insert_utf8_at_cursor(buffer, str);
 		}
+		}
+		break;
+	case CMD_COPY_PATH:
+		if (buffer) {
+			SDL_SetClipboardText(buffer->path);
+		} else {
+			SDL_SetClipboardText(ted->cwd);
 		}
 		break;
 	case CMD_TAB:

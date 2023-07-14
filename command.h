@@ -116,6 +116,9 @@ typedef enum {
 	CMD_PASTE,
 	CMD_FIND,
 	CMD_FIND_REPLACE,
+	
+	/// copy path to current file
+	CMD_COPY_PATH,
 
 	CMD_TAB_CLOSE,
 	/// argument = index of tab (starting at 0)
