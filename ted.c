@@ -294,9 +294,6 @@ static void ted_load_font(Ted *ted, const char *filename, Font **out) {
 	if (ted_get_file(ted, filename, font_filename, sizeof font_filename)) {
 		Font *font = text_font_load(font_filename, ted_active_settings(ted)->text_size);
 		if (font) {
-			// we don't properly handle variable-width fonts
-			text_font_set_force_monospace(font, true);
-			
 			if (*out) {
 				text_font_free(*out);
 			}

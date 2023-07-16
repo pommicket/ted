@@ -607,6 +607,15 @@ int main(int argc, char **argv) {
 
 		ted_update_window_dimensions(ted);
 		
+		
+		{
+			Settings *active_settings = ted_active_settings(ted);
+			// we don't properly handle variable-width fonts
+			text_font_set_force_monospace(ted->font, active_settings->force_monospace);
+			text_font_set_force_monospace(ted->font_bold, active_settings->force_monospace);
+		}
+			
+		
 		SDL_Event event;
 		while (SDL_PollEvent(&event)) {
 			TextBuffer *buffer = ted->active_buffer;

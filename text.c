@@ -195,12 +195,8 @@ Font *text_font_load(const char *ttf_filename, float font_size) {
 					font->char_height = font_size;
 					font->ttf_data = file_data;
 					if (text_load_char_page(font, 0)) { // load page with Latin text, etc.
-						// calculate width of the character 'a'
-						stbtt_aligned_quad q = {0};
-						float x = 0, y = 0;
-						stbtt_GetBakedQuad(font->char_pages[0], font->tex_widths[0], font->tex_heights[0],
-							'a', &x, &y, &q, 1);
-						font->space_width = x;
+						// calculate width of the character ' '
+						font->space_width = font->char_pages[0][' '].xadvance;
 					}
 				} else {
 					text_set_err("Couldn't read font file.");
