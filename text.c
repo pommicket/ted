@@ -39,7 +39,7 @@ typedef struct {
 
 struct Font {
 	bool force_monospace;
-	float char_width; // width of the character 'a'. calculated when font is loaded.
+	float space_width; // width of the character ' '. calculated when font is loaded.
 	float char_height;
 	GLuint textures[CHAR_PAGE_COUNT];
 	int tex_widths[CHAR_PAGE_COUNT], tex_heights[CHAR_PAGE_COUNT];
@@ -200,7 +200,7 @@ Font *text_font_load(const char *ttf_filename, float font_size) {
 						float x = 0, y = 0;
 						stbtt_GetBakedQuad(font->char_pages[0], font->tex_widths[0], font->tex_heights[0],
 							'a', &x, &y, &q, 1);
-						font->char_width = x;
+						font->space_width = x;
 					}
 				} else {
 					text_set_err("Couldn't read font file.");
@@ -231,8 +231,14 @@ float text_font_char_height(Font *font) {
 	return font->char_height;
 }
 
-float text_font_char_width(Font *font) {
-	return font->char_width;
+float text_font_char_width(Font *font, char32_t c) {
+	if (c == ' ') return font->space_width;
+	uint page = c / CHAR_PAGE_SIZE;
+	uint index = c % CHAR_PAGE_SIZE;
+	if (!font->char_pages[page])
+		if (!text_load_char_page(font, (int)page))
+			return font->space_width;
+	return font->char_pages[page][index].xadvance;
 }
 
 void text_render(Font *font) {
@@ -282,7 +288,6 @@ top:
 	}
 	stbtt_bakedchar *char_data = font->char_pages[page];
 	const float char_height = font->char_height;
-	const float char_width = font->char_width;
 	
 	if (char_data) { // if page was successfully loaded
 		stbtt_aligned_quad q = {0};
@@ -308,7 +313,7 @@ top:
 			q.y1 += (float)floor(state->y);
 			
 			if (font->force_monospace) {
-				state->x += char_width; // ignore actual character width
+				state->x += font->space_width; // ignore actual character width
 			} else {
 				state->x = x + floor(state->x);
 				state->y = y + floor(state->y);

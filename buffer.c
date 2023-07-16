@@ -778,65 +778,123 @@ static void buffer_print(TextBuffer const *buffer) {
 	fflush(stdout);
 }
 
-static u32 buffer_index_to_column(TextBuffer *buffer, u32 line, u32 index) {
-	char32_t *str = buffer->lines[line].str;
-	u32 col = 0;
-	uint tab_width = buffer_tab_width(buffer);
-	for (u32 i = 0; i < index && i < buffer->lines[line].len; ++i) {
-		switch (str[i]) {
-		case '\t': {
-			do
-				++col;
-			while (col % tab_width);
-		} break;
-		default:
-			++col;
-			break;
-		}
-	}
-	return col;
-}
-
-static u32 buffer_column_to_index(TextBuffer *buffer, u32 line, u32 column) {
-	if (line >= buffer->nlines) {
+// convert line character index to offset in pixels
+static double buffer_index_to_xoff(TextBuffer *buffer, u32 line_number, u32 index) {
+	if (line_number >= buffer->nlines) {
 		assert(0);
 		return 0;
 	}
-	char32_t *str = buffer->lines[line].str;
-	u32 len = buffer->lines[line].len;
-	u32 col = 0;
-	uint tab_width = buffer_tab_width(buffer);
-	for (u32 i = 0; i < len; ++i) {
-		switch (str[i]) {
-		case '\t': {
-			do {
-				if (col == column)
+	Line *line = &buffer->lines[line_number];
+	char32_t *str = line->str;
+	const Settings *settings = buffer_settings(buffer);
+	Font *font = buffer_font(buffer);
+	u8 tab_width = settings->tab_width;
+	if (index > line->len)
+		index = line->len;
+	
+	if (settings->force_monospace) {
+		u32 col = 0;
+		for (u32 i = 0; i < index; ++i) {
+			switch (str[i]) {
+			case '\t': {
+				do
+					++col;
+				while (col % tab_width);
+			} break;
+			default:
+				++col;
+				break;
+			}
+		}
+		return col * (double)text_font_char_width(font, ' ');
+	} else {
+		double x = 0;
+		for (u32 i = 0; i < index; ++i) {
+			switch (str[i]) {
+			case '\t': {
+				x += tab_width * text_font_char_width(font, ' ');
+			} break;
+			default:
+				x += text_font_char_width(font, str[i]);
+				break;
+			}
+		}
+		return x;
+	}
+}
+
+// convert line x offset in pixels to character index
+static u32 buffer_xoff_to_index(TextBuffer *buffer, u32 line_number, double xoff) {
+	if (line_number >= buffer->nlines) {
+		assert(0);
+		return 0;
+	}
+	if (xoff <= 0) {
+		return 0;
+	}
+	Line *line = &buffer->lines[line_number];
+	char32_t *str = line->str;
+	const Settings *settings = buffer_settings(buffer);
+	Font *font = buffer_font(buffer);
+	u8 tab_width = settings->tab_width;
+	
+	if (settings->force_monospace) {
+		u32 target_col = (u32)(xoff / text_font_char_width(font, ' '));
+		u32 col = 0;
+		for (u32 i = 0; i < line->len; ++i) {
+			switch (str[i]) {
+			case '\t': {
+				do {
+					if (col == target_col)
+						return i;
+					++col;
+				} while (col % tab_width);
+			} break;
+			default:
+				if (col == target_col)
 					return i;
 				++col;
-			} while (col % tab_width);
-		} break;
-		default:
-			if (col == column)
-				return i;
-			++col;
-			break;
+				break;
+			}
 		}
+		return line->len;
+	} else {
+		double x = 0;
+		for (u32 i = 0; i < line->len; ++i) {
+			double x_prev = x;
+			switch (str[i]) {
+			case '\t': {
+				x += tab_width * text_font_char_width(font, ' ');
+			} break;
+			default:
+				x += text_font_char_width(font, str[i]);
+				break;
+			}
+			if (x > xoff) {
+				if (xoff - x_prev < x - xoff) {
+					return i;
+				} else {
+					return i + 1;
+				}
+			}
+		}
+		return line->len;
 	}
-	return len;
 }
+
 
 void buffer_text_dimensions(TextBuffer *buffer, u32 *lines, u32 *columns) {
 	if (lines) {
 		*lines = buffer->nlines;
 	}
 	if (columns) {
-		u32 longest_line = 0;
+		double longest_line = 0;
 		// which line on screen is the longest?
 		for (u32 l = buffer->first_line_on_screen; l <= buffer->last_line_on_screen && l < buffer->nlines; ++l) {
 			Line *line = &buffer->lines[l];
-			longest_line = max_u32(longest_line, buffer_index_to_column(buffer, l, line->len));
+			longest_line = maxd(longest_line, buffer_index_to_xoff(buffer, l, line->len));
 		}
-		*columns = longest_line;
+		*columns = (u32)(longest_line / text_font_char_width(buffer_font(buffer), ' '));
 	}
 }
 
@@ -846,7 +904,7 @@ float buffer_display_lines(TextBuffer *buffer) {
 }
 
 float buffer_display_cols(TextBuffer *buffer) {
-	return (buffer->x2 - buffer->x1) / text_font_char_width(buffer_font(buffer));
+	return (buffer->x2 - buffer->x1) / text_font_char_width(buffer_font(buffer), ' ');
 }
 
 // make sure we don't scroll too far
@@ -882,48 +940,30 @@ void buffer_scroll(TextBuffer *buffer, double dx, double dy) {
 vec2 buffer_pos_to_pixels(TextBuffer *buffer, BufferPos pos) {
 	buffer_pos_validate(buffer, &pos);
 	u32 line = pos.line, index = pos.index;
-	// we need to convert the index to a column
-	u32 col = buffer_index_to_column(buffer, line, index);
+	double xoff = buffer_index_to_xoff(buffer, line, index);
 	Font *font = buffer_font(buffer);
-	float x = (float)((double)col  - buffer->scroll_x) * text_font_char_width(font) + buffer->x1;
+	float x = (float)((double)xoff - buffer->scroll_x * text_font_char_width(font, ' ')) + buffer->x1;
 	float y = (float)((double)line - buffer->scroll_y) * text_font_char_height(font) + buffer->y1;
 	return Vec2(x, y);
 }
 
 bool buffer_pixels_to_pos(TextBuffer *buffer, vec2 pixel_coords, BufferPos *pos) {
 	bool ret = true;
-	float x = pixel_coords.x, y = pixel_coords.y;
+	double x = pixel_coords.x, y = pixel_coords.y;
 	Font *font = buffer_font(buffer);
 	pos->line = pos->index = 0;
 
 	x -= buffer->x1;
 	y -= buffer->y1;
-	x /= text_font_char_width(font);
-	y /= text_font_char_height(font);
-	double display_col = (double)x;
-	if (display_col < 0) {
-		display_col = 0;
-		ret = false;
-	}
-	double display_cols = buffer_display_cols(buffer), display_lines = buffer_display_lines(buffer);
-	if (display_col >= display_cols) {
-		display_col = display_cols - 1;
-		ret = false;
-	}
-	double display_line = (double)y;
-	if (display_line < 0) {
-		display_line = 0;
-		ret = false;
-	}
-	if (display_line >= display_lines) {
-		display_line = display_lines - 1;
-		ret = false;
-	}
 	
-	u32 line = (u32)floor(display_line + buffer->scroll_y);
+	x = clampd(x, 0, buffer->x2 - buffer->x1);
+	y = clampd(y, 0, buffer->y2 - buffer->y1);
+	
+	double xoff = x + buffer->scroll_x * text_font_char_width(font, ' ');
+	
+	u32 line = (u32)floor(y / text_font_char_height(font) + buffer->scroll_y);
 	if (line >= buffer->nlines) line = buffer->nlines - 1;
-	u32 column = (u32)round(display_col + buffer->scroll_x);
-	u32 index = buffer_column_to_index(buffer, line, column);
+	u32 index = buffer_xoff_to_index(buffer, line, xoff);
 	pos->line = line;
 	pos->index = index;
 	
@@ -948,10 +988,13 @@ bool buffer_clip_rect(TextBuffer *buffer, Rect *r) {
 
 void buffer_scroll_to_pos(TextBuffer *buffer, BufferPos pos) {
 	const Settings *settings = buffer_settings(buffer);
+	Font *font = buffer_font(buffer);
 	double line = pos.line;
-	double col = buffer_index_to_column(buffer, pos.line, pos.index);
-	double display_lines = buffer_display_lines(buffer);
-	double display_cols = buffer_display_cols(buffer);
+	double space_width = text_font_char_width(font, ' ');
+	double char_height = text_font_char_height(font);
+	double col = buffer_index_to_xoff(buffer, pos.line, pos.index) / space_width;
+	double display_lines = (buffer->y2 - buffer->y1) / char_height;
+	double display_cols = (buffer->x2 - buffer->x1) / space_width;
 	double scroll_x = buffer->scroll_x, scroll_y = buffer->scroll_y;
 	double scrolloff = settings->scrolloff;
 	
@@ -978,12 +1021,12 @@ void buffer_scroll_to_pos(TextBuffer *buffer, BufferPos pos) {
 
 void buffer_scroll_center_pos(TextBuffer *buffer, BufferPos pos) {
 	double line = pos.line;
-	double col = buffer_index_to_column(buffer, pos.line, pos.index);
-	
-	double display_lines = buffer_display_lines(buffer);
-	double display_cols = buffer_display_cols(buffer);
-	buffer->scroll_x = col - display_cols * 0.5;
-	buffer->scroll_y = line - display_lines * 0.5;
+	Font *font = buffer_font(buffer);
+	float space_width = text_font_char_width(font, ' ');
+	float char_height = text_font_char_height(font);
+	double xoff = buffer_index_to_xoff(buffer, pos.line, pos.index);
+	buffer->scroll_x = (xoff - (buffer->x1 - buffer->x1) * 0.5) / space_width;
+	buffer->scroll_y = line - (buffer->y2 - buffer->y1) / char_height * 0.5;
 	buffer_correct_scroll(buffer);
 }
 
@@ -995,7 +1038,8 @@ void buffer_scroll_to_cursor(TextBuffer *buffer) {
 // scroll so that the cursor is in the center of the screen
 void buffer_center_cursor(TextBuffer *buffer) {
 	double cursor_line = buffer->cursor_pos.line;
-	double cursor_col  = buffer_index_to_column(buffer, (u32)cursor_line, buffer->cursor_pos.index);
+	double cursor_col  = buffer_index_to_xoff(buffer, (u32)cursor_line, buffer->cursor_pos.index)
+		/ text_font_char_width(buffer_font(buffer), ' ');
 	double display_lines = buffer_display_lines(buffer);
 	double display_cols = buffer_display_cols(buffer);
 	
@@ -1061,33 +1105,33 @@ static i64 buffer_pos_move_horizontally(TextBuffer *buffer, BufferPos *p, i64 by
 // same as buffer_pos_move_horizontally, but for up and down.
 static i64 buffer_pos_move_vertically(TextBuffer *buffer, BufferPos *pos, i64 by) {
 	buffer_pos_validate(buffer, pos);
-	// moving up/down should preserve the column, not the index.
+	// moving up/down should preserve the x offset, not the index.
 	// consider:
 	// tab|hello world
 	// tab|tab|more text
 	// the character above the 'm' is the 'o', not the 'e'
 	if (by < 0) {
 		by = -by;
-		u32 column = buffer_index_to_column(buffer, pos->line, pos->index);
+		double xoff = buffer_index_to_xoff(buffer, pos->line, pos->index);
 		if (pos->line < by) {
 			i64 ret = pos->line;
 			pos->line = 0;
 			return -ret;
 		}
 		pos->line -= (u32)by;
-		pos->index = buffer_column_to_index(buffer, pos->line, column);
+		pos->index = buffer_xoff_to_index(buffer, pos->line, xoff);
 		u32 line_len = buffer->lines[pos->line].len;
 		if (pos->index >= line_len) pos->index = line_len;
 		return -by;
 	} else if (by > 0) {
-		u32 column = buffer_index_to_column(buffer, pos->line, pos->index);
+		double xoff = buffer_index_to_xoff(buffer, pos->line, pos->index);
 		if (pos->line + by >= buffer->nlines) {
 			i64 ret = buffer->nlines-1 - pos->line;
 			pos->line = buffer->nlines-1;
 			return ret;
 		}
 		pos->line += (u32)by;
-		pos->index = buffer_column_to_index(buffer, pos->line, column);
+		pos->index = buffer_xoff_to_index(buffer, pos->line, xoff);
 		u32 line_len = buffer->lines[pos->line].len;
 		if (pos->index >= line_len) pos->index = line_len;
 		return by;
@@ -2865,7 +2909,7 @@ bool buffer_handle_click(Ted *ted, TextBuffer *buffer, vec2 click, u8 times) {
 	return false;
 }
 
-bool buffer_pos_move_to_matching_bracket(TextBuffer *buffer, BufferPos *pos) {
+char32_t buffer_pos_move_to_matching_bracket(TextBuffer *buffer, BufferPos *pos) {
 	Language language = buffer_language(buffer);
 	char32_t bracket_char = buffer_char_at_pos(buffer, *pos);
 	char32_t matching_char = syntax_matching_bracket(language, bracket_char);
@@ -2882,10 +2926,10 @@ bool buffer_pos_move_to_matching_bracket(TextBuffer *buffer, BufferPos *pos) {
 				break;
 			}
 		}
-		return found_bracket;
-	} else {
-		return false;
+		if (found_bracket)
+			return matching_char;
 	}
+	return 0;
 }
 
 bool buffer_cursor_move_to_matching_bracket(TextBuffer *buffer) {
@@ -2922,15 +2966,14 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	Font *font = buffer_font(buffer);
 	u32 nlines = buffer->nlines;
 	Line *lines = buffer->lines;
-	float char_width = text_font_char_width(font),
-		char_height = text_font_char_height(font);
+	float char_height = text_font_char_height(font);
 
 	Ted *ted = buffer->ted;
 	const Settings *settings = buffer_settings(buffer);
 	const u32 *colors = settings->colors;
 	const float padding = settings->padding;
 	const float border_thickness = settings->border_thickness;
-
+	
 	u32 start_line = buffer_first_rendered_line(buffer); // line to start rendering from
 	
 	
@@ -2949,7 +2992,8 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 
 	// line numbering
 	if (!buffer->is_line_buffer && settings->line_numbers) {
-		float line_number_width = ndigits_u64(buffer->nlines) * char_width + padding;
+		// TODO: compute max digit width
+		float line_number_width = ndigits_u64(buffer->nlines) * text_font_char_width(font, '8') + padding;
 
 		TextRenderState text_state = text_render_state_default;
 		text_state.min_x = x1;
@@ -2962,7 +3006,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 		for (u32 line = start_line; line < nlines; ++line) {
 			char str[32] = {0};
 			strbuf_printf(str, U32_FMT, line + 1); // convert line number to string
-			float x = x1 + line_number_width - (float)strlen(str) * char_width; // right justify
+			float x = x1 + line_number_width - text_get_size_vec2(font, str).x; // right justify
 			// set color
 			rgba_u32_to_floats(colors[line == cursor_line ? COLOR_CURSOR_LINE_NUMBER : COLOR_LINE_NUMBERS],
 				text_state.color);
@@ -3022,7 +3066,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 
 	
 	// what x coordinate to start rendering the text from
-	double render_start_x = x1 - (double)buffer->scroll_x * char_width;
+	double render_start_x = x1 - (double)buffer->scroll_x * text_font_char_width(font, ' ');
 	u32 column = 0;
 
 	if (buffer->selection) { // draw selection
@@ -3045,18 +3089,18 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 			assert(index2 >= index1);
 
 			// highlight everything from index1 to index2
-			u32 n_columns_highlighted = buffer_index_to_column(buffer, line_idx, index2)
-				- buffer_index_to_column(buffer, line_idx, index1);
+			double highlight_width = buffer_index_to_xoff(buffer, line_idx, index2)
+				- buffer_index_to_xoff(buffer, line_idx, index1);
 			if (line_idx != sel_end.line) {
-				++n_columns_highlighted; // highlight the newline (otherwise empty higlighted lines wouldn't be highlighted at all).
+				highlight_width += text_font_char_width(font, ' '); // highlight the newline (otherwise empty higlighted lines wouldn't be highlighted at all).
 			}
 
-			if (n_columns_highlighted) {
+			if (highlight_width > 0) {
 				BufferPos p1 = {.line = line_idx, .index = index1};
 				vec2 hl_p1 = buffer_pos_to_pixels(buffer, p1);
 				Rect hl_rect = rect(
 					hl_p1,
-					Vec2((float)n_columns_highlighted * char_width, char_height)
+					Vec2((float)highlight_width, char_height)
 				);
 				buffer_clip_rect(buffer, &hl_rect);
 				gl_geometry_rect(hl_rect, colors[buffer->view_only ? COLOR_VIEW_ONLY_SELECTION_BG : COLOR_SELECTION_BG]);
@@ -3164,9 +3208,10 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 		if (pos.index > 0) {
 			// it's more natural to consider the bracket to the left of the cursor
 			buffer_pos_move_left(buffer, &pos, 1);
-			if (buffer_pos_move_to_matching_bracket(buffer, &pos)) {
+			char32_t c = buffer_pos_move_to_matching_bracket(buffer, &pos);
+			if (c) {
 				vec2 gl_pos = buffer_pos_to_pixels(buffer, pos);
-				Rect hl_rect = rect(gl_pos, Vec2(char_width, char_height));
+				Rect hl_rect = rect(gl_pos, Vec2(text_font_char_width(font, c), char_height));
 				if (buffer_clip_rect(buffer, &hl_rect)) {
 					gl_geometry_rect(hl_rect, colors[COLOR_MATCHING_BRACKET_HL]);
 				}

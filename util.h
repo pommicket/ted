@@ -138,6 +138,7 @@ float radians(float r);
 float lerpf(float x, float a, float b);
 float normf(float x, float a, float b);
 float clampf(float x, float a, float b);
+double clampd(double x, double a, double b);
 int clampi(int x, int a, int b);
 i16 clamp_i16(i16 x, i16 a, i16 b);
 u16 clamp_u16(u16 x, u16 a, u16 b);

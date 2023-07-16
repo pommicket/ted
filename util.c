@@ -514,6 +514,12 @@ float clampf(float x, float a, float b) {
 	return x;
 }
 
+double clampd(double x, double a, double b) {
+	if (x < a) return a;
+	if (x > b) return b;
+	return x;
+}
+
 int clampi(int x, int a, int b) {
 	if (x < a) return a;
 	if (x > b) return b;

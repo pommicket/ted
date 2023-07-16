@@ -70,10 +70,9 @@ void text_clear_err(void);
 Font *text_font_load(const char *ttf_filename, float font_size);
 /// Height of a character of this font in pixels.
 float text_font_char_height(Font *font);
-/// Width of the character 'a' of this font in pixels.
-/// This is meant to be only used for monospace fonts.
-float text_font_char_width(Font *font);
-/// Force text to advance by text_font_char_width(font) pixels per character (actually, per code point).
+/// Width of the given character in pixels.
+float text_font_char_width(Font *font, char32_t c);
+/// Force text to advance by text_font_char_width(font, ' ') pixels per character (actually, per code point).
 void text_font_set_force_monospace(Font *font, bool force);
 /// Get the dimensions of some text.
 void text_get_size(Font *font, const char *text, float *width, float *height);

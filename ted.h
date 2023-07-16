@@ -275,6 +275,7 @@ typedef struct {
 	bool save_backup;
 	bool crlf_windows;
 	bool jump_to_build_error;
+	bool force_monospace;
 	KeyCombo hover_key;
 	KeyCombo highlight_key;
 	u8 tab_width;
@@ -360,7 +361,7 @@ typedef struct {
 	char *path;
 	/// we keep a back-pointer to the ted instance so we don't have to pass it in to every buffer function
 	struct Ted *ted;
-	/// number of characters scrolled in the x direction
+	/// number of characters scrolled in the x direction (multiply by space width to get pixels)
 	double scroll_x;
 	/// number of characters scrolled in the y direction
 	double scroll_y;
@@ -930,8 +931,8 @@ char32_t buffer_char_before_cursor(TextBuffer *buffer);
 BufferPos buffer_pos_start_of_file(TextBuffer *buffer);
 /// buffer position of end of file
 BufferPos buffer_pos_end_of_file(TextBuffer *buffer);
-/// move position to matching bracket. returns true if there was a bracket at the position, otherwise returns false and does nothing.
-bool buffer_pos_move_to_matching_bracket(TextBuffer *buffer, BufferPos *pos);
+/// move position to matching bracket. returns the matching bracket character if there is one, otherwise returns 0 and does nothing.
+char32_t buffer_pos_move_to_matching_bracket(TextBuffer *buffer, BufferPos *pos);
 /// move cursor to matching bracket. returns true if cursor was to the right of a bracket.
 bool buffer_cursor_move_to_matching_bracket(TextBuffer *buffer);
 /// ensures that `p` refers to a valid position, moving it if needed.
@@ -981,7 +982,7 @@ void buffer_clear(TextBuffer *buffer);
 /// or 0 if `line_number` is out of range.
 u32 buffer_line_len(TextBuffer *buffer, u32 line_number);
 /// returns the number of lines of text in the buffer into *lines (if not NULL),
-/// and the number of columns of text, i.e. the number of columns in the longest line displayed, into *cols (if not NULL)
+/// and the number of columns of text, i.e. the width of the longest column divided by the width of the space character, into *cols (if not NULL)
 void buffer_text_dimensions(TextBuffer *buffer, u32 *lines, u32 *columns);
 /// returns the number of rows of text that can fit in the buffer
 float buffer_display_lines(TextBuffer *buffer);
