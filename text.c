@@ -28,6 +28,7 @@ typedef struct {
 	char32_t c;
 	u32 texture;
 	stbtt_packedchar data;
+	bool defined; // whether this character is actually defined in the font file
 } CharInfo;
 
 // characters are split into this many "buckets" according to
@@ -42,6 +43,7 @@ typedef struct {
 	GLuint tex;
 	bool needs_update;
 	unsigned char *pixels;
+	stbtt_fontinfo stb_info;
 	stbtt_pack_context pack_context;
 	TextTriangle *triangles;
 } FontTexture;
@@ -49,6 +51,7 @@ typedef struct {
 struct Font {
 	bool force_monospace;
 	float char_height;
+	stbtt_fontinfo stb_info;
 	FontTexture *textures; // dynamic array of textures
 	CharInfo *char_info[CHAR_BUCKET_COUNT]; // each entry is a dynamic array of char info
 	// TTF data (i.e. the contents of the TTF file)
@@ -193,39 +196,49 @@ static Status text_load_char(Font *font, char32_t c, CharInfo *info) {
 	
 	glGetError(); // clear error
 	
-	if (!font->textures) {
-		if (!font_new_texture(font))
+	if (c != UNICODE_BOX_CHARACTER && stbtt_FindGlyphIndex(&font->stb_info, (int)c) == 0) {
+		// this code point is not defined by the font — use the box character
+		printf("Using box character for U+%04X\n",c);
+		if (!text_load_char(font, UNICODE_BOX_CHARACTER, info))
 			return false;
-	}
-	
-	int success = 0;
-	FontTexture *texture = arr_lastp(font->textures);
-	for (int i = 0; i < 2; i++) {
 		info->c = c;
-		info->texture = arr_len(font->textures) - 1;
-		success = stbtt_PackFontRange(&texture->pack_context, font->ttf_data, 0, font->char_height,
-			(int)c, 1, &info->data);
-		if (success) break;
-		// texture is full; create a new one
-		stbtt_PackEnd(&texture->pack_context);
-		font_texture_update_if_needed(texture);
-		free(texture->pixels);
-		texture->pixels = NULL;
-		texture = font_new_texture(font);
-		if (!texture)
+		info->defined = false;
+	} else {
+		info->defined = true;
+		if (!font->textures) {
+			if (!font_new_texture(font))
+				return false;
+		}
+		
+		int success = 0;
+		FontTexture *texture = arr_lastp(font->textures);
+		for (int i = 0; i < 2; i++) {
+			info->c = c;
+			info->texture = arr_len(font->textures) - 1;
+			success = stbtt_PackFontRange(&texture->pack_context, font->ttf_data, 0, font->char_height,
+				(int)c, 1, &info->data);
+			if (success) break;
+			// texture is full; create a new one
+			stbtt_PackEnd(&texture->pack_context);
+			font_texture_update_if_needed(texture);
+			free(texture->pixels);
+			texture->pixels = NULL;
+			texture = font_new_texture(font);
+			if (!texture)
+				return false;
+		}
+		
+		if (!success) {
+			// a brand new texture couldn't fit the character.
+			// something has gone horribly wrong.
+			font_texture_free(texture);
+			arr_remove_last(font->textures);
+			text_set_err("Error rasterizing character %lc", (wchar_t)c);
 			return false;
+		}
+		
+		texture->needs_update = true;
 	}
-	
-	if (!success) {
-		// a brand new texture couldn't fit the character.
-		// something has gone horribly wrong.
-		font_texture_free(texture);
-		arr_remove_last(font->textures);
-		text_set_err("Error rasterizing character %lc", (wchar_t)c);
-		return false;
-	}
-	
-	texture->needs_update = true;
 	
 	arr_add(font->char_info[bucket], *info);
 	return true;
@@ -247,22 +260,33 @@ Font *text_font_load(const char *ttf_filename, float font_size) {
 	fseek(ttf_file, 0, SEEK_SET);
 	if (file_size >= (50UL<<20)) { // fonts aren't usually bigger than 50 MB
 		text_set_err("Font file too big (%u megabytes).", (uint)(file_size >> 20));
-		fclose(ttf_file);
-		return NULL;
 	}
-	u8 *file_data = calloc(1, file_size);
-	font = calloc(1, sizeof *font);
-	if (file_data && font) {
+	
+	u8 *file_data = NULL;
+	if (!text_has_err()) {
+		file_data = calloc(1, file_size);
+		font = calloc(1, sizeof *font);
+		if (!file_data || !font) {
+			text_set_err("Not enough memory for font.");
+		}
+	}
+	
+	if (!text_has_err()) {
 		size_t bytes_read = fread(file_data, 1, file_size, ttf_file);
-		if (bytes_read == file_size) {
-			font->char_height = font_size;
-			font->ttf_data = file_data;
-		} else {
+		if (bytes_read != file_size) {
 			text_set_err("Couldn't read font file.");
 		}
-	} else {
-		text_set_err("Not enough memory for font.");
 	}
+
+	
+	if (!text_has_err()) {
+		font->char_height = font_size;
+		font->ttf_data = file_data;
+		if (!stbtt_InitFont(&font->stb_info, file_data, 0)) {
+			text_set_err("Couldn't process font file - is this a valid TTF file?");
+		}
+	}
+	
 	if (text_has_err()) {
 		free(file_data);
 		free(font);
