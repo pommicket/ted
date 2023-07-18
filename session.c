@@ -116,7 +116,7 @@ static char read_char(FILE *fp) {
 }
 
 static bool read_bool(FILE *fp) {
-	return (bool)getc(fp);
+	return getc(fp) != 0;
 }
 
 static void write_cstr(FILE *fp, const char *cstr) {
@@ -244,6 +244,12 @@ static void session_read_buffer(Ted *ted, FILE *fp) {
 		buffer->selection = read_bool(fp);
 		if (buffer->selection)
 			buffer->selection_pos = buffer_pos_read(buffer, fp);
+		buffer_pos_validate(buffer, &buffer->cursor_pos);
+		buffer_pos_validate(buffer, &buffer->selection_pos);
+		if (buffer->selection && buffer_pos_eq(buffer->cursor_pos, buffer->selection_pos)) {
+			// this could happen if the file was changed on disk
+			buffer->selection = false;
+		}
 	}
 }
 

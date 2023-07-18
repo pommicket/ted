@@ -956,8 +956,14 @@ bool buffer_pixels_to_pos(TextBuffer *buffer, vec2 pixel_coords, BufferPos *pos)
 	x -= buffer->x1;
 	y -= buffer->y1;
 	
-	x = clampd(x, 0, buffer->x2 - buffer->x1);
-	y = clampd(y, 0, buffer->y2 - buffer->y1);
+	double buffer_width = buffer->x2 - buffer->x1;
+	double buffer_height = buffer->y2 - buffer->y1;
+	
+	if (x < 0 || y < 0 || x >= buffer_width || y >= buffer_height)
+		ret = false;
+	
+	x = clampd(x, 0, buffer_width);
+	y = clampd(y, 0, buffer_height);
 	
 	double xoff = x + buffer->scroll_x * text_font_char_width(font, ' ');
 	

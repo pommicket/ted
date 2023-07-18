@@ -26,9 +26,9 @@ typedef struct {
 
 typedef struct {
 	char32_t c;
+	bool defined;
 	u32 texture;
 	stbtt_packedchar data;
-	bool defined; // whether this character is actually defined in the font file
 } CharInfo;
 
 // characters are split into this many "buckets" according to
@@ -56,6 +56,7 @@ struct Font {
 	CharInfo *char_info[CHAR_BUCKET_COUNT]; // each entry is a dynamic array of char info
 	// TTF data (i.e. the contents of the TTF file)
 	u8 *ttf_data;
+	Font *fallback;
 };
 
 const TextRenderState text_render_state_default = {
@@ -88,6 +89,10 @@ static void text_set_err(const char *fmt, ...) {
 		vsnprintf(text_err, sizeof text_err - 1, fmt, args);
 		va_end(args);
 	}
+}
+
+void text_font_set_fallback(Font *font, Font *fallback) {
+	font->fallback = fallback;
 }
 
 static GLuint text_program;
@@ -137,7 +142,6 @@ static u32 char_bucket_index(char32_t c) {
 
 
 static FontTexture *font_new_texture(Font *font) {
-	debug_println("Create new texture for font %p", (void *)font);
 	PROFILE_TIME(start);
 	unsigned char *pixels = calloc(FONT_TEXTURE_WIDTH, FONT_TEXTURE_HEIGHT);
 	if (!pixels) {
@@ -183,7 +187,9 @@ static void font_texture_free(FontTexture *texture) {
 	memset(texture, 0, sizeof *texture);
 }
 
-// on success, *info is filled out
+// on success, *info is filled out.
+// success includes cases where c is not defined by the font so a substitute character is used.
+// failure only indicates something very bad.
 static Status text_load_char(Font *font, char32_t c, CharInfo *info) {
 	u32 bucket = char_bucket_index(c);
 	arr_foreach_ptr(font->char_info[bucket], CharInfo, i) {
@@ -195,50 +201,56 @@ static Status text_load_char(Font *font, char32_t c, CharInfo *info) {
 	}
 	
 	glGetError(); // clear error
+	memset(info, 0, sizeof *info);
 	
 	if (c != UNICODE_BOX_CHARACTER && stbtt_FindGlyphIndex(&font->stb_info, (int)c) == 0) {
-		// this code point is not defined by the font — use the box character
-		printf("Using box character for U+%04X\n",c);
+		// this code point is not defined by the font
+		
+		// use the box character
 		if (!text_load_char(font, UNICODE_BOX_CHARACTER, info))
 			return false;
 		info->c = c;
 		info->defined = false;
-	} else {
-		info->defined = true;
-		if (!font->textures) {
-			if (!font_new_texture(font))
-				return false;
-		}
-		
-		int success = 0;
-		FontTexture *texture = arr_lastp(font->textures);
-		for (int i = 0; i < 2; i++) {
-			info->c = c;
-			info->texture = arr_len(font->textures) - 1;
-			success = stbtt_PackFontRange(&texture->pack_context, font->ttf_data, 0, font->char_height,
-				(int)c, 1, &info->data);
-			if (success) break;
-			// texture is full; create a new one
-			stbtt_PackEnd(&texture->pack_context);
-			font_texture_update_if_needed(texture);
-			free(texture->pixels);
-			texture->pixels = NULL;
-			texture = font_new_texture(font);
-			if (!texture)
-				return false;
-		}
-		
-		if (!success) {
-			// a brand new texture couldn't fit the character.
-			// something has gone horribly wrong.
-			font_texture_free(texture);
-			arr_remove_last(font->textures);
-			text_set_err("Error rasterizing character %lc", (wchar_t)c);
-			return false;
-		}
-		
-		texture->needs_update = true;
+		arr_add(font->char_info[bucket], *info);
+		return true;
 	}
+
+	info->defined = true;
+
+	if (!font->textures) {
+		if (!font_new_texture(font))
+			return false;
+	}
+	
+	int success = 0;
+	FontTexture *texture = arr_lastp(font->textures);
+	for (int i = 0; i < 2; i++) {
+		info->c = c;
+		info->texture = arr_len(font->textures) - 1;
+		success = stbtt_PackFontRange(&texture->pack_context, font->ttf_data, 0, font->char_height,
+			(int)c, 1, &info->data);
+		if (success) break;
+		// texture is full; create a new one
+		stbtt_PackEnd(&texture->pack_context);
+		font_texture_update_if_needed(texture);
+		free(texture->pixels);
+		texture->pixels = NULL;
+		debug_println("Create new texture for font %p (triggered by U+%04X)", (void *)font, c);
+		texture = font_new_texture(font);
+		if (!texture)
+			return false;
+	}
+	
+	if (!success) {
+		// a brand new texture couldn't fit the character.
+		// something has gone horribly wrong.
+		font_texture_free(texture);
+		arr_remove_last(font->textures);
+		text_set_err("Error rasterizing character %lc", (wchar_t)c);
+		return false;
+	}
+	
+	texture->needs_update = true;
 	
 	arr_add(font->char_info[bucket], *info);
 	return true;
@@ -306,10 +318,13 @@ float text_font_char_height(Font *font) {
 
 float text_font_char_width(Font *font, char32_t c) {
 	CharInfo info = {0};
-	if (text_load_char(font, c, &info))
+	if (text_load_char(font, c, &info)) {
+		if (!info.defined && font->fallback)
+			return text_font_char_width(font->fallback, c);
 		return info.data.xadvance;
-	else
+	} else {
 		return 0;
+	}
 }
 
 void text_render(Font *font) {
@@ -336,6 +351,10 @@ void text_render(Font *font) {
 		glDrawArrays(GL_TRIANGLES, 0, (GLsizei)(3 * ntriangles));
 		arr_clear(texture->triangles);
 	}
+	
+	if (font->fallback) {
+		text_render(font->fallback);
+	}
 }
 
 void text_char_with_state(Font *font, TextRenderState *state, char32_t c) {
@@ -352,6 +371,13 @@ top:
 
 	if (!text_load_char(font, c, &info))
 		return;
+	
+	if (!info.defined && font->fallback) {
+		text_char_with_state(font->fallback, state, c);
+		return;
+	}
+	
+	
 	const float char_height = font->char_height;
 	
 	stbtt_aligned_quad q = {0};
@@ -513,12 +539,6 @@ void text_get_size32(Font *font, const char32_t *text, u64 len, float *width, fl
 	if (height) *height = (float)render_state.y + font->char_height * (2/3.0f);
 }
 
-static void font_free_textures(Font *font) {
-	arr_foreach_ptr(font->textures, FontTexture, texture) {
-		font_texture_free(texture);
-	}
-	arr_clear(font->textures);
-}
 
 static void font_free_char_info(Font *font) {
 	for (u32 i = 0; i < CHAR_BUCKET_COUNT; i++) {
@@ -526,10 +546,19 @@ static void font_free_char_info(Font *font) {
 	}
 }
 
+static void font_free_textures(Font *font) {
+	arr_foreach_ptr(font->textures, FontTexture, texture) {
+		font_texture_free(texture);
+	}
+	arr_clear(font->textures);
+}
+
 void text_font_change_size(Font *font, float new_size) {
 	font_free_textures(font);
 	font_free_char_info(font);
 	font->char_height = new_size;
+	if (font->fallback)
+		text_font_change_size(font->fallback, new_size);
 }
 
 void text_font_free(Font *font) {

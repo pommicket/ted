@@ -68,7 +68,15 @@ const char *text_get_err(void);
 void text_clear_err(void);
 /// Load a TTF font found in ttf_filename with the given font size (character pixel height)
 Font *text_font_load(const char *ttf_filename, float font_size);
-/// Change size of font. Avoid calling this function too often, since all font textures are trashed.
+/// Set a fallback font to use if a character is not defined by `font`.
+///
+/// You can pass `NULL` to clear any previous fallback.
+/// Do not create a loop of fallback fonts.
+void text_font_set_fallback(Font *font, Font *fallback);
+/// Change size of font.
+///
+/// Avoid calling this function too often, since all font textures are trashed.
+/// Also changes size of fallback fonts.
 void text_font_change_size(Font *font, float new_size);
 /// Height of a character of this font in pixels.
 float text_font_char_height(Font *font);
@@ -91,8 +99,12 @@ void text_char_with_state(Font *font, TextRenderState *state, char32_t c);
 /// Draw some UTF-8 text with a \ref TextRenderState.
 void text_utf8_with_state(Font *font, TextRenderState *state, const char *str);
 /// Free memory used by font.
+///
+/// Does NOT free the font's fallback.
 void text_font_free(Font *font);
 /// Render all text drawn with \ref text_utf8, etc.
+///
+/// This will render the fallback font and its fallback, and so on.
 void text_render(Font *font);
 /// The "default" text rendering state - everything you need to just render text normally.
 /// This lets you do stuff like:

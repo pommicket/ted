@@ -313,7 +313,8 @@ static Font *ted_load_single_font(Ted *ted, const char *filename) {
 
 static Font *ted_load_multifont(Ted *ted, const char *filenames) {
 	char filename[TED_PATH_MAX];
-	Font *font = NULL;
+	Font *first_font = NULL;
+	Font *curr_font = NULL;
 	
 	while (*filenames) {
 		while (*filenames == ',') ++filenames;
@@ -321,12 +322,17 @@ static Font *ted_load_multifont(Ted *ted, const char *filenames) {
 		strn_cpy(filename, sizeof filename, filenames, len);
 		str_trim(filename);
 		if (*filename) {
-			font = ted_load_single_font(ted, filename);
+			Font *font = ted_load_single_font(ted, filename);
+			if (!first_font)
+				first_font = font;
+			if (curr_font)
+				text_font_set_fallback(curr_font, font);
+			curr_font = font;
 		}
 		filenames += len;
 	}
 	
-	return font;
+	return first_font;
 }
 
 void ted_load_fonts(Ted *ted) {
