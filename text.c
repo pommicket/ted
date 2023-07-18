@@ -1,31 +1,18 @@
 #include "ted.h"
-
-#if DEBUG
-typedef struct
-{
-   unsigned short x0,y0,x1,y1; // coordinates of bbox in bitmap
-   float xoff,yoff,xadvance;
-} stbtt_bakedchar;
-typedef struct
-{
-   float x0,y0,s0,t0; // top-left
-   float x1,y1,s1,t1; // bottom-right
-} stbtt_aligned_quad;
-
-extern void stbtt_GetBakedQuad(const stbtt_bakedchar *chardata, int pw, int ph, int char_index, float *xpos, float *ypos, stbtt_aligned_quad *q, int opengl_fillrule); 
-extern int stbtt_BakeFontBitmap(const unsigned char *data, int offset, float pixel_height, unsigned char *pixels, int pw, int ph, int first_char, int num_chars, stbtt_bakedchar *chardata); 
-#else
-#define STBTT_STATIC
+ 
 no_warn_start
+#if DEBUG
+#include "lib/stb_rect_pack.h"
+#include "lib/stb_truetype.h"
+#else
 #include "stb_truetype.c"
-no_warn_end
 #endif
+no_warn_end
 
-
-// We split up code points into a bunch of pages, so we don't have to load all of the font at
-// once into one texture.
-#define CHAR_PAGE_SIZE 2048
-#define CHAR_PAGE_COUNT UNICODE_CODE_POINTS / CHAR_PAGE_SIZE
+//no_warn_start
+//#define STB_IMAGE_WRITE_IMPLEMENTATION
+//#include "/~/apps/stb/stb_image_write.h"
+//no_warn_end
 
 typedef struct {
 	vec2 pos;
@@ -37,16 +24,37 @@ typedef struct {
 	TextVertex vert1, vert2, vert3;
 } TextTriangle;
 
+typedef struct {
+	char32_t c;
+	u32 texture;
+	stbtt_packedchar data;
+} CharInfo;
+
+// characters are split into this many "buckets" according to
+// their least significant bits. this is to create a Budget Hash Map™.
+// must be a power of 2.
+#define CHAR_BUCKET_COUNT (1 << 10)
+
+#define FONT_TEXTURE_WIDTH 512 // width of each texture
+#define FONT_TEXTURE_HEIGHT 512 // height of each texture
+
+typedef struct {
+	GLuint tex;
+	bool needs_update;
+	unsigned char *pixels;
+	TextTriangle *triangles;
+} FontTexture;
+
 struct Font {
 	bool force_monospace;
 	float space_width; // width of the character ' '. calculated when font is loaded.
 	float char_height;
-	GLuint textures[CHAR_PAGE_COUNT];
-	int tex_widths[CHAR_PAGE_COUNT], tex_heights[CHAR_PAGE_COUNT];
-	stbtt_bakedchar *char_pages[CHAR_PAGE_COUNT]; // character pages. NULL if the page hasn't been loaded yet.
+	stbtt_pack_context pack_context;
+	stbtt_fontinfo stb_info;
+	FontTexture *textures; // dynamic array of textures
+	CharInfo *char_info[CHAR_BUCKET_COUNT]; // each entry is a dynamic array of char info
 	// TTF data (i.e. the contents of the TTF file)
 	u8 *ttf_data;
-	TextTriangle *triangles[CHAR_PAGE_COUNT]; // triangles to render for each page
 };
 
 const TextRenderState text_render_state_default = {
@@ -122,14 +130,49 @@ void main() {\n\
 	return true;
 }
 
-static Status text_load_char_page(Font *font, int page) {
-	if (font->char_pages[page]) {
-		// already loaded
-		return true;
+static u32 char_bucket_index(char32_t c) {
+	return c & (CHAR_BUCKET_COUNT - 1);
+}
+
+// on success, *info is filled out
+static Status text_load_char(Font *font, char32_t c, CharInfo *info) {
+	u32 bucket = char_bucket_index(c);
+	arr_foreach_ptr(font->char_info[bucket], CharInfo, i) {
+		if (i->c == c) {
+			// already loaded
+			*info = *i;
+			return true;
+		}
 	}
 	
 	glGetError(); // clear error
 	
+	if (!font->textures) {
+		unsigned char *pixels = calloc(FONT_TEXTURE_WIDTH, FONT_TEXTURE_HEIGHT);
+		if (!pixels) {
+			text_set_err("Not enough memory for font bitmap.");
+			return false;
+		}
+		stbtt_PackBegin(&font->pack_context, pixels, FONT_TEXTURE_WIDTH, FONT_TEXTURE_HEIGHT,
+			FONT_TEXTURE_WIDTH, 1, NULL);
+		FontTexture *texture = arr_addp(font->textures);
+		glGenTextures(1, &texture->tex);
+		texture->pixels = pixels;
+	}
+	
+	FontTexture *texture = arr_lastp(font->textures);
+	{
+		info->c = c;
+		info->texture = arr_len(font->textures) - 1;
+		int success = stbtt_PackFontRange(&font->pack_context, font->ttf_data, 0, font->char_height,
+			(int)c, 1, &info->data);
+		printf("%lc %d\n",c,success);
+	}
+	texture->needs_update = true;
+	
+	arr_add(font->char_info[bucket], *info);
+	return true;
+#if 0
 	font->char_pages[page] = calloc(CHAR_PAGE_SIZE, sizeof *font->char_pages[page]);
 	for (int bitmap_width = 128, bitmap_height = 128; bitmap_width <= 4096; bitmap_width *= 2, bitmap_height *= 2) {
 		u8 *bitmap = calloc((size_t)bitmap_width, (size_t)bitmap_height);
@@ -174,6 +217,8 @@ static Status text_load_char_page(Font *font, int page) {
 		return false;
 	}
 	return true;
+#endif
+
 }
 
 Font *text_font_load(const char *ttf_filename, float font_size) {
@@ -182,40 +227,43 @@ Font *text_font_load(const char *ttf_filename, float font_size) {
 	
 	text_clear_err();
 
-	if (ttf_file) {
-		fseek(ttf_file, 0, SEEK_END);
-		u32 file_size = (u32)ftell(ttf_file);
-		fseek(ttf_file, 0, SEEK_SET);
-		if (file_size < (50UL<<20)) { // fonts aren't usually bigger than 50 MB
-			u8 *file_data = calloc(1, file_size);
-			font = calloc(1, sizeof *font);
-			if (file_data && font) {
-				size_t bytes_read = fread(file_data, 1, file_size, ttf_file);
-				if (bytes_read == file_size) {
-					font->char_height = font_size;
-					font->ttf_data = file_data;
-					if (text_load_char_page(font, 0)) { // load page with Latin text, etc.
-						// calculate width of the character ' '
-						font->space_width = font->char_pages[0][' '].xadvance;
-					}
-				} else {
-					text_set_err("Couldn't read font file.");
-				}
-			} else {
-				text_set_err("Not enough memory for font.");
+	if (!ttf_file) {
+		text_set_err("Couldn't open font file.", ttf_filename);
+		return NULL;
+	}
+	
+	fseek(ttf_file, 0, SEEK_END);
+	u32 file_size = (u32)ftell(ttf_file);
+	fseek(ttf_file, 0, SEEK_SET);
+	if (file_size >= (50UL<<20)) { // fonts aren't usually bigger than 50 MB
+		text_set_err("Font file too big (%u megabytes).", (uint)(file_size >> 20));
+		fclose(ttf_file);
+		return NULL;
+	}
+	u8 *file_data = calloc(1, file_size);
+	font = calloc(1, sizeof *font);
+	if (file_data && font) {
+		size_t bytes_read = fread(file_data, 1, file_size, ttf_file);
+		if (bytes_read == file_size) {
+			font->char_height = font_size;
+			font->ttf_data = file_data;
+			CharInfo space = {0};
+			if (text_load_char(font, ' ', &space)) {
+				// calculate width of the character ' '
+				font->space_width = space.data.xadvance;
 			}
-			if (text_has_err()) {
-				free(file_data);
-				free(font);
-				font = NULL;
-			}
-			fclose(ttf_file);
 		} else {
-			text_set_err("Font file too big (%u megabytes).", (uint)(file_size >> 20));
+			text_set_err("Couldn't read font file.");
 		}
 	} else {
-		text_set_err("Couldn't open font file.", ttf_filename);
+		text_set_err("Not enough memory for font.");
 	}
+	if (text_has_err()) {
+		free(file_data);
+		free(font);
+		font = NULL;
+	}
+	fclose(ttf_file);
 	return font;
 }
 
@@ -229,24 +277,31 @@ float text_font_char_height(Font *font) {
 
 float text_font_char_width(Font *font, char32_t c) {
 	if (c == ' ') return font->space_width;
-	uint page = c / CHAR_PAGE_SIZE;
-	uint index = c % CHAR_PAGE_SIZE;
-	if (!font->char_pages[page])
-		if (!text_load_char_page(font, (int)page))
-			return font->space_width;
-	return font->char_pages[page][index].xadvance;
+	CharInfo info = {0};
+	if (text_load_char(font, c, &info))
+		return info.data.xadvance;
+	else
+		return 0;
 }
 
 void text_render(Font *font) {
-	for (uint i = 0; i < CHAR_PAGE_COUNT; ++i) {
-		if (font->triangles[i]) {
+	arr_foreach_ptr(font->textures, FontTexture, texture) {
+		size_t ntriangles = arr_len(texture->triangles);
+		if (ntriangles) {
+			if (texture->needs_update) {
+				glBindTexture(GL_TEXTURE_2D, texture->tex);
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, FONT_TEXTURE_WIDTH, FONT_TEXTURE_HEIGHT, 0, GL_RED, GL_UNSIGNED_BYTE, texture->pixels);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+				
+				//stbi_write_png("out.png", FONT_TEXTURE_WIDTH, FONT_TEXTURE_HEIGHT, 1, texture->pixels, FONT_TEXTURE_WIDTH);
+     				texture->needs_update = false;
+			}
 			// render these triangles
-			size_t ntriangles = arr_len(font->triangles[i]);
-		
 			if (gl_version_major >= 3)
 				glBindVertexArray(text_vao);
 			glBindBuffer(GL_ARRAY_BUFFER, text_vbo);
-			glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(ntriangles * sizeof(TextTriangle)), font->triangles[i], GL_STREAM_DRAW);
+			glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(ntriangles * sizeof(TextTriangle)), texture->triangles, GL_STREAM_DRAW);
 			glVertexAttribPointer(text_v_pos, 2, GL_FLOAT, 0, sizeof(TextVertex), (void *)offsetof(TextVertex, pos));
 			glEnableVertexAttribArray(text_v_pos);
 			glVertexAttribPointer(text_v_tex_coord, 2, GL_FLOAT, 0, sizeof(TextVertex), (void *)offsetof(TextVertex, tex_coord));
@@ -255,11 +310,11 @@ void text_render(Font *font) {
 			glEnableVertexAttribArray(text_v_color);
 			glUseProgram(text_program);
 			glActiveTexture(GL_TEXTURE0);
-			glBindTexture(GL_TEXTURE_2D, font->textures[i]);
+			glBindTexture(GL_TEXTURE_2D, texture->tex);
 			glUniform1i(text_u_sampler, 0);
 			glUniform2f(text_u_window_size, gl_window_width, gl_window_height);
 			glDrawArrays(GL_TRIANGLES, 0, (GLsizei)(3 * ntriangles));
-			arr_clear(font->triangles[i]);
+			arr_clear(texture->triangles);
 		}
 	}
 }
@@ -274,94 +329,86 @@ top:
 	}
 	if (c >= UNICODE_CODE_POINTS) c = UNICODE_BOX_CHARACTER; // code points this big should never appear in valid Unicode
 	
-	
-	uint page = c / CHAR_PAGE_SIZE;
-	uint index = c % CHAR_PAGE_SIZE;
-	if (state->render) {
-		if (!font->char_pages[page])
-			if (!text_load_char_page(font, (int)page))
-				return;
-	}
-	stbtt_bakedchar *char_data = font->char_pages[page];
+	CharInfo info = {0};
+
+	if (!text_load_char(font, c, &info))
+		return;
 	const float char_height = font->char_height;
 	
-	if (char_data) { // if page was successfully loaded
-		stbtt_aligned_quad q = {0};
+	stbtt_aligned_quad q = {0};
+	
+	if (state->wrap && c == '\n') {
+		state->x = state->min_x;
+		state->y += char_height;
+		goto ret;
+	}
+	
+	{
+		float x, y;
+		x = (float)(state->x - floor(state->x));
+		y = (float)(state->y - floor(state->y));
+		y += char_height * 0.75f;
+		stbtt_GetPackedQuad(&info.data, FONT_TEXTURE_WIDTH, FONT_TEXTURE_HEIGHT, 0, &x, &y, &q, 1);
+		y -= char_height * 0.75f;
 		
-		if (state->wrap && c == '\n') {
-			state->x = state->min_x;
-			state->y += char_height;
-			goto ret;
+		q.x0 += (float)floor(state->x);
+		q.y0 += (float)floor(state->y);
+		q.x1 += (float)floor(state->x);
+		q.y1 += (float)floor(state->y);
+		
+		if (font->force_monospace) {
+			state->x += font->space_width; // ignore actual character width
+		} else {
+			state->x = x + floor(state->x);
+			state->y = y + floor(state->y);
 		}
-		
-		{
-			float x, y;
-			x = (float)(state->x - floor(state->x));
-			y = (float)(state->y - floor(state->y));
-			y += char_height * 0.75f;
-			stbtt_GetBakedQuad(char_data, font->tex_widths[page], font->tex_heights[page],
-				(int)index, &x, &y, &q, 1);
-			y -= char_height * 0.75f;
-			
-			q.x0 += (float)floor(state->x);
-			q.y0 += (float)floor(state->y);
-			q.x1 += (float)floor(state->x);
-			q.y1 += (float)floor(state->y);
-			
-			if (font->force_monospace) {
-				state->x += font->space_width; // ignore actual character width
-			} else {
-				state->x = x + floor(state->x);
-				state->y = y + floor(state->y);
-			}
-		}
-		
-		float s0 = q.s0, t0 = q.t0;
-		float s1 = q.s1, t1 = q.t1;
-		float x0 = q.x0, y0 = q.y0;
-		float x1 = q.x1, y1 = q.y1;
-		const float min_x = state->min_x, max_x = state->max_x;
-		const float min_y = state->min_y, max_y = state->max_y;
-		
-		if (state->wrap && x1 >= max_x) {
-			state->x = min_x;
-			state->y += char_height;
-			goto top;
-		}
+	}
+	
+	float s0 = q.s0, t0 = q.t0;
+	float s1 = q.s1, t1 = q.t1;
+	float x0 = q.x0, y0 = q.y0;
+	float x1 = q.x1, y1 = q.y1;
+	const float min_x = state->min_x, max_x = state->max_x;
+	const float min_y = state->min_y, max_y = state->max_y;
+	
+	if (state->wrap && x1 >= max_x) {
+		state->x = min_x;
+		state->y += char_height;
+		goto top;
+	}
 
-		if (x0 > max_x || y0 > max_y || x1 < min_x || y1 < min_y)
-			goto ret;
-		if (x0 < min_x) {
-			// left side of character is clipped
-			s0 = (min_x-x0) / (x1-x0) * (s1-s0) + s0;
-			x0 = min_x;
-		}
-		if (x1 >= max_x) {
-			// right side of character is clipped
-			s1 = (max_x-1-x0) / (x1-x0) * (s1-s0) + s0;
-			x1 = max_x-1;
-		}
-		if (y0 < min_y) {
-			// top side of character is clipped
-			t0 = (min_y-y0) / (y1-y0) * (t1-t0) + t0;
-			y0 = min_y;
-		}
-		if (y1 >= max_y) {
-			// bottom side of character is clipped
-			t1 = (max_y-1-y0) / (y1-y0) * (t1-t0) + t0;
-			y1 = max_y-1;
-		}
-		if (state->render) {
-			float r = state->color[0], g = state->color[1], b = state->color[2], a = state->color[3];
-			TextVertex v_1 = {{x0, y0}, {s0, t0}, {r, g, b, a}};
-			TextVertex v_2 = {{x0, y1}, {s0, t1}, {r, g, b, a}};
-			TextVertex v_3 = {{x1, y1}, {s1, t1}, {r, g, b, a}};
-			TextVertex v_4 = {{x1, y0}, {s1, t0}, {r, g, b, a}};
-			TextTriangle triangle1 = {v_1, v_2, v_3};
-			TextTriangle triangle2 = {v_3, v_4, v_1};
-			arr_add(font->triangles[page], triangle1);
-			arr_add(font->triangles[page], triangle2);
-		}
+	if (x0 > max_x || y0 > max_y || x1 < min_x || y1 < min_y)
+		goto ret;
+	if (x0 < min_x) {
+		// left side of character is clipped
+		s0 = (min_x-x0) / (x1-x0) * (s1-s0) + s0;
+		x0 = min_x;
+	}
+	if (x1 >= max_x) {
+		// right side of character is clipped
+		s1 = (max_x-1-x0) / (x1-x0) * (s1-s0) + s0;
+		x1 = max_x-1;
+	}
+	if (y0 < min_y) {
+		// top side of character is clipped
+		t0 = (min_y-y0) / (y1-y0) * (t1-t0) + t0;
+		y0 = min_y;
+	}
+	if (y1 >= max_y) {
+		// bottom side of character is clipped
+		t1 = (max_y-1-y0) / (y1-y0) * (t1-t0) + t0;
+		y1 = max_y-1;
+	}
+	if (state->render) {
+		float r = state->color[0], g = state->color[1], b = state->color[2], a = state->color[3];
+		TextVertex v_1 = {{x0, y0}, {s0, t0}, {r, g, b, a}};
+		TextVertex v_2 = {{x0, y1}, {s0, t1}, {r, g, b, a}};
+		TextVertex v_3 = {{x1, y1}, {s1, t1}, {r, g, b, a}};
+		TextVertex v_4 = {{x1, y0}, {s1, t0}, {r, g, b, a}};
+		TextTriangle triangle1 = {v_1, v_2, v_3};
+		TextTriangle triangle2 = {v_3, v_4, v_1};
+		arr_add(font->textures[info.texture].triangles, triangle1);
+		arr_add(font->textures[info.texture].triangles, triangle2);
 	}
 	ret:
 	if (state->x > state->x_largest)
@@ -449,12 +496,10 @@ void text_get_size32(Font *font, const char32_t *text, u64 len, float *width, fl
 
 void text_font_free(Font *font) {
 	free(font->ttf_data);
-	stbtt_bakedchar **char_pages = font->char_pages;
-	for (int i = 0; i < CHAR_PAGE_COUNT; ++i) {
-		if (char_pages[i]) {
-			free(char_pages[i]);
-		}
-		arr_clear(font->triangles[i]);
+	arr_foreach_ptr(font->textures, FontTexture, texture) {
+		glDeleteTextures(1, &texture->tex);
+		arr_free(texture->triangles);
 	}
+	arr_free(font->textures);
 	free(font);
 }
