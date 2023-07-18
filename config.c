@@ -135,6 +135,8 @@ static const SettingString settings_string[] = {
 	{"lsp-configuration", settings_zero.lsp_configuration, sizeof settings_zero.lsp_configuration, true},
 	{"comment-start", settings_zero.comment_start, sizeof settings_zero.comment_start, true},
 	{"comment-end", settings_zero.comment_end, sizeof settings_zero.comment_end, true},
+	{"font", settings_zero.font, sizeof settings_zero.font, false},
+	{"font-bold", settings_zero.font_bold, sizeof settings_zero.font_bold, false},
 };
 static const SettingKeyCombo settings_key_combo[] = {
 	{"hover-key", &settings_zero.hover_key, true},

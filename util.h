@@ -96,6 +96,12 @@ void str_cat(char *dst, size_t dst_sz, const char *src);
 void strn_cpy(char *dst, size_t dst_sz, const char *src, size_t src_len);
 /// a safer version of strcpy. `dst_sz` includes a null-terminator.
 void str_cpy(char *dst, size_t dst_sz, const char *src);
+/// trim whitespace from the start of a string
+void str_trim_start(char *str);
+/// trim whitespace from the end of a string
+void str_trim_end(char *str);
+/// trim whitespace from both sides of a string
+void str_trim(char *str);
 /// equivalent to GNU function asprintf (like sprintf, but allocates the string with malloc).
 char *a_sprintf(const char *fmt, ...);
 /// convert binary number to string. make sure `s` can hold at least 65 bytes!!

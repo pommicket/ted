@@ -1,5 +1,6 @@
 /*
 TODO:
+- kerning
 - clean up valgrind_suppresions.txt
 FUTURE FEATURES:
 - autodetect indentation (tabs vs spaces)

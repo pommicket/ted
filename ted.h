@@ -301,6 +301,10 @@ typedef struct {
 	char build_command[1024];
 	/// Default build command for if `Cargo.toml`, `Makefile`, etc. do not exist.
 	char build_default_command[1024];
+	/// Comma separated list of paths to font files.
+	char font[4096];
+	/// Comma separated list of paths to bold font files.
+	char font_bold[4096];
 	LanguageExtension *language_extensions;
 	/// dynamic array, sorted by KEY_COMBO(modifier, key)
 	KeyAction *key_actions;

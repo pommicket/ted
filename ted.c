@@ -287,12 +287,13 @@ Status ted_get_file(Ted const *ted, const char *name, char *out, size_t outsz) {
 	return false;
 }
 
-static Font *ted_load_font(Ted *ted, const char *filename) {
+static Font *ted_load_single_font(Ted *ted, const char *filename) {
 	char path[TED_PATH_MAX];
 	if (!ted_get_file(ted, filename, path, sizeof path)) {
-		die("Couldn't find font file %s", filename);
+		ted_error(ted, "Couldn't find font file '%s'", filename);
+		return NULL;
 	}
-	
+
 	arr_foreach_ptr(ted->all_fonts, LoadedFont, f) {
 		if (paths_eq(path, f->path))
 			return f->font;
@@ -300,20 +301,47 @@ static Font *ted_load_font(Ted *ted, const char *filename) {
 	
 	Font *font = text_font_load(path, ted_active_settings(ted)->text_size);
 	if (!font) {
-		die("Couldn't load font %s: %s\n", path, text_get_err());
+		ted_error(ted, "Couldn't load font '%s': %s\n", path, text_get_err());
+		return NULL;
 	}
 	
 	LoadedFont *f = arr_addp(ted->all_fonts);
 	f->path = str_dup(path);
 	f->font = font;
+	return font;
+}
+
+static Font *ted_load_multifont(Ted *ted, const char *filenames) {
+	char filename[TED_PATH_MAX];
+	Font *font = NULL;
+	
+	while (*filenames) {
+		while (*filenames == ',') ++filenames;
+		size_t len = strcspn(filenames, ",");
+		strn_cpy(filename, sizeof filename, filenames, len);
+		str_trim(filename);
+		if (*filename) {
+			font = ted_load_single_font(ted, filename);
+		}
+		filenames += len;
+	}
 	
 	return font;
 }
 
 void ted_load_fonts(Ted *ted) {
 	ted_free_fonts(ted);
-	ted->font = ted_load_font(ted, "assets/font.ttf");
-	ted->font_bold = ted_load_font(ted, "assets/font-bold.ttf");
+	Settings *settings = ted_active_settings(ted);
+	ted->font = ted_load_multifont(ted, settings->font);
+	if (!ted->font) {
+		ted->font = ted_load_multifont(ted, "assets/font.ttf");
+		if (!ted->font)
+			die("Couldn't load default font: %s.", ted->message);
+	}
+	ted->font_bold = ted_load_multifont(ted, settings->font_bold);
+	if (!ted->font_bold) {
+		ted->font_bold = ted->font;
+	}
 }
 
 void ted_change_text_size(Ted *ted, float new_size) {

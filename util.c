@@ -12,6 +12,7 @@
 #error "Unrecognized operating system."
 #endif
 #include <wctype.h>
+#include <ctype.h>
 
 // on 16-bit systems, this is 16383. on 32/64-bit systems, this is 1073741823
 // it is unusual to have a string that long.
@@ -235,9 +236,29 @@ void strn_cpy(char *dst, size_t dst_sz, const char *src, size_t src_len) {
 	dst[n] = 0;
 }
 
-// safer version of strcpy. dst_sz includes a null terminator.
 void str_cpy(char *dst, size_t dst_sz, const char *src) {
 	strn_cpy(dst, dst_sz, src, SIZE_MAX);
+}
+
+void str_trim_start(char *str) {
+	size_t n = strspn(str, "\r\v\t\n\f ");
+	size_t len = strlen(str);
+	memmove(str, str + n, len - n);
+	str[len - n] = '\0';
+}
+
+void str_trim_end(char *str) {
+	size_t i = strlen(str);
+	while (i > 0 && isspace(str[i - 1])) {
+		str[i - 1] = '\0';
+		--i;
+	}
+}
+
+
+void str_trim(char *str) {
+	str_trim_end(str);
+	str_trim_start(str);
 }
 
 char *a_sprintf(PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRINTF(1, 2);
