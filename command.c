@@ -532,7 +532,7 @@ void command_execute_ex(Ted *ted, Command c, CommandArgument full_argument, Comm
 			i64 new_text_size = settings->text_size + argument;
 			if (new_text_size >= TEXT_SIZE_MIN && new_text_size <= TEXT_SIZE_MAX) {
 				settings->text_size = (u16)new_text_size;
-				ted_load_fonts(ted);
+				ted_change_text_size(ted, (float)new_text_size);
 			}
 		}
 		break;
@@ -541,7 +541,7 @@ void command_execute_ex(Ted *ted, Command c, CommandArgument full_argument, Comm
 			i64 new_text_size = settings->text_size - argument;	
 			if (new_text_size >= TEXT_SIZE_MIN && new_text_size <= TEXT_SIZE_MAX) {
 				settings->text_size = (u16)new_text_size;
-				ted_load_fonts(ted);
+				ted_change_text_size(ted, (float)new_text_size);
 			}
 		}
 		break;

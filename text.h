@@ -68,6 +68,8 @@ const char *text_get_err(void);
 void text_clear_err(void);
 /// Load a TTF font found in ttf_filename with the given font size (character pixel height)
 Font *text_font_load(const char *ttf_filename, float font_size);
+/// Change size of font. Avoid calling this function too often, since all font textures are trashed.
+void text_font_change_size(Font *font, float new_size);
 /// Height of a character of this font in pixels.
 float text_font_char_height(Font *font);
 /// Width of the given character in pixels.

@@ -1,4 +1,6 @@
 /*
+TODO:
+- clean up valgrind_suppresions.txt
 FUTURE FEATURES:
 - autodetect indentation (tabs vs spaces)
 - font setting & support for multiple fonts to cover more characters
@@ -1214,8 +1216,7 @@ int main(int argc, char **argv) {
 	buffer_free(&ted->replace_buffer);
 	buffer_free(&ted->build_buffer);
 	buffer_free(&ted->argument_buffer);
-	text_font_free(ted->font);
-	text_font_free(ted->font_bold);
+	ted_free_fonts(ted);
 	config_free(ted);
 	macros_free(ted);
 	free(ted);

@@ -725,6 +725,11 @@ typedef struct {
 	Action *actions;
 } Macro;
 
+typedef struct {
+	char *path;
+	Font *font;
+} LoadedFont;
+
 #define TED_MACRO_MAX 256
 
 /// (almost) all data used by the ted application
@@ -739,6 +744,7 @@ typedef struct Ted {
 	bool executing_macro;
 	
 	SDL_Window *window;
+	LoadedFont *all_fonts;
 	Font *font_bold;
 	Font *font;
 	TextBuffer *active_buffer;
@@ -1655,8 +1661,12 @@ TextBuffer *ted_get_buffer_with_file(Ted *ted, const char *path);
 bool ted_save_all(Ted *ted);
 /// reload all buffers from their files
 void ted_reload_all(Ted *ted);
-/// Load all the fonts ted will use.
+/// Load all the fonts ted will use, freeing any previous ones.
 void ted_load_fonts(Ted *ted);
+/// Change ted's font size. Avoid calling this super often since it trashes all current font textures.
+void ted_change_text_size(Ted *ted, float new_size);
+/// Free all of ted's fonts.
+void ted_free_fonts(Ted *ted);
 /// Get likely root directory of project containing `path`.
 /// The returned value should be freed.
 char *ted_get_root_dir_of(Ted *ted, const char *path);

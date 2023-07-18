@@ -42,15 +42,13 @@ typedef struct {
 	GLuint tex;
 	bool needs_update;
 	unsigned char *pixels;
+	stbtt_pack_context pack_context;
 	TextTriangle *triangles;
 } FontTexture;
 
 struct Font {
 	bool force_monospace;
-	float space_width; // width of the character ' '. calculated when font is loaded.
 	float char_height;
-	stbtt_pack_context pack_context;
-	stbtt_fontinfo stb_info;
 	FontTexture *textures; // dynamic array of textures
 	CharInfo *char_info[CHAR_BUCKET_COUNT]; // each entry is a dynamic array of char info
 	// TTF data (i.e. the contents of the TTF file)
@@ -144,7 +142,7 @@ static FontTexture *font_new_texture(Font *font) {
 		return NULL;
 	}
 	FontTexture *texture = arr_addp(font->textures);
-	stbtt_PackBegin(&font->pack_context, pixels, FONT_TEXTURE_WIDTH, FONT_TEXTURE_HEIGHT,
+	stbtt_PackBegin(&texture->pack_context, pixels, FONT_TEXTURE_WIDTH, FONT_TEXTURE_HEIGHT,
 		FONT_TEXTURE_WIDTH, 1, NULL);
 	glGenTextures(1, &texture->tex);
 	PROFILE_TIME(end);
@@ -175,8 +173,10 @@ static void font_texture_update_if_needed(FontTexture *texture) {
 static void font_texture_free(FontTexture *texture) {
 	glDeleteTextures(1, &texture->tex);
 	arr_free(texture->triangles);
-	if (texture->pixels)
+	if (texture->pixels) {
 		free(texture->pixels);
+		stbtt_PackEnd(&texture->pack_context);
+	}
 	memset(texture, 0, sizeof *texture);
 }
 
@@ -203,11 +203,11 @@ static Status text_load_char(Font *font, char32_t c, CharInfo *info) {
 	for (int i = 0; i < 2; i++) {
 		info->c = c;
 		info->texture = arr_len(font->textures) - 1;
-		success = stbtt_PackFontRange(&font->pack_context, font->ttf_data, 0, font->char_height,
+		success = stbtt_PackFontRange(&texture->pack_context, font->ttf_data, 0, font->char_height,
 			(int)c, 1, &info->data);
 		if (success) break;
 		// texture is full; create a new one
-		stbtt_PackEnd(&font->pack_context);
+		stbtt_PackEnd(&texture->pack_context);
 		font_texture_update_if_needed(texture);
 		free(texture->pixels);
 		texture->pixels = NULL;
@@ -257,11 +257,6 @@ Font *text_font_load(const char *ttf_filename, float font_size) {
 		if (bytes_read == file_size) {
 			font->char_height = font_size;
 			font->ttf_data = file_data;
-			CharInfo space = {0};
-			if (text_load_char(font, ' ', &space)) {
-				// calculate width of the character ' '
-				font->space_width = space.data.xadvance;
-			}
 		} else {
 			text_set_err("Couldn't read font file.");
 		}
@@ -286,7 +281,6 @@ float text_font_char_height(Font *font) {
 }
 
 float text_font_char_width(Font *font, char32_t c) {
-	if (c == ' ') return font->space_width;
 	CharInfo info = {0};
 	if (text_load_char(font, c, &info))
 		return info.data.xadvance;
@@ -358,7 +352,7 @@ top:
 		q.y1 += (float)floor(state->y);
 		
 		if (font->force_monospace) {
-			state->x += font->space_width; // ignore actual character width
+			state->x += text_font_char_width(font, ' ');
 		} else {
 			state->x = x + floor(state->x);
 			state->y = y + floor(state->y);
@@ -495,11 +489,29 @@ void text_get_size32(Font *font, const char32_t *text, u64 len, float *width, fl
 	if (height) *height = (float)render_state.y + font->char_height * (2/3.0f);
 }
 
-void text_font_free(Font *font) {
-	free(font->ttf_data);
+static void font_free_textures(Font *font) {
 	arr_foreach_ptr(font->textures, FontTexture, texture) {
 		font_texture_free(texture);
 	}
-	arr_free(font->textures);
+	arr_clear(font->textures);
+}
+
+static void font_free_char_info(Font *font) {
+	for (u32 i = 0; i < CHAR_BUCKET_COUNT; i++) {
+		arr_free(font->char_info[i]);
+	}
+}
+
+void text_font_change_size(Font *font, float new_size) {
+	font_free_textures(font);
+	font_free_char_info(font);
+	font->char_height = new_size;
+}
+
+void text_font_free(Font *font) {
+	free(font->ttf_data);
+	font_free_textures(font);
+	font_free_char_info(font);
+	memset(font, 0, sizeof *font);
 	free(font);
 }

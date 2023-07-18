@@ -287,31 +287,50 @@ Status ted_get_file(Ted const *ted, const char *name, char *out, size_t outsz) {
 	return false;
 }
 
-// Loads font from filename into *out, freeing any font that was previously there.
-// *out is left unchanged on failure.
-static void ted_load_font(Ted *ted, const char *filename, Font **out) {
-	char font_filename[TED_PATH_MAX];
-	if (ted_get_file(ted, filename, font_filename, sizeof font_filename)) {
-		Font *font = text_font_load(font_filename, ted_active_settings(ted)->text_size);
-		if (font) {
-			if (*out) {
-				text_font_free(*out);
-			}
-			*out = font;
-		} else {
-			die("Couldn't load font: %s", text_get_err());
-		}
-	} else {
-		die("Couldn't find font file. There is probably a problem with your ted installation.");
+static Font *ted_load_font(Ted *ted, const char *filename) {
+	char path[TED_PATH_MAX];
+	if (!ted_get_file(ted, filename, path, sizeof path)) {
+		die("Couldn't find font file %s", filename);
 	}
 	
+	arr_foreach_ptr(ted->all_fonts, LoadedFont, f) {
+		if (paths_eq(path, f->path))
+			return f->font;
+	} 
+	
+	Font *font = text_font_load(path, ted_active_settings(ted)->text_size);
+	if (!font) {
+		die("Couldn't load font %s: %s\n", path, text_get_err());
+	}
+	
+	LoadedFont *f = arr_addp(ted->all_fonts);
+	f->path = str_dup(path);
+	f->font = font;
+	
+	return font;
 }
 
 void ted_load_fonts(Ted *ted) {
-	ted_load_font(ted, "assets/font.ttf", &ted->font);
-	ted_load_font(ted, "assets/font-bold.ttf", &ted->font_bold);
+	ted_free_fonts(ted);
+	ted->font = ted_load_font(ted, "assets/font.ttf");
+	ted->font_bold = ted_load_font(ted, "assets/font-bold.ttf");
 }
 
+void ted_change_text_size(Ted *ted, float new_size) {
+	arr_foreach_ptr(ted->all_fonts, LoadedFont, f) {
+		text_font_change_size(f->font, new_size);
+	}
+}
+
+void ted_free_fonts(Ted *ted) {
+	arr_foreach_ptr(ted->all_fonts, LoadedFont, f) {
+		free(f->path);
+		text_font_free(f->font);
+	}
+	arr_clear(ted->all_fonts);
+	ted->font = NULL;
+	ted->font_bold = NULL;
+}
 
 void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer) {
 	TextBuffer *search_buffer = find_search_buffer(ted);
