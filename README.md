@@ -93,9 +93,6 @@ tab-width = 2
 To reset your ted configuration to the default settings, delete your ted.cfg file (`~/.local/share/ted/ted.cfg` on Linux,
 `C:\Users\<your user name>\AppData\Local\ted\ted.cfg` on Windows) or move it somewhere else.
 
-To change the font, create files called `font.ttf` and `font-bold.ttf` in the same directory as `ted.cfg`.
-At the moment, only monospace fonts are supported.
-
 #### Themes
 
 At the top of `ted.cfg` you will see a line which includes a theme.
@@ -321,6 +318,7 @@ Then, open windows\_installer\\ted\\ted.sln, and build.
 <tr><td>2.3.2</td> <td>Misc bugfixes</td> <td>2023 Jun 17</td></tr>
 <tr><td>2.3.3</td> <td>JS highlighting improvments, fix TODO highlighting for single-line comments</td> <td>2023 Jul 6</td></tr>
 <tr><td>2.3.4</td> <td>Unicode bugfix, `:copy-path`</td> <td>2023 Jul 14</td></tr>
+<tr><td>2.4</td> <td>Font overhaul — allow multiple fonts, and variable-width fonts.</td> <td>2023 Jul 18</td></tr>
 </table>
 
 ## License
