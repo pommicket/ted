@@ -47,6 +47,10 @@ FUTURE FEATURES:
 	#define ONE_SOURCE 1
 #endif
 
+#if PROFILE
+	#define PROFILE_FRAME 1
+#endif
+
 #if ONE_SOURCE
 
 #include "util.c"
@@ -87,13 +91,6 @@ FUTURE FEATURES:
 #include "lsp-parse.c"
 
 #endif // ONE_SOURCE
-
-#if PROFILE
-#define PROFILE_TIME(var) double var = time_get_seconds();
-#else
-#define PROFILE_TIME(var)
-#endif
-
 
 static Rect message_box_rect(Ted *ted) {
 	Font *font = ted->font;
@@ -1121,7 +1118,7 @@ int main(int argc, char **argv) {
 	#endif
 	
 		double frame_end_noswap = time_get_seconds();
-	#if PROFILE
+	#if PROFILE_FRAME
 		{
 			print("Frame (noswap): %.1f ms\n", (frame_end_noswap - frame_start) * 1000);
 		}
@@ -1164,7 +1161,7 @@ int main(int argc, char **argv) {
 
 		assert(glGetError() == 0);
 
-	#if PROFILE
+	#if PROFILE_FRAME
 		{
 			print("Frame: %.1f ms\n", (frame_end - frame_start) * 1000);
 		}

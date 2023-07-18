@@ -33,7 +33,7 @@ typedef struct {
 // characters are split into this many "buckets" according to
 // their least significant bits. this is to create a Budget Hash Map™.
 // must be a power of 2.
-#define CHAR_BUCKET_COUNT (1 << 10)
+#define CHAR_BUCKET_COUNT (1 << 12)
 
 #define FONT_TEXTURE_WIDTH 512 // width of each texture
 #define FONT_TEXTURE_HEIGHT 512 // height of each texture
@@ -134,6 +134,52 @@ static u32 char_bucket_index(char32_t c) {
 	return c & (CHAR_BUCKET_COUNT - 1);
 }
 
+
+static FontTexture *font_new_texture(Font *font) {
+	debug_println("Create new texture for font %p", (void *)font);
+	PROFILE_TIME(start);
+	unsigned char *pixels = calloc(FONT_TEXTURE_WIDTH, FONT_TEXTURE_HEIGHT);
+	if (!pixels) {
+		text_set_err("Not enough memory for font bitmap.");
+		return NULL;
+	}
+	FontTexture *texture = arr_addp(font->textures);
+	stbtt_PackBegin(&font->pack_context, pixels, FONT_TEXTURE_WIDTH, FONT_TEXTURE_HEIGHT,
+		FONT_TEXTURE_WIDTH, 1, NULL);
+	glGenTextures(1, &texture->tex);
+	PROFILE_TIME(end);
+	texture->pixels = pixels;
+	#if PROFILE
+		printf("- create font texture: %.1fms\n", 1e3 * (end - start));
+	#endif
+	return texture;
+}
+
+static void font_texture_update_if_needed(FontTexture *texture) {
+	if (texture->needs_update) {
+		PROFILE_TIME(start);
+		glBindTexture(GL_TEXTURE_2D, texture->tex);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, FONT_TEXTURE_WIDTH, FONT_TEXTURE_HEIGHT, 0, GL_RED, GL_UNSIGNED_BYTE, texture->pixels);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		PROFILE_TIME(end);
+		
+		#if PROFILE
+		printf("- update font texture: %.1fms\n", 1e3 * (end - start));
+		#endif
+		//stbi_write_png("out.png", FONT_TEXTURE_WIDTH, FONT_TEXTURE_HEIGHT, 1, texture->pixels, FONT_TEXTURE_WIDTH);
+		texture->needs_update = false;
+	}
+}
+
+static void font_texture_free(FontTexture *texture) {
+	glDeleteTextures(1, &texture->tex);
+	arr_free(texture->triangles);
+	if (texture->pixels)
+		free(texture->pixels);
+	memset(texture, 0, sizeof *texture);
+}
+
 // on success, *info is filled out
 static Status text_load_char(Font *font, char32_t c, CharInfo *info) {
 	u32 bucket = char_bucket_index(c);
@@ -148,77 +194,41 @@ static Status text_load_char(Font *font, char32_t c, CharInfo *info) {
 	glGetError(); // clear error
 	
 	if (!font->textures) {
-		unsigned char *pixels = calloc(FONT_TEXTURE_WIDTH, FONT_TEXTURE_HEIGHT);
-		if (!pixels) {
-			text_set_err("Not enough memory for font bitmap.");
+		if (!font_new_texture(font))
 			return false;
-		}
-		stbtt_PackBegin(&font->pack_context, pixels, FONT_TEXTURE_WIDTH, FONT_TEXTURE_HEIGHT,
-			FONT_TEXTURE_WIDTH, 1, NULL);
-		FontTexture *texture = arr_addp(font->textures);
-		glGenTextures(1, &texture->tex);
-		texture->pixels = pixels;
 	}
 	
+	int success = 0;
 	FontTexture *texture = arr_lastp(font->textures);
-	{
+	for (int i = 0; i < 2; i++) {
 		info->c = c;
 		info->texture = arr_len(font->textures) - 1;
-		int success = stbtt_PackFontRange(&font->pack_context, font->ttf_data, 0, font->char_height,
+		success = stbtt_PackFontRange(&font->pack_context, font->ttf_data, 0, font->char_height,
 			(int)c, 1, &info->data);
-		printf("%lc %d\n",c,success);
+		if (success) break;
+		// texture is full; create a new one
+		stbtt_PackEnd(&font->pack_context);
+		font_texture_update_if_needed(texture);
+		free(texture->pixels);
+		texture->pixels = NULL;
+		texture = font_new_texture(font);
+		if (!texture)
+			return false;
 	}
+	
+	if (!success) {
+		// a brand new texture couldn't fit the character.
+		// something has gone horribly wrong.
+		font_texture_free(texture);
+		arr_remove_last(font->textures);
+		text_set_err("Error rasterizing character %lc", (wchar_t)c);
+		return false;
+	}
+	
 	texture->needs_update = true;
 	
 	arr_add(font->char_info[bucket], *info);
 	return true;
-#if 0
-	font->char_pages[page] = calloc(CHAR_PAGE_SIZE, sizeof *font->char_pages[page]);
-	for (int bitmap_width = 128, bitmap_height = 128; bitmap_width <= 4096; bitmap_width *= 2, bitmap_height *= 2) {
-		u8 *bitmap = calloc((size_t)bitmap_width, (size_t)bitmap_height);
-		if (bitmap) {
-			int err = stbtt_BakeFontBitmap(font->ttf_data, 0, font->char_height, bitmap,
-				bitmap_width, bitmap_height, page * CHAR_PAGE_SIZE, CHAR_PAGE_SIZE, font->char_pages[page]);
-			if (err > 0) {
-				// font converted to bitmap successfully.
-				GLuint texture = 0;
-				glGenTextures(1, &texture);
-				glBindTexture(GL_TEXTURE_2D, texture);
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, bitmap_width, bitmap_height, 0, GL_RED, GL_UNSIGNED_BYTE, bitmap);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-			#if DEBUG
-				debug_println("Loaded font page %p:%03d with %dx%d bitmap as texture %u.", (void *)font, page, bitmap_width, bitmap_height, texture);
-			#endif
-				font->textures[page] = texture;
-				font->tex_widths[page]  = bitmap_width;
-				font->tex_heights[page] = bitmap_height;
-				GLenum glerr = glGetError();
-				if (glerr) {
-					text_set_err("Couldn't create texture for font (GL error %u).", glerr);
-					if (texture) glDeleteTextures(1, &texture);
-					break;
-				}
-			}
-		} else {
-			text_set_err("Not enough memory for font bitmap.");
-		}
-		free(bitmap);
-		if (font->textures[page]) { // if font loaded successfully
-			break;
-		}
-	}
-	if (!font->textures[page] && !text_has_err()) {
-		text_set_err("Couldn't convert font to bitmap.");
-	}
-	if (text_has_err()) {
-		free(font->char_pages[page]);
-		font->char_pages[page] = NULL;
-		return false;
-	}
-	return true;
-#endif
-
 }
 
 Font *text_font_load(const char *ttf_filename, float font_size) {
@@ -287,35 +297,26 @@ float text_font_char_width(Font *font, char32_t c) {
 void text_render(Font *font) {
 	arr_foreach_ptr(font->textures, FontTexture, texture) {
 		size_t ntriangles = arr_len(texture->triangles);
-		if (ntriangles) {
-			if (texture->needs_update) {
-				glBindTexture(GL_TEXTURE_2D, texture->tex);
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, FONT_TEXTURE_WIDTH, FONT_TEXTURE_HEIGHT, 0, GL_RED, GL_UNSIGNED_BYTE, texture->pixels);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-				glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-				
-				//stbi_write_png("out.png", FONT_TEXTURE_WIDTH, FONT_TEXTURE_HEIGHT, 1, texture->pixels, FONT_TEXTURE_WIDTH);
-     				texture->needs_update = false;
-			}
-			// render these triangles
-			if (gl_version_major >= 3)
-				glBindVertexArray(text_vao);
-			glBindBuffer(GL_ARRAY_BUFFER, text_vbo);
-			glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(ntriangles * sizeof(TextTriangle)), texture->triangles, GL_STREAM_DRAW);
-			glVertexAttribPointer(text_v_pos, 2, GL_FLOAT, 0, sizeof(TextVertex), (void *)offsetof(TextVertex, pos));
-			glEnableVertexAttribArray(text_v_pos);
-			glVertexAttribPointer(text_v_tex_coord, 2, GL_FLOAT, 0, sizeof(TextVertex), (void *)offsetof(TextVertex, tex_coord));
-			glEnableVertexAttribArray(text_v_tex_coord);
-			glVertexAttribPointer(text_v_color, 4, GL_FLOAT, 0, sizeof(TextVertex), (void *)offsetof(TextVertex, color));
-			glEnableVertexAttribArray(text_v_color);
-			glUseProgram(text_program);
-			glActiveTexture(GL_TEXTURE0);
-			glBindTexture(GL_TEXTURE_2D, texture->tex);
-			glUniform1i(text_u_sampler, 0);
-			glUniform2f(text_u_window_size, gl_window_width, gl_window_height);
-			glDrawArrays(GL_TRIANGLES, 0, (GLsizei)(3 * ntriangles));
-			arr_clear(texture->triangles);
-		}
+		if (!ntriangles) continue;
+		font_texture_update_if_needed(texture);
+		// render these triangles
+		if (gl_version_major >= 3)
+			glBindVertexArray(text_vao);
+		glBindBuffer(GL_ARRAY_BUFFER, text_vbo);
+		glBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(ntriangles * sizeof(TextTriangle)), texture->triangles, GL_STREAM_DRAW);
+		glVertexAttribPointer(text_v_pos, 2, GL_FLOAT, 0, sizeof(TextVertex), (void *)offsetof(TextVertex, pos));
+		glEnableVertexAttribArray(text_v_pos);
+		glVertexAttribPointer(text_v_tex_coord, 2, GL_FLOAT, 0, sizeof(TextVertex), (void *)offsetof(TextVertex, tex_coord));
+		glEnableVertexAttribArray(text_v_tex_coord);
+		glVertexAttribPointer(text_v_color, 4, GL_FLOAT, 0, sizeof(TextVertex), (void *)offsetof(TextVertex, color));
+		glEnableVertexAttribArray(text_v_color);
+		glUseProgram(text_program);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, texture->tex);
+		glUniform1i(text_u_sampler, 0);
+		glUniform2f(text_u_window_size, gl_window_width, gl_window_height);
+		glDrawArrays(GL_TRIANGLES, 0, (GLsizei)(3 * ntriangles));
+		arr_clear(texture->triangles);
 	}
 }
 
@@ -497,8 +498,7 @@ void text_get_size32(Font *font, const char32_t *text, u64 len, float *width, fl
 void text_font_free(Font *font) {
 	free(font->ttf_data);
 	arr_foreach_ptr(font->textures, FontTexture, texture) {
-		glDeleteTextures(1, &texture->tex);
-		arr_free(texture->triangles);
+		font_texture_free(texture);
 	}
 	arr_free(font->textures);
 	free(font);

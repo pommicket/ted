@@ -168,4 +168,10 @@ static void print(const char *fmt, ...) {
 #define debug_println(...)
 #endif
 
+#if PROFILE
+#define PROFILE_TIME(var) double var = time_get_seconds();
+#else
+#define PROFILE_TIME(var)
+#endif
+
 #endif // BASE_H_
