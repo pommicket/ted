@@ -1117,13 +1117,6 @@ int main(int argc, char **argv) {
 		buffer_check_valid(&ted->line_buffer);
 	#endif
 	
-		double frame_end_noswap = time_get_seconds();
-	#if PROFILE_FRAME
-		{
-			print("Frame (noswap): %.1f ms\n", (frame_end_noswap - frame_start) * 1000);
-		}
-	#endif
-		
 		if (ted->dragging_tab_node)
 			ted->cursor = ted->cursor_move;
 
@@ -1135,6 +1128,8 @@ int main(int argc, char **argv) {
 			SDL_ShowCursor(SDL_DISABLE);
 		}
 		
+		double frame_end_noswap = time_get_seconds();
+		#if !PROFILE_FRAME
 		{
 			// annoyingly, SDL_GL_SwapWindow seems to be a busy loop on my laptop for some reason...
 			// this is why the framerate-cap settings exists
@@ -1155,8 +1150,13 @@ int main(int argc, char **argv) {
 				prev_vsync = settings->vsync;
 				SDL_GL_SetSwapInterval(settings->vsync ? 1 : 0);
 			}
-			SDL_GL_SwapWindow(window);
 		}
+		#else
+		(void)frame_end_noswap;
+		SDL_GL_SetSwapInterval(0);
+		#endif
+		SDL_GL_SwapWindow(window);
+		
 		PROFILE_TIME(frame_end)
 
 		assert(glGetError() == 0);

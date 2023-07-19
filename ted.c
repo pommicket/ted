@@ -191,6 +191,7 @@ Settings *ted_get_settings(Ted *ted, const char *path, Language language) {
 }
 
 LSP *ted_get_lsp_by_id(Ted *ted, LSPID id) {
+	if (id == 0) return NULL;
 	for (int i = 0; ted->lsps[i]; ++i) {
 		LSP *lsp = ted->lsps[i];
 		if (lsp->id == id)

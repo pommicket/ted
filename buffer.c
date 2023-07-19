@@ -217,9 +217,6 @@ Language buffer_language(TextBuffer *buffer) {
 	if (!buffer->path)
 		return LANG_TEXT;
 	
-	// @TODO(optimization): cache this?
-	//         (we're calling buffer_lsp on every edit and that calls this)
-	
 	if (buffer->manual_language != LANG_NONE)
 		return (Language)buffer->manual_language;
 	const Settings *settings = buffer->ted->default_settings; // important we don't use buffer_settings here since that would cause a loop!
@@ -277,6 +274,10 @@ LSP *buffer_lsp(TextBuffer *buffer) {
 		return NULL;
 	if (buffer->view_only)
 		return NULL; // we don't really want to start up an LSP in /usr/include
+	if (buffer->ted->frame_time - buffer->last_lsp_check < 1.0) {
+		return ted_get_lsp_by_id(buffer->ted, buffer->lsp_opened_in);
+	}
+	
 	LSP *true_lsp = ted_get_lsp(buffer->ted, buffer->path, buffer_language(buffer));
 	LSP *curr_lsp = ted_get_lsp_by_id(buffer->ted, buffer->lsp_opened_in);
 	if (true_lsp != curr_lsp) {
@@ -285,6 +286,7 @@ LSP *buffer_lsp(TextBuffer *buffer) {
 		if (true_lsp)
 			buffer_send_lsp_did_open(buffer, true_lsp, NULL);
 	}
+	buffer->last_lsp_check = buffer->ted->frame_time;
 	return true_lsp;
 }
 
@@ -2833,6 +2835,7 @@ bool buffer_save_as(TextBuffer *buffer, const char *new_path) {
 		buffer->frame_latest_line_modified = buffer->nlines - 1;
 		if (lsp)
 			buffer_send_lsp_did_close(buffer, lsp, prev_path);
+		buffer->last_lsp_check = -INFINITY;
 		// we'll send a didOpen the next time buffer_lsp is called.
 		free(prev_path);
 		return true;

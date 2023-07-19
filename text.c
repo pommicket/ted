@@ -9,11 +9,6 @@ no_warn_start
 #endif
 no_warn_end
 
-//no_warn_start
-//#define STB_IMAGE_WRITE_IMPLEMENTATION
-//#include "/~/apps/stb/stb_image_write.h"
-//no_warn_end
-
 typedef struct {
 	vec2 pos;
 	vec2 tex_coord;
@@ -173,7 +168,6 @@ static void font_texture_update_if_needed(FontTexture *texture) {
 		#if PROFILE
 		printf("- update font texture: %.1fms\n", 1e3 * (end - start));
 		#endif
-		//stbi_write_png("out.png", FONT_TEXTURE_WIDTH, FONT_TEXTURE_HEIGHT, 1, texture->pixels, FONT_TEXTURE_WIDTH);
 		texture->needs_update = false;
 	}
 }

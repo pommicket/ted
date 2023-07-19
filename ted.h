@@ -414,6 +414,10 @@ typedef struct {
 	
 	/// which LSP this document is open in
 	LSPID lsp_opened_in;
+	/// determining which LSP to use for a buffer takes some work,
+	/// so we don't want to do it every single frame.
+	/// this keeps track of the last time we actually checked what the correct LSP is.
+	double last_lsp_check;
 
 	/// where in the undo history was the last write? used by \ref buffer_unsaved_changes
 	u32 undo_history_write_pos;
