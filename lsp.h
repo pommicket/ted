@@ -755,6 +755,8 @@ char *json_string_get_alloc(const JSON *json, JSONString string);
 void json_debug_print(const JSON *json);
 size_t json_escape_to(char *out, size_t out_sz, const char *in);
 char *json_escape(const char *str);
+/// free resources used by lsp-write.c
+void lsp_write_quit(void);
 
 /// print server-to-client communication
 #define LSP_SHOW_S2C 0

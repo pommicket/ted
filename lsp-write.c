@@ -680,3 +680,10 @@ void write_message(LSP *lsp, LSPMessage *message) {
 }
 
 #undef write_bool
+
+void lsp_write_quit(void) {
+	arr_foreach_ptr(language_ids, LanguageId, lid) {
+		free(lid->identifier);
+	}
+	arr_clear(language_ids);
+}

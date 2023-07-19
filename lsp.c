@@ -747,4 +747,5 @@ void lsp_quit(void) {
 		SDL_DestroyMutex(request_id_mutex);
 		request_id_mutex = NULL;
 	}
+	lsp_write_quit();
 }

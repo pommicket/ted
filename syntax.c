@@ -2214,3 +2214,11 @@ void syntax_register_language(const LanguageInfo *info) {
 	
 	lsp_register_language(info->id, info->lsp_identifier);
 }
+
+void syntax_quit(void) {
+	arr_foreach_ptr(language_names, LanguageName, lname) {
+		free(lname->name);
+	}
+	arr_clear(language_names);
+	arr_clear(syntax_highlighters);
+}

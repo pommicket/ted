@@ -1188,6 +1188,7 @@ int main(int argc, char **argv) {
 		ted->lsps[i] = NULL;
 	}
 	lsp_quit();
+	syntax_quit();
 	
 	arr_foreach_ptr(ted->shell_history, char *, cmd) {
 		free(*cmd);

@@ -1603,6 +1603,8 @@ bool syntax_is_opening_bracket(Language lang, char32_t c);
 /// To highlight multiple lines, start out with a zeroed SyntaxState, and pass a pointer to it each time.
 /// You can set char_types to NULL if you just want to advance the state, and don't care about the character types.
 void syntax_highlight(SyntaxState *state, Language lang, const char32_t *line, u32 line_len, SyntaxCharType *char_types);
+/// free up resources used by syntax.c
+void syntax_quit(void);
 
 // === tags.c ===
 void tags_generate(Ted *ted, bool run_in_build_window);
