@@ -21,7 +21,7 @@ typedef struct {
 
 typedef struct {
 	char32_t c;
-	bool defined;
+	int glyph_index;
 	u32 texture;
 	stbtt_packedchar data;
 } CharInfo;
@@ -62,7 +62,7 @@ const TextRenderState text_render_state_default = {
 	.min_y = -FLT_MAX, .max_y = +FLT_MAX,
 	.color = {1, 0, 1, 1},
 	.x_largest = -FLT_MAX, .y_largest = -FLT_MAX,
-	.prev_char = 0,
+	.prev_glyph = 0,
 };
 
 static char text_err[200];
@@ -198,20 +198,18 @@ static Status text_load_char(Font *font, char32_t c, CharInfo *info) {
 	glGetError(); // clear error
 	memset(info, 0, sizeof *info);
 	
-	if (c != UNICODE_BOX_CHARACTER && stbtt_FindGlyphIndex(&font->stb_info, (int)c) == 0) {
+	info->glyph_index = stbtt_FindGlyphIndex(&font->stb_info, (int)c);
+	if (c != UNICODE_BOX_CHARACTER && info->glyph_index == 0) {
 		// this code point is not defined by the font
 		
 		// use the box character
 		if (!text_load_char(font, UNICODE_BOX_CHARACTER, info))
 			return false;
 		info->c = c;
-		info->defined = false;
 		arr_add(font->char_info[bucket], *info);
 		return true;
 	}
-
-	info->defined = true;
-
+	
 	if (!font->textures) {
 		if (!font_new_texture(font))
 			return false;
@@ -314,7 +312,7 @@ float text_font_char_height(Font *font) {
 float text_font_char_width(Font *font, char32_t c) {
 	CharInfo info = {0};
 	if (text_load_char(font, c, &info)) {
-		if (!info.defined && font->fallback)
+		if (!info.glyph_index && font->fallback)
 			return text_font_char_width(font->fallback, c);
 		return info.data.xadvance;
 	} else {
@@ -353,7 +351,9 @@ void text_render(Font *font) {
 }
 
 void text_char_with_state(Font *font, TextRenderState *state, char32_t c) {
-top:
+top:;
+	CharInfo info = {0};
+
 	if (c >= 0x40000 && c < 0xE0000){
 		// these Unicode code points are currently unassigned. replace them with a Unicode box.
 		// (specifically, we don't want to use extra memory for pages which
@@ -362,12 +362,10 @@ top:
 	}
 	if (c >= UNICODE_CODE_POINTS) c = UNICODE_BOX_CHARACTER; // code points this big should never appear in valid Unicode
 	
-	CharInfo info = {0};
-
 	if (!text_load_char(font, c, &info))
 		return;
 	
-	if (!info.defined && font->fallback) {
+	if (!info.glyph_index && font->fallback) {
 		text_char_with_state(font->fallback, state, c);
 		return;
 	}
@@ -383,9 +381,10 @@ top:
 		goto ret;
 	}
 	
-	if (!font->force_monospace && state->prev_char && state->prev_char != '\n') {
+	if (!font->force_monospace && state->prev_glyph && info.glyph_index) {
 		// kerning
-		state->x += (float)stbtt_GetCodepointKernAdvance(&font->stb_info, (int)state->prev_char, (int)c)
+		state->x += (float)stbtt_GetGlyphKernAdvance(&font->stb_info,
+			(int)state->prev_glyph, (int)info.glyph_index)
 			* stbtt_ScaleForPixelHeight(&font->stb_info, font->char_height);
 	}
 	
@@ -461,7 +460,7 @@ top:
 		state->x_largest = state->x;
 	if (state->y > state->y_largest)
 		state->y_largest = state->y;
-	state->prev_char = c;
+	state->prev_glyph = info.glyph_index;
 }
 
 void text_utf8_with_state(Font *font, TextRenderState *state, const char *str) {
@@ -556,7 +555,7 @@ static void font_free_textures(Font *font) {
 }
 
 void text_state_break_kerning(TextRenderState *state) {
-	state->prev_char = 0;
+	state->prev_glyph = 0;
 }
 
 void text_font_change_size(Font *font, float new_size) {

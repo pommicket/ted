@@ -509,7 +509,7 @@ int main(int argc, char **argv) {
 	PROFILE_TIME(fonts_start)
 	ted_load_fonts(ted);
 	PROFILE_TIME(fonts_end)
-	
+	 
 	PROFILE_TIME(create_start)
 	{
 		TextBuffer *lbuffer = &ted->line_buffer;

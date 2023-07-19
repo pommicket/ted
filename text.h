@@ -41,8 +41,8 @@ typedef struct {
 	/// largest y achieved (for computing size)
 	double y_largest;
 	
-	/// previous character rendered, or 0 if this is the first
-	char32_t prev_char;
+	/// index of previous glyph rendered, or 0 if this is the first
+	int prev_glyph;
 	
 	/// used for forwards-compatibility
 	char _reserved[64];
