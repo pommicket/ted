@@ -324,6 +324,7 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 				rgba_u32_to_floats(colors[COLOR_TEXT], text_state.color);
 				text_state.x = tab_rect.pos.x;
 				text_state.y = tab_rect.pos.y;
+				text_state_break_kerning(&text_state);
 				text_utf8_with_state(font, &text_state, tab_title);
 
 				if (i == node->active_tab) {

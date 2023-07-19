@@ -41,6 +41,9 @@ typedef struct {
 	/// largest y achieved (for computing size)
 	double y_largest;
 	
+	/// previous character rendered, or 0 if this is the first
+	char32_t prev_char;
+	
 	/// used for forwards-compatibility
 	char _reserved[64];
 } TextRenderState;
@@ -98,6 +101,11 @@ void text_utf8_anchored(Font *font, const char *text, double x, double y, u32 co
 void text_char_with_state(Font *font, TextRenderState *state, char32_t c);
 /// Draw some UTF-8 text with a \ref TextRenderState.
 void text_utf8_with_state(Font *font, TextRenderState *state, const char *str);
+/// Used to indicate that the next character drawn should not
+/// kern with the previous character.
+///
+/// Use this when you go to the next line or something.
+void text_state_break_kerning(TextRenderState *state);
 /// Free memory used by font.
 ///
 /// Does NOT free the font's fallback.

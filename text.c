@@ -66,7 +66,8 @@ const TextRenderState text_render_state_default = {
 	.min_x = -FLT_MAX, .max_x = +FLT_MAX,
 	.min_y = -FLT_MAX, .max_y = +FLT_MAX,
 	.color = {1, 0, 1, 1},
-	.x_largest = -FLT_MAX, .y_largest = -FLT_MAX
+	.x_largest = -FLT_MAX, .y_largest = -FLT_MAX,
+	.prev_char = 0,
 };
 
 static char text_err[200];
@@ -388,12 +389,18 @@ top:
 		goto ret;
 	}
 	
+	if (!font->force_monospace && state->prev_char && state->prev_char != '\n') {
+		// kerning
+		state->x += (float)stbtt_GetCodepointKernAdvance(&font->stb_info, (int)state->prev_char, (int)c)
+			* stbtt_ScaleForPixelHeight(&font->stb_info, font->char_height);
+	}
+	
 	{
 		float x, y;
 		x = (float)(state->x - floor(state->x));
 		y = (float)(state->y - floor(state->y));
 		y += char_height * 0.75f;
-		stbtt_GetPackedQuad(&info.data, FONT_TEXTURE_WIDTH, FONT_TEXTURE_HEIGHT, 0, &x, &y, &q, 1);
+		stbtt_GetPackedQuad(&info.data, FONT_TEXTURE_WIDTH, FONT_TEXTURE_HEIGHT, 0, &x, &y, &q, 0);
 		y -= char_height * 0.75f;
 		
 		q.x0 += (float)floor(state->x);
@@ -411,8 +418,8 @@ top:
 	
 	float s0 = q.s0, t0 = q.t0;
 	float s1 = q.s1, t1 = q.t1;
-	float x0 = q.x0, y0 = q.y0;
-	float x1 = q.x1, y1 = q.y1;
+	float x0 = roundf(q.x0), y0 = roundf(q.y0);
+	float x1 = roundf(q.x1), y1 = roundf(q.y1);
 	const float min_x = state->min_x, max_x = state->max_x;
 	const float min_y = state->min_y, max_y = state->max_y;
 	
@@ -460,6 +467,7 @@ top:
 		state->x_largest = state->x;
 	if (state->y > state->y_largest)
 		state->y_largest = state->y;
+	state->prev_char = c;
 }
 
 void text_utf8_with_state(Font *font, TextRenderState *state, const char *str) {
@@ -551,6 +559,10 @@ static void font_free_textures(Font *font) {
 		font_texture_free(texture);
 	}
 	arr_clear(font->textures);
+}
+
+void text_state_break_kerning(TextRenderState *state) {
+	state->prev_char = 0;
 }
 
 void text_font_change_size(Font *font, float new_size) {

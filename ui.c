@@ -160,6 +160,7 @@ void selector_render(Ted *ted, Selector *s) {
 			
 			// draw name
 			rgba_u32_to_floats(entry->color, text_state.color);
+			text_state_break_kerning(&text_state);
 			text_utf8_with_state(font, &text_state, entry->name);
 			
 			if (entry->detail) {

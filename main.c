@@ -1,6 +1,4 @@
 /*
-TODO:
-- kerning
 FUTURE FEATURES:
 - autodetect indentation (tabs vs spaces)
 - font setting & support for multiple fonts to cover more characters

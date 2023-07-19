@@ -3021,6 +3021,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 			rgba_u32_to_floats(colors[line == cursor_line ? COLOR_CURSOR_LINE_NUMBER : COLOR_LINE_NUMBERS],
 				text_state.color);
 			text_state.x = x; text_state.y = y;
+			text_state_break_kerning(&text_state);
 			text_utf8_with_state(font, &text_state, str);
 			y += char_height;
 			if (y > y2) break;
@@ -3196,6 +3197,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 		}
 
 		// next line
+		text_state_break_kerning(&text_state);
 		text_state.x = render_start_x;
 		if (text_state.y > text_state.max_y) {
 			buffer->last_line_on_screen = line_idx;
