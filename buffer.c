@@ -2998,8 +2998,12 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 
 	// line numbering
 	if (!buffer->is_line_buffer && settings->line_numbers) {
-		// TODO: compute max digit width
-		float line_number_width = ndigits_u64(buffer->nlines) * text_font_char_width(font, '8') + padding;
+		float max_digit_width = 0;
+		for (char32_t digit = '0'; digit <= '9'; ++digit) {
+			max_digit_width = maxf(max_digit_width, text_font_char_width(font, digit));
+		}
+		
+		float line_number_width = ndigits_u64(buffer->nlines) * max_digit_width + padding;
 
 		TextRenderState text_state = text_render_state_default;
 		text_state.min_x = x1;
