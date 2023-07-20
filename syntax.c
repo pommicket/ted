@@ -1404,6 +1404,11 @@ static void syntax_highlight_javascript_like(
 						is_regex = false;
 					}
 					
+					if (i + 1 < line_len && line[i+1] == '>') {
+						// slash is followed by equals, so this might be a self-closing JSX tag
+						is_regex = false;
+					}
+					
 					if (is_regex) {
 						in_string = true;
 						string_is_regex = true;
