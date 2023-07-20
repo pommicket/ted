@@ -1,4 +1,4 @@
-Ôªø"DeployProject"
+èªø"DeployProject"
 {
 "VSVersion" = "3:800"
 "ProjectType" = "8:{978C614F-708E-4E1A-B201-565925725DBA}"
@@ -15,12 +15,6 @@
     {
         "Entry"
         {
-        "MsmKey" = "8:_042D12C2FB3F4193A2C15F5E2099679A"
-        "OwnerKey" = "8:_UNDEFINED"
-        "MsmSig" = "8:_UNDEFINED"
-        }
-        "Entry"
-        {
         "MsmKey" = "8:_097BB440C20145F6B15960AFF2698D23"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -34,6 +28,18 @@
         "Entry"
         {
         "MsmKey" = "8:_2F4E210036F645C8B60BAF94C6CB5BF4"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_3BCF6E77C9BF45A59B477BAD86D60D58"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_44E4957C42B44648B58791F781C58845"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -196,26 +202,6 @@
         }
         "File"
         {
-            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_042D12C2FB3F4193A2C15F5E2099679A"
-            {
-            "SourcePath" = "8:..\\..\\..\\assets\\apache2.txt"
-            "TargetName" = "8:apache2.txt"
-            "Tag" = "8:"
-            "Folder" = "8:_B3FB164B3BC947688BD157D4F95FC865"
-            "Condition" = "8:"
-            "Transitive" = "11:FALSE"
-            "Vital" = "11:TRUE"
-            "ReadOnly" = "11:FALSE"
-            "Hidden" = "11:FALSE"
-            "System" = "11:FALSE"
-            "Permanent" = "11:FALSE"
-            "SharedLegacy" = "11:FALSE"
-            "PackageAs" = "3:1"
-            "Register" = "3:1"
-            "Exclude" = "11:FALSE"
-            "IsDependency" = "11:FALSE"
-            "IsolateTo" = "8:"
-            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_097BB440C20145F6B15960AFF2698D23"
             {
             "SourcePath" = "8:..\\..\\..\\credits.txt"
@@ -262,6 +248,46 @@
             "TargetName" = "8:extradark.ted.cfg"
             "Tag" = "8:"
             "Folder" = "8:_283B0FDF91454CBABC05A43C980E0641"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_3BCF6E77C9BF45A59B477BAD86D60D58"
+            {
+            "SourcePath" = "8:..\\..\\..\\assets\\font-emoji.ttf"
+            "TargetName" = "8:font-emoji.ttf"
+            "Tag" = "8:"
+            "Folder" = "8:_B3FB164B3BC947688BD157D4F95FC865"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_44E4957C42B44648B58791F781C58845"
+            {
+            "SourcePath" = "8:..\\..\\..\\assets\\OFL.txt"
+            "TargetName" = "8:OFL.txt"
+            "Tag" = "8:"
+            "Folder" = "8:_B3FB164B3BC947688BD157D4F95FC865"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -594,15 +620,15 @@
         {
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:ted"
-        "ProductCode" = "8:{5D4504D0-84DF-4CDC-A7E3-31FCF9B70EAB}"
-        "PackageCode" = "8:{67D12CE8-B564-48E2-A090-A0020B15F9DE}"
+        "ProductCode" = "8:{90DDD88F-9892-4567-A7A7-5C97E7EDF39F}"
+        "PackageCode" = "8:{C193D1C4-D861-41C5-9C1A-E5D9FCA0DEA0}"
         "UpgradeCode" = "8:{844F6C2B-DF3B-4A81-9BD5-603401BBA651}"
         "AspNetVersion" = "8:2.0.50727.0"
         "RestartWWWService" = "11:FALSE"
         "RemovePreviousVersions" = "11:TRUE"
         "DetectNewerInstalledVersion" = "11:FALSE"
         "InstallAllUsers" = "11:FALSE"
-        "ProductVersion" = "8:23.07.1411"
+        "ProductVersion" = "8:23.07.1918"
         "Manufacturer" = "8:ted"
         "ARPHELPTELEPHONE" = "8:"
         "ARPHELPLINK" = "8:"
