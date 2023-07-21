@@ -250,6 +250,7 @@ typedef struct {
 	u32 max_file_size;
 	u32 max_file_size_view_only;
 	u16 framerate_cap;
+	u16 text_size_no_dpi;
 	u16 text_size;
 	u16 max_menu_width;
 	u16 error_display_time;

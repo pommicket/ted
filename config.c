@@ -112,7 +112,7 @@ static const SettingU8 settings_u8[] = {
 	{"tags-max-depth", &settings_zero.tags_max_depth, 1, 100, false},
 };
 static const SettingU16 settings_u16[] = {
-	{"text-size", &settings_zero.text_size, TEXT_SIZE_MIN, TEXT_SIZE_MAX, false},
+	{"text-size", &settings_zero.text_size_no_dpi, TEXT_SIZE_MIN, TEXT_SIZE_MAX, false},
 	{"max-menu-width", &settings_zero.max_menu_width, 10, U16_MAX, false},
 	{"error-display-time", &settings_zero.error_display_time, 0, U16_MAX, false},
 	{"framerate-cap", &settings_zero.framerate_cap, 3, 1000, false},

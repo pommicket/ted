@@ -1,6 +1,9 @@
 // various core ted functions (opening files, displaying errors, etc.)
 
 #include "ted.h"
+#if _WIN32
+	#include <SDL_syswm.h>
+#endif
 
 void die(const char *fmt, ...) {
 	char buf[256] = {0};
@@ -336,7 +339,32 @@ static Font *ted_load_multifont(Ted *ted, const char *filenames) {
 	return first_font;
 }
 
+static float ted_get_ui_scaling(Ted *ted) {
+#if _WIN32
+	SDL_SysWMinfo wm_info;
+	SDL_VERSION(&wm_info.version);
+	if (!SDL_GetWindowWMInfo(ted->window, &wm_info))
+		return 1;
+	HWND hwnd = wm_info.info.win.window;
+	UINT dpi = GetDpiForWindow(hwnd);
+	if (!dpi)
+		return 1;
+	return (float)dpi / 96.0f;
+#else
+	return 1;
+#endif
+}
+
 void ted_load_fonts(Ted *ted) {
+	{
+		// compute text size
+		float scaling = ted_get_ui_scaling(ted);
+		arr_foreach_ptr(ted->all_settings, Settings, set) {
+			u16 size = (u16)roundf(scaling * (float)set->text_size_no_dpi);
+			set->text_size = clamp_u16(size, TEXT_SIZE_MIN, TEXT_SIZE_MAX);
+		}
+	}
+	
 	ted_free_fonts(ted);
 	Settings *settings = ted_active_settings(ted);
 	ted->font = ted_load_multifont(ted, settings->font);
@@ -794,3 +822,4 @@ void ted_color_settings_for_message_type(MessageType type, ColorSetting *bg_colo
 		break;
 	}
 }
+

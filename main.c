@@ -270,6 +270,8 @@ INT WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 		WideCharToMultiByte(CP_UTF8, 0, wide_arg, len, argv[i], bufsz - 1, NULL, NULL);
 	}
 	LocalFree(wide_argv);
+	SetProcessDPIAware();
+	
 #else
 int main(int argc, char **argv) {
 #endif
@@ -511,7 +513,7 @@ int main(int argc, char **argv) {
 	PROFILE_TIME(fonts_start)
 	ted_load_fonts(ted);
 	PROFILE_TIME(fonts_end)
-	 
+	
 	PROFILE_TIME(create_start)
 	{
 		TextBuffer *lbuffer = &ted->line_buffer;
