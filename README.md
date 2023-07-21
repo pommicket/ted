@@ -319,6 +319,7 @@ Then, open windows\_installer\\ted\\ted.sln, and build.
 <tr><td>2.3.3</td> <td>JS highlighting improvments, fix TODO highlighting for single-line comments</td> <td>2023 Jul 6</td></tr>
 <tr><td>2.3.4</td> <td>Unicode bugfix, `:copy-path`</td> <td>2023 Jul 14</td></tr>
 <tr><td>2.4</td> <td>Font overhaul — allow multiple fonts, and variable-width fonts.</td> <td>2023 Jul 19</td></tr>
+<tr><td>2.4.1</td> <td>JSX highlighting fix, Windows DPI awareness</td> <td>2023 Jul 20</td></tr>
 </table>
 
 ## License
