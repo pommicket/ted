@@ -272,6 +272,11 @@ static bool ted_is_regular_buffer(Ted *ted, TextBuffer *buffer) {
 }
 
 Status ted_get_file(Ted const *ted, const char *name, char *out, size_t outsz) {
+	if (path_is_absolute(name)) {
+		str_cpy(out, outsz, name);
+		if (fs_file_exists(out))
+			return true;
+	}
 	if (ted->search_start_cwd) {
 		// check in start_cwd
 		path_full(ted->start_cwd, name, out, outsz);
