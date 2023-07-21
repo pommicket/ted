@@ -351,6 +351,7 @@ static float ted_get_ui_scaling(Ted *ted) {
 		return 1;
 	return (float)dpi / 96.0f;
 #else
+	(void)ted;
 	return 1;
 #endif
 }

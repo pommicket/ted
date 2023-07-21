@@ -6,6 +6,6 @@ Architecture: amd64
 Essential: no
 Maintainer: Pommicket <pommicket@gmail.com>
 Description: A text editor.
-Installed-Size: 2424832
+Installed-Size: 3387392
 Depends: libsdl2-2.0-0
 Homepage: https://github.com/pommicket/ted
