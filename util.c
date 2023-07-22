@@ -402,7 +402,7 @@ const char *path_filename(const char *path) {
 }
 
 bool path_is_absolute(const char *path) {
-	return path[0] == PATH_SEPARATOR
+	return strchr(ALL_PATH_SEPARATORS, path[0]) != NULL
 	#if _WIN32
 		|| path[1] == ':'
 	#endif

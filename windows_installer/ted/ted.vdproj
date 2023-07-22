@@ -204,7 +204,7 @@
         {
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_097BB440C20145F6B15960AFF2698D23"
             {
-            "SourcePath" = "8:..\\..\\..\\credits.txt"
+            "SourcePath" = "8:..\\..\\credits.txt"
             "TargetName" = "8:credits.txt"
             "Tag" = "8:"
             "Folder" = "8:_569DA12250204417A1AE6410E061AAFF"
@@ -224,7 +224,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_1084469E669E4A27A5FF035785E571DA"
             {
-            "SourcePath" = "8:..\\..\\..\\assets\\banner.bmp"
+            "SourcePath" = "8:..\\..\\assets\\banner.bmp"
             "TargetName" = "8:banner.bmp"
             "Tag" = "8:"
             "Folder" = "8:_B3FB164B3BC947688BD157D4F95FC865"
@@ -244,7 +244,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_2F4E210036F645C8B60BAF94C6CB5BF4"
             {
-            "SourcePath" = "8:..\\..\\..\\themes\\extradark.ted.cfg"
+            "SourcePath" = "8:..\\..\\themes\\extradark.ted.cfg"
             "TargetName" = "8:extradark.ted.cfg"
             "Tag" = "8:"
             "Folder" = "8:_283B0FDF91454CBABC05A43C980E0641"
@@ -264,7 +264,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_3BCF6E77C9BF45A59B477BAD86D60D58"
             {
-            "SourcePath" = "8:..\\..\\..\\assets\\font-emoji.ttf"
+            "SourcePath" = "8:..\\..\\assets\\font-emoji.ttf"
             "TargetName" = "8:font-emoji.ttf"
             "Tag" = "8:"
             "Folder" = "8:_B3FB164B3BC947688BD157D4F95FC865"
@@ -284,7 +284,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_44E4957C42B44648B58791F781C58845"
             {
-            "SourcePath" = "8:..\\..\\..\\assets\\OFL.txt"
+            "SourcePath" = "8:..\\..\\assets\\OFL.txt"
             "TargetName" = "8:OFL.txt"
             "Tag" = "8:"
             "Folder" = "8:_B3FB164B3BC947688BD157D4F95FC865"
@@ -304,7 +304,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_4AC2443001A34BEB8B2209B0C1B91DD3"
             {
-            "SourcePath" = "8:..\\..\\..\\assets\\font.ttf"
+            "SourcePath" = "8:..\\..\\assets\\font.ttf"
             "TargetName" = "8:font.ttf"
             "Tag" = "8:"
             "Folder" = "8:_B3FB164B3BC947688BD157D4F95FC865"
@@ -324,7 +324,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_5CE2CBC14FDD4D5B8C4A1985CB4086D4"
             {
-            "SourcePath" = "8:..\\..\\..\\themes\\classic-light.ted.cfg"
+            "SourcePath" = "8:..\\..\\themes\\classic-light.ted.cfg"
             "TargetName" = "8:classic-light.ted.cfg"
             "Tag" = "8:"
             "Folder" = "8:_283B0FDF91454CBABC05A43C980E0641"
@@ -344,7 +344,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_91D7FF67C24C4FB284889D190EE59ACD"
             {
-            "SourcePath" = "8:..\\..\\..\\assets\\icon.ico"
+            "SourcePath" = "8:..\\..\\assets\\icon.ico"
             "TargetName" = "8:icon.ico"
             "Tag" = "8:"
             "Folder" = "8:_B3FB164B3BC947688BD157D4F95FC865"
@@ -364,7 +364,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_94E20AEB9C46436D9B12AF00BEF346DA"
             {
-            "SourcePath" = "8:..\\..\\..\\SDL2.dll"
+            "SourcePath" = "8:..\\..\\SDL2.dll"
             "TargetName" = "8:SDL2.dll"
             "Tag" = "8:"
             "Folder" = "8:_569DA12250204417A1AE6410E061AAFF"
@@ -384,7 +384,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_9DCDAA07C4BC491E9EDAEC21ED3E78BA"
             {
-            "SourcePath" = "8:..\\..\\..\\themes\\classic.ted.cfg"
+            "SourcePath" = "8:..\\..\\themes\\classic.ted.cfg"
             "TargetName" = "8:classic.ted.cfg"
             "Tag" = "8:"
             "Folder" = "8:_283B0FDF91454CBABC05A43C980E0641"
@@ -404,7 +404,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_A0632799D852447B86F7EA72E609763D"
             {
-            "SourcePath" = "8:..\\..\\..\\ted.png"
+            "SourcePath" = "8:..\\..\\ted.png"
             "TargetName" = "8:ted.png"
             "Tag" = "8:"
             "Folder" = "8:_569DA12250204417A1AE6410E061AAFF"
@@ -424,7 +424,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_ACFEB51FD2794D5A824F2A1A763DF2DF"
             {
-            "SourcePath" = "8:..\\..\\..\\LICENSE.txt"
+            "SourcePath" = "8:..\\..\\LICENSE.txt"
             "TargetName" = "8:LICENSE.txt"
             "Tag" = "8:"
             "Folder" = "8:_569DA12250204417A1AE6410E061AAFF"
@@ -444,7 +444,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_B71DEFEB38FD44628D0016727FE499BE"
             {
-            "SourcePath" = "8:..\\..\\..\\assets\\font-bold.ttf"
+            "SourcePath" = "8:..\\..\\assets\\font-bold.ttf"
             "TargetName" = "8:font-bold.ttf"
             "Tag" = "8:"
             "Folder" = "8:_B3FB164B3BC947688BD157D4F95FC865"
@@ -464,7 +464,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_BAE9D84A9581438492544CD343FEF163"
             {
-            "SourcePath" = "8:..\\..\\..\\README.md"
+            "SourcePath" = "8:..\\..\\README.md"
             "TargetName" = "8:README.md"
             "Tag" = "8:"
             "Folder" = "8:_569DA12250204417A1AE6410E061AAFF"
@@ -484,7 +484,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_E19987F5FC0E4909AD4681F7DA3E55BF"
             {
-            "SourcePath" = "8:..\\..\\..\\ted.exe"
+            "SourcePath" = "8:..\\..\\ted.exe"
             "TargetName" = "8:ted.exe"
             "Tag" = "8:"
             "Folder" = "8:_569DA12250204417A1AE6410E061AAFF"
@@ -504,7 +504,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_E2F0C1D6FFFC4AB3BCE9EC78D06CA803"
             {
-            "SourcePath" = "8:..\\..\\..\\ted.cfg"
+            "SourcePath" = "8:..\\..\\ted.cfg"
             "TargetName" = "8:ted.cfg"
             "Tag" = "8:"
             "Folder" = "8:_569DA12250204417A1AE6410E061AAFF"
@@ -524,7 +524,7 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_E7106BBECF494C499393303FF5CB2E59"
             {
-            "SourcePath" = "8:..\\..\\..\\assets\\icon.bmp"
+            "SourcePath" = "8:..\\..\\assets\\icon.bmp"
             "TargetName" = "8:icon.bmp"
             "Tag" = "8:"
             "Folder" = "8:_B3FB164B3BC947688BD157D4F95FC865"
@@ -620,15 +620,15 @@
         {
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:ted"
-        "ProductCode" = "8:{0ECE483D-3D45-4213-A9D6-8B9DF96E17EB}"
-        "PackageCode" = "8:{C5ACD02A-581D-4467-84D7-46D0D9D29973}"
+        "ProductCode" = "8:{6B441A86-3060-42B2-A59F-4E5AEFA12CE2}"
+        "PackageCode" = "8:{D05FE11E-8D6D-4F65-867A-040F2499C1E7}"
         "UpgradeCode" = "8:{844F6C2B-DF3B-4A81-9BD5-603401BBA651}"
         "AspNetVersion" = "8:2.0.50727.0"
         "RestartWWWService" = "11:FALSE"
         "RemovePreviousVersions" = "11:TRUE"
         "DetectNewerInstalledVersion" = "11:FALSE"
         "InstallAllUsers" = "11:FALSE"
-        "ProductVersion" = "8:23.07.2020"
+        "ProductVersion" = "8:23.07.2121"
         "Manufacturer" = "8:ted"
         "ARPHELPTELEPHONE" = "8:"
         "ARPHELPLINK" = "8:"
