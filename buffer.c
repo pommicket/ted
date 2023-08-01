@@ -297,7 +297,9 @@ Settings *buffer_settings(TextBuffer *buffer) {
 }
 
 u8 buffer_tab_width(TextBuffer *buffer) {
-	return buffer_settings(buffer)->tab_width;
+	if (!buffer->tab_width)
+		buffer->tab_width = buffer_settings(buffer)->tab_width;
+	return buffer->tab_width;
 }
 
 bool buffer_indent_with_spaces(TextBuffer *buffer) {
@@ -780,6 +782,29 @@ static void buffer_print(TextBuffer const *buffer) {
 	fflush(stdout);
 }
 
+static void buffer_render_char(TextBuffer *buffer, Font *font, TextRenderState *state, char32_t c) {
+	switch (c) {
+	case '\n': assert(0); break;
+	case '\r': break; // for CRLF line endings
+	case '\t': {
+		u16 tab_width = buffer_tab_width(buffer);
+		double x = state->x;
+		double space_size = text_font_char_width(font, ' ');
+		double tab_width_px = tab_width * space_size;
+		double tabs = x / tab_width_px;
+		double tab_stop = (1.0 + floor(tabs)) * tab_width_px;
+		if (tab_stop - x < space_size * 0.5) {
+			// tab shouldn't be less than half a space
+			tab_stop += tab_width_px;
+		}
+		state->x = tab_stop;
+	} break;
+	default:
+		text_char_with_state(font, state, c); 
+		break;
+	}
+}
+
 // convert line character index to offset in pixels
 static double buffer_index_to_xoff(TextBuffer *buffer, u32 line_number, u32 index) {
 	if (line_number >= buffer->nlines) {
@@ -788,41 +813,15 @@ static double buffer_index_to_xoff(TextBuffer *buffer, u32 line_number, u32 inde
 	}
 	Line *line = &buffer->lines[line_number];
 	char32_t *str = line->str;
-	const Settings *settings = buffer_settings(buffer);
-	Font *font = buffer_font(buffer);
-	u8 tab_width = settings->tab_width;
 	if (index > line->len)
 		index = line->len;
-	
-	if (settings->force_monospace) {
-		u32 col = 0;
-		for (u32 i = 0; i < index; ++i) {
-			switch (str[i]) {
-			case '\t': {
-				do
-					++col;
-				while (col % tab_width);
-			} break;
-			default:
-				++col;
-				break;
-			}
-		}
-		return col * (double)text_font_char_width(font, ' ');
-	} else {
-		double x = 0;
-		for (u32 i = 0; i < index; ++i) {
-			switch (str[i]) {
-			case '\t': {
-				x += tab_width * text_font_char_width(font, ' ');
-			} break;
-			default:
-				x += text_font_char_width(font, str[i]);
-				break;
-			}
-		}
-		return x;
+	Font *font = buffer_font(buffer);
+	TextRenderState state = text_render_state_default;
+	state.render = false;
+	for (u32 i = 0; i < index; ++i) {
+		buffer_render_char(buffer, font, &state, str[i]);
 	}
+	return state.x;
 }
 
 // convert line x offset in pixels to character index
@@ -836,52 +835,21 @@ static u32 buffer_xoff_to_index(TextBuffer *buffer, u32 line_number, double xoff
 	}
 	Line *line = &buffer->lines[line_number];
 	char32_t *str = line->str;
-	const Settings *settings = buffer_settings(buffer);
 	Font *font = buffer_font(buffer);
-	u8 tab_width = settings->tab_width;
-	
-	if (settings->force_monospace) {
-		u32 target_col = (u32)(xoff / text_font_char_width(font, ' '));
-		u32 col = 0;
-		for (u32 i = 0; i < line->len; ++i) {
-			switch (str[i]) {
-			case '\t': {
-				do {
-					if (col == target_col)
-						return i;
-					++col;
-				} while (col % tab_width);
-			} break;
-			default:
-				if (col == target_col)
-					return i;
-				++col;
-				break;
-			}
+	TextRenderState state = text_render_state_default;
+	state.render = false;
+	for (u32 i = 0; i < line->len; ++i) {
+		double x0 = state.x;
+		buffer_render_char(buffer, font, &state, str[i]);
+		double x1 = state.x;
+		if (x1 > xoff) {
+			if (x1 - xoff > xoff - x0)
+				return i;
+			else
+				return i + 1;
 		}
-		return line->len;
-	} else {
-		double x = 0;
-		for (u32 i = 0; i < line->len; ++i) {
-			double x_prev = x;
-			switch (str[i]) {
-			case '\t': {
-				x += tab_width * text_font_char_width(font, ' ');
-			} break;
-			default:
-				x += text_font_char_width(font, str[i]);
-				break;
-			}
-			if (x > xoff) {
-				if (xoff - x_prev < x - xoff) {
-					return i;
-				} else {
-					return i + 1;
-				}
-			}
-		}
-		return line->len;
 	}
+	return line->len;
 }
 
 
@@ -2956,7 +2924,9 @@ bool buffer_cursor_move_to_matching_bracket(TextBuffer *buffer) {
 
 // Render the text buffer in the given rectangle
 void buffer_render(TextBuffer *buffer, Rect r) {
+	const Settings *settings = buffer_settings(buffer);
 	
+	buffer->tab_width = settings->tab_width;
 	buffer_lsp(buffer); // this will send didOpen/didClose if the buffer's LSP changed
 	
 	if (r.size.x < 1 || r.size.y < 1) {
@@ -2978,7 +2948,6 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	float char_height = text_font_char_height(font);
 
 	Ted *ted = buffer->ted;
-	const Settings *settings = buffer_settings(buffer);
 	const u32 *colors = settings->colors;
 	const float padding = settings->padding;
 	const float border_thickness = settings->border_thickness;
@@ -3081,7 +3050,6 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	
 	// what x coordinate to start rendering the text from
 	double render_start_x = x1 - (double)buffer->scroll_x * text_font_char_width(font, ' ');
-	u32 column = 0;
 
 	if (buffer->selection) { // draw selection
 		BufferPos sel_start = {0}, sel_end = {0};
@@ -3155,7 +3123,10 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 
 
 	TextRenderState text_state = text_render_state_default;
-	text_state.x = render_start_x;
+	text_state.x = 0;
+	// we need to start at x = 0 to be consistent with
+	// buffer_index_to_xoff and the like (because tabs are difficult).
+	text_state.x_render_offset = (float)render_start_x;
 	text_state.y = render_start_y;
 	text_state.min_x = x1;
 	text_state.min_y = y1;
@@ -3182,33 +3153,18 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 				ColorSetting color = syntax_char_type_to_color_setting(type);
 				rgba_u32_to_floats(colors[color], text_state.color);
 			}
-			switch (c) {
-			case '\n': assert(0); break;
-			case '\r': break; // for CRLF line endings
-			case '\t': {
-				uint tab_width = buffer_tab_width(buffer);
-				do {
-					text_char_with_state(font, &text_state, ' ');
-					++column;
-				} while (column % tab_width);
-			} break;
-			default:
-				text_char_with_state(font, &text_state, c);
-				++column;
-				break;
-			}
+			buffer_render_char(buffer, font, &text_state, c);
 		}
 
 		// next line
 		text_state_break_kerning(&text_state);
-		text_state.x = render_start_x;
+		text_state.x = 0;
 		if (text_state.y > text_state.max_y) {
 			buffer->last_line_on_screen = line_idx;
 			// made it to the bottom of the buffer view.
 			break;
 		}
 		text_state.y += text_font_char_height(font);
-		column = 0;
 	}
 	if (buffer->last_line_on_screen == 0) buffer->last_line_on_screen = nlines - 1;
 	

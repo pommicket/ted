@@ -5,21 +5,32 @@
 To build the debug version of ted, run `make` (or `make.bat` on Windows).
 By default we use the `ninja` build system (`sudo apt install ninja` or similar).
 
+## Architecture
+
+The big `Ted` struct has basically all of the data for ted.
+
+In general, fixed-size types such as `u32` should be preferred to `unsigned int` & co.
+
+
 ## Files
 
 Most function declarations should go in `ted.h`.
 The exceptions are only for self-contained files, like `text.c`,
 which gets its own header file `text.h`.
 
-As much as possible, OS-dependent functions should be put in `os.h/os-*.c`.
-(But "pure" functions like `qsort_with_context`, which could
-in theory be implemented on any platform with just plain C, should be put
-in `util.c` even if they use OS-specific library functions.)
+Everything includes `base.h`, which has useful type definitions and stuff.
+This includes shorter names for fixed-size types (e.g. `i8` for `int8_t`).
+
+`util.h`/`util.c` has "utility" functions which aren't specific to ted.
+
+`os.h`/`os-*.c` has OS-dependent functions such as file system
+stuff which is (annoyingly) lacking from standard C.
 
 ## Unicode
 
-ted stores text as UTF-32. We assume that code points are characters.
-This is not correct for combining diacritics and will hopefully be fixed at some point.
+ted stores text as UTF-32. Left/right move by code points,
+which isn't correct for e.g. combining diacritics. Hopefully this will
+be fixed at some point.
 
 All paths are stored as UTF-8, and annoyingly have to be converted to UTF-16 for Windows
 functions (why hasn't Windows made UTF-8 versions of all their API functions yet to save

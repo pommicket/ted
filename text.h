@@ -44,6 +44,12 @@ typedef struct {
 	/// index of previous glyph rendered, or 0 if this is the first
 	int prev_glyph;
 	
+	/// added to x for rendering
+	/// this exists for complicated reasons
+	/// basically we want a way of consistently getting the size
+	/// of text without error from floating point imprecision
+	float x_render_offset;
+	
 	/// used for forwards-compatibility
 	char _reserved[64];
 } TextRenderState;

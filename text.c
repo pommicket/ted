@@ -63,6 +63,7 @@ const TextRenderState text_render_state_default = {
 	.color = {1, 0, 1, 1},
 	.x_largest = -FLT_MAX, .y_largest = -FLT_MAX,
 	.prev_glyph = 0,
+	.x_render_offset = 0,
 };
 
 static char text_err[200];
@@ -411,8 +412,8 @@ top:;
 	
 	float s0 = q.s0, t0 = q.t0;
 	float s1 = q.s1, t1 = q.t1;
-	float x0 = roundf(q.x0), y0 = roundf(q.y0);
-	float x1 = roundf(q.x1), y1 = roundf(q.y1);
+	float x0 = roundf(q.x0 + state->x_render_offset), y0 = roundf(q.y0);
+	float x1 = roundf(q.x1 + state->x_render_offset), y1 = roundf(q.y1);
 	const float min_x = state->min_x, max_x = state->max_x;
 	const float min_y = state->min_y, max_y = state->max_y;
 	
