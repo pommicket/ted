@@ -321,6 +321,7 @@ Then, open windows\_installer\\ted\\ted.sln, and build.
 <tr><td>2.4</td> <td>Font overhaul — allow multiple fonts, and variable-width fonts.</td> <td>2023 Jul 19</td></tr>
 <tr><td>2.4.1</td> <td>JSX highlighting fix, Windows DPI awareness</td> <td>2023 Jul 20</td></tr>
 <tr><td>2.4.2</td> <td>Fix font absolute paths</td> <td>2023 Jul 21</td></tr>
+<tr><td>2.4.3</td> <td>Some font related fixes</td> <td>2023 Aug 1</td></tr>
 </table>
 
 ## License

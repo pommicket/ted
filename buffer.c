@@ -800,7 +800,7 @@ static void buffer_render_char(TextBuffer *buffer, Font *font, TextRenderState *
 		state->x = tab_stop;
 	} break;
 	default:
-		text_char_with_state(font, state, c); 
+		text_char_with_state(font, state, c);
 		break;
 	}
 }

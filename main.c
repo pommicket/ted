@@ -1011,12 +1011,14 @@ int main(int argc, char **argv) {
 				usages_frame(ted);
 			} else {
 				autocomplete_close(ted);
-				text_utf8_anchored(font, "ted v. " TED_VERSION,
-					window_width - padding, window_height - padding,
-					ted_active_color(ted, COLOR_COMMENT), ANCHOR_BOTTOM_RIGHT);
-				text_utf8_anchored(font, "Press Ctrl+O to open a file or Ctrl+N to create a new one.",
-					window_width * 0.5f, window_height * 0.5f, ted_active_color(ted, COLOR_COMMENT), ANCHOR_MIDDLE);
-				text_render(font);
+				if (!ted->build_shown) {
+					text_utf8_anchored(font, "ted v. " TED_VERSION,
+						window_width - padding, window_height - padding,
+						ted_active_color(ted, COLOR_COMMENT), ANCHOR_BOTTOM_RIGHT);
+					text_utf8_anchored(font, "Press Ctrl+O to open a file or Ctrl+N to create a new one.",
+						window_width * 0.5f, window_height * 0.5f, ted_active_color(ted, COLOR_COMMENT), ANCHOR_MIDDLE);
+					text_render(font);
+				}
 			}
 		}
 
