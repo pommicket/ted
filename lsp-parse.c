@@ -236,6 +236,12 @@ static void parse_capabilities(LSP *lsp, const JSON *json, JSONObject capabiliti
 		cap->rename_support = true;
 	}
 	
+	// check for textDocument/documentLink support
+	JSONValue document_link_value = json_object_get(json, capabilities, "documentLinkProvider");
+	if (document_link_value.type == JSON_OBJECT) {
+		cap->document_link_support = true;
+	}
+	
 	// check for workspace/symbol support
 	JSONValue workspace_symbol_value = json_object_get(json, capabilities, "workspaceSymbolProvider");
 	if (workspace_symbol_value.type != JSON_UNDEFINED && workspace_symbol_value.type != JSON_FALSE) {
@@ -275,7 +281,7 @@ static bool parse_text_edit(LSP *lsp, LSPResponse *response, const JSON *json, J
 	return true;
 }
 
-static bool parse_completion(LSP *lsp, const JSON *json, LSPResponse *response) {
+static bool parse_completion_response(LSP *lsp, const JSON *json, LSPResponse *response) {
 	// deal with textDocument/completion response.
 	// result: CompletionItem[] | CompletionList | null
 	LSPResponseCompletion *completion = &response->data.completion;
@@ -418,7 +424,7 @@ static bool parse_completion(LSP *lsp, const JSON *json, LSPResponse *response) 
 	return true;
 }
 
-static bool parse_signature_help(LSP *lsp, const JSON *json, LSPResponse *response) {
+static bool parse_signature_help_response(LSP *lsp, const JSON *json, LSPResponse *response) {
 	JSONObject result = json_force_object(json_get(json, "result"));
 	//json_debug_print_object(json, result);printf("\n");
 	LSPResponseSignatureHelp *help = &response->data.signature_help;
@@ -516,7 +522,7 @@ static bool parse_signature_help(LSP *lsp, const JSON *json, LSPResponse *respon
 	return true;
 }
 
-static bool parse_hover(LSP *lsp, const JSON *json, LSPResponse *response) {
+static bool parse_hover_response(LSP *lsp, const JSON *json, LSPResponse *response) {
 	LSPResponseHover *hover = &response->data.hover;
 	JSONValue result_value = json_get(json, "result");
 	if (result_value.type == JSON_NULL)
@@ -593,7 +599,7 @@ static bool parse_location(LSP *lsp, const JSON *json, JSONValue value, LSPLocat
 	return true;
 }
 
-static bool parse_definition(LSP *lsp, const JSON *json, LSPResponse *response) {
+static bool parse_definition_response(LSP *lsp, const JSON *json, LSPResponse *response) {
 	JSONValue result = json_get(json, "result");
 	if (result.type == JSON_NULL) {
 		// no location
@@ -660,7 +666,7 @@ static bool parse_symbol_information(LSP *lsp, const JSON *json, JSONValue value
 	return true;
 }
 
-static bool parse_workspace_symbols(LSP *lsp, const JSON *json, LSPResponse *response) {
+static bool parse_workspace_symbols_response(LSP *lsp, const JSON *json, LSPResponse *response) {
 	LSPResponseWorkspaceSymbols *syms = &response->data.workspace_symbols;
 	JSONArray result = json_force_array(json_get(json, "result"));
 	arr_set_len(syms->symbols, result.len);
@@ -845,12 +851,12 @@ static bool parse_workspace_edit(LSP *lsp, LSPResponse *response, const JSON *js
 	return true;
 }
 
-static bool parse_rename(LSP *lsp, const JSON *json, LSPResponse *response) {
+static bool parse_rename_response(LSP *lsp, const JSON *json, LSPResponse *response) {
 	JSONObject result = json_force_object(json_get(json, "result"));
 	return parse_workspace_edit(lsp, response, json, result, &response->data.rename);
 }
 
-static bool parse_highlight(LSP *lsp, const JSON *json, LSPResponse *response) {
+static bool parse_highlight_response(LSP *lsp, const JSON *json, LSPResponse *response) {
 	LSPResponseHighlight *hl = &response->data.highlight;
 	JSONArray result = json_force_array(json_get(json, "result"));
 	for (u32 h = 0; h < result.len; ++h) {
@@ -906,7 +912,7 @@ static int references_location_cmp(void *context, const void *av, const void *bv
 	return 0;
 }
 
-static bool parse_references(LSP *lsp, const JSON *json, LSPResponse *response) {
+static bool parse_references_response(LSP *lsp, const JSON *json, LSPResponse *response) {
 	LSPResponseReferences *refs = &response->data.references;
 	JSONArray result = json_force_array(json_get(json, "result"));
 	for (u32 r = 0; r < result.len; ++r) {
@@ -916,6 +922,31 @@ static bool parse_references(LSP *lsp, const JSON *json, LSPResponse *response) 
 			return false;
 	}
 	qsort_with_context(refs->locations, arr_len(refs->locations), sizeof *refs->locations, references_location_cmp, lsp);
+	return true;
+}
+
+static bool parse_document_link_response(LSP *lsp, const JSON *json, LSPResponse *response) {
+	LSPResponseDocumentLink *data = &response->data.document_link;
+	JSONArray result = json_force_array(json_get(json, "result"));
+	
+	for (u32 i = 0; i < result.len; ++i) {
+		JSONObject link_object = json_array_get_object(json, result, i);
+		JSONString target = json_object_get_string(json, link_object, "target");
+		JSONValue range = json_object_get(json, link_object, "range");
+		JSONString tooltip = json_object_get_string(json, link_object, "tooltip");
+		if (!target.len) {
+			// technically this can be omitted and force us to send
+			// a resolve request, but idk if any servers out there
+			// actually do that
+			continue;
+		}
+		
+		LSPDocumentLink *link = arr_addp(data->links);
+		if (!parse_range(lsp, json, range, &link->range))
+			return false;
+		link->target = lsp_response_add_json_string(response, json, target);
+		link->tooltip = lsp_response_add_json_string(response, json, tooltip);
+	}
 	return true;
 }
 
@@ -969,31 +1000,34 @@ void process_message(LSP *lsp, JSON *json) {
 					add_to_messages = true;
 			} else switch (response.request.type) {
 			case LSP_REQUEST_COMPLETION:
-				add_to_messages = parse_completion(lsp, json, &response);
+				add_to_messages = parse_completion_response(lsp, json, &response);
 				break;
 			case LSP_REQUEST_SIGNATURE_HELP:
-				add_to_messages = parse_signature_help(lsp, json, &response);
+				add_to_messages = parse_signature_help_response(lsp, json, &response);
 				break;
 			case LSP_REQUEST_HOVER:
-				add_to_messages = parse_hover(lsp, json, &response);
+				add_to_messages = parse_hover_response(lsp, json, &response);
 				break;
 			case LSP_REQUEST_DEFINITION:
 			case LSP_REQUEST_DECLARATION:
 			case LSP_REQUEST_TYPE_DEFINITION:
 			case LSP_REQUEST_IMPLEMENTATION:
-				add_to_messages = parse_definition(lsp, json, &response);
+				add_to_messages = parse_definition_response(lsp, json, &response);
 				break;
 			case LSP_REQUEST_HIGHLIGHT:
-				add_to_messages = parse_highlight(lsp, json, &response);
+				add_to_messages = parse_highlight_response(lsp, json, &response);
 				break;
 			case LSP_REQUEST_REFERENCES:
-				add_to_messages = parse_references(lsp, json, &response);
+				add_to_messages = parse_references_response(lsp, json, &response);
 				break;
 			case LSP_REQUEST_WORKSPACE_SYMBOLS:
-				add_to_messages = parse_workspace_symbols(lsp, json, &response);
+				add_to_messages = parse_workspace_symbols_response(lsp, json, &response);
 				break;
 			case LSP_REQUEST_RENAME:
-				add_to_messages = parse_rename(lsp, json, &response);
+				add_to_messages = parse_rename_response(lsp, json, &response);
+				break;
+			case LSP_REQUEST_DOCUMENT_LINK:
+				add_to_messages = parse_document_link_response(lsp, json, &response);
 				break;
 			case LSP_REQUEST_INITIALIZE:
 				if (!lsp->initialized) {

@@ -85,6 +85,7 @@ typedef enum {
 	LSP_REQUEST_HIGHLIGHT, //< textDocument/documentHighlight
 	LSP_REQUEST_REFERENCES, //< textDocument/references
 	LSP_REQUEST_RENAME, //< textDocument/rename
+	LSP_REQUEST_DOCUMENT_LINK, //< textDocument/documentLink
 	LSP_REQUEST_WORKSPACE_SYMBOLS, //< workspace/symbol
 	LSP_REQUEST_DID_CHANGE_WORKSPACE_FOLDERS, //< workspace/didChangeWorkspaceFolders
 	
@@ -191,6 +192,10 @@ typedef struct {
 } LSPRequestReferences;
 
 typedef struct {
+	LSPDocumentID document;
+} LSPRequestDocumentLink;
+
+typedef struct {
 	// string to filter the symbols by
 	char *query;
 } LSPRequestWorkspaceSymbols;
@@ -233,6 +238,7 @@ typedef struct {
 		LSPRequestMessage message;
 		LSPRequestDidChangeWorkspaceFolders change_workspace_folders;
 		LSPRequestRename rename;
+		LSPRequestDocumentLink document_link;
 	} data;
 } LSPRequest;
 
@@ -475,6 +481,16 @@ typedef struct {
 typedef LSPWorkspaceEdit LSPResponseRename;
 
 typedef struct {
+	LSPRange range;
+	LSPString target;
+	LSPString tooltip;
+} LSPDocumentLink;
+
+typedef struct {
+	LSPDocumentLink *links;
+} LSPResponseDocumentLink;
+
+typedef struct {
 	LSPRequest request; // the request which this is a response to
 	char *error; // if not NULL, the data field will just be zeroed
 	// LSP responses tend to have a lot of strings.
@@ -492,6 +508,7 @@ typedef struct {
 		LSPResponseRename rename;
 		LSPResponseHighlight highlight;
 		LSPResponseReferences references;
+		LSPResponseDocumentLink document_link;
 	} data;
 } LSPResponse;
 
@@ -524,6 +541,7 @@ typedef struct {
 	bool workspace_folders_support;
 	bool rename_support;
 	bool references_support;
+	bool document_link_support;
 } LSPCapabilities;
 
 typedef struct LSP {

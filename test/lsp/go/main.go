@@ -7,6 +7,7 @@ type X struct {
 	y int
 }
 
+/// https://example.com
 func main() {
 	_, err := fmt.Println("hello world");
 	if err != nil {

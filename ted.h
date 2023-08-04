@@ -665,6 +665,13 @@ typedef struct {
 	Signature signatures[SIGNATURE_HELP_MAX];
 } SignatureHelp;
 
+/// "document link" information (LSP)
+typedef struct {
+	LSPServerRequestID last_request;
+	// time when activation key was pressed
+	double key_press_time;
+} DocumentLink;
+
 /// "hover" information from LSP server
 typedef struct {
 	LSPServerRequestID last_request;
@@ -825,6 +832,7 @@ typedef struct Ted {
 	bool building;
 	Autocomplete autocomplete;
 	SignatureHelp signature_help;
+	DocumentLink document_link;
 	Hover hover;
 	Definitions definitions;
 	Highlights highlights;
@@ -1497,6 +1505,10 @@ void definitions_selector_render(Ted *ted, Rect bounds);
 /// close the definitions menu
 void definitions_selector_close(Ted *ted);
 void definitions_frame(Ted *ted);
+
+// === ide-document-link.c ===
+void document_link_frame(Ted *ted);
+void document_link_process_lsp_response(Ted *ted, const LSPResponse *response);
 
 // === ide-highlights.c ===
 void highlights_close(Ted *ted);

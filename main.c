@@ -1,8 +1,6 @@
 /*
 FUTURE FEATURES:
 - autodetect indentation (tabs vs spaces)
-- font setting & support for multiple fonts to cover more characters
-- support for variable-width fonts
 - robust find (results shouldn't move around when you type things)
 - document links using LSP textDocument/documentLink request
 - rename using LSP (textDocument/rename)
@@ -81,6 +79,7 @@ FUTURE FEATURES:
 #include "ide-definitions.c"
 #include "ide-highlights.c"
 #include "ide-usages.c"
+#include "ide-d.c"
 #include "command.c"
 #include "macro.c"
 #include "config.c"
@@ -900,6 +899,7 @@ int main(int argc, char **argv) {
 					definitions_process_lsp_response(ted, lsp, r);
 					highlights_process_lsp_response(ted, r);
 					usages_process_lsp_response(ted, r);
+					document_link_process_lsp_response(ted, r);
 					} break;
 				}
 				lsp_message_free(&message);
@@ -1009,6 +1009,7 @@ int main(int argc, char **argv) {
 				definitions_frame(ted);
 				highlights_frame(ted);
 				usages_frame(ted);
+				document_link_frame(ted);
 			} else {
 				autocomplete_close(ted);
 				if (!ted->build_shown) {

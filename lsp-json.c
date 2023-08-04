@@ -663,6 +663,7 @@ void json_debug_print(const JSON *json) {
 	printf("%u values (capacity %u, text length %zu)\n",
 		arr_len(json->values), arr_cap(json->values), strlen(json->text));
 	json_debug_print_value(json, json->values[0]);
+	printf("\n");
 }
 
 // e.g. converts "Hello\nworld" to "Hello\\nworld"

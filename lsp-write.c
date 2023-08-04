@@ -288,6 +288,8 @@ static const char *lsp_request_method(LSPRequest *request) {
 		return "textDocument/implementation";
 	case LSP_REQUEST_HIGHLIGHT:
 		return "textDocument/documentHighlight";
+	case LSP_REQUEST_DOCUMENT_LINK:
+		return "textDocument/documentLink";
 	case LSP_REQUEST_RENAME:
 		return "textDocument/rename";
 	case LSP_REQUEST_WORKSPACE_FOLDERS:
@@ -447,6 +449,11 @@ void write_request(LSP *lsp, LSPRequest *request) {
 					write_key_obj_start(o, "definition");
 						// NOTE: LocationLink support doesn't seem useful to us right now.
 					write_obj_end(o);
+					
+					// document link capabilities
+					write_key_obj_start(o, "documentLink");
+						write_key_bool(o, "tooltipSupport", true);
+					write_obj_end(o);
 				write_obj_end(o);
 				write_key_obj_start(o, "workspace");
 					write_key_bool(o, "workspaceFolders", true);
@@ -576,6 +583,14 @@ void write_request(LSP *lsp, LSPRequest *request) {
 				// there's no other members of the ReferenceContext interface. just this.
 				// why, LSP, why
 				write_key_bool(o, "includeDeclaration", refs->include_declaration);
+			write_obj_end(o);
+		write_obj_end(o);
+	} break;
+	case LSP_REQUEST_DOCUMENT_LINK: {
+		const LSPRequestDocumentLink *lnk = &request->data.document_link;
+		write_key_obj_start(o, "params");
+			write_key_obj_start(o, "textDocument");
+				write_key_file_uri(o, "uri", lnk->document);
 			write_obj_end(o);
 		write_obj_end(o);
 	} break;
