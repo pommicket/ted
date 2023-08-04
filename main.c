@@ -1,4 +1,7 @@
 /*
+TODO:
+- use dynamic arrays for mouse_presses etc.
+
 FUTURE FEATURES:
 - autodetect indentation (tabs vs spaces)
 - robust find (results shouldn't move around when you type things)

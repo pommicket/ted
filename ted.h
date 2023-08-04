@@ -668,8 +668,6 @@ typedef struct {
 /// "document link" information (LSP)
 typedef struct {
 	LSPServerRequestID last_request;
-	// time when activation key was pressed
-	double key_press_time;
 } DocumentLink;
 
 /// "hover" information from LSP server

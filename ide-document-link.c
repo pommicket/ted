@@ -5,15 +5,6 @@ void document_link_frame(Ted *ted) {
 	
 	bool key_down = ted_is_ctrl_down(ted);
 	if (!key_down) {
-		document_link->key_press_time = 0.0;
-	} else if (document_link->key_press_time == 0.0) {
-		document_link->key_press_time = ted->frame_time;
-	}
-	
-	bool show_links = document_link->key_press_time != 0.0
-		&& ted->frame_time - document_link->key_press_time > 1.0;
-	
-	if (!show_links) {
 		ted_cancel_lsp_request(ted, &document_link->last_request);
 		return;
 	}
@@ -36,14 +27,28 @@ void document_link_frame(Ted *ted) {
 }
 
 void document_link_process_lsp_response(Ted *ted, const LSPResponse *response) {
+	DocumentLink *document_link = &ted->document_link;
 	if (response->request.type != LSP_REQUEST_DOCUMENT_LINK)
 		return;
+	if (!document_link->last_request.id)
+		return; // request was cancelled
 	
-	(void)ted;//TODO
-	const LSPResponseDocumentLink *document_link = &response->data.document_link;
+	bool key_down = ted_is_ctrl_down(ted);
+	if (!key_down)
+		return;
+	TextBuffer *buffer = ted->active_buffer;
+	if (!buffer)
+		return;
+	if (buffer_lsp_document_id(buffer) != response->request.data.document_link.document)
+		return; // request was for a different document
 	
-	arr_foreach_ptr(document_link->links, const LSPDocumentLink, link) {
-		printf("target: %s\n",  lsp_response_string(response, link->target));
+	const LSPResponseDocumentLink *response_data = &response->data.document_link;
+	arr_foreach_ptr(response_data->links, const LSPDocumentLink, link) {
+		BufferPos start = buffer_pos_from_lsp(buffer, link->range.start);
+		BufferPos end = buffer_pos_from_lsp(buffer, link->range.end);
+		printf("%d:%d — %d:%d\t: %s\n",
+			start.line, start.index, end.line, end.index,
+			lsp_response_string(response, link->target));
 		
 	}
 }
