@@ -957,7 +957,7 @@ int main(int argc, char **argv) {
 		Font *font = ted->font;
 
 		// default window title
-		strcpy(ted->window_title, "ted");
+		ted_set_window_title(ted, "ted");
 		
 		{
 			const float padding = ted_active_settings(ted)->padding;

@@ -946,6 +946,15 @@ typedef struct Ted {
 } Ted;
 
 // === buffer.c ===
+/// Returns `true` if the buffer is in view-only mode.
+bool buffer_is_view_only(TextBuffer *buffer);
+/// Set whether the buffer should be in view only mode.
+void buffer_set_view_only(TextBuffer *buffer, bool view_only);
+/// Get path to buffer's file. At most `bufsz` bytes are written to `buf`.
+///
+/// Returns the number of bytes needed to store the path including a null terminator,
+/// or 1 if the buffer is unnamed.
+size_t buffer_get_path(TextBuffer *buffer, char *buf, size_t bufsz);
 /// Does this buffer have an error?
 bool buffer_has_error(TextBuffer *buffer);
 /// get buffer error
@@ -986,6 +995,7 @@ bool buffer_cursor_move_to_matching_bracket(TextBuffer *buffer);
 void buffer_pos_validate(TextBuffer *buffer, BufferPos *p);
 /// is this a valid buffer position?
 bool buffer_pos_valid(TextBuffer *buffer, BufferPos p);
+/// get programming language of buffer contents
 Language buffer_language(TextBuffer *buffer);
 /// clip the rectangle so it's all inside the buffer. returns true if there's any rectangle left.
 bool buffer_clip_rect(TextBuffer *buffer, Rect *r);
@@ -1037,6 +1047,7 @@ void buffer_text_dimensions(TextBuffer *buffer, u32 *lines, u32 *columns);
 float buffer_display_lines(TextBuffer *buffer);
 /// returns the number of columns of text that can fit in the buffer
 float buffer_display_cols(TextBuffer *buffer);
+/// scroll by deltas
 void buffer_scroll(TextBuffer *buffer, double dx, double dy);
 /// returns the screen position of the character at the given position in the buffer.
 vec2 buffer_pos_to_pixels(TextBuffer *buffer, BufferPos pos);
@@ -1047,6 +1058,7 @@ bool buffer_pixels_to_pos(TextBuffer *buffer, vec2 pixel_coords, BufferPos *pos)
 void buffer_scroll_to_pos(TextBuffer *buffer, BufferPos pos);
 /// scroll in such a way that this position is in the center of the screen
 void buffer_scroll_center_pos(TextBuffer *buffer, BufferPos pos);
+/// scroll so that the cursor is on screen
 void buffer_scroll_to_cursor(TextBuffer *buffer);
 /// scroll so that the cursor is in the center of the buffer's rectangle.
 void buffer_center_cursor(TextBuffer *buffer);
@@ -1058,6 +1070,7 @@ i64 buffer_pos_move_right(TextBuffer *buffer, BufferPos *pos, i64 by);
 i64 buffer_pos_move_up(TextBuffer *buffer, BufferPos *pos, i64 by);
 /// returns the number of lines successfully moved by.
 i64 buffer_pos_move_down(TextBuffer *buffer, BufferPos *pos, i64 by);
+/// set cursor position
 void buffer_cursor_move_to_pos(TextBuffer *buffer, BufferPos pos);
 /// returns the number of characters successfully moved by.
 i64 buffer_cursor_move_left(TextBuffer *buffer, i64 by);
@@ -1677,6 +1690,10 @@ SymbolInfo *tags_get_symbols(Ted *ted);
 // === ted.c ===
 /// for fatal errors
 void die(PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRINTF(1, 2);
+/// returns the current active buffer, or NULL if no buffer is active.
+TextBuffer *ted_get_active_buffer(Ted *ted);
+/// set title of ted window
+void ted_set_window_title(Ted *ted, const char *title);
 /// returns `true` if the given key is down
 bool ted_is_key_down(Ted *ted, SDL_Keycode key);
 /// returns `true` if the given \ref KeyCombo is down

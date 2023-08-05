@@ -66,6 +66,26 @@ bool buffer_is_named_file(TextBuffer *buffer) {
 	return buffer->path != NULL;
 }
 
+
+bool buffer_is_view_only(TextBuffer *buffer) {
+	return buffer->view_only;
+}
+
+void buffer_set_view_only(TextBuffer *buffer, bool view_only) {
+	buffer->view_only = view_only;
+}
+
+size_t buffer_get_path(TextBuffer *buffer, char *buf, size_t bufsz) {
+	if (!buffer->path) {
+		if (bufsz) *buf = '\0';
+		return 1;
+	}
+	if (bufsz > 0) {
+		str_cpy(buf, bufsz, buffer->path);
+	}
+	return strlen(buffer->path) + 1;
+}
+
 const char *buffer_display_filename(TextBuffer *buffer) {
 	return buffer->path ? path_filename(buffer->path) : BUFFER_UNTITLED;
 }
