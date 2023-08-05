@@ -4,7 +4,10 @@
 #include "pcre-inc.h"
 
 #define FIND_MAX_GROUPS 50
-
+struct FindResult {
+	BufferPos start;
+	BufferPos end;
+};
 
 static u32 find_compilation_flags(Ted *ted) {
 	return (ted->find_case_sensitive ? 0 : PCRE2_CASELESS)

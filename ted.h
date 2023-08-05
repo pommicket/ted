@@ -580,10 +580,7 @@ struct Node {
 #define TED_MAX_STRINGS 1000
 
 /// "find" menu result
-typedef struct {
-	BufferPos start;
-	BufferPos end;
-} FindResult;
+typedef struct FindResult FindResult;
 
 typedef struct {
 	char *path;
@@ -620,14 +617,9 @@ typedef struct Usages Usages;
 /// "signature help" (LSP) is thing that shows the current parameter, etc.
 typedef struct SignatureHelp SignatureHelp;
 
-typedef struct DocumentLink DocumentLink;
 
 /// "document link" information (LSP)
-typedef struct {
-	LSPDocumentID requested_document;
-	LSPServerRequestID last_request;
-	DocumentLink *links;
-} DocumentLinks;
+typedef struct DocumentLinks DocumentLinks;
 
 /// information for symbol rename (LSP)
 typedef struct RenameSymbol RenameSymbol;
@@ -760,7 +752,7 @@ struct Ted {
 	bool building;
 	Autocomplete *autocomplete;
 	SignatureHelp *signature_help;
-	DocumentLinks document_links;
+	DocumentLinks *document_links;
 	Hover *hover;
 	Definitions definitions;
 	Highlights *highlights;
@@ -1483,8 +1475,12 @@ void definitions_selector_close(Ted *ted);
 void definitions_frame(Ted *ted);
 
 // === ide-document-link.c ===
+#if !TED_PLUGIN
+void document_link_init(Ted *ted);
+void document_link_quit(Ted *ted);
 void document_link_frame(Ted *ted);
 void document_link_process_lsp_response(Ted *ted, const LSPResponse *response);
+#endif
 /// get document link at this position in the active buffer.
 ///
 /// the returned pointer won't be freed immediately, but could be on the next frame,

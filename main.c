@@ -506,6 +506,7 @@ int main(int argc, char **argv) {
 	highlights_init(ted);
 	hover_init(ted);
 	rename_symbol_init(ted);
+	document_link_init(ted);
 	PROFILE_TIME(gl_end)
 	
 	
@@ -1195,7 +1196,7 @@ int main(int argc, char **argv) {
 	usages_quit(ted);
 	session_write(ted);
 	rename_symbol_quit(ted);
-	document_link_clear(ted);
+	document_link_quit(ted);
 	
 	for (int i = 0; i < TED_LSP_MAX; ++i) {
 		if (!ted->lsps[i]) break;

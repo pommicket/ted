@@ -1,14 +1,30 @@
 #include "ted.h"
 
+typedef struct DocumentLink DocumentLink;
 struct DocumentLink {
 	char *target;
 	char *tooltip;
 	BufferPos start;
 	BufferPos end;
 };
+struct DocumentLinks {
+	LSPDocumentID requested_document;
+	LSPServerRequestID last_request;
+	DocumentLink *links;
+};
+
+void document_link_init(Ted *ted) {
+	ted->document_links = calloc(1, sizeof *ted->document_links);
+}
+
+void document_link_quit(Ted *ted) {
+	document_link_clear(ted);
+	free(ted->document_links);
+	ted->document_links = NULL;
+}
 
 void document_link_clear(Ted *ted) {
-	DocumentLinks *dl = &ted->document_links;
+	DocumentLinks *dl = ted->document_links;
 	arr_foreach_ptr(dl->links, DocumentLink, l) {
 		free(l->target);
 		free(l->tooltip);
@@ -24,7 +40,7 @@ static bool document_link_activation_key_down(Ted *ted) {
 
 static Rect document_link_get_rect(Ted *ted, DocumentLink *link) {
 	TextBuffer *buffer = ted->active_buffer;
-	DocumentLinks *dl = &ted->document_links;
+	DocumentLinks *dl = ted->document_links;
 	if (buffer_lsp_document_id(buffer) != dl->requested_document) {
 		return (Rect){0};
 	}
@@ -57,7 +73,7 @@ void document_link_frame(Ted *ted) {
 		document_link_clear(ted);
 		return;
 	}
-	DocumentLinks *dl = &ted->document_links;
+	DocumentLinks *dl = ted->document_links;
 	
 	bool key_down = document_link_activation_key_down(ted);
 	if (!key_down) {
@@ -92,7 +108,7 @@ void document_link_frame(Ted *ted) {
 }
 
 void document_link_process_lsp_response(Ted *ted, const LSPResponse *response) {
-	DocumentLinks *dl = &ted->document_links;
+	DocumentLinks *dl = ted->document_links;
 	if (response->request.type != LSP_REQUEST_DOCUMENT_LINK
 		|| response->request.id != dl->last_request.id)
 		return;
@@ -120,7 +136,7 @@ void document_link_process_lsp_response(Ted *ted, const LSPResponse *response) {
 }
 
 const char *document_link_at_buffer_pos(Ted *ted, BufferPos pos) {
-	DocumentLinks *dl = &ted->document_links;
+	DocumentLinks *dl = ted->document_links;
 	TextBuffer *buffer = ted->active_buffer;
 	if (buffer_lsp_document_id(buffer) != dl->requested_document) {
 		return NULL;
