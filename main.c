@@ -1,12 +1,10 @@
 /*
+TODO:
+- rename using LSP (textDocument/rename)
+   - warn if many files are changing
 FUTURE FEATURES:
 - autodetect indentation (tabs vs spaces)
 - robust find (results shouldn't move around when you type things)
-- rename using LSP (textDocument/rename)
-       - we have request writing & response parsing support for it, but that hasn't been tested yet
-       - i'm putting this off for now since it seems hard to have undo support for it.
-           - possible idea: open all files altered, and create undo chains for each of them.
-                            if there are too many files, give an error like "use a different tool for this"
 - config variables
 - bind key to multiple commands
    - convert macro to command list

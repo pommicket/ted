@@ -408,6 +408,26 @@ void ted_free_fonts(Ted *ted) {
 	ted->font_bold = NULL;
 }
 
+// get node and tab containing buffer
+static Node *ted_buffer_location_in_node_tree(Ted *ted, TextBuffer *buffer, u16 *tab_idx) {
+	// now we need to figure out where this buffer is
+	u16 idx = (u16)(buffer - ted->buffers);
+	const bool *nodes_used = ted->nodes_used;
+	for (u16 i = 0; i < TED_MAX_NODES; ++i) {
+		if (!nodes_used[i]) continue;
+		Node *node = &ted->nodes[i];
+		arr_foreach_ptr(node->tabs, u16, tab) {
+			if (idx == *tab) {
+				if (tab_idx)
+					*tab_idx = (u16)(tab - node->tabs);
+				return node;
+			}
+		}
+	}
+	assert(0);
+	return NULL;
+}
+
 void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer) {
 	TextBuffer *search_buffer = find_search_buffer(ted);
 	ted->active_buffer = buffer;
@@ -419,24 +439,11 @@ void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer) {
 
 	if (buffer >= ted->buffers && buffer < ted->buffers + TED_MAX_BUFFERS) {
 		ted->prev_active_buffer = buffer;
-
-		u16 idx = (u16)(buffer - ted->buffers);
-		// now we need to figure out where this buffer is
-		bool *nodes_used = ted->nodes_used;
-		for (u16 i = 0; i < TED_MAX_NODES; ++i) {
-			if (nodes_used[i]) {
-				Node *node = &ted->nodes[i];
-				arr_foreach_ptr(node->tabs, u16, tab) {
-					if (idx == *tab) {
-						node->active_tab = (u16)(tab - node->tabs);
-						ted->active_node = node;
-						signature_help_retrigger(ted);
-						return;
-					}
-				}
-			}
-		}
-		assert(0);
+		u16 active_tab=0;
+		Node *node = ted_buffer_location_in_node_tree(ted, buffer, &active_tab);
+		node->active_tab = active_tab;
+		ted->active_node = node;
+		signature_help_retrigger(ted);
 	} else {
 		ted->active_node = NULL;
 	}
@@ -510,12 +517,19 @@ static Status ted_open_buffer(Ted *ted, u16 *buffer_idx, u16 *tab) {
 	if (new_buffer_index >= 0) {
 		Node *node = ted->active_node;
 		if (!node) {
-			// no active node; let's create one!
-			i32 node_idx = ted_new_node(ted);
-			if (node_idx >= 0) {
+			if (!ted->nodes_used[0]) {
+				// no nodes open; create a root node
+				i32 node_idx = ted_new_node(ted);
+				assert(node_idx == 0);
 				node = &ted->nodes[node_idx];
 				ted->active_node = node;
+			} else if (ted->prev_active_buffer) {
+				// opening a file while a menu is open
+				// it may happen.... (currently happens for rename symbol)
+				node = ted_buffer_location_in_node_tree(ted, ted->prev_active_buffer, NULL);
 			} else {
+				// idk what is going on
+				ted_error(ted, "internal error: can't figure out where to put this buffer.");
 				ted_delete_buffer(ted, (u16)new_buffer_index);
 				return false;
 			}
