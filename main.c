@@ -1,7 +1,4 @@
 /*
-TODO:
-- rename using LSP (textDocument/rename)
-   - warn if many files are changing
 FUTURE FEATURES:
 - autodetect indentation (tabs vs spaces)
 - robust find (results shouldn't move around when you type things)

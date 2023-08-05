@@ -58,6 +58,7 @@ void rename_symbol_process_lsp_response(Ted *ted, LSPResponse *response) {
 	}
 	
 	if (perform_changes) {
+		
 		arr_foreach_ptr(data->changes, LSPWorkspaceChange, change) {
 			switch (change->type) {
 			case LSP_CHANGE_EDIT: {
@@ -66,12 +67,18 @@ void rename_symbol_process_lsp_response(Ted *ted, LSPResponse *response) {
 				if (!ted_open_file(ted, path)) goto done;
 				
 				TextBuffer *buffer = ted_get_buffer_with_file(ted, path);
+				if (!buffer->will_chain_edits) {
+					// chain all edits together so they can be undone with one ctrl+z
+					buffer_start_edit_chain(buffer);
+				}
+				
 				if (!buffer) {
 					// this should never happen since we just
 					// successfully opened it
 					assert(0);
 					goto done;
 				}
+				
 				
 				LSPTextEdit *edit = &change_data->edit;
 				BufferPos start = buffer_pos_from_lsp(buffer, edit->range.start);
@@ -88,7 +95,16 @@ void rename_symbol_process_lsp_response(Ted *ted, LSPResponse *response) {
 				break;
 			}
 		}
-		done:;
+		done:
+		
+		// end all edit chains in all buffers
+		// they're almost definitely all created by us
+		for (u16 i = 0; i < TED_MAX_BUFFERS; ++i) {
+			if (ted->buffers_used[i]) {
+				TextBuffer *buffer = &ted->buffers[i];
+				buffer_end_edit_chain(buffer);
+			}
+		}
 	}
 	
 	rename_symbol_clear(ted);

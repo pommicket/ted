@@ -1555,6 +1555,7 @@ void hover_frame(Ted *ted, double dt);
 // === ide-rename-symbol.c ===
 void rename_symbol_clear(Ted *ted);
 void rename_symbol_frame(Ted *ted);
+void rename_symbol_process_lsp_response(Ted *ted, LSPResponse *response);
 
 // === ide-signature-help.c ===
 /// figure out new signature help
