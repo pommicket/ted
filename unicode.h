@@ -52,6 +52,10 @@ static size_t unicode_utf8_to_utf32(uint32_t *c, const char *str, size_t bytes) 
 				if ((second_byte & 0xC0) != 0x80) return (size_t)-1;
 				uint32_t value = ((uint32_t)first_byte & 0x1F) << 6
 					| (second_byte & 0x3F);
+				if (value < 128) {
+					// overlong
+					return (size_t)-1;
+				}
 				*c = (uint32_t)value;
 				return 2;
 			} else {
@@ -71,11 +75,11 @@ static size_t unicode_utf8_to_utf32(uint32_t *c, const char *str, size_t bytes) 
 				uint32_t value = ((uint32_t)first_byte & 0x0F) << 12
 					| (second_byte & 0x3F) << 6
 					| (third_byte & 0x3F);
-				if (value < 0xD800 || value > 0xDFFF) {
+				if ((value < 0xD800 || value > 0xDFFF) && value >= 0x800) {
 					*c = (uint32_t)value;
 					return 3;
 				} else {
-					// reserved for UTF-16 surrogate halves
+					// overlong or UTF-16 surrogate halves
 					return (size_t)-1;
 				}
 			} else {
@@ -99,14 +103,11 @@ static size_t unicode_utf8_to_utf32(uint32_t *c, const char *str, size_t bytes) 
 					| (second_byte & 0x3F) << 12
 					| (third_byte  & 0x3F) << 6
 					| (fourth_byte & 0x3F);
-				if (value >= 0xD800 && value <= 0xDFFF) {
-					// reserved for UTF-16 surrogate halves
-					return (size_t)-1;
-				} else if (value <= 0x10FFFF) {
+				if (value >= 0x10000 && value <= 0x10FFFF) {
 					*c = (uint32_t)value;
 					return 4;
 				} else {
-					// Code points this big can't be encoded by UTF-16 so are invalid UTF-8.
+					// overlong or value too large.
 					return (size_t)-1;
 				}
 			} else {
