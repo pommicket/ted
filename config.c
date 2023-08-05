@@ -91,6 +91,7 @@ static const SettingBool settings_bool[] = {
 	{"identifier-trigger-characters", &settings_zero.identifier_trigger_characters, true},
 	{"phantom-completions", &settings_zero.phantom_completions, true},
 	{"signature-help-enabled", &settings_zero.signature_help_enabled, true},
+	{"document-links", &settings_zero.document_links, true},
 	{"lsp-enabled", &settings_zero.lsp_enabled, true},
 	{"lsp-log", &settings_zero.lsp_log, true},
 	{"hover-enabled", &settings_zero.hover_enabled, true},

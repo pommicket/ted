@@ -176,7 +176,21 @@ void definitions_process_lsp_response(Ted *ted, LSP *lsp, const LSPResponse *res
 		const LSPResponseDefinition *response_def = &response->data.definition;
 		
 		if (!arr_len(response_def->locations)) {
-			// no definition. do the error cursor.
+			// no definition.
+			const char* link = NULL;
+			
+			// check for document links
+			TextBuffer *buffer = ted->active_buffer;
+			if (buffer) {
+				BufferPos pos = buffer_pos_from_lsp(buffer, response->request.data.definition.position.pos);
+				link = document_link_at_buffer_pos(ted, pos);
+				if (link) {
+					open_with_default_application(link);
+					return;
+				}
+			}
+			
+			// do the error cursor.
 			ted_flash_error_cursor(ted);
 			return;
 		}

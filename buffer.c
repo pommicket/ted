@@ -207,8 +207,7 @@ BufferPos buffer_pos_end_of_file(TextBuffer *buffer) {
 	return (BufferPos){.line = buffer->nlines - 1, .index = buffer->lines[buffer->nlines-1].len};
 }
 
-// Get the font used for this buffer.
-static Font *buffer_font(TextBuffer *buffer) {
+Font *buffer_font(TextBuffer *buffer) {
 	return buffer->ted->font;
 }
 

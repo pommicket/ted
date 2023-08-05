@@ -272,6 +272,7 @@ typedef struct {
 	bool hover_enabled;
 	bool highlight_enabled;
 	bool highlight_auto;
+	bool document_links;
 	bool vsync;
 	bool save_backup;
 	bool crlf_windows;
@@ -665,10 +666,19 @@ typedef struct {
 	Signature signatures[SIGNATURE_HELP_MAX];
 } SignatureHelp;
 
+typedef struct {
+	char *target;
+	char *tooltip;
+	BufferPos start;
+	BufferPos end;
+} DocumentLink;
+
 /// "document link" information (LSP)
 typedef struct {
+	LSPDocumentID requested_document;
 	LSPServerRequestID last_request;
-} DocumentLink;
+	DocumentLink *links;
+} DocumentLinks;
 
 /// "hover" information from LSP server
 typedef struct {
@@ -834,7 +844,7 @@ typedef struct Ted {
 	bool building;
 	Autocomplete autocomplete;
 	SignatureHelp signature_help;
-	DocumentLink document_link;
+	DocumentLinks document_links;
 	Hover hover;
 	Definitions definitions;
 	Highlights highlights;
@@ -969,6 +979,8 @@ bool buffer_pos_valid(TextBuffer *buffer, BufferPos p);
 Language buffer_language(TextBuffer *buffer);
 /// clip the rectangle so it's all inside the buffer. returns true if there's any rectangle left.
 bool buffer_clip_rect(TextBuffer *buffer, Rect *r);
+/// Get the font used for this buffer.
+Font *buffer_font(TextBuffer *buffer);
 /// get LSP server which deals with this buffer
 LSP *buffer_lsp(TextBuffer *buffer);
 /// Get the settings used for this buffer.
@@ -1511,6 +1523,12 @@ void definitions_frame(Ted *ted);
 // === ide-document-link.c ===
 void document_link_frame(Ted *ted);
 void document_link_process_lsp_response(Ted *ted, const LSPResponse *response);
+/// get document link at this position in the active buffer.
+///
+/// the returned pointer won't be freed immediately, but could be on the next frame,
+/// so don't keep it around long.
+const char *document_link_at_buffer_pos(Ted *ted, BufferPos pos);
+void document_link_clear(Ted *ted);
 
 // === ide-highlights.c ===
 void highlights_close(Ted *ted);

@@ -155,5 +155,10 @@ int process_check_status(Process **process, ProcessExitInfo *info);
 /// `*process` will be set to NULL.
 void process_kill(Process **process);
 
+/// runs xdg-open or equivalent on the given path, which can be a URL.
+///
+/// returns `true` on success.
+bool open_with_default_application(const char *path);
+
 #endif // OS_H_
 

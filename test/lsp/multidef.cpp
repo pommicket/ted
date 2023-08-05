@@ -1,3 +1,5 @@
+#include <stddef.h>
+
 class V {
 	void f(int x, int y) {
 	}

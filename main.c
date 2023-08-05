@@ -5,7 +5,6 @@ TODO:
 FUTURE FEATURES:
 - autodetect indentation (tabs vs spaces)
 - robust find (results shouldn't move around when you type things)
-- document links using LSP textDocument/documentLink request
 - rename using LSP (textDocument/rename)
        - we have request writing & response parsing support for it, but that hasn't been tested yet
        - i'm putting this off for now since it seems hard to have undo support for it.
@@ -1196,6 +1195,7 @@ int main(int argc, char **argv) {
 	autocomplete_close(ted);
 	highlights_close(ted);
 	session_write(ted);
+	document_link_clear(ted);
 	
 	for (int i = 0; i < TED_LSP_MAX; ++i) {
 		if (!ted->lsps[i]) break;

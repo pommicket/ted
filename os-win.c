@@ -411,3 +411,8 @@ int process_check_status(Process **pprocess, ProcessExitInfo *info) {
 		return -1;
 	}
 }
+
+
+bool open_with_default_application(const char *path) {
+	todo
+}

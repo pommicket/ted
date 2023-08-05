@@ -388,3 +388,23 @@ int process_check_status(Process **pproc, ProcessExitInfo *info) {
 		return -1;
 	}
 }
+
+bool open_with_default_application(const char *path) {
+	const char *cmd = NULL;
+#if __linux__
+	cmd = "xdg-open";
+#elif __APPLE__
+	cmd = "open";
+#endif
+	if (!cmd)
+		return false;
+	switch (fork()) {
+	case 0:
+		execlp(cmd, cmd, path, NULL);
+		abort();
+	case -1:
+		return false;
+	default:
+		return true;
+	}
+}
