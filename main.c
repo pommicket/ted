@@ -1,4 +1,9 @@
 /*
+TODO:
+- rework menus
+- deal with really long paths in file menus
+- internalize Autocomplete, SignatureHelp, etc.
+
 FUTURE FEATURES:
 - autodetect indentation (tabs vs spaces)
 - robust find (results shouldn't move around when you type things)

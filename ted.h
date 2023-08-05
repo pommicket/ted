@@ -11,6 +11,11 @@
 #ifndef TED_H_
 #define TED_H_
 
+#ifdef TED_PLUGIN
+#undef TED_PLUGIN
+#define TED_PLUGIN 1
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -161,6 +166,25 @@ typedef struct TextBuffer TextBuffer;
 /// all data used by the ted application (minus some globals in gl.c)
 typedef struct Ted Ted;
 
+/// a selector menu (e.g. the "open" menu)
+typedef struct Selector Selector;
+
+/// a selector menu for files (e.g. the "open" menu)
+typedef struct FileSelector FileSelector;
+
+/// a split or collection of tabs
+typedef struct Node Node;
+
+/// A position in the buffer
+typedef struct {
+	/// line number (0-indexed)
+	u32 line;
+	/// UTF-32 index of character in line
+	///
+	/// (not the same as column, since a tab is `settings->tab_width` columns)
+	u32 index;
+} BufferPos;
+
 /// special keycodes for mouse X1 & X2 buttons.
 enum {
 	KEYCODE_X1 = 1<<20,
@@ -192,6 +216,77 @@ typedef struct {
 #define KEY_COMBO_KEY(combo) ((SDL_Keycode)((combo.value) >> 32))
 /// extract key modifier from \ref KeyCombo
 #define KEY_COMBO_MODIFIER(combo) ((u32)((combo.value) & 0xff))
+
+enum {
+	/// autocomplete/signature help was manually triggered
+	TRIGGER_INVOKED = 0x12000,
+	/// autocomplete list needs to be updated because more characters were typed
+	TRIGGER_INCOMPLETE = 0x12001,
+	/// signtaure help needs to be updated because the cursor was moved or
+	/// the buffer's contents changed.
+	TRIGGER_CONTENT_CHANGE = 0x12002,
+};
+
+/// determines which thing associated with a symbol to go to
+typedef enum {
+	GOTO_DECLARATION,
+	GOTO_DEFINITION,
+	GOTO_IMPLEMENTATION,
+	GOTO_TYPE_DEFINITION,
+} GotoType;
+
+/// options for a pop-up menu
+typedef enum {
+	POPUP_NONE,
+	/// "Yes" button
+	POPUP_YES = 1<<1,
+	/// "No" button
+	POPUP_NO = 1<<2,
+	/// "Cancel" button
+	POPUP_CANCEL = 1<<3,
+} PopupOption;
+
+/// pop-up with "yes" and "no" buttons
+#define POPUP_YES_NO (POPUP_YES | POPUP_NO)
+/// pop-up with "yes", "no", and "cancel" buttons
+#define POPUP_YES_NO_CANCEL (POPUP_YES | POPUP_NO | POPUP_CANCEL)
+
+/// type of message box to display to user
+///
+/// more severe message types should have higher numbers.
+/// they will override less severe messages.
+typedef enum {
+	MESSAGE_INFO = 0x10000,
+	MESSAGE_WARNING = 0x20000,
+	MESSAGE_ERROR = 0x30000,
+} MessageType;
+
+typedef enum {
+	/// No menu is open
+	MENU_NONE,
+	/// "Open file"
+	MENU_OPEN,
+	/// "Save file as"
+	MENU_SAVE_AS,
+	/// "X has unsaved changes"
+	MENU_WARN_UNSAVED,
+	/// "X has been changed by another program"
+	MENU_ASK_RELOAD,
+	/// "Go to definition of..."
+	MENU_GOTO_DEFINITION,
+	/// "Go to line"
+	MENU_GOTO_LINE,
+	/// "Command palette"
+	MENU_COMMAND_SELECTOR,
+	/// "Run a shell command"
+	MENU_SHELL,
+	/// "Rename symbol"
+	MENU_RENAME_SYMBOL,
+} Menu;
+
+
+
+#if !TED_PLUGIN
 
 typedef struct {
 	const char *string;
@@ -324,16 +419,6 @@ struct Settings {
 	KeyAction *key_actions;
 };
 
-/// A position in the buffer
-typedef struct {
-	/// line number (0-indexed)
-	u32 line;
-	/// UTF-32 index of character in line
-	///
-	/// (not the same as column, since a tab is `settings->tab_width` columns)
-	u32 index;
-} BufferPos;
-
 /// A single line in a buffer
 typedef struct Line Line;
 
@@ -427,29 +512,6 @@ struct TextBuffer {
 	BufferEdit *redo_history;
 };
 
-typedef enum {
-	/// No menu is open
-	MENU_NONE,
-	/// "Open file"
-	MENU_OPEN,
-	/// "Save file as"
-	MENU_SAVE_AS,
-	/// "X has unsaved changes"
-	MENU_WARN_UNSAVED,
-	/// "X has been changed by another program"
-	MENU_ASK_RELOAD,
-	/// "Go to definition of..."
-	MENU_GOTO_DEFINITION,
-	/// "Go to line"
-	MENU_GOTO_LINE,
-	/// "Command palette"
-	MENU_COMMAND_SELECTOR,
-	/// "Run a shell command"
-	MENU_SHELL,
-	/// "Rename symbol"
-	MENU_RENAME_SYMBOL,
-} Menu;
-
 /// an entry in a selector menu (e.g. the "open" menu)
 typedef struct {
 	/// label
@@ -462,8 +524,7 @@ typedef struct {
 	u64 userdata;
 } SelectorEntry;
 
-/// a selector menu (e.g. the "open" menu)
-typedef struct {
+struct Selector {
 	SelectorEntry *entries;
 	u32 n_entries;
 	Rect bounds;
@@ -472,7 +533,7 @@ typedef struct {
 	float scroll;
 	/// whether or not we should let the user select entries using a cursor.
 	bool enable_cursor;
-} Selector;
+};
 
 /// file entries for file selectors
 typedef struct {
@@ -483,8 +544,7 @@ typedef struct {
 	FsType type;
 } FileEntry;
 
-/// a selector menu for files (e.g. the "open" menu)
-typedef struct {
+struct FileSelector {
 	Selector sel;
 	Rect bounds;
 	u32 n_entries;
@@ -492,26 +552,10 @@ typedef struct {
 	char cwd[TED_PATH_MAX];
 	/// indicates that this is for creating files, not opening files
 	bool create_menu;
-} FileSelector;
+};
 
-/// options for a pop-up menu
-typedef enum {
-	POPUP_NONE,
-	/// "Yes" button
-	POPUP_YES = 1<<1,
-	/// "No" button
-	POPUP_NO = 1<<2,
-	/// "Cancel" button
-	POPUP_CANCEL = 1<<3,
-} PopupOption;
-
-/// pop-up with "yes" and "no" buttons
-#define POPUP_YES_NO (POPUP_YES | POPUP_NO)
-/// pop-up with "yes", "no", and "cancel" buttons
-#define POPUP_YES_NO_CANCEL (POPUP_YES | POPUP_NO | POPUP_CANCEL)
-
-/// A node is a collection of tabs OR a split of two nodes
-typedef struct {
+// A node is a collection of tabs OR a split of two node
+struct Node {
 	/// dynamic array of indices into ted->buffers, or `NULL` if this is a split
 	u16 *tabs;
 	/// number from 0 to 1 indicating where the split is.
@@ -524,7 +568,7 @@ typedef struct {
 	u16 split_a;
 	/// split right/lower half
 	u16 split_b;
-} Node;
+};
 
 /// max number of buffers open at one time
 #define TED_MAX_BUFFERS 256
@@ -565,27 +609,7 @@ typedef enum {
 } SymbolKind;
 
 /// a single autocompletion suggestion
-typedef struct {
-	char *label;
-	char *filter;
-	char *text;
-	/// this can be NULL!
-	char *detail;
-	/// this can be NULL!
-	char *documentation;
-	bool deprecated;
-	SymbolKind kind;
-} Autocompletion;
-
-enum {
-	/// autocomplete/signature help was manually triggered
-	TRIGGER_INVOKED = 0x12000,
-	/// autocomplete list needs to be updated because more characters were typed
-	TRIGGER_INCOMPLETE = 0x12001,
-	/// signtaure help needs to be updated because the cursor was moved or
-	/// the buffer's contents changed.
-	TRIGGER_CONTENT_CHANGE = 0x12002,
-};
+typedef struct Autocompletion Autocompletion;
 
 /// data needed for autocompletion
 typedef struct {
@@ -693,14 +717,6 @@ typedef struct {
 	LSPDocumentPosition position;
 } SymbolInfo;
 
-/// determines which thing associated with a symbol to go to
-typedef enum {
-	GOTO_DECLARATION,
-	GOTO_DEFINITION,
-	GOTO_IMPLEMENTATION,
-	GOTO_TYPE_DEFINITION,
-} GotoType;
-
 typedef struct {
 	LSPServerRequestID last_request;
 	double last_request_time;	
@@ -718,14 +734,6 @@ typedef struct {
 	LSPDocumentPosition requested_position;
 	LSPHighlight *highlights;
 } Highlights;
-
-/// more severe message types should have higher numbers.
-/// they will override less severe messages.
-typedef enum {
-	MESSAGE_INFO = 0x10000,
-	MESSAGE_WARNING = 0x20000,
-	MESSAGE_ERROR = 0x30000,
-} MessageType;
 
 typedef struct {
 	Command command;
@@ -918,6 +926,8 @@ struct Ted {
 	MessageType message_shown_type;
 	char message_shown[512];
 };
+
+#endif // !TED_PLUGIN
 
 // === buffer.c ===
 /// Returns `true` if the buffer is in view-only mode.
@@ -1320,27 +1330,32 @@ void build_check_for_errors(Ted *ted);
 void build_frame(Ted *ted, float x1, float y1, float x2, float y2);
 
 // === colors.c ===
+#if !TED_PLUGIN
 void color_init(void);
-ColorSetting color_setting_from_str(const char *str);
-const char *color_setting_to_str(ColorSetting s);
-Status color_from_str(const char *str, u32 *color);
 /// which color setting should be used for the given symbol kind.
 /// this is the color used in the autocomplete selector, for example.
 ColorSetting color_for_symbol_kind(SymbolKind kind);
+#endif
+ColorSetting color_setting_from_str(const char *str);
+const char *color_setting_to_str(ColorSetting s);
+Status color_from_str(const char *str, u32 *color);
 /// perform SRC_ALPHA, ONE_MINUS_SRC_ALPHA blending with `bg` and `fg`.
 u32 color_blend(u32 bg, u32 fg);
 /// multiply color's alpha value by `opacity`.
 u32 color_apply_opacity(u32 color, float opacity);
 
 // === command.c ===
+#if !TED_PLUGIN
 void command_init(void);
+void command_execute_ex(Ted *ted, Command c, const CommandArgument *argument, const CommandContext *context);
+#endif
 Command command_from_str(const char *str);
 const char *command_to_str(Command c);
 void command_execute(Ted *ted, Command c, i64 argument);
 void command_execute_string_argument(Ted *ted, Command c, const char *string);
-void command_execute_ex(Ted *ted, Command c, const CommandArgument *argument, const CommandContext *context);
 
 // === config.c ===
+#if !TED_PLUGIN
 /// first, we read all config files, then we parse them.
 /// this is because we want less specific settings (e.g. settings applied
 /// to all languages instead of one particular language) to be applied first,
@@ -1361,13 +1376,14 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *argument, co
 void config_read(Ted *ted, ConfigPart **pparts, const char *filename);
 void config_parse(Ted *ted, ConfigPart **pparts);
 void config_free(Ted *ted);
+/// how well does this settings context fit the given path and language?
+/// the context with the highest score will be chosen.
+long context_score(const char *path, Language lang, const SettingsContext *context);
+#endif // !TED_PLUGIN
 /// returns the best guess for the root directory of the project containing `path`
 /// (which should be an absolute path).
 /// the return value should be freed.
 char *settings_get_root_dir(Settings *settings, const char *path);
-/// how well does this settings context fit the given path and language?
-/// the context with the highest score will be chosen.
-long context_score(const char *path, Language lang, const SettingsContext *context);
 
 // === find.c ===
 /// which buffer will be searched?
@@ -1458,6 +1474,7 @@ extern int gl_version_major, gl_version_minor;
 gl_for_each_proc(gl_declare_proc)
 #undef gl_declare_proc
 
+#if !TED_PLUGIN
 /// get addresses of GL functions
 void gl_get_procs(void);
 /// create a new reference-counted shader-array-buffer object.
@@ -1472,6 +1489,9 @@ GlRcTexture *gl_rc_texture_new(GLuint texture);
 void gl_rc_texture_incref(GlRcTexture *t);
 /// decrease reference count on `*t`, and set `*t` to NULL if the reference count is 0.
 void gl_rc_texture_decref(GlRcTexture **pt);
+/// initialize geometry stuff
+void gl_geometry_init(void);
+#endif // !TED_PLUGIN
 /// create and compile a shader
 GLuint gl_compile_shader(char error_buf[256], const char *code, GLenum shader_type);
 /// create new shader program from shaders
@@ -1482,8 +1502,6 @@ GLuint gl_compile_and_link_shaders(char error_buf[256], const char *vshader_code
 GLuint gl_attrib_location(GLuint program, const char *attrib);
 /// prints a debug message if `uniform` is not found
 GLint gl_uniform_location(GLuint program, const char *uniform);
-/// initialize geometry stuff
-void gl_geometry_init(void);
 /// queue a filled rectangle with the given color.
 void gl_geometry_rect(Rect r, u32 color_rgba);
 /// queue the border of a rectangle with the given color.
@@ -1574,9 +1592,11 @@ void usages_process_lsp_response(Ted *ted, const LSPResponse *response);
 void usages_frame(Ted *ted);
 
 // === macro.c ===
+#if !TED_PLUGIN
+void macro_add(Ted *ted, Command command, const CommandArgument *argument);
+#endif
 void macro_start_recording(Ted *ted, u32 index);
 void macro_stop_recording(Ted *ted);
-void macro_add(Ted *ted, Command command, const CommandArgument *argument);
 void macro_execute(Ted *ted, u32 index);
 void macros_free(Ted *ted);
 
@@ -1668,8 +1688,10 @@ void tags_generate(Ted *ted, bool run_in_build_window);
 size_t tags_beginning_with(Ted *ted, const char *prefix, char **out, size_t out_size, bool error_if_tags_does_not_exist);
 /// go to the definition of the given tag
 bool tag_goto(Ted *ted, const char *tag);
+#if !TED_PLUGIN
 /// get all tags in the tags file as SymbolInfos.
 SymbolInfo *tags_get_symbols(Ted *ted);
+#endif
 
 // === ted.c ===
 /// for fatal errors

@@ -5,6 +5,18 @@
 #define TAGS_MAX_COMPLETIONS 200 // max # of tag completions to scroll through
 #define AUTOCOMPLETE_NCOMPLETIONS_VISIBLE 10 // max # of completions to show at once
 
+struct Autocompletion {
+	char *label;
+	char *filter;
+	char *text;
+	/// this can be NULL!
+	char *detail;
+	/// this can be NULL!
+	char *documentation;
+	bool deprecated;
+	SymbolKind kind; 
+};
+
 
 static void autocomplete_clear_completions(Autocomplete *ac) {
 	arr_foreach_ptr(ac->completions, Autocompletion, completion) {
