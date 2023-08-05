@@ -113,6 +113,7 @@ void buffer_create(TextBuffer *buffer, Ted *ted) {
 	memset(buffer, 0, sizeof *buffer);
 	buffer->store_undo_events = true;
 	buffer->ted = ted;
+	buffer->settings_idx = -1;
 }
 
 void line_buffer_create(TextBuffer *buffer, Ted *ted) {
@@ -218,7 +219,7 @@ Language buffer_language(TextBuffer *buffer) {
 	
 	if (buffer->manual_language != LANG_NONE)
 		return (Language)buffer->manual_language;
-	const Settings *settings = buffer->ted->default_settings; // important we don't use buffer_settings here since that would cause a loop!
+	const Settings *settings = buffer->ted->default_settings; // important we don't use buffer_settings here since that would cause infinite recursion!
 	const char *filename = path_filename(buffer->path);
 
 	int match_score = 0;
@@ -292,13 +293,18 @@ LSP *buffer_lsp(TextBuffer *buffer) {
 
 
 Settings *buffer_settings(TextBuffer *buffer) {
-	return ted_get_settings(buffer->ted, buffer->path, buffer_language(buffer));
+	Ted *ted = buffer->ted;
+	if (buffer->settings_idx >= 0 && buffer->settings_idx < (i32)arr_len(ted->all_settings))
+		return &ted->all_settings[buffer->settings_idx];
+	
+	Settings *settings = ted_get_settings(ted, buffer->path, buffer_language(buffer));
+	buffer->settings_idx = (i32)(settings - ted->all_settings);
+	assert(buffer->settings_idx >= 0 && buffer->settings_idx < (i32)arr_len(ted->all_settings));
+	return settings;
 }
 
 u8 buffer_tab_width(TextBuffer *buffer) {
-	if (!buffer->tab_width)
-		buffer->tab_width = buffer_settings(buffer)->tab_width;
-	return buffer->tab_width;
+	return buffer_settings(buffer)->tab_width;
 }
 
 bool buffer_indent_with_spaces(TextBuffer *buffer) {
@@ -2614,6 +2620,7 @@ Status buffer_load_file(TextBuffer *buffer, const char *path) {
 				if (success) {
 					// everything is good
 					buffer_clear(buffer);
+					buffer->settings_idx = -1;
 					buffer->lines = lines;
 					buffer->nlines = nlines;
 					buffer->frame_earliest_line_modified = 0;
@@ -2793,6 +2800,7 @@ bool buffer_save_as(TextBuffer *buffer, const char *new_path) {
 	LSP *lsp = buffer_lsp(buffer);
 	char *prev_path = buffer->path;
 	buffer->path = buffer_strdup(buffer, new_path);
+	buffer->settings_idx = -1; // we might have new settings
 	
 	if (buffer->path && buffer_save(buffer)) {
 		buffer->view_only = false;
@@ -2925,7 +2933,6 @@ bool buffer_cursor_move_to_matching_bracket(TextBuffer *buffer) {
 void buffer_render(TextBuffer *buffer, Rect r) {
 	const Settings *settings = buffer_settings(buffer);
 	
-	buffer->tab_width = settings->tab_width;
 	buffer_lsp(buffer); // this will send didOpen/didClose if the buffer's LSP changed
 	
 	if (r.size.x < 1 || r.size.y < 1) {

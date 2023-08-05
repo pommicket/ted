@@ -1,7 +1,4 @@
 /*
-TODO:
-- cache buffer settings
-
 FUTURE FEATURES:
 - autodetect indentation (tabs vs spaces)
 - robust find (results shouldn't move around when you type things)

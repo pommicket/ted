@@ -413,8 +413,9 @@ typedef struct {
 	u32 nlines;
 	/// capacity of \ref lines
 	u32 lines_capacity;
-	/// cached tab width, updated every frame
-	u8 tab_width;
+	
+	/// cached settings index (into ted->all_settings), or -1 if has not been computed yet
+	i32 settings_idx;
 	
 	/// which LSP this document is open in
 	LSPID lsp_opened_in;
