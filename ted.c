@@ -733,8 +733,8 @@ void ted_press_key(Ted *ted, SDL_Keycode keycode, SDL_Keymod modifier) {
 		} else if (key_actions[mid].key_combo.value > key_combo.value) {
 			hi = mid;
 		} else {
-			CommandContext context = {0};
-			command_execute_ex(ted, key_actions[mid].command, key_actions[mid].argument, context);
+			const CommandContext context = {0};
+			command_execute_ex(ted, key_actions[mid].command, &key_actions[mid].argument, &context);
 			return;
 		}
 	}

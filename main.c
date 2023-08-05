@@ -733,19 +733,12 @@ int main(int argc, char **argv) {
 				ted_press_key(ted, keycode, modifier);
 			} break;
 			case SDL_TEXTINPUT: {
-				char *text = event.text.text;
+				const char *text = event.text.text;
 				if (buffer
 					// unfortunately, some key combinations like ctrl+minus still register as a "-" text input event
 					&& (key_modifier & ~KEY_MODIFIER_SHIFT) == 0) { 
 					// insert the text
-					{
-						CommandContext ctx = {0};
-						CommandArgument arg = {
-							.number = 0,
-							.string = text
-						};
-						command_execute_ex(ted, CMD_INSERT_TEXT, arg, ctx);
-					}
+					command_execute_string_argument(ted, CMD_INSERT_TEXT, text);
 					// check for trigger character
 					LSP *lsp = buffer_lsp(buffer);
 					Settings *settings = buffer_settings(buffer);

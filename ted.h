@@ -188,7 +188,8 @@ typedef struct {
 } CommandArgument;
 
 typedef struct {
-	bool from_macro;
+	// did this command come from executing a macro?
+	bool running_macro;
 } CommandContext;
 
 /// Thing to do when a key combo is pressed.
@@ -1354,7 +1355,8 @@ void command_init(void);
 Command command_from_str(const char *str);
 const char *command_to_str(Command c);
 void command_execute(Ted *ted, Command c, i64 argument);
-void command_execute_ex(Ted *ted, Command c, CommandArgument argument, CommandContext context);
+void command_execute_string_argument(Ted *ted, Command c, const char *string);
+void command_execute_ex(Ted *ted, Command c, const CommandArgument *argument, const CommandContext *context);
 
 // === config.c ===
 /// first, we read all config files, then we parse them.
@@ -1592,7 +1594,7 @@ void usages_frame(Ted *ted);
 // === macro.c ===
 void macro_start_recording(Ted *ted, u32 index);
 void macro_stop_recording(Ted *ted);
-void macro_add(Ted *ted, Command command, CommandArgument argument);
+void macro_add(Ted *ted, Command command, const CommandArgument *argument);
 void macro_execute(Ted *ted, u32 index);
 void macros_free(Ted *ted);
 
