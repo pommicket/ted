@@ -1635,7 +1635,7 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 	}
 	str32_remove_all_instances_of_char(&str, '\r');
 	
-	if (buffer->ted->autocomplete.open) {
+	if (autocomplete_is_open(buffer->ted)) {
 		// close completions if a non-word character is typed
 		bool close_completions = false;
 		for (u32 i = 0; i < str.len; ++i) {
@@ -2105,7 +2105,7 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 	// Not doing this might also cause other bugs, best to keep it here just in case.
 	nchars = (u32)buffer_get_text_at_pos(buffer, pos, NULL, nchars);
 	
-	if (buffer->ted->autocomplete.open) {
+	if (autocomplete_is_open(buffer->ted)) {
 		// close completions if a non-word character is deleted
 		bool close_completions = false;
 		if (nchars > 256) {
@@ -2895,8 +2895,8 @@ void buffer_goto_word_at_cursor(TextBuffer *buffer, GotoType type) {
 // returns true if the buffer "used" this event
 bool buffer_handle_click(Ted *ted, TextBuffer *buffer, vec2 click, u8 times) {
 	BufferPos buffer_pos;
-	if (ted->autocomplete.open) {
-		if (rect_contains_point(ted->autocomplete.rect, click))
+	if (autocomplete_is_open(ted)) {
+		if (autocomplete_box_contains_point(ted, click))
 			return false; // don't look at clicks in the autocomplete menu
 		else
 			autocomplete_close(ted); // close autocomplete menu if user clicks outside of it

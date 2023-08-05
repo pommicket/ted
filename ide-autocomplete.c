@@ -5,6 +5,9 @@
 #define TAGS_MAX_COMPLETIONS 200 // max # of tag completions to scroll through
 #define AUTOCOMPLETE_NCOMPLETIONS_VISIBLE 10 // max # of completions to show at once
 
+/// a single autocompletion suggestion
+typedef struct Autocompletion Autocompletion;
+
 struct Autocompletion {
 	char *label;
 	char *filter;
@@ -17,6 +20,56 @@ struct Autocompletion {
 	SymbolKind kind; 
 };
 
+struct Autocomplete {
+	/// is the autocomplete box open?
+	bool open;
+	/// should the completions array be updated when more characters are typed?
+	bool is_list_complete;
+	
+	/// what trigger caused the last request for completions:
+	/// either a character code (for trigger characters),
+	/// or one of the `TRIGGER_*` constants above
+	uint32_t trigger;
+	
+	LSPServerRequestID last_request;
+	/// when we sent the request to the LSP for completions
+	///  (this is used to figure out when we should display "Loading...")
+	double last_request_time;
+	
+	/// dynamic array of all completions
+	Autocompletion *completions;
+	/// dynamic array of completions to be suggested (indices into completions)
+	u32 *suggested;
+	/// position of cursor last time completions were generated. if this changes, we need to recompute completions.
+	BufferPos last_pos; 
+	/// which completion is currently selected (index into suggested)
+	i32 cursor;
+	i32 scroll;
+	
+	/// was the last request for phantom completion?
+	bool last_request_phantom;
+	/// current phantom completion to be displayed
+	char *phantom;
+	/// rectangle where the autocomplete menu is (needed to avoid interpreting autocomplete clicks as other clicks)
+	Rect rect;
+};
+
+void autocomplete_init(Ted *ted) {
+	ted->autocomplete = calloc(1, sizeof *ted->autocomplete);
+}
+
+bool autocomplete_is_open(Ted *ted) {
+	return ted->autocomplete->open;
+}
+
+bool autocomplete_has_phantom(Ted *ted) {
+	return ted->autocomplete->phantom != NULL;
+
+}
+
+bool autocomplete_box_contains_point(Ted *ted, vec2 point) {
+	return rect_contains_point(ted->autocomplete->rect, point);
+}
 
 static void autocomplete_clear_completions(Autocomplete *ac) {
 	arr_foreach_ptr(ac->completions, Autocompletion, completion) {
@@ -37,7 +90,7 @@ static void autocomplete_clear_phantom(Autocomplete *ac) {
 
 // should a phantom completion be displayed?
 static bool autocomplete_should_display_phantom(Ted *ted) {
-	Autocomplete *ac = &ted->autocomplete;
+	Autocomplete *ac = ted->autocomplete;
 	TextBuffer *buffer = ted->active_buffer;
 	bool show = !ac->open
 		&& buffer
@@ -63,7 +116,7 @@ static void autocomplete_complete(Ted *ted, Autocompletion completion) {
 }
 
 void autocomplete_select_completion(Ted *ted) {
-	Autocomplete *ac = &ted->autocomplete;
+	Autocomplete *ac = ted->autocomplete;
 	if (ac->open) {
 		size_t nsuggestions = arr_len(ac->suggested);
 		if (nsuggestions) {
@@ -79,7 +132,7 @@ void autocomplete_select_completion(Ted *ted) {
 }
 
 static void autocomplete_correct_scroll(Ted *ted) {
-	Autocomplete *ac = &ted->autocomplete;
+	Autocomplete *ac = ted->autocomplete;
 	i32 scroll = ac->scroll;
 	scroll = min_i32(scroll, (i32)arr_len(ac->suggested) - AUTOCOMPLETE_NCOMPLETIONS_VISIBLE);
 	scroll = max_i32(scroll, 0);
@@ -87,13 +140,13 @@ static void autocomplete_correct_scroll(Ted *ted) {
 }
 
 void autocomplete_scroll(Ted *ted, i32 by) {
-	Autocomplete *ac = &ted->autocomplete;
+	Autocomplete *ac = ted->autocomplete;
 	ac->scroll += by;
 	autocomplete_correct_scroll(ted);
 }
 
 static void autocomplete_move_cursor(Ted *ted, i32 by) {
-	Autocomplete *ac = &ted->autocomplete;
+	Autocomplete *ac = ted->autocomplete;
 	u32 ncompletions = arr_len(ac->suggested);
 	if (ncompletions == 0)
 		return;
@@ -114,7 +167,7 @@ void autocomplete_prev(Ted *ted) {
 }
 
 void autocomplete_close(Ted *ted) {
-	Autocomplete *ac = &ted->autocomplete;
+	Autocomplete *ac = ted->autocomplete;
 	ac->open = false;
 	autocomplete_clear_phantom(ac);
 	autocomplete_clear_completions(ac);
@@ -122,7 +175,7 @@ void autocomplete_close(Ted *ted) {
 }
 
 static void autocomplete_update_suggested(Ted *ted) {
-	Autocomplete *ac = &ted->autocomplete;
+	Autocomplete *ac = ted->autocomplete;
 	arr_clear(ac->suggested);
 	char *word = buffer_word_at_cursor_utf8(ted->active_buffer);
 	for (u32 i = 0; i < arr_len(ac->completions); ++i) {
@@ -138,7 +191,7 @@ static bool autocomplete_using_lsp(Ted *ted) {
 }
 
 static void autocomplete_no_suggestions(Ted *ted) {
-	Autocomplete *ac = &ted->autocomplete;
+	Autocomplete *ac = ted->autocomplete;
 	if (ac->trigger == TRIGGER_INVOKED)
 		ted_flash_error_cursor(ted);
 	autocomplete_close(ted);
@@ -149,7 +202,7 @@ static void autocomplete_send_completion_request(Ted *ted, TextBuffer *buffer, B
 		return; // no can do
 	
 	LSP *lsp = buffer_lsp(buffer);
-	Autocomplete *ac = &ted->autocomplete;
+	Autocomplete *ac = ted->autocomplete;
 
 	ted_cancel_lsp_request(ted, &ac->last_request);
 
@@ -188,7 +241,7 @@ static void autocomplete_send_completion_request(Ted *ted, TextBuffer *buffer, B
 }
 
 static void autocomplete_find_completions(Ted *ted, uint32_t trigger, bool phantom) {
-	Autocomplete *ac = &ted->autocomplete;
+	Autocomplete *ac = ted->autocomplete;
 	TextBuffer *buffer = ted->active_buffer;
 	if (!buffer)
 		return;
@@ -299,7 +352,7 @@ void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *response) {
 	const LSPRequest *request = &response->request;
 	if (request->type != LSP_REQUEST_COMPLETION)
 		return;
-	Autocomplete *ac = &ted->autocomplete;
+	Autocomplete *ac = ted->autocomplete;
 	if (request->id != ac->last_request.id)
 		return; // old request
 	ac->last_request.id = 0;
@@ -397,7 +450,7 @@ void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *response) {
 }
 
 void autocomplete_open(Ted *ted, uint32_t trigger) {
-	Autocomplete *ac = &ted->autocomplete;
+	Autocomplete *ac = ted->autocomplete;
 	if (ac->open) return;
 	TextBuffer *buffer = ted->active_buffer;
 	if (!buffer) return;
@@ -482,7 +535,7 @@ void autocomplete_frame(Ted *ted) {
 	
 	autocomplete_find_phantom(ted);
 	
-	Autocomplete *ac = &ted->autocomplete;
+	Autocomplete *ac = ted->autocomplete;
 	if (autocomplete_should_display_phantom(ted) && ac->phantom) {
 		// display phantom completion
 		char *word_at_cursor = buffer_word_at_cursor_utf8(buffer);

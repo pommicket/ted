@@ -608,43 +608,8 @@ typedef enum {
 	SYMBOL_KEYWORD
 } SymbolKind;
 
-/// a single autocompletion suggestion
-typedef struct Autocompletion Autocompletion;
-
 /// data needed for autocompletion
-typedef struct {
-	/// is the autocomplete window open?
-	bool open;
-	/// should the completions array be updated when more characters are typed?
-	bool is_list_complete;
-	
-	/// what trigger caused the last request for completions:
-	/// either a character code (for trigger characters),
-	/// or one of the `TRIGGER_*` constants above
-	uint32_t trigger;
-	
-	LSPServerRequestID last_request;
-	/// when we sent the request to the LSP for completions
-	///  (this is used to figure out when we should display "Loading...")
-	double last_request_time;
-	
-	/// dynamic array of all completions
-	Autocompletion *completions;
-	/// dynamic array of completions to be suggested (indices into completions)
-	u32 *suggested;
-	/// position of cursor last time completions were generated. if this changes, we need to recompute completions.
-	BufferPos last_pos; 
-	/// which completion is currently selected (index into suggested)
-	i32 cursor;
-	i32 scroll;
-	
-	/// was the last request for phantom completion?
-	bool last_request_phantom;
-	/// current phantom completion to be displayed
-	char *phantom;
-	/// rectangle where the autocomplete menu is (needed to avoid interpreting autocomplete clicks as other clicks)
-	Rect rect;
-} Autocomplete;
+typedef struct Autocomplete Autocomplete;
 
 /// data needed for finding usages
 typedef struct {
@@ -833,7 +798,7 @@ struct Ted {
 	bool build_shown;
 	/// is the build process running?
 	bool building;
-	Autocomplete autocomplete;
+	Autocomplete *autocomplete;
 	SignatureHelp signature_help;
 	DocumentLinks document_links;
 	Hover hover;
@@ -1512,6 +1477,15 @@ void gl_geometry_draw(void);
 GLuint gl_load_texture_from_image(const char *path);
 
 // === ide-autocomplete.c ===
+#if !TED_PLUGIN
+void autocomplete_init(Ted *ted);
+#endif
+/// is the autocomplete box open?
+bool autocomplete_is_open(Ted *ted);
+/// is there a phantom completion being displayed?
+bool autocomplete_has_phantom(Ted *ted);
+/// is this point in the autocomplete box?
+bool autocomplete_box_contains_point(Ted *ted, vec2 point);
 /// open autocomplete
 /// trigger should either be a character (e.g. '.') or one of the TRIGGER_* constants.
 void autocomplete_open(Ted *ted, uint32_t trigger);

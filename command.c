@@ -332,7 +332,7 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 			buffer = &ted->line_buffer;
 			ted_switch_to_buffer(ted, buffer);
 			buffer_select_all(buffer);
-		} else if (ted->autocomplete.open || ted->autocomplete.phantom) {
+		} else if (autocomplete_is_open(ted) || autocomplete_has_phantom(ted)) {
 			autocomplete_select_completion(ted);
 		} else if (buffer) {
 			if (buffer->selection)
@@ -476,13 +476,13 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 		}
 		break;
 	case CMD_AUTOCOMPLETE:
-		if (ted->autocomplete.open)
+		if (autocomplete_is_open(ted))
 			autocomplete_next(ted);
 		else
 			autocomplete_open(ted, TRIGGER_INVOKED);
 		break;
 	case CMD_AUTOCOMPLETE_BACK:
-		if (ted->autocomplete.open)
+		if (autocomplete_is_open(ted))
 			autocomplete_prev(ted);
 		break;	
 	case CMD_GOTO_DEFINITION:
@@ -624,7 +624,7 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 		if (*ted->message_shown) {
 			// dismiss message box
 			*ted->message_shown = '\0';
-		} else if (ted->autocomplete.open) {
+		} else if (autocomplete_is_open(ted)) {
 			autocomplete_close(ted);
 		} else if (ted->menu) {
 			menu_escape(ted);

@@ -500,6 +500,7 @@ int main(int argc, char **argv) {
 
 	gl_geometry_init();
 	text_init();
+	autocomplete_init(ted);
 	PROFILE_TIME(gl_end)
 	
 	
@@ -633,8 +634,7 @@ int main(int argc, char **argv) {
 				} else if (key_modifier == 0) {
 					// scroll with mouse wheel
 					Sint32 dx = event.wheel.x, dy = -event.wheel.y;
-					Autocomplete *ac = &ted->autocomplete;
-					if (ac->open && rect_contains_point(ac->rect, ted->mouse_pos)) {
+					if (autocomplete_box_contains_point(ted, ted->mouse_pos)) {
 						autocomplete_scroll(ted, dy);
 					} else {
 						ted->scroll_total_x += dx;
