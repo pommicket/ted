@@ -152,7 +152,14 @@ typedef struct {
 /// for markdown
 #define SYNTAX_LINK SYNTAX_CONSTANT
 
+/// Settings
 typedef struct Settings Settings;
+
+/// A buffer - this includes line buffers, unnamed buffers, the build buffer, etc.
+typedef struct TextBuffer TextBuffer;
+
+/// all data used by the ted application (minus some globals in gl.c)
+typedef struct Ted Ted;
 
 /// special keycodes for mouse X1 & X2 buttons.
 enum {
@@ -330,40 +337,14 @@ typedef struct {
 /// A single line in a buffer
 typedef struct Line Line;
 
-/// Sections of `ted.cfg`
-typedef enum {
-	SECTION_NONE,
-	SECTION_CORE,
-	SECTION_KEYBOARD,
-	SECTION_COLORS,
-	SECTION_EXTENSIONS
-} ConfigSection;
-
 /// This structure is used temporarily when loading settings
 /// It's needed because we want more specific contexts to be dealt with last.
-typedef struct {
-	/// index in order of which part was read first.
-	int index;
-	SettingsContext context;
-	ConfigSection section;
-	char *file;
-	u32 line;
-	/// contents of this config part
-	char *text;
-} ConfigPart;
+typedef struct ConfigPart ConfigPart;
 
-/// This refers to replacing prev_len characters (found in prev_text) at pos with new_len characters
-typedef struct {
-	bool chain; // should this + the next edit be treated as one?
-	BufferPos pos;
-	u32 new_len;
-	u32 prev_len;
-	char32_t *prev_text;
-	double time; // time at start of edit (i.e. the time just before the edit), in seconds since epoch
-} BufferEdit;
+/// A single undoable edit to a buffer
+typedef struct BufferEdit BufferEdit;
 
-/// A buffer - this includes line buffers, unnamed buffers, the build buffer, etc.
-typedef struct {
+struct TextBuffer {
 	/// NULL if this buffer is untitled or doesn't correspond to a file (e.g. line buffers)
 	char *path;
 	/// we keep a back-pointer to the ted instance so we don't have to pass it in to every buffer function
@@ -444,7 +425,7 @@ typedef struct {
 	BufferEdit *undo_history;
 	/// dynamic array of redo history
 	BufferEdit *redo_history;
-} TextBuffer;
+};
 
 typedef enum {
 	/// No menu is open
@@ -770,8 +751,7 @@ typedef struct {
 	vec2 pos;
 } MouseRelease;
 
-/// (almost) all data used by the ted application
-typedef struct Ted {
+struct Ted {
 	/// all running LSP servers
 	LSP *lsps[TED_LSP_MAX + 1];
 	/// current time (see time_get_seconds), as of the start of this frame
@@ -937,7 +917,7 @@ typedef struct Ted {
 	MessageType message_type;
 	MessageType message_shown_type;
 	char message_shown[512];
-} Ted;
+};
 
 // === buffer.c ===
 /// Returns `true` if the buffer is in view-only mode.

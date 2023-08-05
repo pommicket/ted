@@ -14,6 +14,16 @@ struct Line {
 	char32_t *str;
 };
 
+// This refers to replacing prev_len characters (found in prev_text) at pos with new_len characters
+struct BufferEdit {
+	bool chain; // should this + the next edit be treated as one?
+	BufferPos pos;
+	u32 new_len;
+	u32 prev_len;
+	char32_t *prev_text;
+	double time; // time at start of edit (i.e. the time just before the edit), in seconds since epoch
+};
+
 // this is a macro so we get -Wformat warnings
 #define buffer_error(buffer, ...) \
 	snprintf(buffer->error, sizeof buffer->error - 1, __VA_ARGS__)

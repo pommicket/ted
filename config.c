@@ -9,6 +9,26 @@
 
 #include "ted.h"
 
+/// Sections of `ted.cfg`
+typedef enum {
+	SECTION_NONE,
+	SECTION_CORE,
+	SECTION_KEYBOARD,
+	SECTION_COLORS,
+	SECTION_EXTENSIONS
+} ConfigSection;
+
+struct ConfigPart {
+	/// index in order of which part was read first.
+	int index;
+	SettingsContext context;
+	ConfigSection section;
+	char *file;
+	u32 line;
+	/// contents of this config part
+	char *text;
+};
+
 // all the "control" pointers here are relative to `settings_zero`.
 typedef struct {
 	const char *name;
