@@ -65,8 +65,7 @@ void usages_process_lsp_response(Ted *ted, const LSPResponse *response) {
 			if (last_buffer) {
 				// read the line from the buffer
 				if (line < last_buffer->nlines) {
-					BufferPos pos = {.line = line, .index = 0};
-					line_text = buffer_get_utf8_text_at_pos(last_buffer, pos, last_buffer->lines[line].len);
+					line_text = buffer_get_line_utf8(last_buffer, line);
 				}
 			} else if (last_file) {
 				// read the line from the file

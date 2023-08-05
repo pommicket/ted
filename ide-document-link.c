@@ -1,5 +1,12 @@
 #include "ted.h"
 
+struct DocumentLink {
+	char *target;
+	char *tooltip;
+	BufferPos start;
+	BufferPos end;
+};
+
 void document_link_clear(Ted *ted) {
 	DocumentLinks *dl = &ted->document_links;
 	arr_foreach_ptr(dl->links, DocumentLink, l) {

@@ -8,6 +8,12 @@
 
 #define BUFFER_UNTITLED "Untitled" // what to call untitled buffers
 
+struct Line {
+	SyntaxState syntax;
+	u32 len;
+	char32_t *str;
+};
+
 // this is a macro so we get -Wformat warnings
 #define buffer_error(buffer, ...) \
 	snprintf(buffer->error, sizeof buffer->error - 1, __VA_ARGS__)
@@ -331,6 +337,10 @@ bool buffer_indent_with_spaces(TextBuffer *buffer) {
 	return buffer_settings(buffer)->indent_with_spaces;
 }
 
+u32 buffer_get_num_lines(TextBuffer *buffer) {
+	return buffer->nlines;
+}
+
 String32 buffer_get_line(TextBuffer *buffer, u32 line_number) {
 	if (line_number >= buffer->nlines) {
 		return str32(NULL, 0);
@@ -339,6 +349,10 @@ String32 buffer_get_line(TextBuffer *buffer, u32 line_number) {
 	return (String32) {
 		.str = line->str, .len = line->len
 	};
+}
+
+char *buffer_get_line_utf8(TextBuffer *buffer, u32 line_number) {
+	return str32_to_utf8_cstr(buffer_get_line(buffer, line_number));
 }
 
 // Returns a simple checksum of the buffer.

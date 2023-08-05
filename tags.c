@@ -325,8 +325,8 @@ top:;
 									pcre2_match_data *match_data = pcre2_match_data_create(10, NULL);
 									if (match_data) {
 										for (u32 line_idx = 0; line_idx < buffer->nlines; ++line_idx) {
-											Line *line = &buffer->lines[line_idx];
-											int n = pcre2_match(code, line->str, line->len, 0, PCRE2_NOTEMPTY,
+											String32 line = buffer_get_line(buffer, line_idx);
+											int n = pcre2_match(code, line.str, line.len, 0, PCRE2_NOTEMPTY,
 												match_data, NULL);
 											if (n == 1) {
 												// found it!

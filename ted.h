@@ -42,6 +42,8 @@ extern "C" {
 #define TEXT_SIZE_MAX 70
 /// max number of LSPs running at once
 #define TED_LSP_MAX 200
+/// max number of macros
+#define TED_MACRO_MAX 256
 
 // If you are adding new languages, DO NOT change the constant values
 // of the previous languages. It will mess up config files which use :set-language!
@@ -150,6 +152,8 @@ typedef struct {
 /// for markdown
 #define SYNTAX_LINK SYNTAX_CONSTANT
 
+typedef struct Settings Settings;
+
 /// special keycodes for mouse X1 & X2 buttons.
 enum {
 	KEYCODE_X1 = 1<<20,
@@ -242,7 +246,7 @@ typedef struct {
 ///
 /// NOTE: to add more options to ted, add fields here,
 /// and change the settings_<type> global constant near the top of config.c	
-typedef struct {
+struct Settings {
 	SettingsContext context;
 	u32 colors[COLOR_COUNT];
 	float cursor_blink_time_on, cursor_blink_time_off;
@@ -311,7 +315,7 @@ typedef struct {
 	LanguageExtension *language_extensions;
 	/// dynamic array, sorted by KEY_COMBO(modifier, key)
 	KeyAction *key_actions;
-} Settings;
+};
 
 /// A position in the buffer
 typedef struct {
@@ -324,11 +328,7 @@ typedef struct {
 } BufferPos;
 
 /// A single line in a buffer
-typedef struct {
-	SyntaxState syntax;
-	u32 len;
-	char32_t *str;
-} Line;
+typedef struct Line Line;
 
 /// Sections of `ted.cfg`
 typedef enum {
@@ -670,12 +670,7 @@ typedef struct {
 	Signature signatures[SIGNATURE_HELP_MAX];
 } SignatureHelp;
 
-typedef struct {
-	char *target;
-	char *tooltip;
-	BufferPos start;
-	BufferPos end;
-} DocumentLink;
+typedef struct DocumentLink DocumentLink;
 
 /// "document link" information (LSP)
 typedef struct {
@@ -746,9 +741,9 @@ typedef struct {
 /// more severe message types should have higher numbers.
 /// they will override less severe messages.
 typedef enum {
-	MESSAGE_INFO,
-	MESSAGE_WARNING,
-	MESSAGE_ERROR
+	MESSAGE_INFO = 0x10000,
+	MESSAGE_WARNING = 0x20000,
+	MESSAGE_ERROR = 0x30000,
 } MessageType;
 
 typedef struct {
@@ -765,8 +760,6 @@ typedef struct {
 	char *path;
 	Font *font;
 } LoadedFont;
-
-#define TED_MACRO_MAX 256
 
 typedef struct {
 	vec2 pos;
@@ -1010,10 +1003,19 @@ Settings *buffer_settings(TextBuffer *buffer);
 u8 buffer_tab_width(TextBuffer *buffer);
 /// Get whether or not to indent with spaces for this buffer.
 bool buffer_indent_with_spaces(TextBuffer *buffer);
+/// returns the number of lines in the buffer.
+u32 buffer_get_num_lines(TextBuffer *buffer);
+/// get line contents. does not include a newline character.
 /// NOTE: this string will be invalidated when the line is edited!!!
 /// only use it briefly!!
+///
 /// returns an empty string if `line_number` is out of range.
 String32 buffer_get_line(TextBuffer *buffer, u32 line_number);
+/// get line contents. does not include a newline character.
+///
+/// string must be freed by caller.
+/// returns an empty string if `line_number` is out of range.
+char *buffer_get_line_utf8(TextBuffer *buffer, u32 line_number);
 /// get at most `nchars` characters starting from position `pos`.
 /// returns the number of characters actually available.
 /// you can pass NULL for text if you just want to know how many

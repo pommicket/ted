@@ -204,8 +204,8 @@ void build_check_for_errors(Ted *ted) {
 	TextBuffer *buffer = &ted->build_buffer;
 	arr_clear(ted->build_errors);
 	for (u32 line_idx = 0; line_idx < buffer->nlines; ++line_idx) {
-		Line *line = &buffer->lines[line_idx];
-		if (line->len < 3) {
+		String32 line = buffer_get_line(buffer, line_idx);
+		if (line.len < 3) {
 			continue;
 		}
 		bool is_error = true;
@@ -218,7 +218,7 @@ void build_check_for_errors(Ted *ted) {
 		// all this is to say that columns_per_tab is currently always 1,
 		// but might be useful at some point.
 		u8 columns_per_tab = 1;
-		char32_t *p = line->str, *end = p + line->len;
+		char32_t *p = line.str, *end = p + line.len;
 		
 		{
 			// rust errors look like:
@@ -242,7 +242,7 @@ void build_check_for_errors(Ted *ted) {
 		char32_t *filename_start = p;
 		while (p != end) {
 			if ((*p == ':' || *p == '(')
-				&& p != line->str + 1) // don't catch "C:\thing\whatever.c" as "filename: C, line number: \thing\whatever.c"
+				&& p != line.str + 1) // don't catch "C:\thing\whatever.c" as "filename: C, line number: \thing\whatever.c"
 				break;
 			if (!is_source_path(*p)) {
 				is_error = false;
