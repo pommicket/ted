@@ -42,6 +42,7 @@ static void menu_close_with_next(Ted *ted, Menu next) {
 		buffer_clear(&ted->line_buffer);
 		break;
 	case MENU_RENAME_SYMBOL:
+		rename_symbol_clear(ted);
 		buffer_clear(&ted->line_buffer);
 		break;
 	}
@@ -326,12 +327,13 @@ void menu_update(Ted *ted) {
 			build_start_with_command(ted, command);
 		}
 		break;
-	case MENU_RENAME_SYMBOL: {
-		RenameSymbol *rs = &ted->rename_symbol;
-		if (line_buffer->line_buffer_submitted && !rs->new_name) {
-			rs->new_name = str32_to_utf8_cstr(buffer_get_line(line_buffer, 0));
+	case MENU_RENAME_SYMBOL:
+		if (line_buffer->line_buffer_submitted) {
+			char *new_name = str32_to_utf8_cstr(buffer_get_line(line_buffer, 0));
+			rename_symbol_at_cursor(ted, ted->prev_active_buffer, new_name);
+			free(new_name);
 		}
-		} break;
+		break;
 	}
 }
 
@@ -469,8 +471,7 @@ void menu_render(Ted *ted) {
 			menu_close(ted);
 			return;
 		}
-		RenameSymbol *rs = &ted->rename_symbol;
-		if (rs->new_name) {
+		if (rename_symbol_is_loading(ted)) {
 			// already entered a new name
 			return;
 		}

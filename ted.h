@@ -630,26 +630,10 @@ typedef struct {
 } DocumentLinks;
 
 /// information for symbol rename (LSP)
-typedef struct {
-	char *new_name;
-	LSPServerRequestID request_id;
-} RenameSymbol;
+typedef struct RenameSymbol RenameSymbol;
 
 /// "hover" information from LSP server
-typedef struct {
-	LSPServerRequestID last_request;
-	/// is some hover info being displayed?
-	bool open;
-	/// text to display
-	char *text;
-	/// where the hover data is coming from.
-	/// we use this to check if we need to refresh it.
-	LSPDocumentPosition requested_position;
-	/// range in document to highlight
-	LSPRange range;
-	/// how long the cursor has been hovering for
-	double time;
-} Hover;
+typedef struct Hover Hover;
 
 /// symbol information for the definitions menu
 typedef struct {
@@ -674,11 +658,7 @@ typedef struct {
 } Definitions;
 
 /// "highlight" information from LSP server
-typedef struct {
-	LSPServerRequestID last_request;
-	LSPDocumentPosition requested_position;
-	LSPHighlight *highlights;
-} Highlights;
+typedef struct Highlights Highlights;
 
 typedef struct {
 	Command command;
@@ -781,11 +761,11 @@ struct Ted {
 	Autocomplete *autocomplete;
 	SignatureHelp *signature_help;
 	DocumentLinks document_links;
-	Hover hover;
+	Hover *hover;
 	Definitions definitions;
-	Highlights highlights;
+	Highlights *highlights;
 	Usages *usages;
-	RenameSymbol rename_symbol;
+	RenameSymbol *rename_symbol;
 	
 	FILE *log;
 	
@@ -1513,19 +1493,36 @@ const char *document_link_at_buffer_pos(Ted *ted, BufferPos pos);
 void document_link_clear(Ted *ted);
 
 // === ide-highlights.c ===
-void highlights_close(Ted *ted);
-void highlights_process_lsp_response(Ted *ted, const LSPResponse *response);
+#if !TED_PLUGIN
+void highlights_init(Ted *ted);
+void highlights_quit(Ted *ted);
 void highlights_frame(Ted *ted);
+void highlights_process_lsp_response(Ted *ted, const LSPResponse *response);
+#endif
+void highlights_close(Ted *ted);
 
 // === ide-hover.c ===
+#if !TED_PLUGIN
+void hover_init(Ted *ted);
+void hover_frame(Ted *ted, double dt);
+void hover_quit(Ted *ted);
+#endif
+/// called for example whenever the mouse moves to reset the timer before hover info is displayed
+void hover_reset_timer(Ted *ted);
 void hover_close(Ted *ted);
 void hover_process_lsp_response(Ted *ted, const LSPResponse *response);
-void hover_frame(Ted *ted, double dt);
 
 // === ide-rename-symbol.c ===
-void rename_symbol_clear(Ted *ted);
+#if !TED_PLUGIN
+void rename_symbol_init(Ted *ted);
+void rename_symbol_quit(Ted *ted);
 void rename_symbol_frame(Ted *ted);
 void rename_symbol_process_lsp_response(Ted *ted, const LSPResponse *response);
+#endif
+void rename_symbol_at_cursor(Ted *ted, TextBuffer *buffer, const char *new_name);
+/// returns true if we are currently waiting for the LSP to send us a response
+bool rename_symbol_is_loading(Ted *ted);
+void rename_symbol_clear(Ted *ted);
 
 // === ide-signature-help.c ===
 #if !TED_PLUGIN

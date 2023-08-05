@@ -2,8 +2,24 @@
 
 #include "ted.h"
 
+struct Highlights {
+	LSPServerRequestID last_request;
+	LSPDocumentPosition requested_position;
+	LSPHighlight *highlights;
+};
+
+void highlights_init(Ted *ted) {
+	ted->highlights = calloc(1, sizeof *ted->highlights);
+}
+
+void highlights_quit(Ted *ted) {
+	highlights_close(ted);
+	free(ted->highlights);
+	ted->highlights = NULL;
+}
+
 void highlights_close(Ted *ted) {
-	Highlights *hls = &ted->highlights;
+	Highlights *hls = ted->highlights;
 	arr_clear(hls->highlights);
 	ted_cancel_lsp_request(ted, &hls->last_request);
 	hls->requested_position = (LSPDocumentPosition){0};
@@ -11,7 +27,7 @@ void highlights_close(Ted *ted) {
 
 static void highlights_send_request(Ted *ted) {
 	TextBuffer *buffer = ted->active_buffer;
-	Highlights *hls = &ted->highlights;
+	Highlights *hls = ted->highlights;
 	if (!buffer) {
 		highlights_close(ted);
 		return;
@@ -32,7 +48,7 @@ static void highlights_send_request(Ted *ted) {
 
 
 void highlights_process_lsp_response(Ted *ted, const LSPResponse *response) {
-	Highlights *hls = &ted->highlights;
+	Highlights *hls = ted->highlights;
 	if (response->request.type != LSP_REQUEST_HIGHLIGHT)
 		return; // not a highlight request
 	if (response->request.id != hls->last_request.id)
@@ -45,7 +61,7 @@ void highlights_process_lsp_response(Ted *ted, const LSPResponse *response) {
 }
 
 void highlights_frame(Ted *ted) {
-	Highlights *hls = &ted->highlights;
+	Highlights *hls = ted->highlights;
 	TextBuffer *buffer = ted->active_buffer;
 	if (!buffer) {
 		highlights_close(ted);

@@ -1,39 +1,55 @@
 #include "ted.h"
 
-void rename_symbol_clear(Ted *ted) {
-	RenameSymbol *rs = &ted->rename_symbol;
-	ted_cancel_lsp_request(ted, &rs->request_id);
-	free(rs->new_name);
-	rs->new_name = NULL;
-	if (ted->menu == MENU_RENAME_SYMBOL)
-		menu_close(ted);
+struct RenameSymbol {
+	LSPServerRequestID request_id;
+};
+
+void rename_symbol_init(Ted *ted) {
+	ted->rename_symbol = calloc(1, sizeof *ted->rename_symbol);
 }
 
-void rename_symbol_frame(Ted *ted) {
-	RenameSymbol *rs = &ted->rename_symbol;
-	TextBuffer *buffer = ted->prev_active_buffer;
-	LSP *lsp = buffer ? buffer_lsp(buffer) : NULL;
+void rename_symbol_quit(Ted *ted) {
+	rename_symbol_clear(ted);
+	free(ted->rename_symbol);
+	ted->rename_symbol = NULL;
+}
+
+void rename_symbol_at_cursor(Ted *ted, TextBuffer *buffer, const char *new_name) {
+	if (!buffer) return;
+	RenameSymbol *rs = ted->rename_symbol;
+	LSP *lsp = buffer_lsp(buffer);
+	if (!lsp) return;
 	
-	if (ted->menu != MENU_RENAME_SYMBOL || !buffer || !lsp) {
-		rename_symbol_clear(ted);
-		return;
-	}
-	
-	if (rs->new_name && !rs->request_id.id) {
+	if (!rs->request_id.id) {
 		// send the request
 		LSPRequest request = {.type = LSP_REQUEST_RENAME};
 		LSPRequestRename *data = &request.data.rename;
 		data->position = buffer_pos_to_lsp_document_position(buffer, buffer->cursor_pos);
-		data->new_name = str_dup(rs->new_name);
+		data->new_name = str_dup(new_name);
 		rs->request_id = lsp_send_request(lsp, &request);
 	}
 	
-	// we're just waitin'
-	ted->cursor = ted->cursor_wait;
+}
+
+bool rename_symbol_is_loading(Ted *ted) {
+	return ted->rename_symbol->request_id.id != 0;
+}
+
+void rename_symbol_clear(Ted *ted) {
+	RenameSymbol *rs = ted->rename_symbol;
+	ted_cancel_lsp_request(ted, &rs->request_id);
+}
+
+void rename_symbol_frame(Ted *ted) {
+	RenameSymbol *rs = ted->rename_symbol;
+	if (rs->request_id.id) {
+		// we're just waitin'
+		ted->cursor = ted->cursor_wait;
+	}
 }
 
 void rename_symbol_process_lsp_response(Ted *ted, const LSPResponse *response) {
-	RenameSymbol *rs = &ted->rename_symbol;
+	RenameSymbol *rs = ted->rename_symbol;
 	if (response->request.type != LSP_REQUEST_RENAME
 		|| response->request.id != rs->request_id.id) {
 		return;
@@ -45,8 +61,6 @@ void rename_symbol_process_lsp_response(Ted *ted, const LSPResponse *response) {
 		// LSP crashed or something
 		return;
 	}
-	
-	assert(rs->new_name);
 	
 	bool perform_changes = true;
 	arr_foreach_ptr(data->changes, const LSPWorkspaceChange, change) {
@@ -108,4 +122,7 @@ void rename_symbol_process_lsp_response(Ted *ted, const LSPResponse *response) {
 	}
 	
 	rename_symbol_clear(ted);
+	printf("aeiou\n");
+	if (ted->menu == MENU_RENAME_SYMBOL)
+		menu_close(ted);
 }

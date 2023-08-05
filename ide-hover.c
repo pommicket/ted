@@ -2,12 +2,41 @@
 
 #include "ted.h"
 
+struct Hover {
+	LSPServerRequestID last_request;
+	/// is some hover info being displayed?
+	bool open;
+	/// text to display
+	char *text;
+	/// where the hover data is coming from.
+	/// we use this to check if we need to refresh it.
+	LSPDocumentPosition requested_position;
+	/// range in document to highlight
+	LSPRange range;
+	/// how long the cursor has been hovering for
+	double time;
+};
+
+void hover_init(Ted *ted) {
+	ted->hover = calloc(1, sizeof *ted->hover);
+}
+
+void hover_quit(Ted *ted) {
+	hover_close(ted);
+	free(ted->hover);
+	ted->hover = NULL;
+}
+
 void hover_close(Ted *ted) {
-	Hover *hover = &ted->hover;
+	Hover *hover = ted->hover;
 	hover->open = false;
 	free(hover->text);
 	hover->text = NULL;
 	ted_cancel_lsp_request(ted, &hover->last_request);
+}
+
+void hover_reset_timer(Ted *ted) {
+	ted->hover->time = 0.0;
 }
 
 static bool get_hover_position(Ted *ted, LSPDocumentPosition *pos, TextBuffer **pbuffer, LSP **lsp) {
@@ -26,7 +55,7 @@ static bool get_hover_position(Ted *ted, LSPDocumentPosition *pos, TextBuffer **
 }
 
 static void hover_send_request(Ted *ted) {
-	Hover *hover = &ted->hover;
+	Hover *hover = ted->hover;
 	
 	ted_cancel_lsp_request(ted, &hover->last_request);
 	LSPRequest request = {.type = LSP_REQUEST_HOVER};
@@ -42,7 +71,7 @@ void hover_process_lsp_response(Ted *ted, const LSPResponse *response) {
 	if (!response) return;
 	if (response->request.type != LSP_REQUEST_HOVER) return;
 	
-	Hover *hover = &ted->hover;
+	Hover *hover = ted->hover;
 	if (response->request.id != hover->last_request.id) {
 		// stale request
 		return;
@@ -87,7 +116,7 @@ void hover_frame(Ted *ted, double dt) {
 	const Settings *settings = ted_active_settings(ted);
 	if (!settings->hover_enabled)
 		return;
-	Hover *hover = &ted->hover;
+	Hover *hover = ted->hover;
 	
 	bool key_down = ted_is_key_combo_down(ted, settings->hover_key);
 	

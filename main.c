@@ -503,6 +503,9 @@ int main(int argc, char **argv) {
 	autocomplete_init(ted);
 	signature_help_init(ted);
 	usages_init(ted);
+	highlights_init(ted);
+	hover_init(ted);
+	rename_symbol_init(ted);
 	PROFILE_TIME(gl_end)
 	
 	
@@ -732,7 +735,7 @@ int main(int argc, char **argv) {
 					buffer_pixels_to_pos(ted->drag_buffer, Vec2(x, y), &pos);
 					buffer_select_to_pos(ted->drag_buffer, pos);
 				}
-				ted->hover.time = 0.0;
+				hover_reset_timer(ted);
 			} break;
 			case SDL_KEYDOWN: {
 				SDL_Keycode keycode = event.key.keysym.sym;
@@ -1185,13 +1188,13 @@ int main(int argc, char **argv) {
 	build_stop(ted);
 	if (ted->menu)
 		menu_close(ted);
-	hover_close(ted);
+	hover_quit(ted);
 	signature_help_quit(ted);
 	autocomplete_quit(ted);
+	highlights_quit(ted);
 	usages_quit(ted);
-	highlights_close(ted);
 	session_write(ted);
-	rename_symbol_clear(ted);
+	rename_symbol_quit(ted);
 	document_link_clear(ted);
 	
 	for (int i = 0; i < TED_LSP_MAX; ++i) {
