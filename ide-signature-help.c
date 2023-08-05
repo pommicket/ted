@@ -3,6 +3,29 @@
 
 #include "ted.h"
 
+/// a single signature in the signature help.
+typedef struct {
+	/// displayed normal
+	char *label_pre;
+	/// displayed bold
+	char *label_active;
+	/// displayed normal
+	char *label_post;
+} Signature;
+
+struct SignatureHelp {
+	LSPServerRequestID last_request;
+	/// should we resend a signature help request this frame?
+	bool retrigger;
+	/// if signature_count = 0, signature help is closed
+	u16 signature_count;
+	Signature signatures[SIGNATURE_HELP_MAX];
+};
+
+void signature_help_init(Ted *ted) {
+	ted->signature_help = calloc(1, sizeof *ted->signature_help);
+}
+
 static void signature_help_clear(SignatureHelp *help) {
 	for (int i = 0; i < help->signature_count; ++i) {
 		Signature sig = help->signatures[i];
@@ -15,7 +38,7 @@ static void signature_help_clear(SignatureHelp *help) {
 }
 
 static void signature_help_send_request(Ted *ted) {
-	SignatureHelp *help = &ted->signature_help;
+	SignatureHelp *help = ted->signature_help;
 	Settings *settings = ted_active_settings(ted);
 	if (!settings->signature_help_enabled) {
 		signature_help_clear(help);
@@ -42,7 +65,7 @@ static void signature_help_send_request(Ted *ted) {
 void signature_help_retrigger(Ted *ted) {
 	// don't just send the request here -- we don't want to send more than
 	// one request per frame.
-	ted->signature_help.retrigger = true;
+	ted->signature_help->retrigger = true;
 }
 
 void signature_help_open(Ted *ted, uint32_t trigger) {
@@ -51,18 +74,18 @@ void signature_help_open(Ted *ted, uint32_t trigger) {
 }
 
 bool signature_help_is_open(Ted *ted) {
-	return ted->signature_help.signature_count > 0;
+	return ted->signature_help->signature_count > 0;
 }
 
 
 void signature_help_close(Ted *ted) {
-	SignatureHelp *help = &ted->signature_help;
+	SignatureHelp *help = ted->signature_help;
 	signature_help_clear(help);
 	ted_cancel_lsp_request(ted, &help->last_request);
 }
 
 void signature_help_process_lsp_response(Ted *ted, const LSPResponse *response) {
-	SignatureHelp *help = &ted->signature_help;
+	SignatureHelp *help = ted->signature_help;
 	Settings *settings = ted_active_settings(ted);
 	if (!settings->signature_help_enabled) return;
 	
@@ -110,7 +133,7 @@ void signature_help_frame(Ted *ted) {
 	if (!settings->signature_help_enabled)
 		return;
 	
-	SignatureHelp *help = &ted->signature_help;
+	SignatureHelp *help = ted->signature_help;
 	if (help->retrigger)
 		signature_help_send_request(ted);
 	u16 signature_count = help->signature_count;
@@ -163,4 +186,10 @@ void signature_help_frame(Ted *ted) {
 	gl_geometry_draw();
 	text_render(font);
 	text_render(font_bold);
+}
+
+void signature_help_quit(Ted *ted) {
+	signature_help_close(ted);
+	free(ted->signature_help);
+	ted->signature_help = NULL;
 }

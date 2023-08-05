@@ -1,14 +1,27 @@
 // find usages of symbol
 
 #include "ted.h"
+struct Usages {
+	LSPServerRequestID last_request;
+	double last_request_time;
+};
+
+void usages_init(Ted *ted) {
+	ted->usages = calloc(1, sizeof *ted->usages);
+}
+
+void usages_quit(Ted *ted) {
+	free(ted->usages);
+	ted->usages = NULL;
+}
 
 void usages_cancel_lookup(Ted *ted) {
-	Usages *usages = &ted->usages;
+	Usages *usages = ted->usages;
 	ted_cancel_lsp_request(ted, &usages->last_request);
 }
 
 void usages_find(Ted *ted) {
-	Usages *usages = &ted->usages;
+	Usages *usages = ted->usages;
 	TextBuffer *buffer = ted->active_buffer;
 	if (!buffer) return;
 	LSP *lsp = buffer_lsp(buffer);
@@ -26,7 +39,7 @@ void usages_find(Ted *ted) {
 
 
 void usages_process_lsp_response(Ted *ted, const LSPResponse *response) {
-	Usages *usages = &ted->usages;
+	Usages *usages = ted->usages;
 	if (response->request.type != LSP_REQUEST_REFERENCES)
 		return; // not for us
 	if (response->request.id != usages->last_request.id)
@@ -125,7 +138,7 @@ void usages_process_lsp_response(Ted *ted, const LSPResponse *response) {
 }
 
 void usages_frame(Ted *ted) {
-	Usages *usages = &ted->usages;
+	Usages *usages = ted->usages;
 	if (usages->last_request.id && ted->frame_time - usages->last_request_time > 0.2)
 		ted->cursor = ted->cursor_wait; // this request is takin a while
 }

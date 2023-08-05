@@ -38,7 +38,7 @@ static void hover_send_request(Ted *ted) {
 	}	
 }
 
-void hover_process_lsp_response(Ted *ted, LSPResponse *response) {
+void hover_process_lsp_response(Ted *ted, const LSPResponse *response) {
 	if (!response) return;
 	if (response->request.type != LSP_REQUEST_HOVER) return;
 	
@@ -49,7 +49,7 @@ void hover_process_lsp_response(Ted *ted, LSPResponse *response) {
 	}
 	
 	hover->last_request.id = 0;
-	LSPResponseHover *hover_response = &response->data.hover;
+	const LSPResponseHover *hover_response = &response->data.hover;
 	
 	TextBuffer *buffer=0;
 	LSPDocumentPosition pos={0};

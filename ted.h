@@ -612,33 +612,13 @@ typedef enum {
 typedef struct Autocomplete Autocomplete;
 
 /// data needed for finding usages
-typedef struct {
-	LSPServerRequestID last_request;
-	double last_request_time;
-} Usages;
-
-/// a single signature in the signature help.
-typedef struct {
-	/// displayed normal
-	char *label_pre;
-	/// displayed bold
-	char *label_active;
-	/// displayed normal
-	char *label_post;
-} Signature;
+typedef struct Usages Usages;
 
 /// max number of signatures to display at a time.
 #define SIGNATURE_HELP_MAX 5
 
 /// "signature help" (LSP) is thing that shows the current parameter, etc.
-typedef struct {
-	LSPServerRequestID last_request;
-	/// should we resend a signature help request this frame?
-	bool retrigger;
-	/// if signature_count = 0, signature help is closed
-	u16 signature_count;
-	Signature signatures[SIGNATURE_HELP_MAX];
-} SignatureHelp;
+typedef struct SignatureHelp SignatureHelp;
 
 typedef struct DocumentLink DocumentLink;
 
@@ -799,12 +779,12 @@ struct Ted {
 	/// is the build process running?
 	bool building;
 	Autocomplete *autocomplete;
-	SignatureHelp signature_help;
+	SignatureHelp *signature_help;
 	DocumentLinks document_links;
 	Hover hover;
 	Definitions definitions;
 	Highlights highlights;
-	Usages usages;
+	Usages *usages;
 	RenameSymbol rename_symbol;
 	
 	FILE *log;
@@ -1479,6 +1459,8 @@ GLuint gl_load_texture_from_image(const char *path);
 // === ide-autocomplete.c ===
 #if !TED_PLUGIN
 void autocomplete_init(Ted *ted);
+void autocomplete_quit(Ted *ted);
+void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *response);
 #endif
 /// is the autocomplete box open?
 bool autocomplete_is_open(Ted *ted);
@@ -1489,7 +1471,6 @@ bool autocomplete_box_contains_point(Ted *ted, vec2 point);
 /// open autocomplete
 /// trigger should either be a character (e.g. '.') or one of the TRIGGER_* constants.
 void autocomplete_open(Ted *ted, uint32_t trigger);
-void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *response);
 /// select the completion the cursor is on,
 /// or select the phantom completion if there is one.
 void autocomplete_select_completion(Ted *ted);
@@ -1533,20 +1514,26 @@ void document_link_clear(Ted *ted);
 
 // === ide-highlights.c ===
 void highlights_close(Ted *ted);
-void highlights_process_lsp_response(Ted *ted, LSPResponse *response);
+void highlights_process_lsp_response(Ted *ted, const LSPResponse *response);
 void highlights_frame(Ted *ted);
 
 // === ide-hover.c ===
 void hover_close(Ted *ted);
-void hover_process_lsp_response(Ted *ted, LSPResponse *response);
+void hover_process_lsp_response(Ted *ted, const LSPResponse *response);
 void hover_frame(Ted *ted, double dt);
 
 // === ide-rename-symbol.c ===
 void rename_symbol_clear(Ted *ted);
 void rename_symbol_frame(Ted *ted);
-void rename_symbol_process_lsp_response(Ted *ted, LSPResponse *response);
+void rename_symbol_process_lsp_response(Ted *ted, const LSPResponse *response);
 
 // === ide-signature-help.c ===
+#if !TED_PLUGIN
+void signature_help_init(Ted *ted);
+void signature_help_quit(Ted *ted);
+void signature_help_frame(Ted *ted);
+void signature_help_process_lsp_response(Ted *ted, const LSPResponse *response);
+#endif
 /// figure out new signature help
 void signature_help_retrigger(Ted *ted);
 /// open signature help. `trigger` should either be the trigger character (e.g. ',')
@@ -1554,16 +1541,18 @@ void signature_help_retrigger(Ted *ted);
 void signature_help_open(Ted *ted, uint32_t trigger);
 bool signature_help_is_open(Ted *ted);
 void signature_help_close(Ted *ted);
-void signature_help_process_lsp_response(Ted *ted, const LSPResponse *response);
-void signature_help_frame(Ted *ted);
 
 // === ide-usages.c ===
+#if !TED_PLUGIN
+void usages_init(Ted *ted);
+void usages_process_lsp_response(Ted *ted, const LSPResponse *response);
+void usages_frame(Ted *ted);
+void usages_quit(Ted *ted);
+#endif
 /// cancel the last "find usages" request
 void usages_cancel_lookup(Ted *ted);
 /// find usages for word under the cursor in the active buffer.
 void usages_find(Ted *ted);
-void usages_process_lsp_response(Ted *ted, const LSPResponse *response);
-void usages_frame(Ted *ted);
 
 // === macro.c ===
 #if !TED_PLUGIN

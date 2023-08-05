@@ -501,6 +501,8 @@ int main(int argc, char **argv) {
 	gl_geometry_init();
 	text_init();
 	autocomplete_init(ted);
+	signature_help_init(ted);
+	usages_init(ted);
 	PROFILE_TIME(gl_end)
 	
 	
@@ -1184,8 +1186,9 @@ int main(int argc, char **argv) {
 	if (ted->menu)
 		menu_close(ted);
 	hover_close(ted);
-	signature_help_close(ted);
-	autocomplete_close(ted);
+	signature_help_quit(ted);
+	autocomplete_quit(ted);
+	usages_quit(ted);
 	highlights_close(ted);
 	session_write(ted);
 	rename_symbol_clear(ted);

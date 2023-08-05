@@ -765,3 +765,9 @@ void autocomplete_frame(Ted *ted) {
 	gl_geometry_draw();
 	text_render(font);
 }
+
+void autocomplete_quit(Ted *ted) {
+	autocomplete_close(ted);
+	free(ted->autocomplete);
+	ted->autocomplete = NULL;
+}

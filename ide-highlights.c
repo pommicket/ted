@@ -31,7 +31,7 @@ static void highlights_send_request(Ted *ted) {
 }
 
 
-void highlights_process_lsp_response(Ted *ted, LSPResponse *response) {
+void highlights_process_lsp_response(Ted *ted, const LSPResponse *response) {
 	Highlights *hls = &ted->highlights;
 	if (response->request.type != LSP_REQUEST_HIGHLIGHT)
 		return; // not a highlight request

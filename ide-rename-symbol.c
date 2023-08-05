@@ -32,14 +32,14 @@ void rename_symbol_frame(Ted *ted) {
 	ted->cursor = ted->cursor_wait;
 }
 
-void rename_symbol_process_lsp_response(Ted *ted, LSPResponse *response) {
+void rename_symbol_process_lsp_response(Ted *ted, const LSPResponse *response) {
 	RenameSymbol *rs = &ted->rename_symbol;
 	if (response->request.type != LSP_REQUEST_RENAME
 		|| response->request.id != rs->request_id.id) {
 		return;
 	}
 	
-	LSPResponseRename *data = &response->data.rename;
+	const LSPResponseRename *data = &response->data.rename;
 	LSP *lsp = ted_get_lsp_by_id(ted, rs->request_id.lsp);
 	if (!lsp) {
 		// LSP crashed or something
@@ -49,7 +49,7 @@ void rename_symbol_process_lsp_response(Ted *ted, LSPResponse *response) {
 	assert(rs->new_name);
 	
 	bool perform_changes = true;
-	arr_foreach_ptr(data->changes, LSPWorkspaceChange, change) {
+	arr_foreach_ptr(data->changes, const LSPWorkspaceChange, change) {
 		if (change->type != LSP_CHANGE_EDIT) {
 			// TODO(eventually) : support these
 			ted_error(ted, "rename is too complicated for ted to perform.");
@@ -59,10 +59,10 @@ void rename_symbol_process_lsp_response(Ted *ted, LSPResponse *response) {
 	
 	if (perform_changes) {
 		
-		arr_foreach_ptr(data->changes, LSPWorkspaceChange, change) {
+		arr_foreach_ptr(data->changes, const LSPWorkspaceChange, change) {
 			switch (change->type) {
 			case LSP_CHANGE_EDIT: {
-				LSPWorkspaceChangeEdit *change_data = &change->data.edit;
+				const LSPWorkspaceChangeEdit *change_data = &change->data.edit;
 				const char *path = lsp_document_path(lsp, change_data->document);
 				if (!ted_open_file(ted, path)) goto done;
 				
@@ -80,7 +80,7 @@ void rename_symbol_process_lsp_response(Ted *ted, LSPResponse *response) {
 				}
 				
 				
-				LSPTextEdit *edit = &change_data->edit;
+				const LSPTextEdit *edit = &change_data->edit;
 				BufferPos start = buffer_pos_from_lsp(buffer, edit->range.start);
 				BufferPos end = buffer_pos_from_lsp(buffer, edit->range.end);
 				buffer_delete_chars_between(buffer, start, end);
