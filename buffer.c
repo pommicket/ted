@@ -3014,8 +3014,8 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	if (buffer->is_line_buffer) {
 		// handle clicks
 		// this is only done for line buffers, so that ctrl+click works properly (and happens in one frame).
-		for (u32 i = 0; i < ted->nmouse_clicks[SDL_BUTTON_LEFT]; ++i) {
-			buffer_handle_click(ted, buffer, ted->mouse_clicks[SDL_BUTTON_LEFT][i], ted->mouse_click_times[SDL_BUTTON_LEFT][i]);
+		arr_foreach_ptr(ted->mouse_clicks[SDL_BUTTON_LEFT], MouseClick, click) {
+			buffer_handle_click(ted, buffer, click->pos, click->times);
 		}
 	}
 

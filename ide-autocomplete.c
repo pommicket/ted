@@ -608,11 +608,10 @@ void autocomplete_frame(Ted *ted) {
 		}
 	}
 		
-	
-	for (uint i = 0; i < ted->nmouse_clicks[SDL_BUTTON_LEFT]; ++i) {
-		vec2 click = ted->mouse_clicks[SDL_BUTTON_LEFT][i];
-		if (rect_contains_point(ac->rect, click)) {
-			i32 entry = scroll + (i32)((click.y - start_y) / char_height);
+	arr_foreach_ptr(ted->mouse_clicks[SDL_BUTTON_LEFT], MouseClick, click) {
+		vec2 pos = click->pos;
+		if (rect_contains_point(ac->rect, pos)) {
+			i32 entry = scroll + (i32)((pos.y - start_y) / char_height);
 			if (entry >= 0 && entry < (i32)ncompletions) {
 				// entry was clicked on! use this completion.
 				autocomplete_complete(ted, ac->completions[ac->suggested[entry]]);

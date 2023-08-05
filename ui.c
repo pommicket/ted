@@ -81,13 +81,11 @@ char *selector_update(Ted *ted, Selector *s) {
 		// check if this entry was clicked on
 		Rect entry_rect;
 		if (selector_entry_pos(ted, s, i, &entry_rect)) {
-			for (uint c = 0; c < ted->nmouse_clicks[SDL_BUTTON_LEFT]; ++c) {
-				if (rect_contains_point(entry_rect, ted->mouse_clicks[SDL_BUTTON_LEFT][c])) {
-					// this option was selected
-					s->cursor = i; // indicate the index of the selected entry using s->cursor
-					ret = str_dup(s->entries[i].name);
-					break;
-				}
+			if (ted_clicked_in_rect(ted, entry_rect)) {
+				// this option was selected
+				s->cursor = i; // indicate the index of the selected entry using s->cursor
+				ret = str_dup(s->entries[i].name);
+				break;
 			}
 		}
 	}
@@ -552,12 +550,7 @@ void button_render(Ted *ted, Rect button, const char *text, u32 color) {
 }
 
 bool button_update(Ted *ted, Rect button) {
-	for (u16 i = 0; i < ted->nmouse_clicks[SDL_BUTTON_LEFT]; ++i) {
-		if (rect_contains_point(button, ted->mouse_clicks[SDL_BUTTON_LEFT][i])) {
-			return true;
-		}
-	}
-	return false;
+	return ted_clicked_in_rect(ted, button);
 }
 
 static void popup_get_rects(Ted const *ted, u32 options, Rect *popup, Rect *button_yes, Rect *button_no, Rect *button_cancel) {
@@ -656,10 +649,8 @@ vec2 checkbox_frame(Ted *ted, bool *value, const char *label, vec2 pos) {
 	
 	Rect checkbox_rect = rect(pos, Vec2(checkbox_size, checkbox_size));
 	
-	for (u32 i = 0; i < ted->nmouse_clicks[SDL_BUTTON_LEFT]; ++i) {
-		if (rect_contains_point(checkbox_rect, ted->mouse_clicks[SDL_BUTTON_LEFT][i])) {
-			*value = !*value;
-		}
+	if (ted_clicked_in_rect(ted, checkbox_rect)) {
+		*value = !*value;
 	}
 	
 	checkbox_rect.pos = vec2_add(checkbox_rect.pos, Vec2(0.5f, 0.5f));

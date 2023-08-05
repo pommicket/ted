@@ -80,6 +80,13 @@ u32 ted_get_key_modifier(Ted *ted) {
 		| alt_down << KEY_MODIFIER_ALT_BIT;
 }
 
+bool ted_clicked_in_rect(Ted *ted, Rect rect) {
+	arr_foreach_ptr(ted->mouse_clicks[SDL_BUTTON_LEFT], MouseClick, click) {
+		if (rect_contains_point(rect, click->pos))
+			return true;
+	}
+	return false;
+}
 
 void ted_set_message(Ted *ted, MessageType type, const char *fmt, ...) {
 	va_list args;

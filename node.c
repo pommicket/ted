@@ -215,26 +215,24 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 			u16 ntabs = (u16)arr_len(node->tabs);
 			float tab_width = r.size.x / ntabs;
 			if (!ted->menu) {
-				for (u16 c = 0; c < ted->nmouse_clicks[SDL_BUTTON_LEFT]; ++c) {
-					vec2 click = ted->mouse_clicks[SDL_BUTTON_LEFT][c];
-					if (rect_contains_point(tab_bar_rect, click)) {
+				arr_foreach_ptr(ted->mouse_clicks[SDL_BUTTON_LEFT], MouseClick, click) {
+					if (rect_contains_point(tab_bar_rect, click->pos)) {
 						// click on tab to switch to it
-						u16 tab_index = (u16)((click.x - r.pos.x) / tab_width);
+						u16 tab_index = (u16)((click->pos.x - r.pos.x) / tab_width);
 						if (tab_index < arr_len(node->tabs)) {
 							ted->active_node = node;
 							node_switch_to_tab(ted, node, tab_index);
 							ted->dragging_tab_node = node;
 							ted->dragging_tab_idx = tab_index;
-							ted->dragging_tab_origin = click;
+							ted->dragging_tab_origin = click->pos;
 						}
 					}
 				}
 				if (ted->dragging_tab_node) {
 					// check if user dropped tab here
-					for (u16 c = 0; c < ted->nmouse_releases[SDL_BUTTON_LEFT]; ++c) {
-						vec2 release = ted->mouse_releases[SDL_BUTTON_LEFT][c];
-						if (rect_contains_point(tab_bar_rect, release)) {
-							u16 tab_index = (u16)roundf((release.x - r.pos.x) / tab_width);
+					arr_foreach_ptr(ted->mouse_releases[SDL_BUTTON_LEFT], MouseRelease, release) {
+						if (rect_contains_point(tab_bar_rect, release->pos)) {
+							u16 tab_index = (u16)roundf((release->pos.x - r.pos.x) / tab_width);
 							if (tab_index <= arr_len(node->tabs)) {
 								Node *drag_node = ted->dragging_tab_node;
 								u16 drag_index = ted->dragging_tab_idx;
@@ -264,11 +262,10 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 						}
 					}
 				}
-				for (u16 c = 0; c < ted->nmouse_clicks[SDL_BUTTON_MIDDLE]; ++c) {
+				arr_foreach_ptr(ted->mouse_clicks[SDL_BUTTON_MIDDLE], MouseClick, click) {
 					// middle-click to close tab
-					vec2 click = ted->mouse_clicks[SDL_BUTTON_MIDDLE][c];
-					if (rect_contains_point(tab_bar_rect, click)) {
-						u16 tab_index = (u16)((click.x - r.pos.x) / tab_width);
+					if (rect_contains_point(tab_bar_rect, click->pos)) {
+						u16 tab_index = (u16)((click->pos.x - r.pos.x) / tab_width);
 						if (tab_index < arr_len(node->tabs)) {
 							u16 buffer_idx = node->tabs[tab_index];
 							TextBuffer *buffer = &ted->buffers[buffer_idx];
@@ -388,11 +385,8 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 		if (rect_contains_point(r_between, ted->mouse_pos)) {
 			ted->cursor = resize_cursor;
 		}
-		for (u32 i = 0; i < ted->nmouse_clicks[SDL_BUTTON_LEFT]; ++i) {
-			if (rect_contains_point(r_between, ted->mouse_clicks[SDL_BUTTON_LEFT][i])) {
-				ted->resizing_split = node;
-			}
-		}
+		if (ted_clicked_in_rect(ted, r_between)) 
+			ted->resizing_split = node;
 		
 		node_frame(ted, a, r1);
 		node_frame(ted, b, r2);

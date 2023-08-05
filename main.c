@@ -1,6 +1,6 @@
 /*
 TODO:
-- use dynamic arrays for mouse_presses etc.
+- cache buffer settings
 
 FUTURE FEATURES:
 - autodetect indentation (tabs vs spaces)
@@ -602,8 +602,11 @@ int main(int argc, char **argv) {
 			ted->mouse_pos = Vec2((float)mouse_x, (float)mouse_y);
 		}
 
-		memset(ted->nmouse_clicks, 0, sizeof ted->nmouse_clicks);
-		memset(ted->nmouse_releases, 0, sizeof ted->nmouse_releases);
+		for (size_t i = 0; i < arr_count(ted->mouse_clicks); ++i)
+			arr_clear(ted->mouse_clicks[i]);
+		for (size_t i = 0; i < arr_count(ted->mouse_releases); ++i)
+			arr_clear(ted->mouse_releases[i]);
+		
 		ted->scroll_total_x = ted->scroll_total_y = 0;
 
 		ted_update_window_dimensions(ted);
@@ -656,50 +659,51 @@ int main(int argc, char **argv) {
 					ted_press_key(ted, KEYCODE_X2, key_modifier);
 				}
 				
-				if (button < arr_count(ted->nmouse_clicks) 
-					&& ted->nmouse_clicks[button] < arr_count(ted->mouse_clicks[button])) {
-					vec2 pos = Vec2(x, y);
-					bool add = true;
-					if (*ted->message_shown) {
-						if (rect_contains_point(message_box_rect(ted), pos)) {
-							// clicked on message
-							if (button == SDL_BUTTON_LEFT) {
-								// dismiss message
-								*ted->message_shown = '\0';
-							}
-							// don't let anyone else use this event
-							add = false;
+				if (button >= arr_count(ted->mouse_clicks)) break;
+				
+				vec2 pos = Vec2(x, y);
+				bool add = true;
+				if (*ted->message_shown) {
+					if (rect_contains_point(message_box_rect(ted), pos)) {
+						// clicked on message
+						if (button == SDL_BUTTON_LEFT) {
+							// dismiss message
+							*ted->message_shown = '\0';
 						}
+						// don't let anyone else use this event
+						add = false;
 					}
-					
-					if (add) {
-						// handle mouse click
-						// we need to do this here, and not in buffer_render, because ctrl+click (go to definition)
-						// could switch to a different buffer.
-						// line buffer click handling, IS done in buffer_render (yes this is less than ideal)
-						if (!ted->menu) {
-							for (u32 i = 0; i < TED_MAX_NODES; ++i) {
-								if (ted->nodes_used[i]) {
-									Node *node = &ted->nodes[i];
-									if (node->tabs) {
-										buffer = &ted->buffers[node->tabs[node->active_tab]];
-										if (buffer_handle_click(ted, buffer, pos, times)) {
-											add = false;
-											break;
-										}
+				}
+				
+				if (add) {
+					// handle mouse click
+					// we need to do this here, and not in buffer_render, because ctrl+click (go to definition)
+					// could switch to a different buffer.
+					// line buffer click handling, IS done in buffer_render (yes this is less than ideal)
+					if (!ted->menu) {
+						for (u32 i = 0; i < TED_MAX_NODES; ++i) {
+							if (ted->nodes_used[i]) {
+								Node *node = &ted->nodes[i];
+								if (node->tabs) {
+									buffer = &ted->buffers[node->tabs[node->active_tab]];
+									if (buffer_handle_click(ted, buffer, pos, times)) {
+										add = false;
+										break;
 									}
 								}
 							}
-							if (ted->build_shown)
-								if (buffer_handle_click(ted, &ted->build_buffer, pos, times)) // handle build buffer clicks
-									add = false;
 						}
-						if (add) {
-							ted->mouse_clicks[button][ted->nmouse_clicks[button]] = pos;
-							ted->mouse_click_times[button][ted->nmouse_clicks[button]] = times;
-							++ted->nmouse_clicks[button];
-						}
+						if (add && ted->build_shown)
+							if (buffer_handle_click(ted, &ted->build_buffer, pos, times)) // handle build buffer clicks
+								add = false;
 					}
+				}
+				if (add) {
+					MouseClick click = {
+						.pos = pos,
+						.times = times,
+					};
+					arr_add(ted->mouse_clicks[button], click);
 				}
 			} break;
 			case SDL_MOUSEBUTTONUP: {
@@ -707,12 +711,13 @@ int main(int argc, char **argv) {
 					break; // ignore mouse input during macros
 				
 				Uint8 button = event.button.button;
-				if (button < arr_count(ted->nmouse_releases)) {
-					vec2 pos = Vec2((float)event.button.x, (float)event.button.y);
-					if (ted->nmouse_releases[button] < arr_count(ted->mouse_releases[button])) {
-						ted->mouse_releases[button][ted->nmouse_releases[button]++] = pos;
-					}
-				}
+				if (button >= arr_count(ted->mouse_releases)) break;
+				
+				vec2 pos = Vec2((float)event.button.x, (float)event.button.y);
+				MouseRelease release = {
+					.pos = pos
+				};
+				arr_add(ted->mouse_releases[button], release);
 			} break;
 			case SDL_MOUSEMOTION: {
 				if (ted->recording_macro)
@@ -989,11 +994,9 @@ int main(int argc, char **argv) {
 					ted->cursor = ted->cursor_resize_v;
 				} else {
 					Rect gap = rect4(x1, y - padding, x2, y);
-					for (uint i = 0; i < ted->nmouse_clicks[SDL_BUTTON_LEFT]; ++i) {
-						if (rect_contains_point(gap, ted->mouse_clicks[SDL_BUTTON_LEFT][i])) {
-							// start resizing build output
-							ted->resizing_build_output = true;
-						}
+					if (ted_clicked_in_rect(ted, gap)) {
+						// start resizing build output
+						ted->resizing_build_output = true;
 					}
 					if (rect_contains_point(gap, ted->mouse_pos)) {
 						ted->cursor = ted->cursor_resize_v;
@@ -1027,7 +1030,7 @@ int main(int argc, char **argv) {
 		}
 
 		// stop dragging tab if mouse was released
-		if (ted->nmouse_releases[SDL_BUTTON_LEFT])
+		if (arr_len(ted->mouse_releases[SDL_BUTTON_LEFT]))
 			ted->dragging_tab_node = NULL;
 
 		if (ted->menu) {
@@ -1176,6 +1179,12 @@ int main(int argc, char **argv) {
 	#endif
 
 	}
+	
+	
+	for (size_t i = 0; i < arr_count(ted->mouse_clicks); ++i)
+		arr_clear(ted->mouse_clicks[i]);
+	for (size_t i = 0; i < arr_count(ted->mouse_releases); ++i)
+		arr_clear(ted->mouse_releases[i]);
 	
 	if (ted->find)
 		find_close(ted);

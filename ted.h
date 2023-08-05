@@ -748,6 +748,15 @@ typedef struct {
 
 #define TED_MACRO_MAX 256
 
+typedef struct {
+	vec2 pos;
+	u8 times;
+} MouseClick;
+
+typedef struct {
+	vec2 pos;
+} MouseRelease;
+
 /// (almost) all data used by the ted application
 typedef struct Ted {
 	/// all running LSP servers
@@ -777,14 +786,9 @@ typedef struct Ted {
 	float window_width, window_height;
 	vec2 mouse_pos;
 	u32 mouse_state;
-	/// `nmouse_clicks[i]` = length of `mouse_clicks[i]`
-	u8 nmouse_clicks[4];
 	/// `mouse_clicks[SDL_BUTTON_RIGHT]`, for example, is all the right mouse-clicks that have happened this frame
-	vec2 mouse_clicks[4][32];
-	/// number of times mouse was clicked at each position
-	u8 mouse_click_times[4][32];
-	u8 nmouse_releases[4];
-	vec2 mouse_releases[4][32];
+	MouseClick *mouse_clicks[4];
+	MouseRelease *mouse_releases[4];
 	/// total amount scrolled this frame
 	int scroll_total_x, scroll_total_y; 
 	/// currently open menu, or \ref MENU_NONE if no menu is open.
@@ -1650,6 +1654,8 @@ bool ted_is_shift_down(Ted *ted);
 bool ted_is_alt_down(Ted *ted);
 /// see \ref KEY_MODIFIER_CTRL, etc.
 u32 ted_get_key_modifier(Ted *ted);
+/// was there a click in this rectangle this frame?
+bool ted_clicked_in_rect(Ted *ted, Rect rect);
 /// display a message to the user
 void ted_set_message(Ted *ted, MessageType type, PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRINTF(3, 4);
 /// display an error to the user
