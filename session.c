@@ -1,4 +1,4 @@
-#include "ted.h"
+#include "ted-internal.h"
 
 #define SESSION_FILENAME "session.txt"
 #define SESSION_VERSION "\x7fTED0002"

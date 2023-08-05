@@ -21,7 +21,7 @@ FUTURE FEATURES:
 - LSP request timeout
 */
 
-#include "ted.h"
+#include "ted-internal.h"
 
 #include <locale.h>
 #include <signal.h>

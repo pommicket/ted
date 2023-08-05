@@ -1,6 +1,6 @@
 // find usages of symbol
 
-#include "ted.h"
+#include "ted-internal.h"
 struct Usages {
 	LSPServerRequestID last_request;
 	double last_request_time;

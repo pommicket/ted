@@ -1,6 +1,6 @@
 // various UI elements used by ted
 
-#include "ted.h"
+#include "ted-internal.h"
 
 #if __unix__
 #include <fcntl.h>

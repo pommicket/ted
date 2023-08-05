@@ -1,7 +1,7 @@
 // the main highlight here is command_execute, which
 // determines what to do when a command is executed.
 
-#include "ted.h"
+#include "ted-internal.h"
 
 typedef struct {
 	const char *name;

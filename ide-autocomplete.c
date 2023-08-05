@@ -1,6 +1,6 @@
 // auto-completion for ted
 
-#include "ted.h"
+#include "ted-internal.h"
 
 #define TAGS_MAX_COMPLETIONS 200 // max # of tag completions to scroll through
 #define AUTOCOMPLETE_NCOMPLETIONS_VISIBLE 10 // max # of completions to show at once

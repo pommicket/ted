@@ -2,7 +2,7 @@
 // NOTE: All text editing should be done through the two functions
 // buffer_insert_text_at_pos and buffer_delete_chars_at_pos
 
-#include "ted.h"
+#include "ted-internal.h"
 
 #include <sys/stat.h>
 

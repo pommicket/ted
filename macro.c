@@ -1,4 +1,4 @@
-#include "ted.h"
+#include "ted-internal.h"
 
 static void macro_clear(Macro *macro) {
 	arr_foreach_ptr(macro->actions, Action, act) {

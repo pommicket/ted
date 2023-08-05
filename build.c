@@ -1,7 +1,7 @@
 // :build command
 // also handles :shell.
 
-#include "ted.h"
+#include "ted-internal.h"
 
 void build_stop(Ted *ted) {
 	if (ted->building)

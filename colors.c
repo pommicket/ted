@@ -1,6 +1,6 @@
 // color names and functions for dealing with colors
 
-#include "ted.h"
+#include "ted-internal.h"
 
 typedef struct {
 	ColorSetting setting;

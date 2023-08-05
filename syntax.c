@@ -1,6 +1,6 @@
 // syntax highlighting for ted
 
-#include "ted.h"
+#include "ted-internal.h"
 #include "keywords.h"
 
 

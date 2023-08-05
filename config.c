@@ -7,7 +7,7 @@
 // [section2]
 // asdf = 123
 
-#include "ted.h"
+#include "ted-internal.h"
 
 /// Sections of `ted.cfg`
 typedef enum {

@@ -1,6 +1,6 @@
 // various core ted functions (opening files, displaying errors, etc.)
 
-#include "ted.h"
+#include "ted-internal.h"
 #if _WIN32
 	#include <SDL_syswm.h>
 #endif
@@ -763,33 +763,17 @@ void ted_flash_error_cursor(Ted *ted) {
 	ted->cursor_error_time = ted->frame_time;
 }
 
-void ted_go_to_position(Ted *ted, const char *path, u32 line, u32 index, bool is_lsp) {
+void ted_go_to_lsp_document_position(Ted *ted, LSP *lsp, LSPDocumentPosition position) {
+	if (!lsp) lsp = ted_active_lsp(ted);
+	const char *path = lsp_document_path(lsp, position.document);
 	if (ted_open_file(ted, path)) {
 		TextBuffer *buffer = ted->active_buffer;
-		BufferPos pos = {0};
-		if (is_lsp) {
-			LSPPosition lsp_pos = {
-				.line = line,
-				.character = index
-			};
-			pos = buffer_pos_from_lsp(buffer, lsp_pos);
-		} else {
-			pos.line = line;
-			pos.index = index;
-		}
+		BufferPos pos = buffer_pos_from_lsp(buffer, position.pos);
 		buffer_cursor_move_to_pos(buffer, pos);
 		buffer->center_cursor_next_frame = true;
 	} else {
 		ted_flash_error_cursor(ted);
 	}
-}
-
-void ted_go_to_lsp_document_position(Ted *ted, LSP *lsp, LSPDocumentPosition position) {
-	if (!lsp) lsp = ted_active_lsp(ted);
-	const char *path = lsp_document_path(lsp, position.document);
-	u32 line = position.pos.line;
-	u32 character = position.pos.character;
-	ted_go_to_position(ted, path, line, character, true);
 }
 
 void ted_cancel_lsp_request(Ted *ted, LSPServerRequestID *request) {

@@ -1,6 +1,6 @@
 // handles ted's find and replace menu.
 
-#include "ted.h"
+#include "ted-internal.h"
 #include "pcre-inc.h"
 
 #define FIND_MAX_GROUPS 50

@@ -1,4 +1,4 @@
-#include "ted.h"
+#include "ted-internal.h"
 
 struct RenameSymbol {
 	LSPServerRequestID request_id;

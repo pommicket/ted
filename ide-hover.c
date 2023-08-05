@@ -1,6 +1,6 @@
 // LSP hover information (textDocument/hover request)
 
-#include "ted.h"
+#include "ted-internal.h"
 
 struct Hover {
 	LSPServerRequestID last_request;

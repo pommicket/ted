@@ -1,6 +1,6 @@
 // deals with all of ted's menus ("open" menu, "save as" menu, etc.)
 
-#include "ted.h"
+#include "ted-internal.h"
 
 static void menu_close_with_next(Ted *ted, Menu next) {
 	ted_switch_to_buffer(ted, ted->prev_active_buffer);

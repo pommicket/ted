@@ -1,4 +1,4 @@
-#include "ted.h"
+#include "ted-internal.h"
 
 typedef struct DocumentLink DocumentLink;
 struct DocumentLink {

@@ -1,7 +1,7 @@
 // various functions for dealing with OpenGL.
 // also houses all of the basic rendering functions ted uses.
 
-#include "ted.h"
+#include "ted-internal.h"
 #include "lib/glcorearb.h"
 
 float gl_window_width, gl_window_height;

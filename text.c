@@ -1,4 +1,4 @@
-#include "ted.h"
+#include "ted-internal.h"
  
 no_warn_start
 #if DEBUG

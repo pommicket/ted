@@ -1,6 +1,6 @@
 // deals with ted's split-screen feature
 
-#include "ted.h"
+#include "ted-internal.h"
 
 void node_switch_to_tab(Ted *ted, Node *node, u16 new_tab_index) {
 	node->active_tab = new_tab_index;

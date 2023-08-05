@@ -1,6 +1,6 @@
 // support for ctags go-to-definition and completion
 
-#include "ted.h"
+#include "ted-internal.h"
 #include "pcre-inc.h"
 
 static const char *tags_filename(Ted *ted, bool error_if_does_not_exist) {

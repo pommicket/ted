@@ -1,7 +1,7 @@
 // this file deals with ctrl+click "go to definition", and
 // the definitions menu (Ctrl+D)
 
-#include "ted.h"
+#include "ted-internal.h"
 
 void definition_cancel_lookup(Ted *ted) {
 	Definitions *defs = &ted->definitions;

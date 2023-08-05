@@ -1,6 +1,6 @@
 // highlight uses of identifier (LSP request textDocument/highlight)
 
-#include "ted.h"
+#include "ted-internal.h"
 
 struct Highlights {
 	LSPServerRequestID last_request;
