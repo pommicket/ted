@@ -59,11 +59,10 @@ void rename_symbol_process_lsp_response(Ted *ted, LSPResponse *response) {
 	
 	if (perform_changes) {
 		arr_foreach_ptr(data->changes, LSPWorkspaceChange, change) {
-			printf("change type %u\n",change->type);
 			switch (change->type) {
 			case LSP_CHANGE_EDIT: {
-				LSPWorkspaceChangeEdit *edit = &change->data.edit;
-				const char *path = lsp_document_path(lsp, edit->document);
+				LSPWorkspaceChangeEdit *change_data = &change->data.edit;
+				const char *path = lsp_document_path(lsp, change_data->document);
 				if (!ted_open_file(ted, path)) goto done;
 				
 				TextBuffer *buffer = ted_get_buffer_with_file(ted, path);
@@ -73,7 +72,12 @@ void rename_symbol_process_lsp_response(Ted *ted, LSPResponse *response) {
 					assert(0);
 					goto done;
 				}
-				printf("%s\n",path);
+				
+				LSPTextEdit *edit = &change_data->edit;
+				BufferPos start = buffer_pos_from_lsp(buffer, edit->range.start);
+				BufferPos end = buffer_pos_from_lsp(buffer, edit->range.end);
+				buffer_delete_chars_between(buffer, start, end);
+				buffer_insert_utf8_at_pos(buffer, start, lsp_response_string(response, edit->new_text));
 				
 				}
 				break;
