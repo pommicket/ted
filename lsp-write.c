@@ -458,7 +458,8 @@ void write_request(LSP *lsp, LSPRequest *request) {
 				write_key_obj_start(o, "workspace");
 					write_key_bool(o, "workspaceFolders", true);
 					write_key_obj_start(o, "workspaceEdit");
-						write_key_bool(o, "documentChanges", true);
+						// currently unsupported -- see ide-rename-symbol.c
+						// write_key_bool(o, "documentChanges", true);
 						write_key_arr_start(o, "resourceOperations");
 							write_arr_elem_string(o, "create");
 							write_arr_elem_string(o, "rename");

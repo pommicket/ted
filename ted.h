@@ -464,6 +464,8 @@ typedef enum {
 	MENU_COMMAND_SELECTOR,
 	/// "Run a shell command"
 	MENU_SHELL,
+	/// "Rename symbol"
+	MENU_RENAME_SYMBOL,
 } Menu;
 
 /// an entry in a selector menu (e.g. the "open" menu)
@@ -681,6 +683,12 @@ typedef struct {
 	DocumentLink *links;
 } DocumentLinks;
 
+/// information for symbol rename (LSP)
+typedef struct {
+	char *new_name;
+	LSPServerRequestID request_id;
+} RenameSymbol;
+
 /// "hover" information from LSP server
 typedef struct {
 	LSPServerRequestID last_request;
@@ -850,6 +858,7 @@ typedef struct Ted {
 	Definitions definitions;
 	Highlights highlights;
 	Usages usages;
+	RenameSymbol rename_symbol;
 	
 	FILE *log;
 	
@@ -1078,6 +1087,8 @@ i64 buffer_cursor_move_left_words(TextBuffer *buffer, i64 nwords);
 i64 buffer_cursor_move_right_words(TextBuffer *buffer, i64 nwords);
 /// move cursor to "previous" position (i.e. \ref CMD_PREVIOUS_POSITION)
 void buffer_cursor_move_to_prev_pos(TextBuffer *buffer);
+/// Get the start and end index of the word at the given position.
+void buffer_word_span_at_pos(TextBuffer *buffer, BufferPos pos, u32 *word_start, u32 *word_end);
 /// Returns a string of word characters (see is32_word) around the position,
 /// or an empty string if neither of the characters to the left and right of the cursor are word characters.
 /// NOTE: The string is invalidated when the buffer is changed!!!
@@ -1540,6 +1551,10 @@ void highlights_frame(Ted *ted);
 void hover_close(Ted *ted);
 void hover_process_lsp_response(Ted *ted, LSPResponse *response);
 void hover_frame(Ted *ted, double dt);
+
+// === ide-rename-symbol.c ===
+void rename_symbol_clear(Ted *ted);
+void rename_symbol_frame(Ted *ted);
 
 // === ide-signature-help.c ===
 /// figure out new signature help

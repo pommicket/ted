@@ -246,7 +246,7 @@ chmod +x ~/.local/bin/rust-analyzer
 ## Tags (lightweight LSP alternative)
 
 If an LSP is too much for you, you can also use [ctags](https://github.com/universal-ctags/ctags)
-for autocompletion and jump to definition. You can press Ctrl+T
+for autocompletion and jump to definition. You can run the `:generate-tags` command
 at any time to generate or re-generate tags.
 Ctrl+Click (go to definition), Ctrl+D (see all definitions), and autocomplete are all supported.
 Autocomplete will just complete to stuff in the tags file, so it won't complete local

@@ -104,6 +104,7 @@ static CommandName command_names[] = {
 	{"macro-execute", CMD_MACRO_EXECUTE},
 	{"increment-number", CMD_INCREMENT_NUMBER},
 	{"decrement-number", CMD_DECREMENT_NUMBER},
+	{"rename-symbol", CMD_RENAME_SYMBOL},
 };
 
 static_assert_if_possible(arr_count(command_names) == CMD_COUNT)
@@ -678,6 +679,10 @@ void command_execute_ex(Ted *ted, Command c, CommandArgument full_argument, Comm
 		break;
 	case CMD_MACRO_EXECUTE:
 		macro_execute(ted, (u32)argument);
+		break;
+	case CMD_RENAME_SYMBOL:
+		if (buffer && buffer_lsp(buffer))
+			menu_open(ted, MENU_RENAME_SYMBOL);
 		break;
 	}
 }

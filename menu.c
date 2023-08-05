@@ -41,6 +41,9 @@ static void menu_close_with_next(Ted *ted, Menu next) {
 	case MENU_SHELL:
 		buffer_clear(&ted->line_buffer);
 		break;
+	case MENU_RENAME_SYMBOL:
+		buffer_clear(&ted->line_buffer);
+		break;
 	}
 	ted->menu = MENU_NONE;
 	ted->selector_open = NULL;
@@ -96,6 +99,9 @@ void menu_open(Ted *ted, Menu menu) {
 	case MENU_SHELL:
 		ted_switch_to_buffer(ted, &ted->line_buffer);
 		ted->shell_history_pos = arr_len(ted->shell_history);
+		break;
+	case MENU_RENAME_SYMBOL:
+		ted_switch_to_buffer(ted, &ted->line_buffer);
 		break;
 	}
 }
@@ -320,6 +326,12 @@ void menu_update(Ted *ted) {
 			build_start_with_command(ted, command);
 		}
 		break;
+	case MENU_RENAME_SYMBOL: {
+		RenameSymbol *rs = &ted->rename_symbol;
+		if (line_buffer->line_buffer_submitted && !rs->new_name) {
+			rs->new_name = str32_to_utf8_cstr(buffer_get_line(line_buffer, 0));
+		}
+		} break;
 	}
 }
 
@@ -436,20 +448,60 @@ void menu_render(Ted *ted) {
 
 		text_render(font_bold);
 	} break;
-	case MENU_SHELL: {		
+	case MENU_SHELL: {
 		bounds.size.y = line_buffer_height + 2 * padding;
-		rect_coords(bounds, &x1, &y1, &x2, &y2);
-		
 		gl_geometry_rect(bounds, colors[COLOR_MENU_BG]);
 		gl_geometry_rect_border(bounds, settings->border_thickness, colors[COLOR_BORDER]);
 		gl_geometry_draw();
-		
-		x1 += padding;
-		y1 += padding;
-		x2 -= padding;
-		y2 -= padding;
-		
+		bounds = rect_shrink(bounds, padding);
+		rect_coords(bounds, &x1, &y1, &x2, &y2);
 		const char *text = "Run";
+		text_utf8(font_bold, text, x1, y1, colors[COLOR_TEXT]);
+		x1 += text_get_size_vec2(font_bold, text).x + padding;
+		text_render(font_bold);
+		
+		buffer_render(&ted->line_buffer, rect4(x1, y1, x2, y2));
+	} break;
+	case MENU_RENAME_SYMBOL: {
+		// highlight symbol
+		TextBuffer *buffer = ted->prev_active_buffer;
+		if (!buffer) {
+			menu_close(ted);
+			return;
+		}
+		RenameSymbol *rs = &ted->rename_symbol;
+		if (rs->new_name) {
+			// already entered a new name
+			return;
+		}
+		
+		u32 sym_start=0, sym_end=0;
+		BufferPos cursor_pos = buffer->cursor_pos;
+		buffer_word_span_at_pos(buffer, cursor_pos, &sym_start, &sym_end);
+		BufferPos bpos0 = {
+			.line = cursor_pos.line,
+			.index = sym_start
+		};
+		BufferPos bpos1 = {
+			.line = cursor_pos.line,
+			.index = sym_end
+		};
+		// symbol should span from pos0 to pos1
+		vec2 p0 = buffer_pos_to_pixels(buffer, bpos0);
+		vec2 p1 = buffer_pos_to_pixels(buffer, bpos1);
+		p1.y += text_font_char_height(buffer_font(buffer));
+		Rect highlight = rect_endpoints(p0, p1);
+		gl_geometry_rect_border(highlight, settings->border_thickness, colors[COLOR_BORDER]);
+		gl_geometry_rect(highlight, colors[COLOR_HOVER_HL]);
+		
+		float height = line_buffer_height + 2 * padding;
+		bounds.size.y = height;
+		gl_geometry_rect(bounds, colors[COLOR_MENU_BG]);
+		gl_geometry_rect_border(bounds, settings->border_thickness, colors[COLOR_BORDER]);
+		gl_geometry_draw();
+		bounds = rect_shrink(bounds, padding);
+		rect_coords(bounds, &x1, &y1, &x2, &y2);
+		const char *text = "Rename symbol to...";
 		text_utf8(font_bold, text, x1, y1, colors[COLOR_TEXT]);
 		x1 += text_get_size_vec2(font_bold, text).x + padding;
 		text_render(font_bold);

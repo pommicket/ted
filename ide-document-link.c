@@ -86,7 +86,8 @@ void document_link_frame(Ted *ted) {
 
 void document_link_process_lsp_response(Ted *ted, const LSPResponse *response) {
 	DocumentLinks *dl = &ted->document_links;
-	if (response->request.type != LSP_REQUEST_DOCUMENT_LINK)
+	if (response->request.type != LSP_REQUEST_DOCUMENT_LINK
+		|| response->request.id != dl->last_request.id)
 		return;
 	if (!dl->last_request.id)
 		return; // request was cancelled

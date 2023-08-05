@@ -1386,24 +1386,33 @@ i64 buffer_cursor_move_right_words(TextBuffer *buffer, i64 nwords) {
 	return ret;
 }
 
-String32 buffer_word_at_pos(TextBuffer *buffer, BufferPos pos) {
+void buffer_word_span_at_pos(TextBuffer *buffer, BufferPos pos, u32 *word_start, u32 *word_end) {
 	buffer_pos_validate(buffer, &pos);
 	Line *line = &buffer->lines[pos.line];
 	char32_t *str = line->str;
-	i64 word_start, word_end;
-	for (word_start = pos.index; word_start > 0; --word_start) {
-		if (!is32_word(str[word_start - 1]))
+	i64 start, end;
+	for (start = pos.index; start > 0; --start) {
+		if (!is32_word(str[start - 1]))
 			break;
 	}
-	for (word_end = pos.index; word_end < line->len; ++word_end) {
-		if (!is32_word(str[word_end]))
+	for (end = pos.index; end < line->len; ++end) {
+		if (!is32_word(str[end]))
 			break;
 	}
+	*word_start = (u32)start;
+	*word_end = (u32)end;
+}
+
+String32 buffer_word_at_pos(TextBuffer *buffer, BufferPos pos) {
+	buffer_pos_validate(buffer, &pos);
+	Line *line = &buffer->lines[pos.line];
+	u32 word_start=0, word_end=0;
+	buffer_word_span_at_pos(buffer, pos, &word_start, &word_end);
 	u32 len = (u32)(word_end - word_start);
 	if (len == 0)
 		return str32(NULL, 0);
 	else
-		return str32(str + word_start, len);
+		return str32(line->str + word_start, len);
 }
 
 String32 buffer_word_at_cursor(TextBuffer *buffer) {

@@ -74,6 +74,7 @@ FUTURE FEATURES:
 #include "menu.c"
 #include "ide-autocomplete.c"
 #include "ide-signature-help.c"
+#include "ide-rename-symbol.c"
 #include "ide-hover.c"
 #include "ide-definitions.c"
 #include "ide-highlights.c"
@@ -904,6 +905,7 @@ int main(int argc, char **argv) {
 					highlights_process_lsp_response(ted, r);
 					usages_process_lsp_response(ted, r);
 					document_link_process_lsp_response(ted, r);
+					rename_symbol_process_lsp_response(ted, r);
 					} break;
 				}
 				lsp_message_free(&message);
@@ -1012,6 +1014,7 @@ int main(int argc, char **argv) {
 				highlights_frame(ted);
 				usages_frame(ted);
 				document_link_frame(ted);
+				rename_symbol_frame(ted);
 			} else {
 				autocomplete_close(ted);
 				if (!ted->build_shown) {
@@ -1192,6 +1195,7 @@ int main(int argc, char **argv) {
 	autocomplete_close(ted);
 	highlights_close(ted);
 	session_write(ted);
+	rename_symbol_clear(ted);
 	document_link_clear(ted);
 	
 	for (int i = 0; i < TED_LSP_MAX; ++i) {
