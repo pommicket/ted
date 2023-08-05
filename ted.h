@@ -268,17 +268,10 @@ typedef enum {
 bool buffer_is_view_only(TextBuffer *buffer);
 /// Set whether the buffer should be in view only mode.
 void buffer_set_view_only(TextBuffer *buffer, bool view_only);
-/// Get path to buffer's file. At most `bufsz` bytes are written to `buf`.
+/// Get path to buffer's file, or `NULL` if the buffer is unnamed.
 ///
-/// Returns the number of bytes needed to store the path including a null terminator,
-/// or 1 if the buffer is unnamed.
-size_t buffer_get_path(TextBuffer *buffer, char *buf, size_t bufsz);
-/// Does this buffer have an error?
-bool buffer_has_error(TextBuffer *buffer);
-/// get buffer error
-const char *buffer_get_error(TextBuffer *buffer);
-/// clear buffer error
-void buffer_clear_error(TextBuffer *buffer);
+/// This string can be freed if the buffer is saved under a different name or closed, so don't keep it around for long.
+const char *buffer_get_path(TextBuffer *buffer);
 /// clear undo and redo history
 void buffer_clear_undo_redo(TextBuffer *buffer);
 /// is this buffer empty?
@@ -287,10 +280,6 @@ bool buffer_empty(TextBuffer *buffer);
 const char *buffer_display_filename(TextBuffer *buffer);
 /// does this buffer contained a named file (i.e. not a line buffer, not the build buffer, not untitled)
 bool buffer_is_named_file(TextBuffer *buffer);
-/// create a new empty buffer with no file name
-void buffer_create(TextBuffer *buffer, Ted *ted);
-/// create a new empty line buffer
-void line_buffer_create(TextBuffer *buffer, Ted *ted);
 /// does this buffer have unsaved changes?
 bool buffer_unsaved_changes(TextBuffer *buffer);
 /// returns the character after position pos, or 0 if pos is invalid
@@ -460,7 +449,9 @@ void buffer_cursor_move_to_end_of_line(TextBuffer *buffer);
 void buffer_cursor_move_to_start_of_file(TextBuffer *buffer);
 /// Move cursor to the end of the file, like Ctrl+End does.
 void buffer_cursor_move_to_end_of_file(TextBuffer *buffer);
-/// Put text at a position. All text insertion should eventually go through this function.
+/// Put text at a position.
+///
+/// Returns the position of the end of the text, or (BufferPos){0} on error.
 BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 str);
 /// Insert a single character at a position.
 void buffer_insert_char_at_pos(TextBuffer *buffer, BufferPos pos, char32_t c);
@@ -508,7 +499,6 @@ void buffer_select_page_up(TextBuffer *buffer, i64 npages);
 /// Scroll down by `npages` pages, selecting everything in between
 void buffer_select_page_down(TextBuffer *buffer, i64 npages);
 /// Delete `nchars` characters starting from `pos`.
-/// All text deletion should eventually go through this function.
 void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars);
 /// Delete characters between the two positions.
 /// The order of `p1` and `p2` is irrelevant.
@@ -552,7 +542,9 @@ void buffer_backspace_words_at_cursor(TextBuffer *buffer, i64 nwords);
 void buffer_undo(TextBuffer *buffer, i64 ntimes);
 /// Redo `ntimes` times
 void buffer_redo(TextBuffer *buffer, i64 ntimes);
-/// Start a new "edit chain". Undoing once after an edit chain will undo everything in the chain.
+/// Start a new "edit chain".
+///
+/// Undoing once after an edit chain will undo everything in the chain.
 void buffer_start_edit_chain(TextBuffer *buffer);
 /// End the edit chain.
 void buffer_end_edit_chain(TextBuffer *buffer);
@@ -575,17 +567,16 @@ void buffer_new_file(TextBuffer *buffer, const char *path);
 /// Save the buffer to its current filename. This will rewrite the entire file,
 /// even if there are no unsaved changes.
 bool buffer_save(TextBuffer *buffer);
-/// save, but with a different path
-bool buffer_save_as(TextBuffer *buffer, const char *new_filename);
+/// Save, but with a different path.
+///
+/// `new_path` must be an absolute path.
+bool buffer_save_as(TextBuffer *buffer, const char *new_path);
 /// index of first line that will be displayed on screen
 u32 buffer_first_rendered_line(TextBuffer *buffer);
 /// index of last line that will be displayed on screen
 u32 buffer_last_rendered_line(TextBuffer *buffer);
 /// go to the definition/declaration/etc of the word at the cursor.
 void buffer_goto_word_at_cursor(TextBuffer *buffer, GotoType type);
-/// process a mouse click.
-/// returns true if the event was consumed.
-bool buffer_handle_click(Ted *ted, TextBuffer *buffer, vec2 click, u8 times);
 /// render the buffer in the given rectangle
 void buffer_render(TextBuffer *buffer, Rect r);
 /// indent the given lines
@@ -618,7 +609,8 @@ bool buffer_pos_eq(BufferPos p1, BufferPos p2);
 ///
 /// faster than \ref buffer_pos_diff (constant time)
 int buffer_pos_cmp(BufferPos p1, BufferPos p2);
-/// returns "`p2 - p1`", that is, the number of characters between `p1` and `p2`.
+/// returns "`p2 - p1`", that is, the number of characters between `p1` and `p2`,
+/// but negative if `p1` comes after `p2`.
 i64 buffer_pos_diff(TextBuffer *buffer, BufferPos p1, BufferPos p2);
 
 // === build.c ===
@@ -626,15 +618,15 @@ i64 buffer_pos_diff(TextBuffer *buffer, BufferPos p1, BufferPos p2);
 void build_stop(Ted *ted);
 /// call before adding anything to the build queue
 void build_queue_start(Ted *ted);
-/// add a command to the build queue. call build_queue_start before this.
+/// add a command to the build queue. call \ref build_queue_start before this.
 void build_queue_command(Ted *ted, const char *command);
-/// call this after calling build_queue_start, build_queue_command.
-/// make sure you set ted->build_dir before running this!
+/// call this after calling \ref build_queue_start, \ref build_queue_command.
+/// make sure you set `ted->build_dir` before running this!
 void build_queue_finish(Ted *ted);
 /// set up the build output buffer.
 void build_setup_buffer(Ted *ted);
 /// run a single command in the build window.
-/// make sure you set ted->build_dir before running this!
+/// make sure you set `ted->build_dir` before running this!
 void build_start_with_command(Ted *ted, const char *command);
 /// figure out which build command to run, and run it.
 void build_start(Ted *ted);
@@ -644,13 +636,14 @@ void build_next_error(Ted *ted);
 void build_prev_error(Ted *ted);
 /// find build errors in build buffer.
 void build_check_for_errors(Ted *ted);
-void build_frame(Ted *ted, float x1, float y1, float x2, float y2);
 
 // === colors.c ===
+/// parse color setting
 ColorSetting color_setting_from_str(const char *str);
+/// get string corresponding to color setting
 const char *color_setting_to_str(ColorSetting s);
 Status color_from_str(const char *str, u32 *color);
-/// perform SRC_ALPHA, ONE_MINUS_SRC_ALPHA blending with `bg` and `fg`.
+/// perform alpha blending with `bg` and `fg`.
 u32 color_blend(u32 bg, u32 fg);
 /// multiply color's alpha value by `opacity`.
 u32 color_apply_opacity(u32 color, float opacity);
@@ -670,8 +663,6 @@ char *settings_get_root_dir(Settings *settings, const char *path);
 // === find.c ===
 /// which buffer will be searched?
 TextBuffer *find_search_buffer(Ted *ted);
-/// height of the find/find+replace menu in pixels
-float find_menu_height(Ted *ted);
 /// update find results.
 /// if `force` is true, the results will be updated even if the pattern & flags have not been changed.
 void find_update(Ted *ted, bool force);
@@ -683,7 +674,6 @@ void find_next(Ted *ted);
 void find_prev(Ted *ted);
 /// replace all matches
 void find_replace_all(Ted *ted);
-void find_menu_frame(Ted *ted, Rect menu_bounds);
 /// open the find/find+replace menu.
 void find_open(Ted *ted, bool replace);
 /// close the find/find+replace menu.
@@ -730,7 +720,6 @@ void autocomplete_next(Ted *ted);
 void autocomplete_prev(Ted *ted);
 /// close completion menu
 void autocomplete_close(Ted *ted);
-void autocomplete_frame(Ted *ted);
 
 // === ide-definitions.c ===
 /// cancel the last go-to-definition / find symbols request.
@@ -742,7 +731,6 @@ void definitions_selector_update(Ted *ted);
 void definitions_selector_render(Ted *ted, Rect bounds);
 /// close the definitions menu
 void definitions_selector_close(Ted *ted);
-void definitions_frame(Ted *ted);
 
 // === ide-document-link.c ===
 /// get document link at this position in the active buffer.

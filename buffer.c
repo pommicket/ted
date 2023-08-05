@@ -91,15 +91,8 @@ void buffer_set_view_only(TextBuffer *buffer, bool view_only) {
 	buffer->view_only = view_only;
 }
 
-size_t buffer_get_path(TextBuffer *buffer, char *buf, size_t bufsz) {
-	if (!buffer->path) {
-		if (bufsz) *buf = '\0';
-		return 1;
-	}
-	if (bufsz > 0) {
-		str_cpy(buf, bufsz, buffer->path);
-	}
-	return strlen(buffer->path) + 1;
+const char *buffer_get_path(TextBuffer *buffer) {
+	return buffer->path;
 }
 
 const char *buffer_display_filename(TextBuffer *buffer) {
@@ -1599,7 +1592,6 @@ static void buffer_send_lsp_did_change(LSP *lsp, TextBuffer *buffer, BufferPos p
 	lsp_document_changed(lsp, buffer->path, event);
 }
 
-// inserts the given text, returning the position of the end of the text
 BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 str) {
 	buffer_pos_validate(buffer, &pos);
 
@@ -1607,8 +1599,14 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 		return pos;
 	if (str.len > U32_MAX) {
 		buffer_error(buffer, "Inserting too much text (length: %zu).", str.len);
-		BufferPos ret = {0,0};
-		return ret;
+		return (BufferPos){0};
+	}
+	for (u32 i = 0; i < str.len; ++i) {
+		char32_t c = str.str[i];
+		if (c == 0 || c >= UNICODE_CODE_POINTS || (c >= 0xD800 && c <= 0xDFFF)) {
+			buffer_error(buffer, "Inserting null character or bad unicode.");
+			return (BufferPos){0};
+		}
 	}
 	if (str.len == 0) {
 		// no text to insert
@@ -2629,18 +2627,19 @@ Status buffer_load_file(TextBuffer *buffer, const char *path) {
 					} else {
 						size_t n = unicode_utf8_to_utf32(&c, (char *)p, (size_t)(end - p));
 						if (n == 0) {
-							// null character
-							c = 0;
-							++p;
+							buffer_error(buffer, "Null character in file (position: %td).", p - file_contents);
+							success = false;
+							break;
 						} else if (n >= (size_t)(-2)) {
 							// invalid UTF-8
-							success = false;
 							buffer_error(buffer, "Invalid UTF-8 (position: %td).", p - file_contents);
+							success = false;
 							break;
 						} else {
 							p += n;
 						}
 					}
+					
 					if (c == '\n') {
 						if (buffer_lines_set_min_capacity(buffer, &lines, &lines_capacity, nlines + 1))
 							++nlines;

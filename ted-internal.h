@@ -583,6 +583,16 @@ struct Ted {
 };
 
 // === buffer.c ===
+/// create a new empty buffer with no file name
+void buffer_create(TextBuffer *buffer, Ted *ted);
+/// create a new empty line buffer
+void line_buffer_create(TextBuffer *buffer, Ted *ted);
+/// Does this buffer have an error?
+bool buffer_has_error(TextBuffer *buffer);
+/// get buffer error
+const char *buffer_get_error(TextBuffer *buffer);
+/// clear buffer error
+void buffer_clear_error(TextBuffer *buffer);
 /// Get the LSPDocumentID corresponding to the file this buffer contains.
 /// The return value is only useful if `buffer_lsp(buffer) != NULL`.
 LSPDocumentID buffer_lsp_document_id(TextBuffer *buffer);
@@ -600,6 +610,12 @@ LSPDocumentPosition buffer_cursor_pos_as_lsp_document_position(TextBuffer *buffe
 ///
 /// make sure to call \ref gl_geometry_draw after this
 void buffer_highlight_lsp_range(TextBuffer *buffer, LSPRange range, ColorSetting color);
+/// process a mouse click.
+/// returns true if the event was consumed.
+bool buffer_handle_click(Ted *ted, TextBuffer *buffer, vec2 click, u8 times);
+
+// === build.c ===
+void build_frame(Ted *ted, float x1, float y1, float x2, float y2);
 
 // === colors.c ====
 void color_init(void);
@@ -635,6 +651,11 @@ void config_free(Ted *ted);
 /// how well does this settings context fit the given path and language?
 /// the context with the highest score will be chosen.
 long context_score(const char *path, Language lang, const SettingsContext *context);
+
+// === find.c ===
+/// height of the find/find+replace menu in pixels
+float find_menu_height(Ted *ted);
+void find_menu_frame(Ted *ted, Rect menu_bounds);
 
 // === gl.c ===
 /// set by main()
@@ -721,6 +742,7 @@ void gl_geometry_init(void);
 // === ide-autocomplete.c ===
 void autocomplete_init(Ted *ted);
 void autocomplete_quit(Ted *ted);
+void autocomplete_frame(Ted *ted);
 void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *response);
 
 // === ide-definitions.c ===
@@ -730,6 +752,7 @@ void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *response);
 /// alone isn't sufficient)
 void definition_goto(Ted *ted, LSP *lsp, const char *name, LSPDocumentPosition pos, GotoType type);
 void definitions_process_lsp_response(Ted *ted, LSP *lsp, const LSPResponse *response);
+void definitions_frame(Ted *ted);
 
 // === ide-document-link.c ===
 void document_link_init(Ted *ted);
