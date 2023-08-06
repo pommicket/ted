@@ -1,4 +1,6 @@
 /*
+TODO:
+ - remove rect_translate?
 FUTURE FEATURES:
 - autodetect indentation (tabs vs spaces)
 - robust find (results shouldn't move around when you type things)
@@ -89,8 +91,8 @@ static Rect message_box_rect(Ted *ted) {
 	float padding = settings->padding;
 	float window_width = ted->window_width, window_height = ted->window_height;
 	float char_height = text_font_char_height(font);
-	return rect_centered(Vec2(window_width * 0.5f, window_height * 0.9f),
-			Vec2(ted_get_menu_width(ted), 3 * char_height + 2 * padding));
+	return rect_centered((vec2){window_width * 0.5f, window_height * 0.9f},
+			(vec2){ted_get_menu_width(ted), 3 * char_height + 2 * padding});
 }
 
 #if DEBUG
@@ -602,7 +604,7 @@ int main(int argc, char **argv) {
 		{ // get mouse position
 			int mouse_x = 0, mouse_y = 0;
 			ted->mouse_state = SDL_GetMouseState(&mouse_x, &mouse_y);
-			ted->mouse_pos = Vec2((float)mouse_x, (float)mouse_y);
+			ted->mouse_pos = (vec2){(float)mouse_x, (float)mouse_y};
 		}
 
 		for (size_t i = 0; i < arr_count(ted->mouse_clicks); ++i)
@@ -663,7 +665,7 @@ int main(int argc, char **argv) {
 				
 				if (button >= arr_count(ted->mouse_clicks)) break;
 				
-				vec2 pos = Vec2(x, y);
+				vec2 pos = {x, y};
 				bool add = true;
 				if (*ted->message_shown) {
 					if (rect_contains_point(message_box_rect(ted), pos)) {
@@ -715,7 +717,7 @@ int main(int argc, char **argv) {
 				Uint8 button = event.button.button;
 				if (button >= arr_count(ted->mouse_releases)) break;
 				
-				vec2 pos = Vec2((float)event.button.x, (float)event.button.y);
+				vec2 pos = {(float)event.button.x, (float)event.button.y};
 				MouseRelease release = {
 					.pos = pos
 				};
@@ -732,7 +734,7 @@ int main(int argc, char **argv) {
 					BufferPos pos = {0};
 					// drag to select
 					// we don't check the return value here, because it's okay to drag off the screen.
-					buffer_pixels_to_pos(ted->drag_buffer, Vec2(x, y), &pos);
+					buffer_pixels_to_pos(ted->drag_buffer, (vec2){x, y}, &pos);
 					buffer_select_to_pos(ted->drag_buffer, pos);
 				}
 				hover_reset_timer(ted);
@@ -784,7 +786,7 @@ int main(int argc, char **argv) {
 		{
 			int mx = 0, my = 0;
 			ted->mouse_state = SDL_GetMouseState(&mx, &my);
-			ted->mouse_pos = Vec2((float)mx, (float)my);
+			ted->mouse_pos = (vec2){(float)mx, (float)my};
 		}
 		// default to arrow cursor
 		ted->cursor = ted->cursor_arrow;
@@ -1102,8 +1104,8 @@ int main(int argc, char **argv) {
 			const char *text = "Recording macro...";
 			vec2 size = text_get_size_vec2(font_bold, text);
 			Rect r = {
-				.pos = vec2_sub(Vec2(window_width - 3 * padding, window_height - 3 * padding), size),
-				.size = vec2_add(size, Vec2(padding, padding)),
+				.pos = vec2_sub((vec2){window_width - 3 * padding, window_height - 3 * padding}, size),
+				.size = vec2_add(size, (vec2){padding, padding}),
 			};
 			gl_geometry_rect(r, bg_color);
 			Rect full_screen = {

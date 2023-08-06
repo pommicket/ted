@@ -234,10 +234,10 @@ void gl_geometry_rect(Rect r, u32 color_rgba) {
 		return;
 	vec4 color = rgba_u32_to_vec4(color_rgba);
 
-	vec2 p1 = r.pos;
-	vec2 p2 = vec2_add(r.pos, Vec2(0, r.size.y));
-	vec2 p3 = vec2_add(r.pos, Vec2(r.size.x, r.size.y));
-	vec2 p4 = vec2_add(r.pos, Vec2(r.size.x, 0));
+	vec2 p1 = {rect_x1(r), rect_y1(r)};
+	vec2 p2 = {rect_x1(r), rect_y2(r)};
+	vec2 p3 = {rect_x2(r), rect_y2(r)};
+	vec2 p4 = {rect_x2(r), rect_y1(r)};
 
 	GLSimpleTriangle triangle = {
 		{p1, color},

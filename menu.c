@@ -64,7 +64,7 @@ void menu_open_with_context(Ted *ted, const char *menu_name, void *context) {
 	ted->menu_context = context;
 	TextBuffer *prev_buf = ted->prev_active_buffer = ted->active_buffer;
 	if (prev_buf)
-		ted->prev_active_buffer_scroll = Vec2d(prev_buf->scroll_x, prev_buf->scroll_y);
+		ted->prev_active_buffer_scroll = (dvec2) {prev_buf->scroll_x, prev_buf->scroll_y};
 	
 	ted_switch_to_buffer(ted, NULL);
 	*ted->warn_overwrite = 0; // clear warn_overwrite
@@ -102,9 +102,9 @@ Rect selection_menu_render_bg(Ted *ted) {
 	const float padding = settings->padding;
 	const u32 *colors = settings->colors;
 	const float window_width = ted->window_width, window_height = ted->window_height;
-	Rect bounds = rect(
-		Vec2(window_width * 0.5f - 0.5f * menu_width, padding),
-		Vec2(menu_width, window_height - 2 * padding)
+	Rect bounds = rect_xywh(
+		window_width * 0.5f - 0.5f * menu_width, padding,
+		menu_width, window_height - 2 * padding
 	);
 	
 	float x1, y1, x2, y2;
@@ -128,7 +128,7 @@ void menu_render(Ted *ted) {
 	const float window_width = ted->window_width, window_height = ted->window_height;
 	const MenuInfo *info = &ted->all_menus[ted->menu_open_idx];
 	// render backdrop
-	gl_geometry_rect(rect(Vec2(0, 0), Vec2(window_width, window_height)), colors[COLOR_MENU_BACKDROP]);
+	gl_geometry_rect(rect_xywh(0, 0, window_width, window_height), colors[COLOR_MENU_BACKDROP]);
 	gl_geometry_draw();
 
 	if (info->render)
@@ -477,7 +477,7 @@ static void goto_line_menu_render(Ted *ted) {
 	Font *font_bold = ted->font_bold;
 	
 	float menu_height = ted_line_buffer_height(ted) + 2 * padding;
-	Rect r = rect(Vec2(padding, window_height - menu_height - padding), Vec2(window_width - 2 * padding, menu_height));
+	Rect r = rect_xywh(padding, window_height - menu_height - padding, window_width - 2 * padding, menu_height);
 	gl_geometry_rect(r, colors[COLOR_MENU_BG]);
 	gl_geometry_rect_border(r, settings->border_thickness, colors[COLOR_BORDER]);
 	const char *text = "Go to line...";
@@ -535,10 +535,10 @@ static void shell_menu_render(Ted *ted) {
 	gl_geometry_rect(bounds, colors[COLOR_MENU_BG]);
 	gl_geometry_rect_border(bounds, settings->border_thickness, colors[COLOR_BORDER]);
 	gl_geometry_draw();
-	bounds = rect_shrink(bounds, padding);
+	rect_shrink(&bounds, padding);
 	const char *text = "Run";
 	text_utf8(ted->font_bold, text, bounds.pos.x, bounds.pos.y, colors[COLOR_TEXT]);
-	bounds = rect_shrink_left(bounds, text_get_size_vec2(ted->font_bold, text).x + padding);
+	rect_shrink_left(&bounds, text_get_size_vec2(ted->font_bold, text).x + padding);
 	text_render(ted->font_bold);
 	buffer_render(&ted->line_buffer, bounds);
 }

@@ -508,7 +508,7 @@ struct Ted {
 	u32 build_error;
 	
 	/// used by menus to keep track of the scroll position so we can return to it.
-	vec2d prev_active_buffer_scroll;
+	dvec2 prev_active_buffer_scroll;
 	
 	SDL_Cursor *cursor_arrow, *cursor_ibeam, *cursor_wait,
 		*cursor_resize_h, *cursor_resize_v, *cursor_hand, *cursor_move;

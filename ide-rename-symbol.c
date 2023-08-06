@@ -98,10 +98,10 @@ static void rename_symbol_menu_render(Ted *ted) {
 	gl_geometry_rect(bounds, colors[COLOR_MENU_BG]);
 	gl_geometry_rect_border(bounds, settings->border_thickness, colors[COLOR_BORDER]);
 	gl_geometry_draw();
-	bounds = rect_shrink(bounds, padding);
+	rect_shrink(&bounds, padding);
 	const char *text = "Rename symbol to...";
 	text_utf8(ted->font_bold, text, bounds.pos.x, bounds.pos.y, colors[COLOR_TEXT]);
-	bounds = rect_shrink_left(bounds, text_get_size_vec2(ted->font_bold, text).x + padding);
+	rect_shrink_left(&bounds, text_get_size_vec2(ted->font_bold, text).x + padding);
 	text_render(ted->font_bold);
 	
 	buffer_render(&ted->line_buffer, bounds);

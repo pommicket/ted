@@ -414,5 +414,10 @@ int process_check_status(Process **pprocess, ProcessExitInfo *info) {
 
 
 bool open_with_default_application(const char *path) {
-	todo
+	todo ShellExecuteW?
+}
+
+
+bool change_directory(const char *path) {
+	return _chdir(path) == 0;
 }

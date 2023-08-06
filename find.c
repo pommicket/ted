@@ -337,7 +337,7 @@ void find_menu_frame(Ted *ted, Rect menu_bounds) {
 
 	gl_geometry_rect(menu_bounds, colors[COLOR_MENU_BG]);
 	gl_geometry_rect_border(menu_bounds, border_thickness, colors[COLOR_BORDER]);
-	menu_bounds = rect_shrink(menu_bounds, border_thickness);
+	rect_shrink(&menu_bounds, border_thickness);
 
 	float x1, y1, x2, y2;
 	rect_coords(menu_bounds, &x1, &y1, &x2, &y2);
@@ -357,15 +357,15 @@ void find_menu_frame(Ted *ted, Rect menu_bounds) {
 	
 	float x = x1, y = y2 - prev_size.y;
 	// compute positions of buttons
-	Rect button_prev = rect(Vec2(x, y), prev_size);
+	Rect button_prev = rect((vec2){x, y}, prev_size);
 	x += button_prev.size.x + padding;
-	Rect button_next = rect(Vec2(x, y), next_size);
+	Rect button_next = rect((vec2){x, y}, next_size);
 	x += button_next.size.x + padding;
-	Rect button_replace = rect(Vec2(x, y), replace_size);
+	Rect button_replace = rect((vec2){x, y}, replace_size);
 	x += button_replace.size.x + padding;
-	Rect button_replace_find = rect(Vec2(x, y), replace_find_size);
+	Rect button_replace_find = rect((vec2){x, y}, replace_find_size);
 	x += button_replace_find.size.x + padding;
-	Rect button_replace_all = rect(Vec2(x, y), replace_all_size);
+	Rect button_replace_all = rect((vec2){x, y}, replace_all_size);
 	x += button_replace_all.size.x + padding;
 	
 	
@@ -402,7 +402,8 @@ void find_menu_frame(Ted *ted, Rect menu_bounds) {
 	
 
 	Rect find_buffer_bounds = rect4(x1 + text_width + padding, y1, x2 - padding, y1 + line_buffer_height);
-	Rect replace_buffer_bounds = rect_translate(find_buffer_bounds, Vec2(0, line_buffer_height + padding));
+	Rect replace_buffer_bounds = find_buffer_bounds;
+	replace_buffer_bounds.pos.y += line_buffer_height + padding;
 
 	
 	button_render(ted, button_prev, prev_text, colors[COLOR_TEXT]);
@@ -440,8 +441,8 @@ void find_menu_frame(Ted *ted, Rect menu_bounds) {
 	text_render(font_bold);
 	
 	x = x1;
-	x += checkbox_frame(ted, &ted->find_case_sensitive, "Case sensitive", Vec2(x, y1)).x + 2*padding;
-	x += checkbox_frame(ted, &ted->find_regex, "Regular expression", Vec2(x, y1)).x + 2*padding;
+	x += checkbox_frame(ted, &ted->find_case_sensitive, "Case sensitive", (vec2){x, y1}).x + 2*padding;
+	x += checkbox_frame(ted, &ted->find_regex, "Regular expression", (vec2){x, y1}).x + 2*padding;
 
 	buffer_render(find_buffer, find_buffer_bounds);
 	if (replace) buffer_render(replace_buffer, replace_buffer_bounds);

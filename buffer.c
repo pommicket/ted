@@ -956,7 +956,7 @@ vec2 buffer_pos_to_pixels(TextBuffer *buffer, BufferPos pos) {
 	Font *font = buffer_font(buffer);
 	float x = (float)((double)xoff - buffer->scroll_x * text_font_char_width(font, ' ')) + buffer->x1;
 	float y = (float)((double)line - buffer->scroll_y) * text_font_char_height(font) + buffer->y1;
-	return Vec2(x, y);
+	return (vec2){x, y};
 }
 
 bool buffer_pixels_to_pos(TextBuffer *buffer, vec2 pixel_coords, BufferPos *pos) {
@@ -992,7 +992,7 @@ bool buffer_clip_rect(TextBuffer *buffer, Rect *r) {
 	float x1, y1, x2, y2;
 	rect_coords(*r, &x1, &y1, &x2, &y2);
 	if (x1 > buffer->x2 || y1 > buffer->y2 || x2 < buffer->x1 || y2 < buffer->y1) {
-		r->pos = r->size = Vec2(0, 0);
+		*r = (Rect){0};
 		return false;
 	}
 	if (x1 < buffer->x1) x1 = buffer->x1;
@@ -3062,7 +3062,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 		x1 += line_number_width;
 		x1 += 2; // a little bit of padding
 		// line separating line numbers from text
-		gl_geometry_rect(rect(Vec2(x1, y1), Vec2(border_thickness, y2 - y1)), colors[COLOR_LINE_NUMBERS_SEPARATOR]);
+		gl_geometry_rect(rect_xywh(x1, y1, border_thickness, y2 - y1), colors[COLOR_LINE_NUMBERS_SEPARATOR]);
 		x1 += border_thickness;
 	}
 
@@ -3099,10 +3099,10 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	// get screen coordinates of cursor
 	vec2 cursor_display_pos = buffer_pos_to_pixels(buffer, buffer->cursor_pos);
 	// the rectangle that the cursor is rendered as
-	Rect cursor_rect = rect(cursor_display_pos, Vec2(settings->cursor_width, char_height));
+	Rect cursor_rect = rect(cursor_display_pos, (vec2){settings->cursor_width, char_height});
 
 	if (!buffer->is_line_buffer) { // highlight line cursor is on
-		Rect hl_rect = rect(Vec2(x1, cursor_display_pos.y), Vec2(x2-x1-1, char_height));
+		Rect hl_rect = rect_xywh(x1, cursor_display_pos.y, x2-x1-1, char_height);
 		buffer_clip_rect(buffer, &hl_rect);
 		gl_geometry_rect(hl_rect, colors[COLOR_CURSOR_LINE_BG]);
 	}
@@ -3142,7 +3142,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 				vec2 hl_p1 = buffer_pos_to_pixels(buffer, p1);
 				Rect hl_rect = rect(
 					hl_p1,
-					Vec2((float)highlight_width, char_height)
+					(vec2){(float)highlight_width, char_height}
 				);
 				buffer_clip_rect(buffer, &hl_rect);
 				gl_geometry_rect(hl_rect, colors[buffer->view_only ? COLOR_VIEW_ONLY_SELECTION_BG : COLOR_SELECTION_BG]);
@@ -3242,7 +3242,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 			char32_t c = buffer_pos_move_to_matching_bracket(buffer, &pos);
 			if (c) {
 				vec2 gl_pos = buffer_pos_to_pixels(buffer, pos);
-				Rect hl_rect = rect(gl_pos, Vec2(text_font_char_width(font, c), char_height));
+				Rect hl_rect = rect(gl_pos, (vec2){text_font_char_width(font, c), char_height});
 				if (buffer_clip_rect(buffer, &hl_rect)) {
 					gl_geometry_rect(hl_rect, colors[COLOR_MATCHING_BRACKET_HL]);
 				}

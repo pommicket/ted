@@ -408,3 +408,7 @@ bool open_with_default_application(const char *path) {
 		return true;
 	}
 }
+
+bool change_directory(const char *path) {
+	return chdir(path) == 0;
+}

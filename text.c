@@ -489,10 +489,10 @@ static vec2 text_render_utf8_internal(Font *font, const char *text, double x, do
 	render_state.y = y;
 	rgba_u32_to_floats(color, render_state.color);
 	text_utf8_with_state(font, &render_state, text);
-	return Vec2(
+	return (vec2){
 		maxf(0.0f, (float)(render_state.x_largest - x)),
 		maxf(0.0f, (float)(render_state.y_largest - y))
-	);
+	};
 }
 
 void text_utf8(Font *font, const char *text, double x, double y, u32 color) {

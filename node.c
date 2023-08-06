@@ -295,7 +295,7 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 				TextBuffer *buffer = &ted->buffers[node->tabs[i]];
 				char tab_title[256];
 				const char *filename = buffer_display_filename(buffer);
-				Rect tab_rect = rect(Vec2(r.pos.x + tab_width * i, r.pos.y), Vec2(tab_width, tab_bar_height));
+				Rect tab_rect = rect_xywh(r.pos.x + tab_width * i, r.pos.y, tab_width, tab_bar_height);
 				
 				if (i > 0) {
 					// make sure tab borders overlap (i.e. don't double the border thickness between tabs)
@@ -310,7 +310,7 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 				
 				// tab border
 				gl_geometry_rect_border(tab_rect, border_thickness, colors[COLOR_BORDER]);
-				tab_rect = rect_shrink(tab_rect, border_thickness);
+				rect_shrink(&tab_rect, border_thickness);
 				
 				// tab title
 				{
@@ -343,7 +343,8 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 		u16 buffer_index = node->tabs[node->active_tab];
 		TextBuffer *buffer = &ted->buffers[buffer_index];
 		assert(ted->buffers_used[buffer_index]);
-		Rect buffer_rect = rect_translate(r, Vec2(0, tab_bar_height));
+		Rect buffer_rect = r;
+		buffer_rect.pos.y += tab_bar_height;
 		
 		// make sure buffer border and tab border overlap
 		buffer_rect.pos.y  -= border_thickness;
@@ -378,13 +379,13 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 			r1.size.y = split_pos - padding;
 			r2.pos.y += split_pos + padding;
 			r2.size.y = r.size.y - split_pos - padding;
-			r_between = rect(Vec2(r.pos.x, r.pos.y + split_pos - padding), Vec2(r.size.x, 2 * padding));
+			r_between = rect_xywh(r.pos.x, r.pos.y + split_pos - padding, r.size.x, 2 * padding);
 		} else {
 			float split_pos = r.size.x * node->split_pos;
 			r1.size.x = split_pos - padding;
 			r2.pos.x += split_pos + padding;
 			r2.size.x = r.size.x - split_pos - padding;
-			r_between = rect(Vec2(r.pos.x + split_pos - padding, r.pos.y), Vec2(2 * padding, r.size.y));
+			r_between = rect_xywh(r.pos.x + split_pos - padding, r.pos.y, 2 * padding, r.size.y);
 		}
 		if (rect_contains_point(r_between, ted->mouse_pos)) {
 			ted->cursor = resize_cursor;

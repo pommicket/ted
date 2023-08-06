@@ -412,6 +412,7 @@ bool path_is_absolute(const char *path) {
 void path_full(const char *dir, const char *relpath, char *abspath, size_t abspath_size) {
 	assert(abspath_size);
 	assert(dir[0]);
+	assert(path_is_absolute(dir));
 	abspath[0] = '\0';
 	
 	if (path_is_absolute(relpath)) {
@@ -478,14 +479,6 @@ bool paths_eq(const char *path1, const char *path2) {
 #endif
 }
 
-void change_directory(const char *path) {
-#if _WIN32
-	_chdir(path);
-#else
-	chdir(path);
-#endif
-}
-
 bool copy_file(const char *src, const char *dst) {
 	bool success = false;
 	FILE *src_file = fopen(src, "rb");
@@ -512,19 +505,10 @@ bool copy_file(const char *src, const char *dst) {
 #define MATH_GL 1
 #endif
 
-float degrees(float r) {
-	return r * (180.0f / PIf);
-}
-float radians(float r) {
-	return r * (PIf / 180.f);
-}
-
-// map x from the interval [0, 1] to the interval [a, b]. does NOT clamp.
 float lerpf(float x, float a, float b) {
 	return x * (b-a) + a;
 }
 
-// opposite of lerp; map x from the interval [a, b] to the interval [0, 1]. does NOT clamp.
 float normf(float x, float a, float b) {
 	return (x-a) / (b-a);
 }
@@ -644,11 +628,13 @@ i64 max_i64(i64 a, i64 b) {
 }
 
 i64 mod_i64(i64 a, i64 b) {
+	assert(b > 0);
 	i64 ret = a % b;
 	if (ret < 0) ret += b;
 	return ret;
 }
 i32 mod_i32(i32 a, i32 b) {
+	assert(b > 0);
 	i32 ret = a % b;
 	if (ret < 0) ret += b;
 	return ret;
@@ -670,139 +656,67 @@ float sgnf(float x) {
 	return 0;
 }
 
-float smoothstepf(float x) {
-	if (x <= 0) return 0;
-	if (x >= 1) return 1;
-	return x * x * (3 - 2 * x);
-}
-
-float randf(void) {
-	return (float)rand() / (float)((ulong)RAND_MAX + 1);
-}
-
-u32 rand_u32(void) {
-	return ((u32)rand() & 0xfff)
-		| ((u32)rand() & 0xfff) << 12
-		| ((u32)rand() & 0xff) << 24;
-}
-
-float rand_uniform(float from, float to) {
-	return lerpf(randf(), from, to);
-}
-
-float sigmoidf(float x) {
-	return 1.0f / (1.0f + expf(-x));
-}
-
-// returns ⌈x/y⌉ (x/y rounded up)
-i32 ceildivi32(i32 x, i32 y) {
-	if (y < 0) {
-		// negating both operands doesn't change the answer
-		x = -x;
-		y = -y;
-	}
-	if (x < 0) {
-		// truncation is the same as ceiling for negative numbers
-		return x / y;
-	} else {
-		return (x + (y-1)) / y;
-	}
-}
-
-vec2 Vec2(float x, float y) {
-	vec2 v;
-	v.x = x;
-	v.y = y;
-	return v;
-}
-
 vec2 vec2_add(vec2 a, vec2 b) {
-	return Vec2(a.x + b.x, a.y + b.y);
+	return (vec2){a.x + b.x, a.y + b.y};
 }
 
 vec2 vec2_add_const(vec2 a, float c) {
-	return Vec2(a.x + c, a.y + c);
+	return (vec2){a.x + c, a.y + c};
 }
 
 vec2 vec2_sub(vec2 a, vec2 b) {
-	return Vec2(a.x - b.x, a.y - b.y);
+	return (vec2){a.x - b.x, a.y - b.y};
 }
 
 vec2 vec2_scale(vec2 v, float s) {
-	return Vec2(v.x * s, v.y * s);
+	return (vec2){v.x * s, v.y * s};
 }
 
 vec2 vec2_mul(vec2 a, vec2 b) {
-	return Vec2(a.x * b.x, a.y * b.y);
+	return (vec2){a.x * b.x, a.y * b.y};
 }
 
 vec2 vec2_clamp(vec2 x, vec2 a, vec2 b) {
-	return Vec2(clampf(x.x, a.x, b.x), clampf(x.y, a.y, b.y));
+	return (vec2){clampf(x.x, a.x, b.x), clampf(x.y, a.y, b.y)};
 }
 
 float vec2_dot(vec2 a, vec2 b) {
 	return a.x * b.x + a.y * b.y;
 }
 
-float vec2_len(vec2 v) {
+float vec2_norm(vec2 v) {
 	return sqrtf(vec2_dot(v, v));
 }
 
 vec2 vec2_lerp(float x, vec2 a, vec2 b) {
-	return Vec2(lerpf(x, a.x, b.x), lerpf(x, a.y, b.y));
+	return (vec2){lerpf(x, a.x, b.x), lerpf(x, a.y, b.y)};
 }
 
 // rotate v theta radians counterclockwise
 vec2 vec2_rotate(vec2 v, float theta) {
 	float c = cosf(theta), s = sinf(theta);
-	return Vec2(
+	return (vec2){
 		c * v.x - s * v.y,
 		s * v.x + c * v.y
-	);
+	};
 }
 
 vec2 vec2_normalize(vec2 v) {
-	float len = vec2_len(v);
+	float len = vec2_norm(v);
 	float mul = len == 0.0f ? 1.0f : 1.0f/len;
 	return vec2_scale(v, mul);
 }
 
-float vec2_dist(vec2 a, vec2 b) {
-	return vec2_len(vec2_sub(a, b));
-}
-
-float vec2_dist_squared(vec2 a, vec2 b) {
-	vec2 diff = vec2_sub(a, b);
-	return vec2_dot(diff, diff);
+float vec2_distance(vec2 a, vec2 b) {
+	return vec2_norm(vec2_sub(a, b));
 }
 
 void vec2_print(vec2 v) {
 	printf("(%f, %f)\n", v.x, v.y);
 }
 
-vec2 vec2_rand_unit(void) {
-	float theta = rand_uniform(0, TAUf);
-	return Vec2(cosf(theta), sinf(theta));
-}
-
 vec2 vec2_polar(float r, float theta) {
-	return Vec2(r * cosf(theta), r * sinf(theta));
-}
-
-vec4 Vec4(float x, float y, float z, float w) {
-	vec4 v;
-	v.x = x;
-	v.y = y;
-	v.z = z;
-	v.w = w;
-	return v;
-}
-
-vec2d Vec2d(double x, double y) {
-	return (vec2d) {
-		.x = x,
-		.y = y
-	};
+	return (vec2){r * cosf(theta), r * sinf(theta)};
 }
 
 void rgba_u32_to_floats(u32 rgba, float floats[4]) {
@@ -815,7 +729,7 @@ void rgba_u32_to_floats(u32 rgba, float floats[4]) {
 vec4 rgba_u32_to_vec4(u32 rgba) {
 	float c[4];
 	rgba_u32_to_floats(rgba, c);
-	return Vec4(c[0], c[1], c[2], c[3]);
+	return (vec4){c[0], c[1], c[2], c[3]};
 }
 
 u32 rgba_vec4_to_u32(vec4 color) {
@@ -823,12 +737,6 @@ u32 rgba_vec4_to_u32(vec4 color) {
 		| (u32)(color.y * 255) << 16
 		| (u32)(color.z * 255) << 8
 		| (u32)(color.w * 255);
-}
-
-// returns average of red green and blue components of color
-float rgba_brightness(u32 color) {
-	u8 r = (u8)(color >> 24), g = (u8)(color >> 16), b = (u8)(color >> 8);
-	return ((float)r+(float)g+(float)b) * (1.0f / 3);
 }
 
 bool rect_contains_point_v2(vec2 pos, vec2 size, vec2 point) {
@@ -858,13 +766,13 @@ Rect rect_endpoints(vec2 e1, vec2 e2) {
 Rect rect4(float x1, float y1, float x2, float y2) {
 	assert(x2 >= x1);
 	assert(y2 >= y1);
-	return rect(Vec2(x1,y1), Vec2(x2-x1, y2-y1));
+	return rect_xywh(x1, y1, x2-x1, y2-y1);
 }
 
 Rect rect_xywh(float x, float y, float w, float h) {
 	assert(w >= 0);
 	assert(h >= 0);
-	return rect(Vec2(x, y), Vec2(w, h));
+	return rect((vec2){x, y}, (vec2){w, h});
 }
 
 Rect rect_centered(vec2 center, vec2 size) {
@@ -925,51 +833,45 @@ bool rect_clip_to_rect(Rect *clipped, Rect clipper) {
 	return clipped->size.x > 0 && clipped->size.y > 0;
 }
 
-Rect rect_shrink(Rect r, float amount) {
-	r.pos.x += amount;
-	r.pos.y += amount;
-	r.size.x -= 2 * amount;
-	r.size.y -= 2 * amount;
-	r.size.x = maxf(r.size.x, 0);
-	r.size.y = maxf(r.size.y, 0);
-	return r;
+void rect_shrink(Rect *r, float amount) {
+	r->pos.x += amount;
+	r->pos.y += amount;
+	r->size.x -= 2 * amount;
+	r->size.y -= 2 * amount;
+	r->size.x = maxf(r->size.x, 0);
+	r->size.y = maxf(r->size.y, 0);
 }
 
-Rect rect_shrink_left(Rect r, float amount) {
-	r.pos.x += amount;
-	r.size.x -= amount;
-	r.size.x = maxf(r.size.x, 0);
-	return r;
+void rect_shrink_left(Rect *r, float amount) {
+	r->pos.x += amount;
+	r->size.x -= amount;
+	r->size.x = maxf(r->size.x, 0);
 }
 
-Rect rect_shrink_top(Rect r, float amount) {
-	r.pos.y += amount;
-	r.size.y -= amount;
-	r.size.y = maxf(r.size.y, 0);
-	return r;
+void rect_shrink_top(Rect *r, float amount) {
+	r->pos.y += amount;
+	r->size.y -= amount;
+	r->size.y = maxf(r->size.y, 0);
 }
 
-Rect rect_shrink_right(Rect r, float amount) {
-	r.size.x -= amount;
-	r.size.x = maxf(r.size.x, 0);
-	return r;
+void rect_shrink_right(Rect *r, float amount) {
+	r->size.x -= amount;
+	r->size.x = maxf(r->size.x, 0);
 }
 
-Rect rect_shrink_bottom(Rect r, float amount) {
-	r.size.y -= amount;
-	r.size.y = maxf(r.size.y, 0);
-	return r;
+void rect_shrink_bottom(Rect *r, float amount) {
+	r->size.y -= amount;
+	r->size.y = maxf(r->size.y, 0);
 }
 
-Rect rect_grow(Rect r, float amount) {
-	r.pos.x -= amount;
-	r.pos.y -= amount;
-	r.size.x += 2 * amount;
-	r.size.y += 2 * amount;
-	return r;
+void rect_grow(Rect *r, float amount) {
+	r->pos.x -= amount;
+	r->pos.y -= amount;
+	r->size.x += 2 * amount;
+	r->size.y += 2 * amount;
 }
 
-vec4 color_rgba_to_hsva(vec4 rgba) {
+static vec4 color_rgba_to_hsva(vec4 rgba) {
 	float R = rgba.x, G = rgba.y, B = rgba.z, A = rgba.w;
 	float M = maxf(R, maxf(G, B));
 	float m = minf(R, minf(G, B));
@@ -986,10 +888,10 @@ vec4 color_rgba_to_hsva(vec4 rgba) {
 	H *= 60;
 	float V = M;
 	float S = V == 0 ? 0 : C / V;
-	return Vec4(H, S, V, A);
+	return (vec4){H, S, V, A};
 }
 
-vec4 color_hsva_to_rgba(vec4 hsva) {
+static vec4 color_hsva_to_rgba(vec4 hsva) {
 	float H = hsva.x, S = hsva.y, V = hsva.z, A = hsva.w;
 	H /= 60;
 	float C = S * V;
@@ -1012,7 +914,7 @@ vec4 color_hsva_to_rgba(vec4 hsva) {
 	R += m;
 	G += m;
 	B += m;
-	return Vec4(R, G, B, A);
+	return (vec4){R, G, B, A};
 }
 
 u32 color_interpolate(float x, u32 color1, u32 color2) {
@@ -1041,7 +943,7 @@ u32 color_interpolate(float x, u32 color1, u32 color2) {
 	}
 	h_out = fmodf(h_out, 360);
 	
-	vec4 c_out = Vec4(h_out, s_out, v_out, a_out);
+	vec4 c_out = (vec4){h_out, s_out, v_out, a_out};
 	c_out = color_hsva_to_rgba(c_out);
 	return rgba_vec4_to_u32(c_out);
 }
