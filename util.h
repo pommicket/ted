@@ -228,7 +228,6 @@ Rect rect_xywh(float x, float y, float w, float h);
 Rect rect_centered(vec2 center, vec2 size);
 vec2 rect_center(Rect r);
 bool rect_contains_point(Rect r, vec2 point);
-Rect rect_translate(Rect r, vec2 by);
 void rect_coords(Rect r, float *x1, float *y1, float *x2, float *y2);
 float rect_x1(Rect r);
 float rect_y1(Rect r);

@@ -344,6 +344,12 @@ void text_render(Font *font) {
 		glUniform2f(text_u_window_size, gl_window_width, gl_window_height);
 		glDrawArrays(GL_TRIANGLES, 0, (GLsizei)(3 * ntriangles));
 		arr_clear(texture->triangles);
+		glBindTexture(GL_TEXTURE_2D, 0);
+		
+		// if i remove this i get
+		//    Texture state usage warning: The texture object (0) bound to texture image unit 0 does not have a defined base level and cannot be used for texture mapping
+		// (even with no other draw calls) which is really weird but whatever this is probably good practice anyways.
+		glUseProgram(0);
 	}
 	
 	if (font->fallback) {

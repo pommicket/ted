@@ -790,10 +790,6 @@ bool rect_contains_point(Rect r, vec2 point) {
 	return rect_contains_point_v2(r.pos, r.size, point);
 }
 
-Rect rect_translate(Rect r, vec2 by) {
-	return rect(vec2_add(r.pos, by), r.size);
-}
-
 float rect_x1(Rect r) { return r.pos.x; }
 float rect_y1(Rect r) { return r.pos.y; }
 float rect_x2(Rect r) { return r.pos.x + r.size.x; }
