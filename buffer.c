@@ -2487,6 +2487,7 @@ void buffer_undo(TextBuffer *buffer, i64 ntimes) {
 			chain_next = chain;
 		} else break;
 	}
+	buffer_scroll_to_cursor(buffer);
 }
 
 void buffer_redo(TextBuffer *buffer, i64 ntimes) {
@@ -2512,6 +2513,7 @@ void buffer_redo(TextBuffer *buffer, i64 ntimes) {
 			chain_next = chain;
 		} else break;
 	}
+	buffer_scroll_to_cursor(buffer);
 }
 
 // if you do:
