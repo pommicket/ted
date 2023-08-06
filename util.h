@@ -212,7 +212,17 @@ void rect_coords(Rect r, float *x1, float *y1, float *x2, float *y2);
 void rect_print(Rect r);
 float rects_intersect(Rect r1, Rect r2);
 bool rect_clip_to_rect(Rect *clipped, Rect clipper);
+/// removes `amount` from all sides of r
 Rect rect_shrink(Rect r, float amount);
+/// removes `amount` from the left side of r
+Rect rect_shrink_left(Rect r, float amount);
+/// removes `amount` from the top side of r
+Rect rect_shrink_top(Rect r, float amount);
+/// removes `amount` from the right side of r
+Rect rect_shrink_right(Rect r, float amount);
+/// removes `amount` from the bottom side of r
+Rect rect_shrink_bottom(Rect r, float amount);
+/// adds `amount` to all sides of r
 Rect rect_grow(Rect r, float amount);
 vec4 color_rgba_to_hsva(vec4 rgba);
 vec4 color_hsva_to_rgba(vec4 hsva);

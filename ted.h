@@ -742,13 +742,6 @@ void autocomplete_close(Ted *ted);
 // === ide-definitions.c ===
 /// cancel the last go-to-definition / find symbols request.
 void definition_cancel_lookup(Ted *ted);
-/// open the definitions menu
-void definitions_selector_open(Ted *ted);
-/// update the definitions menu
-void definitions_selector_update(Ted *ted);
-void definitions_selector_render(Ted *ted, Rect bounds);
-/// close the definitions menu
-void definitions_selector_close(Ted *ted);
 
 // === ide-document-link.c ===
 /// get document link at this position in the active buffer.
@@ -768,8 +761,6 @@ void hover_close(Ted *ted);
 
 // === ide-rename-symbol.c ===
 void rename_symbol_at_cursor(Ted *ted, TextBuffer *buffer, const char *new_name);
-/// returns true if we are currently waiting for the LSP to send us a response
-bool rename_symbol_is_loading(Ted *ted);
 void rename_symbol_clear(Ted *ted);
 
 // === ide-signature-help.c ===

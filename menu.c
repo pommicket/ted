@@ -20,11 +20,10 @@ void menu_close(Ted *ted) {
 	if (!menu_is_any_open(ted))
 		return;
 	const MenuInfo *menu = &ted->all_menus[ted->menu_open_idx];
-	bool will_close = true;
-	if (menu->close)
-		will_close = menu->close(ted);
-	if (!will_close)
-		return;
+	if (menu->close) {
+		if (!menu->close(ted))
+			return;
+	}
 	
 	ted_switch_to_buffer(ted, ted->prev_active_buffer);
 	TextBuffer *buffer = ted->active_buffer;
@@ -33,25 +32,14 @@ void menu_close(Ted *ted) {
 		buffer->scroll_x = ted->prev_active_buffer_scroll.x;
 		buffer->scroll_y = ted->prev_active_buffer_scroll.y;
 	}
-	/*
-	switch (ted->menu) {
-	case MENU_GOTO_DEFINITION:
-		definitions_selector_close(ted);
-		break;
-	case MENU_SHELL:
-		buffer_clear(&ted->line_buffer);
-		break;
-	case MENU_RENAME_SYMBOL:
-		rename_symbol_clear(ted);
-		buffer_clear(&ted->line_buffer);
-		break;
-	}*/
 	ted->menu_open_idx = 0;
 	ted->menu_context = NULL;
 	ted->selector_open = NULL;
 }
 
 void menu_open_with_context(Ted *ted, const char *menu_name, void *context) {
+	if (menu_is_open(ted, menu_name))
+		return;
 	u32 menu_idx = U32_MAX;
 	if (*menu_name) {
 		for (u32 i = 0; i < arr_len(ted->all_menus); ++i) {
@@ -66,13 +54,8 @@ void menu_open_with_context(Ted *ted, const char *menu_name, void *context) {
 		return;
 	}
 	
-	if (menu_is_open(ted, menu_name))
-		return;
-	
 	if (menu_is_any_open(ted))
 		menu_close(ted);
-	
-	
 	if (ted->find) find_close(ted);
 	autocomplete_close(ted);
 		
@@ -87,19 +70,6 @@ void menu_open_with_context(Ted *ted, const char *menu_name, void *context) {
 	*ted->warn_overwrite = 0; // clear warn_overwrite
 	buffer_clear(&ted->line_buffer);
 	if (info->open) info->open(ted);
-	/*
-	switch (menu) {
-	case MENU_GOTO_DEFINITION:
-		definitions_selector_open(ted);
-		break;
-	case MENU_SHELL:
-		ted_switch_to_buffer(ted, &ted->line_buffer);
-		ted->shell_history_pos = arr_len(ted->shell_history);
-		break;
-	case MENU_RENAME_SYMBOL:
-		ted_switch_to_buffer(ted, &ted->line_buffer);
-		break;
-	}*/
 }
 
 void menu_open(Ted *ted, const char *menu_name) {
@@ -124,37 +94,9 @@ void menu_update(Ted *ted) {
 	const MenuInfo *info = &ted->all_menus[ted->menu_open_idx];
 	
 	if (info->update) info->update(ted);
-	
-	/*
-	TextBuffer *line_buffer = &ted->line_buffer;
-	const Settings *settings = ted_active_settings(ted);
-	const u32 *colors = settings->colors;
-	switch (menu) {
-	case MENU_GOTO_DEFINITION: {
-		definitions_selector_update(ted);
-	} break;
-	case MENU_SHELL:
-		if (line_buffer->line_buffer_submitted) {
-			char *command = str32_to_utf8_cstr(buffer_get_line(line_buffer, 0));
-			if (ted->shell_history_pos == arr_len(ted->shell_history) || line_buffer->modified) {
-				arr_add(ted->shell_history, command);
-			}
-			menu_close(ted);
-			strbuf_cpy(ted->build_dir, ted->cwd);
-			build_start_with_command(ted, command);
-		}
-		break;
-	case MENU_RENAME_SYMBOL:
-		if (line_buffer->line_buffer_submitted) {
-			char *new_name = str32_to_utf8_cstr(buffer_get_line(line_buffer, 0));
-			rename_symbol_at_cursor(ted, ted->prev_active_buffer, new_name);
-			free(new_name);
-		}
-		break;
-	}*/
 }
 
-static Rect selection_menu_render_bg(Ted *ted) {
+Rect selection_menu_render_bg(Ted *ted) {
 	const Settings *settings = ted_active_settings(ted);
 	const float menu_width = ted_get_menu_width(ted);
 	const float padding = settings->padding;
@@ -191,79 +133,6 @@ void menu_render(Ted *ted) {
 
 	if (info->render)
 		info->render(ted);
-	
-	/*
-	Font *font_bold = ted->font_bold, *font = ted->font;
-	const float char_height = text_font_char_height(font);
-	const float char_height_bold = text_font_char_height(font_bold);
-	const float line_buffer_height = ted_line_buffer_height(ted);
-	
-	switch (menu) {
-	case MENU_NONE: assert(0); break;
-	case MENU_GOTO_DEFINITION: {
-		definitions_selector_render(ted, rect4(x1, y1, x2, y2));
-	} break;
-	case MENU_SHELL: {
-		bounds.size.y = line_buffer_height + 2 * padding;
-		gl_geometry_rect(bounds, colors[COLOR_MENU_BG]);
-		gl_geometry_rect_border(bounds, settings->border_thickness, colors[COLOR_BORDER]);
-		gl_geometry_draw();
-		bounds = rect_shrink(bounds, padding);
-		rect_coords(bounds, &x1, &y1, &x2, &y2);
-		const char *text = "Run";
-		text_utf8(font_bold, text, x1, y1, colors[COLOR_TEXT]);
-		x1 += text_get_size_vec2(font_bold, text).x + padding;
-		text_render(font_bold);
-		
-		buffer_render(&ted->line_buffer, rect4(x1, y1, x2, y2));
-	} break;
-	case MENU_RENAME_SYMBOL: {
-		// highlight symbol
-		TextBuffer *buffer = ted->prev_active_buffer;
-		if (!buffer) {
-			menu_close(ted);
-			return;
-		}
-		if (rename_symbol_is_loading(ted)) {
-			// already entered a new name
-			return;
-		}
-		
-		u32 sym_start=0, sym_end=0;
-		BufferPos cursor_pos = buffer->cursor_pos;
-		buffer_word_span_at_pos(buffer, cursor_pos, &sym_start, &sym_end);
-		BufferPos bpos0 = {
-			.line = cursor_pos.line,
-			.index = sym_start
-		};
-		BufferPos bpos1 = {
-			.line = cursor_pos.line,
-			.index = sym_end
-		};
-		// symbol should span from pos0 to pos1
-		vec2 p0 = buffer_pos_to_pixels(buffer, bpos0);
-		vec2 p1 = buffer_pos_to_pixels(buffer, bpos1);
-		p1.y += text_font_char_height(buffer_font(buffer));
-		Rect highlight = rect_endpoints(p0, p1);
-		gl_geometry_rect_border(highlight, settings->border_thickness, colors[COLOR_BORDER]);
-		gl_geometry_rect(highlight, colors[COLOR_HOVER_HL]);
-		
-		float height = line_buffer_height + 2 * padding;
-		bounds.size.y = height;
-		gl_geometry_rect(bounds, colors[COLOR_MENU_BG]);
-		gl_geometry_rect_border(bounds, settings->border_thickness, colors[COLOR_BORDER]);
-		gl_geometry_draw();
-		bounds = rect_shrink(bounds, padding);
-		rect_coords(bounds, &x1, &y1, &x2, &y2);
-		const char *text = "Rename symbol to...";
-		text_utf8(font_bold, text, x1, y1, colors[COLOR_TEXT]);
-		x1 += text_get_size_vec2(font_bold, text).x + padding;
-		text_render(font_bold);
-		
-		buffer_render(&ted->line_buffer, rect4(x1, y1, x2, y2));
-	} break;
-	}
-	*/
 }
 
 void menu_shell_move(Ted *ted, int direction) {
@@ -634,6 +503,51 @@ static bool goto_line_menu_close(Ted *ted) {
 	return true;
 }
 
+static void shell_menu_open(Ted *ted) {
+	ted_switch_to_buffer(ted, &ted->line_buffer);
+	ted->shell_history_pos = arr_len(ted->shell_history);
+}
+
+static void shell_menu_update(Ted *ted) {
+	TextBuffer *line_buffer = &ted->line_buffer;
+	if (line_buffer->line_buffer_submitted) {
+		char *command = str32_to_utf8_cstr(buffer_get_line(line_buffer, 0));
+		if (ted->shell_history_pos == arr_len(ted->shell_history) || line_buffer->modified) {
+			arr_add(ted->shell_history, command);
+		}
+		menu_close(ted);
+		strbuf_cpy(ted->build_dir, ted->cwd);
+		build_start_with_command(ted, command);
+	}
+}
+
+static void shell_menu_render(Ted *ted) {
+	const float line_buffer_height = ted_line_buffer_height(ted);
+	const Settings *settings = ted_active_settings(ted);
+	const float padding = settings->padding;
+	const u32 *colors = settings->colors;
+	const float width = ted_get_menu_width(ted);
+	const float height = line_buffer_height + 2 * padding;
+	Rect bounds = {
+		.pos = {(ted->window_width - width) / 2, padding},
+		.size = {width, height},
+	};
+	gl_geometry_rect(bounds, colors[COLOR_MENU_BG]);
+	gl_geometry_rect_border(bounds, settings->border_thickness, colors[COLOR_BORDER]);
+	gl_geometry_draw();
+	bounds = rect_shrink(bounds, padding);
+	const char *text = "Run";
+	text_utf8(ted->font_bold, text, bounds.pos.x, bounds.pos.y, colors[COLOR_TEXT]);
+	bounds = rect_shrink_left(bounds, text_get_size_vec2(ted->font_bold, text).x + padding);
+	text_render(ted->font_bold);
+	buffer_render(&ted->line_buffer, bounds);
+}
+
+static bool shell_menu_close(Ted *ted) {
+	buffer_clear(&ted->line_buffer);
+	return true;
+}
+
 void menu_register(Ted *ted, const MenuInfo *infop) {
 	MenuInfo info = *infop;
 	if (!*info.name) {
@@ -701,6 +615,15 @@ void menu_init(Ted *ted) {
 	};
 	strbuf_cpy(goto_line_menu.name, MENU_GOTO_LINE);
 	menu_register(ted, &goto_line_menu);
+	
+	MenuInfo shell_menu = {
+		.open = shell_menu_open,
+		.update = shell_menu_update,
+		.render = shell_menu_render,
+		.close = shell_menu_close,
+	};
+	strbuf_cpy(shell_menu.name, MENU_SHELL);
+	menu_register(ted, &shell_menu);
 }
 
 void menu_quit(Ted *ted) {

@@ -925,7 +925,6 @@ bool rect_clip_to_rect(Rect *clipped, Rect clipper) {
 	return clipped->size.x > 0 && clipped->size.y > 0;
 }
 
-// removes `amount` from all sides of r
 Rect rect_shrink(Rect r, float amount) {
 	r.pos.x += amount;
 	r.pos.y += amount;
@@ -936,7 +935,32 @@ Rect rect_shrink(Rect r, float amount) {
 	return r;
 }
 
-// adds `amount` to all sides of r
+Rect rect_shrink_left(Rect r, float amount) {
+	r.pos.x += amount;
+	r.size.x -= amount;
+	r.size.x = maxf(r.size.x, 0);
+	return r;
+}
+
+Rect rect_shrink_top(Rect r, float amount) {
+	r.pos.y += amount;
+	r.size.y -= amount;
+	r.size.y = maxf(r.size.y, 0);
+	return r;
+}
+
+Rect rect_shrink_right(Rect r, float amount) {
+	r.size.x -= amount;
+	r.size.x = maxf(r.size.x, 0);
+	return r;
+}
+
+Rect rect_shrink_bottom(Rect r, float amount) {
+	r.size.y -= amount;
+	r.size.y = maxf(r.size.y, 0);
+	return r;
+}
+
 Rect rect_grow(Rect r, float amount) {
 	r.pos.x -= amount;
 	r.pos.y -= amount;

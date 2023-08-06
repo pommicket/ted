@@ -749,6 +749,7 @@ void autocomplete_frame(Ted *ted);
 void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *response);
 
 // === ide-definitions.c ===
+void definitions_init(Ted *ted);
 /// go to the definition of `name`.
 /// if `lsp` is NULL, tags will be used.
 /// Note: the document position is required for LSP requests because of overloading (where the name
@@ -808,6 +809,7 @@ void menu_shell_move(Ted *ted, int direction);
 void menu_shell_up(Ted *ted);
 /// move to next command
 void menu_shell_down(Ted *ted);
+Rect selection_menu_render_bg(Ted *ted);
 
 // === node.c ===
 void node_free(Node *node);

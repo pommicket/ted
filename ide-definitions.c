@@ -261,7 +261,7 @@ void definitions_send_request_if_needed(Ted *ted) {
 	defs->last_request_query = query;
 }
 
-void definitions_selector_open(Ted *ted) {
+static void definitions_selector_open(Ted *ted) {
 	Definitions *defs = &ted->definitions;
 	definitions_clear_entries(defs);
 	LSP *lsp = ted->prev_active_buffer
@@ -279,15 +279,16 @@ void definitions_selector_open(Ted *ted) {
 }
 
 
-void definitions_selector_close(Ted *ted) {
+static bool definitions_selector_close(Ted *ted) {
 	Definitions *defs = &ted->definitions;
 	definitions_clear_entries(defs);
 	ted_cancel_lsp_request(ted, &defs->last_request);
 	free(defs->last_request_query);
 	defs->last_request_query = NULL;
+	return true;
 }
 
-void definitions_selector_update(Ted *ted) {
+static void definitions_selector_update(Ted *ted) {
 	Definitions *defs = &ted->definitions;
 	Selector *sel = &defs->selector;
 	sel->enable_cursor = true;
@@ -328,9 +329,21 @@ void definitions_selector_update(Ted *ted) {
 	}
 }
 
-void definitions_selector_render(Ted *ted, Rect bounds) {
+static void definitions_selector_render(Ted *ted) {
+	Rect bounds = selection_menu_render_bg(ted);
 	Definitions *defs = &ted->definitions;
 	Selector *sel = &defs->selector;
 	sel->bounds = bounds;
 	selector_render(ted, sel);
+}
+
+void definitions_init(Ted *ted) {
+	MenuInfo info = {
+		.open = definitions_selector_open,
+		.close = definitions_selector_close,
+		.render = definitions_selector_render,
+		.update = definitions_selector_update,
+	};
+	strbuf_cpy(info.name, MENU_GOTO_DEFINITION);
+	menu_register(ted, &info);
 }

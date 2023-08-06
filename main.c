@@ -1,8 +1,6 @@
 /*
 TODO:
-- rework menus
 - deal with really long paths in file menus
-- internalize Autocomplete, SignatureHelp, etc.
 
 FUTURE FEATURES:
 - autodetect indentation (tabs vs spaces)
@@ -506,6 +504,7 @@ int main(int argc, char **argv) {
 	gl_geometry_init();
 	text_init();
 	menu_init(ted);
+	definitions_init(ted);
 	autocomplete_init(ted);
 	signature_help_init(ted);
 	usages_init(ted);
@@ -1228,7 +1227,6 @@ int main(int argc, char **argv) {
 	SDL_GL_DeleteContext(glctx);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
-	definitions_selector_close(ted);
 	for (u16 i = 0; i < TED_MAX_BUFFERS; ++i)
 		if (ted->buffers_used[i])
 			buffer_free(&ted->buffers[i]);
