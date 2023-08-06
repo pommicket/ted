@@ -283,6 +283,7 @@ typedef struct {
 } FileEntry;
 
 struct FileSelector {
+	char title[32];
 	Selector sel;
 	Rect bounds;
 	u32 n_entries;
@@ -797,6 +798,8 @@ void macro_add(Ted *ted, Command command, const CommandArgument *argument);
 void macros_free(Ted *ted);
 
 // === menu.c ===
+void menu_init(Ted *ted);
+void menu_quit(Ted *ted);
 void menu_update(Ted *ted);
 void menu_render(Ted *ted);
 /// move to next/previous command

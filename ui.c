@@ -119,6 +119,9 @@ void selector_render(Ted *ted, Selector *s) {
 	float padding = settings->padding;
 
 	Rect bounds = s->bounds;
+	
+	float x1, y1, x2, y2;
+	rect_coords(bounds, &x1, &y1, &x2, &y2);
 
 	for (u32 i = 0; i < s->n_entries; ++i) {
 		// highlight entry user is hovering over/selecting
@@ -133,8 +136,6 @@ void selector_render(Ted *ted, Selector *s) {
 	}
 	gl_geometry_draw();
 
-	float x1, y1, x2, y2;
-	rect_coords(bounds, &x1, &y1, &x2, &y2);
 	// search buffer
 	float line_buffer_height = ted_line_buffer_height(ted);
 	buffer_render(&ted->line_buffer, rect4(x1, y1, x2, y1 + line_buffer_height));
@@ -491,11 +492,16 @@ void file_selector_render(Ted *ted, FileSelector *fs) {
 	const Settings *settings = ted_active_settings(ted);
 	const u32 *colors = settings->colors;
 	Rect bounds = fs->bounds;
-	Font *font = ted->font;
+	Font *font = ted->font, *font_bold = ted->font_bold;
 	float padding = settings->padding;
 	float char_height = text_font_char_height(font);
 	float x1, y1, x2, y2;
 	rect_coords(bounds, &x1, &y1, &x2, &y2);
+	
+	if (*fs->title) {
+		text_utf8(font_bold, fs->title, x1, y1, colors[COLOR_TEXT]);
+		y1 += text_font_char_height(font_bold) * 0.75f + padding;
+	}
 
 	// current working directory
 	text_utf8(font, fs->cwd, x1, y1, colors[COLOR_TEXT]);
@@ -525,6 +531,7 @@ void file_selector_render(Ted *ted, FileSelector *fs) {
 		sel->n_entries = fs->n_entries;
 
 	selector_render(ted, sel);
+	text_render(font_bold);
 }
 
 vec2 button_get_size(Ted *ted, const char *text) {

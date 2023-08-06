@@ -793,6 +793,8 @@ void macro_stop_recording(Ted *ted);
 void macro_execute(Ted *ted, u32 index);
 
 // === menu.c ===
+/// register a new menu
+void menu_register(Ted *ted, const MenuInfo *infop);
 void menu_close(Ted *ted);
 void menu_open(Ted *ted, const char *menu_name);
 void menu_open_with_context(Ted *ted, const char *menu_name, void *context);

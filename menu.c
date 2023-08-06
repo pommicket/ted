@@ -373,6 +373,32 @@ void menu_update(Ted *ted) {
 	}*/
 }
 
+static Rect selection_menu_render_bg(Ted *ted) {
+	const Settings *settings = ted_active_settings(ted);
+	const float menu_width = ted_get_menu_width(ted);
+	const float padding = settings->padding;
+	const u32 *colors = settings->colors;
+	const float window_width = ted->window_width, window_height = ted->window_height;
+	Rect bounds = rect(
+		Vec2(window_width * 0.5f - 0.5f * menu_width, padding),
+		Vec2(menu_width, window_height - 2 * padding)
+	);
+	
+	float x1, y1, x2, y2;
+	rect_coords(bounds, &x1, &y1, &x2, &y2);
+
+	// menu rectangle & border
+	gl_geometry_rect(bounds, colors[COLOR_MENU_BG]);
+	gl_geometry_rect_border(bounds, settings->border_thickness, colors[COLOR_BORDER]);
+	gl_geometry_draw();
+	
+	x1 += padding;
+	y1 += padding;
+	x2 -= padding;
+	y2 -= padding;
+	return rect4(x1, y1, x2, y2);
+}
+
 void menu_render(Ted *ted) {
 	const Settings *settings = ted_active_settings(ted);
 	const u32 *colors = settings->colors;
@@ -390,7 +416,6 @@ void menu_render(Ted *ted) {
 	const float char_height = text_font_char_height(font);
 	const float char_height_bold = text_font_char_height(font_bold);
 	const float line_buffer_height = ted_line_buffer_height(ted);
-	const float padding = settings->padding;
 	
 	if (*ted->warn_overwrite) {
 		const char *path = ted->warn_overwrite;
@@ -402,26 +427,6 @@ void menu_render(Ted *ted) {
 		return;
 	}
 
-	const float menu_width = ted_get_menu_width(ted);
-	Rect bounds = rect(
-		Vec2(window_width * 0.5f - 0.5f * menu_width, padding),
-		Vec2(menu_width, window_height - 2 * padding)
-	);
-	
-	float x1, y1, x2, y2;
-	rect_coords(bounds, &x1, &y1, &x2, &y2);
-
-	if (menu == MENU_OPEN || menu == MENU_SAVE_AS || menu == MENU_GOTO_DEFINITION || menu == MENU_COMMAND_SELECTOR) {
-		// menu rectangle & border
-		gl_geometry_rect(bounds, colors[COLOR_MENU_BG]);
-		gl_geometry_rect_border(bounds, settings->border_thickness, colors[COLOR_BORDER]);
-		gl_geometry_draw();
-		
-		x1 += padding;
-		y1 += padding;
-		x2 -= padding;
-		y2 -= padding;
-	}
 		
 
 	switch (menu) {
@@ -585,4 +590,128 @@ void menu_shell_up(Ted *ted) {
 }
 void menu_shell_down(Ted *ted) {
 	menu_shell_move(ted, +1);
+}
+
+static void open_menu_open(Ted *ted) {
+	ted_switch_to_buffer(ted, &ted->line_buffer);
+	ted->file_selector.create_menu = false;
+}
+
+static void open_menu_update(Ted *ted) {
+	char *selected_file = file_selector_update(ted, &ted->file_selector);
+	if (selected_file) {
+		// open that file!
+		menu_close(ted);
+		ted_open_file(ted, selected_file);
+		free(selected_file);
+	}
+}
+
+static void open_menu_render(Ted *ted) {
+	FileSelector *fs = &ted->file_selector;
+	strbuf_cpy(fs->title, "Open...");
+	fs->bounds = selection_menu_render_bg(ted);
+	file_selector_render(ted, fs);
+}
+
+static bool open_menu_close(Ted *ted) {
+	file_selector_free(&ted->file_selector);
+	buffer_clear(&ted->line_buffer);
+	return true;
+}
+
+static void save_as_menu_open(Ted *ted) {
+	ted_switch_to_buffer(ted, &ted->line_buffer);
+	ted->file_selector.create_menu = false;
+}
+
+static void save_as_menu_update(Ted *ted) {
+	if (*ted->warn_overwrite) {
+		switch (popup_update(ted, POPUP_YES_NO_CANCEL)) {
+		case POPUP_NONE:
+			// no option selected
+			break;
+		case POPUP_YES: {
+			// overwrite it!
+			TextBuffer *buffer = ted->prev_active_buffer;
+			if (buffer) {
+				buffer_save_as(buffer, ted->warn_overwrite);
+			}
+			menu_close(ted);
+		} break;
+		case POPUP_NO:
+			// back to the file selector
+			*ted->warn_overwrite = '\0';
+			ted_switch_to_buffer(ted, &ted->line_buffer);
+			break;
+		case POPUP_CANCEL:
+			// close "save as" menu
+			menu_close(ted);
+			break;
+		}
+	} else {
+		char *selected_file = file_selector_update(ted, &ted->file_selector);
+		if (selected_file) {
+			TextBuffer *buffer = ted->prev_active_buffer;
+			if (buffer) {
+				if (fs_path_type(selected_file) != FS_NON_EXISTENT) {
+					// file already exists! warn about overwriting it.
+					strbuf_cpy(ted->warn_overwrite, selected_file);
+					ted_switch_to_buffer(ted, NULL);
+				} else {
+					// create the new file.
+					buffer_save_as(buffer, selected_file);
+					menu_close(ted);
+				}
+			}
+			free(selected_file);
+		}
+	}
+}
+
+static void save_as_menu_render(Ted *ted) {
+	FileSelector *fs = &ted->file_selector;
+	strbuf_cpy(fs->title, "Save as...");
+	fs->bounds = selection_menu_render_bg(ted);
+	file_selector_render(ted, fs);
+}
+
+static bool save_as_menu_close(Ted *ted) {
+	file_selector_free(&ted->file_selector);
+	buffer_clear(&ted->line_buffer);
+	return true;
+}
+
+void menu_register(Ted *ted, const MenuInfo *infop) {
+	MenuInfo info = *infop;
+	if (!*info.name) {
+		ted_error(ted, "menu has no name");
+		return;
+	}
+	info.name[sizeof info.name - 1] = '\0';
+	arr_add(ted->all_menus, info);
+}
+
+void menu_init(Ted *ted) {
+	MenuInfo save_as_menu = {
+		.open = save_as_menu_open,
+		.update = save_as_menu_update,
+		.render = save_as_menu_render,
+		.close = save_as_menu_close,
+	};
+	strbuf_cpy(save_as_menu.name, MENU_SAVE_AS);
+	menu_register(ted, &save_as_menu);
+	
+	MenuInfo open_menu = {
+		.open = open_menu_open,
+		.update = open_menu_update,
+		.render = open_menu_render,
+		.close = open_menu_close,
+	};
+	strbuf_cpy(open_menu.name, MENU_OPEN);
+	menu_register(ted, &open_menu);
+}
+
+void menu_quit(Ted *ted) {
+	arr_clear(ted->all_menus);
 }

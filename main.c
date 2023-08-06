@@ -500,6 +500,7 @@ int main(int argc, char **argv) {
 
 	gl_geometry_init();
 	text_init();
+	menu_init(ted);
 	autocomplete_init(ted);
 	signature_help_init(ted);
 	usages_init(ted);
@@ -1197,6 +1198,7 @@ int main(int argc, char **argv) {
 	session_write(ted);
 	rename_symbol_quit(ted);
 	document_link_quit(ted);
+	menu_quit(ted);
 	
 	for (int i = 0; i < TED_LSP_MAX; ++i) {
 		if (!ted->lsps[i]) break;
