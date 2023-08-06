@@ -122,7 +122,6 @@ void rename_symbol_process_lsp_response(Ted *ted, const LSPResponse *response) {
 	}
 	
 	rename_symbol_clear(ted);
-	printf("aeiou\n");
-	if (ted->menu == MENU_RENAME_SYMBOL)
+	if (menu_is_open(ted, MENU_RENAME_SYMBOL))
 		menu_close(ted);
 }

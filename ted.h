@@ -224,28 +224,24 @@ typedef enum {
 	MESSAGE_ERROR = 0x30000,
 } MessageType;
 
-typedef enum {
-	/// No menu is open
-	MENU_NONE,
-	/// "Open file"
-	MENU_OPEN,
-	/// "Save file as"
-	MENU_SAVE_AS,
-	/// "X has unsaved changes"
-	MENU_WARN_UNSAVED,
-	/// "X has been changed by another program"
-	MENU_ASK_RELOAD,
-	/// "Go to definition of..."
-	MENU_GOTO_DEFINITION,
-	/// "Go to line"
-	MENU_GOTO_LINE,
-	/// "Command palette"
-	MENU_COMMAND_SELECTOR,
-	/// "Run a shell command"
-	MENU_SHELL,
-	/// "Rename symbol"
-	MENU_RENAME_SYMBOL,
-} Menu;
+/// "Open file"
+#define MENU_OPEN "ted-open-file"
+/// "Save file as"
+#define MENU_SAVE_AS "ted-save-as"
+/// "X has unsaved changes"
+#define MENU_WARN_UNSAVED "ted-warn-unsaved"
+/// "X has been changed by another program"
+#define MENU_ASK_RELOAD "ted-ask-reload"
+/// "Go to definition of..."
+#define MENU_GOTO_DEFINITION "ted-goto-defn"
+/// "Go to line"
+#define MENU_GOTO_LINE "ted-goto-line"
+/// "Command palette"
+#define MENU_COMMAND_SELECTOR "ted-cmd-sel"
+/// "Run a shell command"
+#define MENU_SHELL "ted-shell"
+/// "Rename symbol"
+#define MENU_RENAME_SYMBOL "ted-rename-sym"
 
 /// Information about a programming language
 ///
@@ -266,7 +262,9 @@ typedef struct {
 
 typedef struct {
 	/// identifier used to open the menu.
-	char name[16];
+	///
+	/// try to pick a unique name.
+	char name[24];
 	/// if non-NULL this will be called right after the menu is opened
 	void (*open)(Ted *ted);
 	/// if non-NULL this will be called every frame
@@ -796,7 +794,15 @@ void macro_execute(Ted *ted, u32 index);
 
 // === menu.c ===
 void menu_close(Ted *ted);
-void menu_open(Ted *ted, Menu menu);
+void menu_open(Ted *ted, const char *menu_name);
+void menu_open_with_context(Ted *ted, const char *menu_name, void *context);
+/// get the `context` value passed to the last \ref menu_open_with_context,
+/// or `NULL` if no menu is open.
+void *menu_get_context(Ted *ted);
+/// is this menu open?
+bool menu_is_open(Ted *ted, const char *menu_name);
+/// is any menu open?
+bool menu_is_any_open(Ted *ted);
 /// process a :escape command (by default this happens when the escape key is pressed)
 void menu_escape(Ted *ted);
 /// get rectangle which menu takes up

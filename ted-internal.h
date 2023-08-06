@@ -447,8 +447,10 @@ struct Ted {
 	MouseRelease *mouse_releases[4];
 	/// total amount scrolled this frame
 	int scroll_total_x, scroll_total_y; 
-	/// currently open menu, or \ref MENU_NONE if no menu is open.
-	Menu menu;
+	MenuInfo *all_menus;
+	/// index of currently open menu, or 0 if no menu is open
+	u32 menu_open_idx;
+	void *menu_context;
 	FileSelector file_selector;
 	Selector command_selector;
 	/// general-purpose line buffer for inputs -- used for menus

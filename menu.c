@@ -2,7 +2,30 @@
 
 #include "ted-internal.h"
 
+bool menu_is_open(Ted *ted, const char *menu_name) {
+	if (!menu_is_any_open(ted))
+		return false;
+	return streq(ted->all_menus[ted->menu_open_idx].name, menu_name);
+}
+
+bool menu_is_any_open(Ted *ted) {
+	return ted->menu_open_idx > 0;
+}
+
+void *menu_get_context(Ted *ted) {
+	return ted->menu_context;
+}
+
 void menu_close(Ted *ted) {
+	if (!menu_is_any_open(ted))
+		return;
+	const MenuInfo *menu = &ted->all_menus[ted->menu_open_idx];
+	bool will_close = true;
+	if (menu->close)
+		will_close = menu->close(ted);
+	if (!will_close)
+		return;
+	
 	ted_switch_to_buffer(ted, ted->prev_active_buffer);
 	TextBuffer *buffer = ted->active_buffer;
 	ted->prev_active_buffer = NULL;
@@ -10,6 +33,7 @@ void menu_close(Ted *ted) {
 		buffer->scroll_x = ted->prev_active_buffer_scroll.x;
 		buffer->scroll_y = ted->prev_active_buffer_scroll.y;
 	}
+	/*
 	switch (ted->menu) {
 	case MENU_NONE: assert(0); break;
 	case MENU_OPEN:
@@ -43,21 +67,38 @@ void menu_close(Ted *ted) {
 		rename_symbol_clear(ted);
 		buffer_clear(&ted->line_buffer);
 		break;
-	}
-	ted->menu = MENU_NONE;
+	}*/
+	ted->menu_open_idx = 0;
+	ted->menu_context = NULL;
 	ted->selector_open = NULL;
 }
 
-void menu_open(Ted *ted, Menu menu) {
-	if (ted->menu == menu)
+void menu_open_with_context(Ted *ted, const char *menu_name, void *context) {
+	u32 menu_idx = U32_MAX;
+	for (u32 i = 0; i < arr_len(ted->all_menus); ++i) {
+		if (streq(ted->all_menus[i].name, menu_name)) {
+			menu_idx = i;
+			break;
+		}
+	}
+	if (menu_idx == U32_MAX) {
+		ted_error(ted, "No such menu: %s", menu_name);
+		return;
+	}
+	
+	if (menu_is_open(ted, menu_name))
 		return;
 	
-	if (ted->menu)
+	if (menu_is_any_open(ted))
 		menu_close(ted);
+	
 	
 	if (ted->find) find_close(ted);
 	autocomplete_close(ted);
-	ted->menu = menu;
+	
+	const MenuInfo *info = &ted->all_menus[ted->menu_open_idx];
+	ted->menu_open_idx = menu_idx;
+	ted->menu_context = context;
 	TextBuffer *prev_buf = ted->prev_active_buffer = ted->active_buffer;
 	if (prev_buf)
 		ted->prev_active_buffer_scroll = Vec2d(prev_buf->scroll_x, prev_buf->scroll_y);
@@ -65,6 +106,7 @@ void menu_open(Ted *ted, Menu menu) {
 	ted_switch_to_buffer(ted, NULL);
 	*ted->warn_overwrite = 0; // clear warn_overwrite
 	buffer_clear(&ted->line_buffer);
+	/*
 	switch (menu) {
 	case MENU_NONE: assert(0); break;
 	case MENU_OPEN:
@@ -102,10 +144,17 @@ void menu_open(Ted *ted, Menu menu) {
 	case MENU_RENAME_SYMBOL:
 		ted_switch_to_buffer(ted, &ted->line_buffer);
 		break;
-	}
+	}*/
+	if (info->open) info->open(ted);
+}
+
+void menu_open(Ted *ted, const char *menu_name) {
+	menu_open_with_context(ted, menu_name, NULL);
 }
 
 void menu_escape(Ted *ted) {
+	if (!menu_is_any_open(ted)) return;
+	
 	if (*ted->warn_overwrite) {
 		// just close "are you sure you want to overwrite?"
 		*ted->warn_overwrite = 0;
@@ -116,11 +165,16 @@ void menu_escape(Ted *ted) {
 }
 
 void menu_update(Ted *ted) {
-	Menu menu = ted->menu;
+	if (!menu_is_any_open(ted)) return;
+	
+	const MenuInfo *info = &ted->all_menus[ted->menu_open_idx];
+	
+	if (info->update) info->update(ted);
+	
+	/*
+	TextBuffer *line_buffer = &ted->line_buffer;
 	const Settings *settings = ted_active_settings(ted);
 	const u32 *colors = settings->colors;
-	TextBuffer *line_buffer = &ted->line_buffer;
-
 	assert(menu);
 	switch (menu) {
 	case MENU_NONE: break;
@@ -316,25 +370,28 @@ void menu_update(Ted *ted) {
 			free(new_name);
 		}
 		break;
-	}
+	}*/
 }
 
 void menu_render(Ted *ted) {
-	Menu menu = ted->menu;
-	assert(menu);
 	const Settings *settings = ted_active_settings(ted);
 	const u32 *colors = settings->colors;
 	const float window_width = ted->window_width, window_height = ted->window_height;
+	const MenuInfo *info = &ted->all_menus[ted->menu_open_idx];
+	// render backdrop
+	gl_geometry_rect(rect(Vec2(0, 0), Vec2(window_width, window_height)), colors[COLOR_MENU_BACKDROP]);
+	gl_geometry_draw();
+
+	if (info->render)
+		info->render(ted);
+	
+	/*
 	Font *font_bold = ted->font_bold, *font = ted->font;
 	const float char_height = text_font_char_height(font);
 	const float char_height_bold = text_font_char_height(font_bold);
 	const float line_buffer_height = ted_line_buffer_height(ted);
 	const float padding = settings->padding;
 	
-	// render backdrop
-	gl_geometry_rect(rect(Vec2(0, 0), Vec2(window_width, window_height)), colors[COLOR_MENU_BACKDROP]);
-	gl_geometry_draw();
-
 	if (*ted->warn_overwrite) {
 		const char *path = ted->warn_overwrite;
 		const char *filename = path_filename(path);
@@ -496,6 +553,7 @@ void menu_render(Ted *ted) {
 		buffer_render(&ted->line_buffer, rect4(x1, y1, x2, y2));
 	} break;
 	}
+	*/
 }
 
 void menu_shell_move(Ted *ted, int direction) {

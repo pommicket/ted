@@ -218,7 +218,7 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 		{ // tab bar
 			u16 ntabs = (u16)arr_len(node->tabs);
 			float tab_width = r.size.x / ntabs;
-			if (!ted->menu) {
+			if (!menu_is_any_open(ted)) {
 				arr_foreach_ptr(ted->mouse_clicks[SDL_BUTTON_LEFT], MouseClick, click) {
 					if (rect_contains_point(tab_bar_rect, click->pos)) {
 						// click on tab to switch to it

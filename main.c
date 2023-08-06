@@ -683,7 +683,7 @@ int main(int argc, char **argv) {
 					// we need to do this here, and not in buffer_render, because ctrl+click (go to definition)
 					// could switch to a different buffer.
 					// line buffer click handling, IS done in buffer_render (yes this is less than ideal)
-					if (!ted->menu) {
+					if (!menu_is_any_open(ted)) {
 						for (u32 i = 0; i < TED_MAX_NODES; ++i) {
 							if (ted->nodes_used[i]) {
 								Node *node = &ted->nodes[i];
@@ -864,7 +864,7 @@ int main(int argc, char **argv) {
 				buffer_scroll(active_buffer, +scroll_amount_x, 0);
 		}
 		
-		if (ted->menu) {
+		if (menu_is_any_open(ted)) {
 			menu_update(ted);
 		}
 		
@@ -1031,7 +1031,7 @@ int main(int argc, char **argv) {
 		if (arr_len(ted->mouse_releases[SDL_BUTTON_LEFT]))
 			ted->dragging_tab_node = NULL;
 
-		if (ted->menu) {
+		if (menu_is_any_open(ted)) {
 			menu_render(ted);
 		}
 
@@ -1187,7 +1187,7 @@ int main(int argc, char **argv) {
 	if (ted->find)
 		find_close(ted);
 	build_stop(ted);
-	if (ted->menu)
+	if (menu_is_any_open(ted))
 		menu_close(ted);
 	hover_quit(ted);
 	signature_help_quit(ted);

@@ -676,7 +676,7 @@ void ted_reload_all(Ted *ted) {
 			}
 		}
 	}
-	if (ted->menu == MENU_ASK_RELOAD) {
+	if (menu_is_open(ted, MENU_ASK_RELOAD)) {
 		menu_close(ted);
 	}
 }

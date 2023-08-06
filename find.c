@@ -457,7 +457,7 @@ void find_menu_frame(Ted *ted, Rect menu_bounds) {
 }
 
 void find_open(Ted *ted, bool replace) {
-	if (ted->menu) return;
+	if (menu_is_any_open(ted)) return;
 	if (ted->active_buffer == &ted->build_buffer) return; 
 	if (!ted->find)
 		ted->prev_active_buffer = ted->active_buffer;

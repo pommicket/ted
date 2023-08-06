@@ -2904,7 +2904,7 @@ bool buffer_handle_click(Ted *ted, TextBuffer *buffer, vec2 click, u8 times) {
 	}
 	if (buffer_pixels_to_pos(buffer, click, &buffer_pos)) {
 		// user clicked on buffer
-		if (!ted->menu || buffer->is_line_buffer) {
+		if (!menu_is_any_open(ted) || buffer->is_line_buffer) {
 			ted_switch_to_buffer(ted, buffer);
 		}
 		if (buffer == ted->active_buffer) {
@@ -3080,7 +3080,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	}
 
 	// change cursor to ibeam when it's hovering over the buffer
-	if ((!ted->menu || buffer == &ted->line_buffer) && rect_contains_point(rect4(x1, y1, x2, y2), ted->mouse_pos)) {
+	if ((!menu_is_any_open(ted) || buffer == &ted->line_buffer) && rect_contains_point(rect4(x1, y1, x2, y2), ted->mouse_pos)) {
 		ted->cursor = ted->cursor_ibeam;
 	}
 
@@ -3090,7 +3090,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 		buffer->center_cursor_next_frame = false;
 	}
 
-	if (rect_contains_point(rect4(x1, y1, x2, y2), ted->mouse_pos) && !ted->menu) {
+	if (rect_contains_point(rect4(x1, y1, x2, y2), ted->mouse_pos) && !menu_is_any_open(ted)) {
 		// scroll with mouse wheel
 		double scroll_speed = 2.5;
 		buffer_scroll(buffer, ted->scroll_total_x * scroll_speed, ted->scroll_total_y * scroll_speed);
