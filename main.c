@@ -106,6 +106,11 @@ static void APIENTRY gl_message_callback(GLenum source, GLenum type, unsigned in
 	GLsizei length, const char *message, const void *userParam) {
 	(void)source; (void)type; (void)id; (void)length; (void)userParam;
 	if (severity == GL_DEBUG_SEVERITY_NOTIFICATION) return;
+	if (strstr(message, "The texture object (0) bound to texture image unit 0 does not have a defined base level and cannot be used for texture mapping")) {
+		// shut the fuck up
+		// why are you telling me this?
+		return;
+	}
 	debug_println("Message from OpenGL: %s.", message);
 }
 #endif

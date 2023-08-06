@@ -325,6 +325,8 @@ void text_render(Font *font) {
 	arr_foreach_ptr(font->textures, FontTexture, texture) {
 		size_t ntriangles = arr_len(texture->triangles);
 		if (!ntriangles) continue;
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, texture->tex);
 		font_texture_update_if_needed(texture);
 		// render these triangles
 		if (gl_version_major >= 3)
@@ -338,8 +340,6 @@ void text_render(Font *font) {
 		glVertexAttribPointer(text_v_color, 4, GL_FLOAT, 0, sizeof(TextVertex), (void *)offsetof(TextVertex, color));
 		glEnableVertexAttribArray(text_v_color);
 		glUseProgram(text_program);
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, texture->tex);
 		glUniform1i(text_u_sampler, 0);
 		glUniform2f(text_u_window_size, gl_window_width, gl_window_height);
 		glDrawArrays(GL_TRIANGLES, 0, (GLsizei)(3 * ntriangles));
