@@ -1,7 +1,4 @@
 /*
-TODO:
-- deal with really long paths in file menus
-
 FUTURE FEATURES:
 - autodetect indentation (tabs vs spaces)
 - robust find (results shouldn't move around when you type things)
@@ -9,9 +6,6 @@ FUTURE FEATURES:
 - bind key to multiple commands
    - convert macro to command list
 - plugins?
-   - TED_PLUGIN macro defined before including ted.h
-     this can remove struct definitions to guarantee forwards compatibility
-   - language dynamic registration
    - built-in plugins
        - "remove file..." menu
 - with macros we can really test performance of buffer_insert_text_at_pos, etc. (which should ideally be fast)

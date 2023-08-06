@@ -495,21 +495,35 @@ void file_selector_render(Ted *ted, FileSelector *fs) {
 	Font *font = ted->font, *font_bold = ted->font_bold;
 	float padding = settings->padding;
 	float char_height = text_font_char_height(font);
-	float x1, y1, x2, y2;
-	rect_coords(bounds, &x1, &y1, &x2, &y2);
 	
 	if (*fs->title) {
-		text_utf8(font_bold, fs->title, x1, y1, colors[COLOR_TEXT]);
-		y1 += text_font_char_height(font_bold) * 0.75f + padding;
+		text_utf8(font_bold, fs->title, bounds.pos.x, bounds.pos.y, colors[COLOR_TEXT]);
+		bounds = rect_shrink_top(bounds, text_font_char_height(font_bold) * 0.75f + padding);
 	}
 
 	// current working directory
-	text_utf8(font, fs->cwd, x1, y1, colors[COLOR_TEXT]);
-	y1 += char_height + padding;
+	{
+		const char *cwd = fs->cwd;
+		const float text_width = text_get_size_vec2(font, cwd).x;
+		TextRenderState	state = text_render_state_default;
+		state.x = bounds.pos.x;
+		if (text_width > bounds.size.x) {
+			// very long cwd
+			// make sure the end of the cwd is shown
+			state.x = rect_x2(bounds) - text_width - padding;
+		}
+		state.y = bounds.pos.y;
+		rgba_u32_to_floats(colors[COLOR_TEXT], state.color);
+		state.min_x = bounds.pos.x;
+		state.max_x = rect_x2(bounds);
+		
+		text_utf8_with_state(font, &state, fs->cwd);
+		bounds = rect_shrink_top(bounds, char_height + padding);
+	}
 
 	// render selector
 	Selector *sel = &fs->sel;
-	sel->bounds = rect4(x1, y1, x2, y2); // selector takes up remaining space
+	sel->bounds = bounds;
 	arr_clear(sel->entries);
 	for (u32 i = 0; i < fs->n_entries; ++i) {
 		ColorSetting color = 0;
