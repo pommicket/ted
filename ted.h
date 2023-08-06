@@ -867,6 +867,10 @@ bool tag_goto(Ted *ted, const char *tag);
 void die(PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRINTF(1, 2);
 /// returns the current active buffer, or NULL if no buffer is active.
 TextBuffer *ted_get_active_buffer(Ted *ted);
+/// if a menu is open, returns the buffer that was open before the menu was opened.
+///
+/// returns NULL if no menu is open or no buffer was open before the menu was opened.
+TextBuffer *ted_get_active_buffer_behind_menu(Ted *ted);
 /// set title of ted window
 void ted_set_window_title(Ted *ted, const char *title);
 /// returns `true` if the given SDL key code is down

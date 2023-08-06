@@ -42,6 +42,10 @@ TextBuffer *ted_get_active_buffer(Ted *ted) {
 	return ted->active_buffer;
 }
 
+TextBuffer *ted_get_active_buffer_behind_menu(Ted *ted) {
+	return ted->prev_active_buffer;
+}
+
 void ted_set_window_title(Ted *ted, const char *title) {
 	strbuf_cpy(ted->window_title, title);
 }

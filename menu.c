@@ -2,7 +2,7 @@
 
 #include "ted-internal.h"
 
-static void menu_close_with_next(Ted *ted, Menu next) {
+void menu_close(Ted *ted) {
 	ted_switch_to_buffer(ted, ted->prev_active_buffer);
 	TextBuffer *buffer = ted->active_buffer;
 	ted->prev_active_buffer = NULL;
@@ -18,10 +18,8 @@ static void menu_close_with_next(Ted *ted, Menu next) {
 		buffer_clear(&ted->line_buffer);
 		break;
 	case MENU_WARN_UNSAVED:
-		if (next != MENU_WARN_UNSAVED) {
-			ted->warn_unsaved = 0;
-			*ted->warn_unsaved_names = 0;
-		}
+		ted->warn_unsaved = 0;
+		*ted->warn_unsaved_names = 0;
 		break;
 	case MENU_ASK_RELOAD:
 		*ted->ask_reload = 0;
@@ -50,13 +48,13 @@ static void menu_close_with_next(Ted *ted, Menu next) {
 	ted->selector_open = NULL;
 }
 
-void menu_close(Ted *ted) {
-	menu_close_with_next(ted, 0);
-}
-
 void menu_open(Ted *ted, Menu menu) {
+	if (ted->menu == menu)
+		return;
+	
 	if (ted->menu)
-		menu_close_with_next(ted, menu);
+		menu_close(ted);
+	
 	if (ted->find) find_close(ted);
 	autocomplete_close(ted);
 	ted->menu = menu;
