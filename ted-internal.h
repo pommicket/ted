@@ -792,6 +792,25 @@ void usages_quit(Ted *ted);
 
 // === macro.c ===
 void macro_add(Ted *ted, Command command, const CommandArgument *argument);
+void macros_free(Ted *ted);
+
+// === menu.c ===
+void menu_update(Ted *ted);
+void menu_render(Ted *ted);
+/// move to next/previous command
+void menu_shell_move(Ted *ted, int direction);
+/// move to previous command
+void menu_shell_up(Ted *ted);
+/// move to next command
+void menu_shell_down(Ted *ted);
+
+// === node.c ===
+void node_free(Node *node);
+void node_frame(Ted *ted, Node *node, Rect r);
+
+// === syntax.c ===
+/// free up resources used by `syntax.c`
+void syntax_quit(void);
 
 // === tags.c ===
 /// get all tags in the tags file as SymbolInfos.
@@ -807,5 +826,13 @@ void ted_go_to_lsp_document_position(Ted *ted, LSP *lsp, LSPDocumentPosition pos
 void ted_cancel_lsp_request(Ted *ted, LSPServerRequestID *request);
 /// convert LSPWindowMessageType to MessageType
 MessageType ted_message_type_from_lsp(LSPWindowMessageType type);
+/// Returns the index of an available node, or -1 if none are available 
+i32 ted_new_node(Ted *ted);
+/// check for orphaned nodes and node cycles
+void ted_check_for_node_problems(Ted *ted);
+/// load ted configuration
+void ted_load_configs(Ted *ted);
+/// get colors to use for message box
+void ted_color_settings_for_message_type(MessageType type, ColorSetting *bg_color, ColorSetting *border_color);
 
 #endif // TED_INTERNAL_H_

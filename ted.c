@@ -471,7 +471,7 @@ void ted_reset_active_buffer(Ted *ted) {
 }
 
 
-i32 ted_new_buffer(Ted *ted) {
+static i32 ted_new_buffer(Ted *ted) {
 	bool *buffers_used = ted->buffers_used;
 	for (i32 i = 1; // start from 1, so as not to use the null buffer
 		i < TED_MAX_BUFFERS; ++i) {
@@ -678,8 +678,7 @@ void ted_reload_all(Ted *ted) {
 }
 
 // load/reload configs
-void ted_load_configs(Ted *ted, bool reloading) {
-	if (reloading) config_free(ted);
+void ted_load_configs(Ted *ted) {
 	
 	// copy global config to local config
 	char local_config_filename[TED_PATH_MAX];
@@ -708,12 +707,13 @@ void ted_load_configs(Ted *ted, bool reloading) {
 		config_read(ted, &parts, start_cwd_filename);
 	}
 	config_parse(ted, &parts);
-	
-	
-	if (reloading) {
-		// reset text size
-		ted_load_fonts(ted);
-	}
+}
+
+void ted_reload_configs(Ted *ted) {
+	config_free(ted);
+	ted_load_configs(ted);
+	// reset text size
+	ted_load_fonts(ted);
 }
 
 void ted_press_key(Ted *ted, SDL_Keycode keycode, SDL_Keymod modifier) {

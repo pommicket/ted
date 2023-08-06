@@ -511,7 +511,7 @@ int main(int argc, char **argv) {
 	
 	
 	PROFILE_TIME(configs_start)
-	ted_load_configs(ted, false);
+	ted_load_configs(ted);
 	PROFILE_TIME(configs_end)
 	
 	PROFILE_TIME(fonts_start)

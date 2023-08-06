@@ -2836,7 +2836,7 @@ bool buffer_save(TextBuffer *buffer) {
 		buffer->undo_history_write_pos = arr_len(buffer->undo_history);
 		if (buffer->path && str_has_suffix(path_filename(buffer->path), "ted.cfg")
 			&& buffer_settings(buffer)->auto_reload_config) {
-			ted_load_configs(buffer->ted, true);
+			ted_reload_configs(buffer->ted);
 		}
 	}
 	return success;

@@ -81,6 +81,10 @@ typedef int64_t i64;
 // (for i8 and i16, you can use %d)
 #define I32_FMT "%" PRId32
 #define I64_FMT "%" PRId64
+#define I8_MIN ((i8)0x80)
+#define I16_MIN ((i16)0x8000)
+#define I32_MIN ((i32)0x80000000)
+#define I64_MIN ((i64)0x8000000000000000)
 #define I8_MAX  0x7f
 #define I16_MAX 0x7fff
 #define I32_MAX 0x7fffffff

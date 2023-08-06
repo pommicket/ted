@@ -773,7 +773,6 @@ void usages_find(Ted *ted);
 void macro_start_recording(Ted *ted, u32 index);
 void macro_stop_recording(Ted *ted);
 void macro_execute(Ted *ted, u32 index);
-void macros_free(Ted *ted);
 
 // === menu.c ===
 void menu_close(Ted *ted);
@@ -784,38 +783,39 @@ void menu_escape(Ted *ted);
 float menu_get_width(Ted *ted);
 /// get rectangle which menu takes up
 Rect menu_rect(Ted *ted);
-void menu_update(Ted *ted);
-void menu_render(Ted *ted);
-/// move to next/previous command
-void menu_shell_move(Ted *ted, int direction);
-/// move to previous command
-void menu_shell_up(Ted *ted);
-/// move to next command
-void menu_shell_down(Ted *ted);
 
 // === node.c ===
-void node_switch_to_tab(Ted *ted, Node *node, u16 new_tab_index);
 /// go to the `n`th next tab (e.g. `n=1` goes to the next tab)
 /// going past the end of the tabs will "wrap around" to the first one.
-void node_tab_next(Ted *ted, Node *node, i64 n);
+///
+/// if `node` is a split, nothing happens.
+void node_tab_next(Ted *ted, Node *node, i32 n);
 /// go to the `n`th previous tab (e.g. `n=1` goes to the previous tab)
 /// going before the first tab will "wrap around" to the last one.
-void node_tab_prev(Ted *ted, Node *node, i64 n);
-/// switch to a specific tab. if `tab` is out of range, nothing happens.
-void node_tab_switch(Ted *ted, Node *node, i64 tab);
+///
+/// if `node` is a split, nothing happens.
+void node_tab_prev(Ted *ted, Node *node, i32 n);
+/// switch to a specific tab.
+///
+/// if `tab` is out of range or `node` is a split, nothing happens.
+void node_tab_switch(Ted *ted, Node *node, i32 tab);
 /// swap the position of two tabs
-void node_tabs_swap(Node *node, u16 tab1, u16 tab2);
-void node_free(Node *node);
+///
+/// if `node` is a split or either index is out of range, nothing happens.
+void node_tabs_swap(Node *node, i32 tab1, i32 tab2);
 /// returns index of parent in ted->nodes, or -1 if this is the root node.
-i32 node_parent(Ted *ted, u16 node_idx);
+i32 node_parent(Ted *ted, i32 node_idx);
 /// join this node with its sibling
 void node_join(Ted *ted, Node *node);
 /// close a node, WITHOUT checking for unsaved changes
-void node_close(Ted *ted, u16 node_idx);
+///
+/// does nothing if node_idx is out of range
+void node_close(Ted *ted, i32 node_idx);
 /// close tab, WITHOUT checking for unsaved changes!
 /// returns true if the node is still open
-bool node_tab_close(Ted *ted, Node *node, u16 index);
-void node_frame(Ted *ted, Node *node, Rect r);
+///
+/// does nothing and returns false if node_idx is out of range
+bool node_tab_close(Ted *ted, Node *node, i32 index);
 /// make a split
 void node_split(Ted *ted, Node *node, bool vertical);
 /// switch to the other side of the current split.
@@ -842,7 +842,7 @@ Language language_from_str(const char *str);
 const char *language_to_str(Language language);
 /// get the color setting associated with the given syntax highlighting type
 ColorSetting syntax_char_type_to_color_setting(SyntaxCharType t);
-/// returns ')' for '(', etc., or 0 if c is not an opening bracket
+/// returns ')' for '(', '[' for ']', etc., or 0 if c is not a bracket
 char32_t syntax_matching_bracket(Language lang, char32_t c);
 /// returns true for opening brackets, false for closing brackets/non-brackets
 bool syntax_is_opening_bracket(Language lang, char32_t c);
@@ -851,8 +851,6 @@ bool syntax_is_opening_bracket(Language lang, char32_t c);
 /// To highlight multiple lines, start out with a zeroed SyntaxState, and pass a pointer to it each time.
 /// You can set char_types to NULL if you just want to advance the state, and don't care about the character types.
 void syntax_highlight(SyntaxState *state, Language lang, const char32_t *line, u32 line_len, SyntaxCharType *char_types);
-/// free up resources used by syntax.c
-void syntax_quit(void);
 
 // === tags.c ===
 void tags_generate(Ted *ted, bool run_in_build_window);
@@ -954,10 +952,6 @@ bool ted_open_file(Ted *ted, const char *filename);
 /// if `filename` is NULL, this creates an untitled buffer.
 /// returns true on success.
 bool ted_new_file(Ted *ted, const char *filename);
-/// returns the index of an available buffer, or -1 if none are available 
-i32 ted_new_buffer(Ted *ted);
-/// Returns the index of an available node, or -1 if none are available 
-i32 ted_new_node(Ted *ted);
 /// Opposite of ted_new_buffer
 /// Make sure you set active_buffer to something else if you delete it!
 void ted_delete_buffer(Ted *ted, u16 index);
@@ -968,8 +962,8 @@ bool ted_save_all(Ted *ted);
 void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer);
 /// switch to this node
 void ted_node_switch(Ted *ted, Node *node);
-/// load ted.cfg files
-void ted_load_configs(Ted *ted, bool reloading);
+/// reload ted configuration
+void ted_reload_configs(Ted *ted);
 /// handle a key press
 void ted_press_key(Ted *ted, i32 keycode, u32 modifier);
 /// get the buffer and buffer position where the mouse is.
@@ -979,10 +973,6 @@ Status ted_get_mouse_buffer_pos(Ted *ted, TextBuffer **pbuffer, BufferPos *ppos)
 void ted_flash_error_cursor(Ted *ted);
 /// how tall is a line buffer?
 float ted_line_buffer_height(Ted *ted);
-/// check for orphaned nodes and node cycles
-void ted_check_for_node_problems(Ted *ted);
-/// get colors to use for message box
-void ted_color_settings_for_message_type(MessageType type, ColorSetting *bg_color, ColorSetting *border_color);
 
 // === ui.c ===
 /// move selector cursor up by `n` entries

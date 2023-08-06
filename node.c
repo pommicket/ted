@@ -2,7 +2,10 @@
 
 #include "ted-internal.h"
 
-void node_switch_to_tab(Ted *ted, Node *node, u16 new_tab_index) {
+static void node_switch_to_tab(Ted *ted, Node *node, u16 new_tab_index) {
+	if (new_tab_index >= arr_len(node->tabs))
+		return;
+	
 	node->active_tab = new_tab_index;
 	if (node == ted->active_node) {
 		// switch active buffer
@@ -13,26 +16,29 @@ void node_switch_to_tab(Ted *ted, Node *node, u16 new_tab_index) {
 }
 
 // move n tabs to the right
-void node_tab_next(Ted *ted, Node *node, i64 n) {
-	assert(node->tabs);
+void node_tab_next(Ted *ted, Node *node, i32 n) {
 	u16 ntabs = (u16)arr_len(node->tabs);
-	u16 tab_idx = (u16)mod_i64(node->active_tab + n, ntabs);
+	if (!ntabs) return;
+	u16 tab_idx = (u16)mod_i64((i64)node->active_tab + n, ntabs);
 	node_switch_to_tab(ted, node, tab_idx);
 }
 
-void node_tab_prev(Ted *ted, Node *node, i64 n) {
+void node_tab_prev(Ted *ted, Node *node, i32 n) {
 	node_tab_next(ted, node, -n);
 }
 
-void node_tab_switch(Ted *ted, Node *node, i64 tab) {
+void node_tab_switch(Ted *ted, Node *node, i32 tab) {
 	assert(node->tabs);
-	if (tab < arr_len(node->tabs)) {
+	if (tab >= 0 && tab < (i32)arr_len(node->tabs)) {
 		node_switch_to_tab(ted, node, (u16)tab);
 	}
 }
 
-void node_tabs_swap(Node *node, u16 tab1, u16 tab2) {
-	assert(tab1 < arr_len(node->tabs) && tab2 < arr_len(node->tabs));
+void node_tabs_swap(Node *node, i32 tab1i, i32 tab2i) {
+	if (tab1i < 0 || tab1i >= (i32)arr_len(node->tabs) || tab2i < 0 || tab2i >= (i32)arr_len(node->tabs))
+		return;
+	
+	u16 tab1 = (u16)tab1i, tab2 = (u16)tab2i;
 	if (node->active_tab == tab1) node->active_tab = tab2;
 	else if (node->active_tab == tab2) node->active_tab = tab1;
 	u16 tmp = node->tabs[tab1];
@@ -45,9 +51,10 @@ void node_free(Node *node) {
 	memset(node, 0, sizeof *node);
 }
 
-i32 node_parent(Ted *ted, u16 node_idx) {
-	bool *nodes_used = ted->nodes_used;
-	assert(node_idx < TED_MAX_NODES && nodes_used[node_idx]);
+i32 node_parent(Ted *ted, i32 node_idx) {
+	const bool *nodes_used = ted->nodes_used;
+	if (node_idx < 0 || node_idx >= TED_MAX_NODES || !nodes_used[node_idx])
+		return -1;
 	for (u16 i = 0; i < TED_MAX_NODES; ++i) {
 		if (nodes_used[i]) {
 			Node *node = &ted->nodes[i];
@@ -61,16 +68,11 @@ i32 node_parent(Ted *ted, u16 node_idx) {
 }
 
 // the root has depth 0, and a child node has 1 more than its parent's depth.
-static u8 node_depth(Ted *ted, u16 node_idx) {
+static u8 node_depth(Ted *ted, i32 node_idx) {
 	u8 depth = 0;
-	while (1) {
-		i32 parent = node_parent(ted, node_idx);
-		if (parent < 0) {
-			break;
-		} else {
-			node_idx = (u16)parent;
-			depth += 1;
-		}
+	while (node_idx != -1) {
+		node_idx = node_parent(ted, node_idx);
+		++depth;
 	}
 	return depth;
 }
@@ -111,15 +113,13 @@ void node_join(Ted *ted, Node *node) {
 	}
 }
 
-void node_close(Ted *ted, u16 node_idx) {
+void node_close(Ted *ted, i32 node_idx) {
 	ted->dragging_tab_node = NULL;
 	ted->resizing_split = NULL;
-	if (node_idx >= TED_MAX_NODES) {
-		assert(0);
+	if (node_idx < 0 || node_idx >= TED_MAX_NODES) {
 		return;
 	}
 	if (!ted->nodes_used[node_idx]) {
-		assert(0);
 		return;
 	}
 	i32 parent_idx = node_parent(ted, node_idx);
@@ -168,11 +168,15 @@ void node_close(Ted *ted, u16 node_idx) {
 }
 
 
-bool node_tab_close(Ted *ted, Node *node, u16 index) {
+bool node_tab_close(Ted *ted, Node *node, i32 index) {
 	ted->dragging_tab_node = NULL;
 
 	u16 ntabs = (u16)arr_len(node->tabs);
-	assert(index < ntabs);
+	
+	if (index < 0 || index >= ntabs) {
+		return false;
+	}
+	
 	if (ntabs == 1) {
 		// only 1 tab left, just close the node
 		node_close(ted, (u16)(node - ted->nodes));
@@ -181,7 +185,7 @@ bool node_tab_close(Ted *ted, Node *node, u16 index) {
 		bool was_active = ted->active_node == node; // ted->active_node will be set to NULL when the active buffer is deleted.
 		u16 buffer_index = node->tabs[index];
 		// remove tab from array
-		arr_remove(node->tabs, index);
+		arr_remove(node->tabs, (size_t)index);
 		ted_delete_buffer(ted, buffer_index);
 
 		ntabs = (u16)arr_len(node->tabs); // update ntabs

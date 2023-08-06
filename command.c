@@ -591,13 +591,16 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 		}
 	} break;
 	case CMD_TAB_NEXT:
-		if (node) node_tab_next(ted, node, argument);
+		if (node && argument > I32_MIN && argument < I32_MAX)
+			node_tab_next(ted, node, (i32)argument);
 		break;
 	case CMD_TAB_PREV:
-		if (node) node_tab_prev(ted, node, argument);
+		if (node && argument > I32_MIN && argument < I32_MAX)
+			node_tab_prev(ted, node, (i32)argument);
 		break;
 	case CMD_TAB_SWITCH:
-		if (node) node_tab_switch(ted, node, argument);
+		if (node && argument > I32_MIN && argument < I32_MAX)
+			node_tab_switch(ted, node, (i32)argument);
 		break;
 	case CMD_TAB_MOVE_LEFT: {
 		u16 active_tab = node->active_tab;
