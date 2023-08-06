@@ -98,7 +98,7 @@ static Rect message_box_rect(Ted *ted) {
 	float window_width = ted->window_width, window_height = ted->window_height;
 	float char_height = text_font_char_height(font);
 	return rect_centered(Vec2(window_width * 0.5f, window_height * 0.9f),
-			Vec2(menu_get_width(ted), 3 * char_height + 2 * padding));
+			Vec2(ted_get_menu_width(ted), 3 * char_height + 2 * padding));
 }
 
 #if DEBUG

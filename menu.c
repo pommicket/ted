@@ -115,22 +115,6 @@ void menu_escape(Ted *ted) {
 	}
 }
 
-float menu_get_width(Ted *ted) {
-	const Settings *settings = ted_active_settings(ted);
-	return minf(settings->max_menu_width, ted->window_width - 2.0f * settings->padding);
-}
-
-Rect menu_rect(Ted *ted) {
-	Settings *settings = ted_active_settings(ted);
-	float window_width = ted->window_width, window_height = ted->window_height;
-	float padding = settings->padding;
-	float menu_width = menu_get_width(ted);
-	return rect(
-		Vec2(window_width * 0.5f - 0.5f * menu_width, padding),
-		Vec2(menu_width, window_height - 2 * padding)
-	);
-}
-
 void menu_update(Ted *ted) {
 	Menu menu = ted->menu;
 	const Settings *settings = ted_active_settings(ted);
@@ -345,6 +329,7 @@ void menu_render(Ted *ted) {
 	const float char_height = text_font_char_height(font);
 	const float char_height_bold = text_font_char_height(font_bold);
 	const float line_buffer_height = ted_line_buffer_height(ted);
+	const float padding = settings->padding;
 	
 	// render backdrop
 	gl_geometry_rect(rect(Vec2(0, 0), Vec2(window_width, window_height)), colors[COLOR_MENU_BACKDROP]);
@@ -360,9 +345,12 @@ void menu_render(Ted *ted) {
 		return;
 	}
 
+	const float menu_width = ted_get_menu_width(ted);
+	Rect bounds = rect(
+		Vec2(window_width * 0.5f - 0.5f * menu_width, padding),
+		Vec2(menu_width, window_height - 2 * padding)
+	);
 	
-	float padding = settings->padding;
-	Rect bounds = menu_rect(ted);
 	float x1, y1, x2, y2;
 	rect_coords(bounds, &x1, &y1, &x2, &y2);
 

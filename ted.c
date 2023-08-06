@@ -681,6 +681,11 @@ void ted_reload_all(Ted *ted) {
 	}
 }
 
+float ted_get_menu_width(Ted *ted) {
+	const Settings *settings = ted_active_settings(ted);
+	return minf(settings->max_menu_width, ted->window_width - 2.0f * settings->padding);
+}
+
 // load/reload configs
 void ted_load_configs(Ted *ted) {
 	

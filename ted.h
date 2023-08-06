@@ -112,22 +112,6 @@ typedef u8 SyntaxCharType;
 /// `*state` was derived from calling this function on line `n-1`.
 typedef void (*SyntaxHighlightFunction)(SyntaxState *state, const char32_t *line, u32 line_len, SyntaxCharType *char_types);
 
-/// Information about a programming language
-///
-/// Used for dynamic language registration.
-/// Please zero all the fields of the struct which you aren't using.
-///
-/// The fields `id` and `name` MUST NOT be 0, or `ted` will reject your language.
-typedef struct {
-	/// Language ID number. For user-defined languages, this must be `>= LANG_USER_MIN` and `< LANG_USER_MAX`.
-	///
-	/// To avoid conflict, try picking a unique number.
-	Language id;
-	char name[30];
-	char lsp_identifier[32];
-	SyntaxHighlightFunction highlighter;
-	char reserved[128];
-} LanguageInfo;
 
 /// for tex
 #define SYNTAX_MATH SYNTAX_STRING
@@ -262,6 +246,42 @@ typedef enum {
 	/// "Rename symbol"
 	MENU_RENAME_SYMBOL,
 } Menu;
+
+/// Information about a programming language
+///
+/// Used for dynamic language registration.
+/// Please zero all the fields of the struct which you aren't using.
+///
+/// The fields `id` and `name` MUST NOT be 0, or `ted` will reject your language.
+typedef struct {
+	/// Language ID number. For user-defined languages, this must be `>= LANG_USER_MIN` and `< LANG_USER_MAX`.
+	///
+	/// To avoid conflict, try picking a unique number.
+	Language id;
+	char name[30];
+	char lsp_identifier[32];
+	SyntaxHighlightFunction highlighter;
+	char reserved[128];
+} LanguageInfo;
+
+typedef struct {
+	/// identifier used to open the menu.
+	char name[16];
+	/// if non-NULL this will be called right after the menu is opened
+	void (*open)(Ted *ted);
+	/// if non-NULL this will be called every frame
+	/// before anything is rendered to the screen.
+	void (*update)(Ted *ted);
+	/// if non-NULL this will be called every frame
+	/// after buffers, etc. have been rendered to the screen
+	/// (when the menu should be rendered)
+	void (*render)(Ted *ted);
+	/// if non-NULL this will be called right before the menu is closed.
+	/// if it returns false, the menu will not be closed.
+	bool (*close)(Ted *ted);
+	/// should be zeroed -- reserved for future use.
+	char reserved[128];
+} MenuInfo;
 
 // === buffer.c ===
 /// Returns `true` if the buffer is in view-only mode.
@@ -779,8 +799,6 @@ void menu_close(Ted *ted);
 void menu_open(Ted *ted, Menu menu);
 /// process a :escape command (by default this happens when the escape key is pressed)
 void menu_escape(Ted *ted);
-/// get width of menu in pixels
-float menu_get_width(Ted *ted);
 /// get rectangle which menu takes up
 Rect menu_rect(Ted *ted);
 
@@ -905,6 +923,8 @@ void *ted_malloc(Ted *ted, size_t size);
 void *ted_calloc(Ted *ted, size_t n, size_t size);
 /// allocate memory, producing an error message and returning NULL on failure
 void *ted_realloc(Ted *ted, void *p, size_t new_size);
+/// get width of menu (e.g. "open file" menu) in pixels
+float ted_get_menu_width(Ted *ted);
 /// Check the various places a ted data file could be
 /// (i.e. look for it in the local and global data directories),
 /// and return the full path.
