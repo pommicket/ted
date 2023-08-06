@@ -21,6 +21,14 @@ void die(const char *fmt, ...) {
 	exit(EXIT_FAILURE);
 }
 
+float ted_window_width(Ted *ted) {
+	return ted->window_width;
+}
+
+float ted_window_height(Ted *ted) {
+	return ted->window_height;
+}
+
 static void ted_vset_message(Ted *ted, MessageType type, const char *fmt, va_list args) {
 	char message[sizeof ted->message] = {0};
 	vsnprintf(message, sizeof message - 1, fmt, args);

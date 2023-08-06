@@ -897,6 +897,10 @@ TextBuffer *ted_get_active_buffer(Ted *ted);
 ///
 /// returns NULL if no menu is open or no buffer was open before the menu was opened.
 TextBuffer *ted_get_active_buffer_behind_menu(Ted *ted);
+/// get width of ted window
+float ted_window_width(Ted *ted);
+/// get height of ted window
+float ted_window_height(Ted *ted);
 /// set title of ted window
 void ted_set_window_title(Ted *ted, const char *title);
 /// returns `true` if the given SDL key code is down
