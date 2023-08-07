@@ -288,8 +288,12 @@ typedef struct {
 	/// position where the edit took place
 	BufferPos pos;
 	/// number of characters (unicode codepoints, including newlines) deleted
+	///
+	/// if this is non-zero, \ref chars_inserted will be zero.
 	u32 chars_deleted;
 	/// number of characters (unicode codepoints, including newlines) inserted
+	///
+	/// if this is non-zero, \ref chars_deleted will be zero.
 	u32 chars_inserted;
 	/// number of newlines deleted
 	u32 newlines_deleted;

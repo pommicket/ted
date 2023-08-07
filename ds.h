@@ -85,12 +85,17 @@ static unsigned arr_lenu(void *arr) {
 	return (unsigned)arr_len(arr);
 }
 
-// grow array to fit one more member
-static void *arr_grow1_(void *arr, size_t member_size) {
+// grow array to fit `count` more members
+static void *arr_grow_(void *arr, size_t member_size, size_t count) {
 	if (arr) {
 		ArrHeader *hdr = arr_hdr_(arr);
-		if (hdr->len >= hdr->cap) {
-			u32 new_capacity = hdr->cap * 2;
+		if (hdr->len + count > hdr->cap) {
+			if ((u64)hdr->len + (u64)count >= U32_MAX / 2) {
+				// array too large
+				free(hdr);
+				return NULL;
+			}
+			u32 new_capacity = (u32)(hdr->len + count) * 2;
 			ArrHeader *old_hdr = hdr;
 			hdr = (ArrHeader *)realloc(old_hdr, sizeof(ArrHeader) + new_capacity * member_size);
 			if (hdr) {
@@ -103,7 +108,11 @@ static void *arr_grow1_(void *arr, size_t member_size) {
 		return hdr->data;
 	} else {
 		// create a new array
-		u32 initial_capacity = 2; // allocate enough space for two members
+		if (count >= U32_MAX / 2) {
+			// array too large
+			return NULL;
+		}
+		u32 initial_capacity = (u32)(count + 1);
 		ArrHeader *ret = (ArrHeader *)calloc(1, sizeof(ArrHeader) + initial_capacity * member_size);
 		if (ret) {
 			ret->cap = initial_capacity;
@@ -112,6 +121,11 @@ static void *arr_grow1_(void *arr, size_t member_size) {
 			return NULL;
 		}
 	}
+}
+
+// grow array to fit one more member
+static void *arr_grow1_(void *arr, size_t member_size) {
+	return arr_grow_(arr, member_size, 1);
 }
 
 static void *arr_add_ptr_(void **arr, size_t member_size) {
@@ -194,6 +208,36 @@ static void *arr_remove_(void *arr, size_t member_size, size_t index) {
 	}
 }
 
+static void *arr_remove_multiple_(void *arr, size_t member_size, size_t index, size_t count) {
+	ArrHeader *hdr = arr_hdr_(arr);
+	assert(index < hdr->len);
+	memmove((char *)arr + index * member_size,
+		(char *)arr + (index + count) * member_size,
+		(hdr->len - (index + count)) * member_size);
+	hdr->len -= count;
+	if (hdr->len == 0) {
+		free(hdr);
+		return NULL;
+	} else {
+		return arr;
+	}
+}
+
+static void *arr_insert_multiple_(void *arr, size_t member_size, size_t index, size_t count) {
+	if (count == 0) return arr;
+	
+	arr = arr_grow_(arr, member_size, count);
+	if (!arr) return NULL;
+	
+	ArrHeader *hdr = arr_hdr_(arr);
+	memmove((char *)arr + (index + count) * member_size,
+		(char *)arr + index * member_size,
+		arr_len(arr) * member_size);
+	memset((char *)arr + index * member_size, 0, count * member_size);
+	hdr->len += (u32)count;
+	return arr;
+}
+
 static void *arr_copy_(const void *arr, size_t member_size) {
 	void *new_arr = NULL;
 	arr_set_len_(&new_arr, member_size, arr_len(arr));
@@ -225,10 +269,13 @@ static void *arr_copy_(const void *arr, size_t member_size) {
 #define arr_qsort(a, cmp) qsort((a), arr_len(a), sizeof *(a), (cmp))
 #define arr_remove_last(a) do { assert(a); if (--arr_hdr_(a)->len == 0) arr_free(a); } while (0)
 #define arr_remove(a, i) (void)((a) = arr_remove_((a), sizeof *(a), (i)))
+#define arr_remove_multiple(a, i, n) (void)((a) = arr_remove_multiple_((a), sizeof *(a), (i), (n)))
 #define arr_insert(a, i, x) do { u32 _index = (i); (a) = arr_cast_typeof(a) arr_grow1_((a), sizeof *(a)); \
 	if (a) { memmove((a) + _index + 1, (a) + _index, (arr_len(a) - _index) * sizeof *(a));\
 	(a)[_index] = x; \
 	++arr_hdr_(a)->len; } } while (0)
+/// insert `n` zeroed elements at index `i`
+#define arr_insert_multiple(a, i, n) (void)((a) = arr_insert_multiple_((a), sizeof *(a), (i), (n)))
 #define arr_pop_last(a) ((a)[--arr_hdr_(a)->len])
 #define arr_size_in_bytes(a) (arr_len(a) * sizeof *(a))
 #define arr_lastp(a) ((a) ? &(a)[arr_len(a)-1] : NULL)

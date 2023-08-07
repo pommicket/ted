@@ -25,22 +25,6 @@ TextBuffer *find_search_buffer(Ted *ted) {
 	return ted->prev_active_buffer;
 }
 
-static void find_edit_notify(void *context, TextBuffer *buffer, const EditInfo *info) {
-	(void)context;
-	Ted *ted = buffer->ted;
-	if (!ted->find) {
-		return;
-	}
-	if (buffer != find_search_buffer(ted))
-		return;
-	
-	// TODO: update find result locations
-//	printf("%s %u\n",buffer_get_path(buffer),info->newlines_inserted);
-}
-
-void find_init(Ted *ted) {
-	ted_add_edit_notify(ted, find_edit_notify, NULL);
-}
 
 
 static void ted_error_from_pcre2_error(Ted *ted, int err) {
@@ -146,6 +130,17 @@ static WarnUnusedResult bool find_match(Ted *ted, BufferPos *pos, u32 *match_sta
 	}
 }
 
+static void find_search_line(Ted *ted, u32 line, FindResult **results) {
+	u32 match_start=0, match_end=0;
+	BufferPos pos = {.line = line, .index = 0};
+	while (find_match(ted, &pos, &match_start, &match_end, +1)) {
+		BufferPos match_start_pos = {.line = pos.line, .index = match_start};
+		BufferPos match_end_pos = {.line = pos.line, .index = match_end};
+		FindResult result = {match_start_pos, match_end_pos};
+		arr_add(*results, result);
+	}
+}
+
 // check if the search term needs to be recompiled
 void find_update(Ted *ted, bool force) {
 	TextBuffer *find_buffer = &ted->find_buffer;
@@ -161,22 +156,20 @@ void find_update(Ted *ted, bool force) {
 	find_free_pattern(ted);
 
 	if (find_compile_pattern(ted)) {
-		BufferPos pos = buffer_pos_start_of_file(buffer);
 		BufferPos best_scroll_candidate = {U32_MAX, U32_MAX};
 		BufferPos cursor_pos = buffer->cursor_pos;
 		// find all matches
-		for (u32 nsearches = 0; nsearches < buffer->nlines; ++nsearches) {
-			u32 match_start, match_end;
-			while (find_match(ted, &pos, &match_start, &match_end, +1)) {
-				BufferPos match_start_pos = {.line = pos.line, .index = match_start};
-				BufferPos match_end_pos = {.line = pos.line, .index = match_end};
-				FindResult result = {match_start_pos, match_end_pos};
-				arr_add(ted->find_results, result);
-				if (best_scroll_candidate.line == U32_MAX 
-				|| (buffer_pos_cmp(best_scroll_candidate, cursor_pos) < 0 && buffer_pos_cmp(match_start_pos, cursor_pos) >= 0))
-					best_scroll_candidate = match_start_pos;
-			}
+		arr_clear(ted->find_results);
+		for (u32 line = 0; line < buffer->nlines; ++line) {
+			find_search_line(ted, line, &ted->find_results);
 		}
+		
+		arr_foreach_ptr(ted->find_results, FindResult, res) {
+			if (best_scroll_candidate.line == U32_MAX 
+			|| (buffer_pos_cmp(best_scroll_candidate, cursor_pos) < 0 && buffer_pos_cmp(res->start, cursor_pos) >= 0))
+				best_scroll_candidate = res->start;
+		}
+		
 		find_buffer->modified = false;
 		if (best_scroll_candidate.line != U32_MAX) // scroll to first match (if there is one)
 			buffer_scroll_to_pos(buffer, best_scroll_candidate);
@@ -490,4 +483,94 @@ void find_close(Ted *ted) {
 	ted->find = false;
 	ted_switch_to_buffer(ted, find_search_buffer(ted));
 	find_free_pattern(ted);
+}
+
+// index of first result with at least this line number
+static u32 find_first_result_with_line(Ted *ted, u32 line) {
+	u32 lo = 0;
+	u32 hi = arr_len(ted->find_results);
+	if (hi == 0) {
+		return 0;
+	}
+	// all find results come before this line
+	if (ted->find_results[hi - 1].start.line < line)
+		return hi;
+	
+	while (lo + 1 < hi) {
+		u32 mid = (lo + hi) / 2;
+		u32 mid_line = ted->find_results[mid].start.line;
+		if (mid_line >= line && mid > 0 && ted->find_results[mid - 1].start.line < line)
+			return mid;
+		if (line > mid_line) {
+			lo = mid + 1;
+		} else {
+			hi = mid;
+		}
+	}
+	return lo;
+}
+
+// update search results for the given range of lines
+static void find_research_lines(Ted *ted, u32 line0, u32 line1) {
+	FindResult *new_results = NULL;
+	for (u32 l = line0; l <= line1; ++l) {
+		find_search_line(ted, l, &new_results);
+	}
+	u32 i0 = find_first_result_with_line(ted, line0);
+	u32 i1 = find_first_result_with_line(ted, line1 + 1);
+	i32 diff = (i32)arr_len(new_results) - (i32)(i1 - i0);
+	if (diff < 0) {
+		arr_remove_multiple(ted->find_results, i0, (u32)-diff);
+	} else if (diff > 0) {
+		arr_insert_multiple(ted->find_results, i0, (u32)diff);
+	}
+	memcpy(&ted->find_results[i0], new_results, arr_len(new_results) * sizeof *new_results);
+}
+		
+static void find_edit_notify(void *context, TextBuffer *buffer, const EditInfo *info) {
+	(void)context;
+	Ted *ted = buffer->ted;
+	if (!ted->find) {
+		return;
+	}
+	if (buffer != find_search_buffer(ted))
+		return;
+	
+	const u32 line = info->pos.line;
+	
+	if (info->chars_inserted) {
+		const u32 newlines_inserted = info->newlines_inserted;
+		
+		if (newlines_inserted) {
+			// update line numbers for find results after insertion.
+			arr_foreach_ptr(ted->find_results, FindResult, res) {
+				if (res->start.line > line) {
+					res->start.line += newlines_inserted;
+					res->end.line += newlines_inserted;
+				}
+			}
+		}
+		
+		find_research_lines(ted, line, line + newlines_inserted);
+		
+	} else if (info->chars_deleted) {
+		const u32 newlines_deleted = info->newlines_deleted;
+		
+		if (newlines_deleted) {
+			// update line numbers for find results after deletion.
+			arr_foreach_ptr(ted->find_results, FindResult, res) {
+				if (res->start.line >= line + newlines_deleted) {
+					res->start.line -= newlines_deleted;
+					res->end.line -= newlines_deleted;
+				}
+			}
+			
+		}
+		
+		find_research_lines(ted, line, line);
+	}
+}
+
+void find_init(Ted *ted) {
+	ted_add_edit_notify(ted, find_edit_notify, NULL);
 }
