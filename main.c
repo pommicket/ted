@@ -1,9 +1,11 @@
 /*
+TODO:
+- robust find (results shouldn't move around when you type things)
+
 FUTURE FEATURES:
 - autodetect indentation (tabs vs spaces)
-- robust find (results shouldn't move around when you type things)
 - config variables
-- bind key to multiple commands
+- bind key to series of commands
    - convert macro to command list
 - plugins?
    - built-in plugins
@@ -501,6 +503,7 @@ int main(int argc, char **argv) {
 	hover_init(ted);
 	rename_symbol_init(ted);
 	document_link_init(ted);
+	find_init(ted);
 	PROFILE_TIME(gl_end)
 	
 	
@@ -1193,6 +1196,8 @@ int main(int argc, char **argv) {
 	rename_symbol_quit(ted);
 	document_link_quit(ted);
 	menu_quit(ted);
+	arr_free(ted->edit_notifys);
+
 	
 	for (int i = 0; i < TED_LSP_MAX; ++i) {
 		if (!ted->lsps[i]) break;

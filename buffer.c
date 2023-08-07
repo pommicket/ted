@@ -24,12 +24,6 @@ struct BufferEdit {
 	double time; // time at start of edit (i.e. the time just before the edit), in seconds since epoch
 };
 
-struct EditNotifyInfo {
-	EditNotify fn;
-	void *context;
-	EditNotifyID id;
-};
-
 // this is a macro so we get -Wformat warnings
 #define buffer_error(buffer, ...) \
 	snprintf(buffer->error, sizeof buffer->error - 1, __VA_ARGS__)
@@ -791,7 +785,6 @@ void buffer_free(TextBuffer *buffer) {
 
 	arr_free(buffer->undo_history);
 	arr_free(buffer->redo_history);
-	arr_free(buffer->edit_notifys);
 	memset(buffer, 0, sizeof *buffer);
 }
 
@@ -1739,9 +1732,17 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 	BufferPos b = {.line = line_idx, .index = index};
 	free(str_alloc);
 	
+	const EditInfo info = {
+		.pos = pos,
+		.chars_deleted = 0,
+		.newlines_deleted = 0,
+		.chars_inserted = insertion_len,
+		.newlines_inserted = n_added_lines,
+	};
+	
 	signature_help_retrigger(buffer->ted);
-	arr_foreach_ptr(buffer->edit_notifys, EditNotifyInfo, n) {
-		n->fn(buffer, n->context, pos, 0, insertion_len);
+	arr_foreach_ptr(buffer->ted->edit_notifys, EditNotifyInfo, n) {
+		n->fn(n->context, buffer, &info);
 	}
 	
 	return b;
@@ -2209,6 +2210,8 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 	u32 line_idx = pos.line;
 	u32 index = pos.index;
 	Line *line = &buffer->lines[line_idx], *lines_end = &buffer->lines[buffer->nlines];
+	u32 newlines_deleted = 0;
+	
 	if (nchars + index > line->len) {
 		// delete rest of line
 		nchars -= line->len - index + 1; // +1 for the newline that got deleted
@@ -2223,6 +2226,7 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 			// delete everything to the end of the file
 			for (u32 idx = line_idx + 1; idx < buffer->nlines; ++idx) {
 				buffer_line_free(&buffer->lines[idx]);
+				++newlines_deleted;
 			}
 			buffer_shorten(buffer, line_idx + 1);
 		} else {
@@ -2235,8 +2239,8 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 			// remove all lines between line + 1 and last_line (inclusive).
 			buffer_delete_lines(buffer, line_idx + 1, (u32)(last_line - line));
 
-			u32 lines_removed = (u32)(last_line - line);
-			buffer_shorten(buffer, buffer->nlines - lines_removed);
+			newlines_deleted = (u32)(last_line - line);
+			buffer_shorten(buffer, buffer->nlines - newlines_deleted);
 		}
 	} else {
 		// just delete characters from this line
@@ -2254,8 +2258,15 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 	buffer_lines_modified(buffer, line_idx, line_idx);
 	signature_help_retrigger(buffer->ted);
 	
-	arr_foreach_ptr(buffer->edit_notifys, EditNotifyInfo, info) {
-		info->fn(buffer, info->context, pos, deletion_len, 0);
+	const EditInfo info = {
+		.pos = pos,
+		.chars_inserted = 0,
+		.newlines_inserted = 0,
+		.chars_deleted = deletion_len,
+		.newlines_deleted = newlines_deleted,
+	};
+	arr_foreach_ptr(buffer->ted->edit_notifys, EditNotifyInfo, n) {
+		n->fn(n->context, buffer, &info);
 	}
 }
 
@@ -3517,25 +3528,5 @@ void buffer_highlight_lsp_range(TextBuffer *buffer, LSPRange range, ColorSetting
 		b.y += char_height;
 		Rect r2 = rect_endpoints(a, b); buffer_clip_rect(buffer, &r2);
 		gl_geometry_rect(r2, colors[COLOR_HOVER_HL]);
-	}
-}
-
-u64 buffer_add_edit_notify(TextBuffer *buffer, EditNotify notify, void *context) {
-	EditNotifyInfo info = {
-		.fn = notify,
-		.context = context,
-		.id = ++buffer->edit_notify_id,
-	};
-	arr_add(buffer->edit_notifys, info);
-	return info.id;
-}
-
-void buffer_remove_edit_notify(TextBuffer *buffer, EditNotifyID id) {
-	u32 i;
-	for (i = 0; i < arr_len(buffer->edit_notifys); ++i) {
-		if (buffer->edit_notifys[i].id == id) {
-			arr_remove(buffer->edit_notifys, i);
-			break;
-		}
 	}
 }

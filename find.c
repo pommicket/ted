@@ -25,6 +25,23 @@ TextBuffer *find_search_buffer(Ted *ted) {
 	return ted->prev_active_buffer;
 }
 
+static void find_edit_notify(void *context, TextBuffer *buffer, const EditInfo *info) {
+	(void)context;
+	Ted *ted = buffer->ted;
+	if (!ted->find) {
+		return;
+	}
+	if (buffer != find_search_buffer(ted))
+		return;
+	
+	// TODO: update find result locations
+//	printf("%s %u\n",buffer_get_path(buffer),info->newlines_inserted);
+}
+
+void find_init(Ted *ted) {
+	ted_add_edit_notify(ted, find_edit_notify, NULL);
+}
+
 
 static void ted_error_from_pcre2_error(Ted *ted, int err) {
 	char32_t buf[256] = {0};

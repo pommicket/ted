@@ -859,3 +859,23 @@ void ted_color_settings_for_message_type(MessageType type, ColorSetting *bg_colo
 	}
 }
 
+
+u64 ted_add_edit_notify(Ted *ted, EditNotify notify, void *context) {
+	EditNotifyInfo info = {
+		.fn = notify,
+		.context = context,
+		.id = ++ted->edit_notify_id,
+	};
+	arr_add(ted->edit_notifys, info);
+	return info.id;
+}
+
+void ted_remove_edit_notify(Ted *ted, EditNotifyID id) {
+	u32 i;
+	for (i = 0; i < arr_len(ted->edit_notifys); ++i) {
+		if (ted->edit_notifys[i].id == id) {
+			arr_remove(ted->edit_notifys, i);
+			break;
+		}
+	}
+}

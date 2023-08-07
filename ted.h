@@ -281,12 +281,28 @@ typedef struct {
 	char reserved[128];
 } MenuInfo;
 
+/// information about an edit provided to \ref EditNotify.
+///
+/// NOTE: more members may be added in the future (this does not affect backwards compatibility)
+typedef struct {
+	/// position where the edit took place
+	BufferPos pos;
+	/// number of characters (unicode codepoints, including newlines) deleted
+	u32 chars_deleted;
+	/// number of characters (unicode codepoints, including newlines) inserted
+	u32 chars_inserted;
+	/// number of newlines deleted
+	u32 newlines_deleted;
+	/// number of newlines inserted
+	u32 newlines_inserted;
+} EditInfo;
+
 /// this type of callback is called right after an edit is made to the buffer.
 ///
 /// you will be given the number of characters deleted at the position, the number
 /// of characters inserted after the position, and the context pointer
-/// which was passed to \ref buffer_add_edit_notify.
-typedef void (*EditNotify)(TextBuffer *buffer, void *context, BufferPos pos, u32 chars_deleted, u32 chars_inserted);
+/// which was passed to \ref ted_add_edit_notify.
+typedef void (*EditNotify)(void *context, TextBuffer *buffer, const EditInfo *info);
 
 typedef u64 EditNotifyID;
 
@@ -642,12 +658,6 @@ int buffer_pos_cmp(BufferPos p1, BufferPos p2);
 /// returns "`p2 - p1`", that is, the number of characters between `p1` and `p2`,
 /// but negative if `p1` comes after `p2`.
 i64 buffer_pos_diff(TextBuffer *buffer, BufferPos p1, BufferPos p2);
-/// add a \ref EditNotify callback which will be called whenever `buffer` is edited.
-///
-/// returns an ID which can be used with \ref buffer_remove_edit_notify
-EditNotifyID buffer_add_edit_notify(TextBuffer *buffer, EditNotify notify, void *context);
-/// remove edit notify callback. if `id` is zero or invalid, no action is taken.
-void buffer_remove_edit_notify(TextBuffer *buffer, EditNotifyID id);
 
 // === build.c ===
 /// clear build errors and stop
@@ -1021,6 +1031,12 @@ Status ted_get_mouse_buffer_pos(Ted *ted, TextBuffer **pbuffer, BufferPos *ppos)
 void ted_flash_error_cursor(Ted *ted);
 /// how tall is a line buffer?
 float ted_line_buffer_height(Ted *ted);
+/// add a \ref EditNotify callback which will be called whenever `buffer` is edited.
+///
+/// returns an ID which can be used with \ref ted_remove_edit_notify
+EditNotifyID ted_add_edit_notify(Ted *ted, EditNotify notify, void *context);
+/// remove edit notify callback. if `id` is zero or invalid, no action is taken.
+void ted_remove_edit_notify(Ted *ted, EditNotifyID id);
 
 // === ui.c ===
 /// move selector cursor up by `n` entries

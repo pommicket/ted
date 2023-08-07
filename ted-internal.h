@@ -167,7 +167,11 @@ typedef struct ConfigPart ConfigPart;
 /// A single undoable edit to a buffer
 typedef struct BufferEdit BufferEdit;
 
-typedef struct EditNotifyInfo EditNotifyInfo;
+typedef struct EditNotifyInfo {
+	EditNotify fn;
+	void *context;
+	EditNotifyID id;
+} EditNotifyInfo;
 
 struct TextBuffer {
 	/// NULL if this buffer is untitled or doesn't correspond to a file (e.g. line buffers)
@@ -250,9 +254,6 @@ struct TextBuffer {
 	BufferEdit *undo_history;
 	/// dynamic array of redo history
 	BufferEdit *redo_history;
-	
-	u64 edit_notify_id;
-	EditNotifyInfo *edit_notifys;
 };
 
 /// an entry in a selector menu (e.g. the "open" menu)
@@ -588,6 +589,10 @@ struct Ted {
 	MessageType message_type;
 	MessageType message_shown_type;
 	char message_shown[512];
+	
+	
+	u64 edit_notify_id;
+	EditNotifyInfo *edit_notifys;
 };
 
 // === buffer.c ===
@@ -661,6 +666,7 @@ void config_free(Ted *ted);
 long context_score(const char *path, Language lang, const SettingsContext *context);
 
 // === find.c ===
+void find_init(Ted *ted);
 /// height of the find/find+replace menu in pixels
 float find_menu_height(Ted *ted);
 void find_menu_frame(Ted *ted, Rect menu_bounds);
