@@ -575,6 +575,10 @@ static Status ted_open_buffer(Ted *ted, u16 *buffer_idx, u16 *tab) {
 
 TextBuffer *ted_get_buffer_with_file(Ted *ted, const char *path) {
 	if (!path) return NULL;
+	if (!path_is_absolute(path)) {
+		assert(0);
+		return NULL;
+	}
 	
 	bool *buffers_used = ted->buffers_used;
 	TextBuffer *buffers = ted->buffers;
@@ -878,4 +882,19 @@ void ted_remove_edit_notify(Ted *ted, EditNotifyID id) {
 			break;
 		}
 	}
+}
+
+void ted_close_buffer(Ted *ted, TextBuffer *buffer) {
+	if (!buffer) return;
+
+	u16 tab_idx=0;
+	Node *node = ted_buffer_location_in_node_tree(ted, buffer, &tab_idx);
+	node_tab_close(ted, node, tab_idx);
+}
+
+bool ted_close_buffer_with_file(Ted *ted, const char *path) {
+	TextBuffer *buffer = ted_get_buffer_with_file(ted, path);
+	if (!buffer) return false;
+	ted_close_buffer(ted, buffer);
+	return true;
 }

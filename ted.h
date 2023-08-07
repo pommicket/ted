@@ -973,8 +973,14 @@ void ted_path_full(Ted *ted, const char *relpath, char *abspath, size_t abspath_
 void ted_reset_active_buffer(Ted *ted);
 /// set ted's error message to the buffer's error.
 void ted_error_from_buffer(Ted *ted, TextBuffer *buffer);
-/// Returns the buffer containing the file at `path`, or NULL if there is none.
+/// Returns the buffer containing the file at absolute path `path`, or NULL if there is none.
 TextBuffer *ted_get_buffer_with_file(Ted *ted, const char *path);
+/// close this buffer, discarding unsaved changes.
+void ted_close_buffer(Ted *ted, TextBuffer *buffer);
+/// close buffer with this absolute path, discarding unsaved changes.
+///
+/// returns true if the buffer was actually present.
+bool ted_close_buffer_with_file(Ted *ted, const char *path);
 /// save all buffers
 bool ted_save_all(Ted *ted);
 /// reload all buffers from their files
