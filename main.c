@@ -2,7 +2,6 @@
 TODO:
 - public Node API
 - public Selector/FileSelector API
-- more public TextBuffer API
 
 FUTURE FEATURES:
 - autodetect indentation (tabs vs spaces)

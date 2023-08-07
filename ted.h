@@ -326,12 +326,33 @@ typedef u64 EditNotifyID;
 bool buffer_is_view_only(TextBuffer *buffer);
 /// Set whether the buffer should be in view only mode.
 void buffer_set_view_only(TextBuffer *buffer, bool view_only);
+/// amount scrolled horizontally, in terms of the width of a space character
+double buffer_get_scroll_columns(TextBuffer *buffer);
+///n number of lines scrolled vertically
+double buffer_get_scroll_lines(TextBuffer *buffer);
+/// get last time buffer was written to, in the format of \ref time_get_seconds
+double buffer_last_write_time(TextBuffer *buffer);
+/// get position of the cursor
+BufferPos buffer_cursor_pos(TextBuffer *buffer);
+/// get position of non-cursor end of selection.
+///
+/// `pos` is allowed to be NULL.
+/// returns false if nothing is selected.
+bool buffer_selection_pos(TextBuffer *buffer, BufferPos *pos);
 /// Get path to buffer's file, or `NULL` if the buffer is unnamed.
 ///
 /// This string can be freed if the buffer is saved under a different name or closed, so don't keep it around for long.
 const char *buffer_get_path(TextBuffer *buffer);
 /// clear undo and redo history
 void buffer_clear_undo_redo(TextBuffer *buffer);
+/// set whether undo history should be kept
+void buffer_set_undo_enabled(TextBuffer *buffer, bool enabled);
+/// first line which will appear on screen
+u32 buffer_first_line_on_screen(TextBuffer *buffer);
+/// last line which will appear on screen
+u32 buffer_last_line_on_screen(TextBuffer *buffer);
+/// get rectangle buffer is rendered to
+Rect buffer_rect(TextBuffer *buffer);
 /// is this buffer empty?
 bool buffer_empty(TextBuffer *buffer);
 /// returns the buffer's filename (not full path), or "Untitled" if this buffer is untitled.
@@ -375,7 +396,7 @@ u8 buffer_tab_width(TextBuffer *buffer);
 /// Get whether or not to indent with spaces for this buffer.
 bool buffer_indent_with_spaces(TextBuffer *buffer);
 /// returns the number of lines in the buffer.
-u32 buffer_get_num_lines(TextBuffer *buffer);
+u32 buffer_line_count(TextBuffer *buffer);
 /// get line contents. does not include a newline character.
 /// NOTE: this string will be invalidated when the line is edited!!!
 /// only use it briefly!!

@@ -91,6 +91,48 @@ void buffer_set_view_only(TextBuffer *buffer, bool view_only) {
 	buffer->view_only = view_only;
 }
 
+double buffer_get_scroll_columns(TextBuffer *buffer) {
+	return buffer->scroll_x;
+}
+
+double buffer_get_scroll_lines(TextBuffer *buffer) {
+	return buffer->scroll_y;
+}
+
+double buffer_last_write_time(TextBuffer *buffer) {
+	return buffer->last_write_time;
+}
+
+BufferPos buffer_cursor_pos(TextBuffer *buffer) {
+	return buffer->cursor_pos;
+}
+
+bool buffer_selection_pos(TextBuffer *buffer, BufferPos *pos) {
+	if (buffer->selection) {
+		if (pos) *pos = buffer->selection_pos;
+		return true;
+	} else {
+		if (pos) *pos = (BufferPos){0};
+		return false;
+	}
+}
+
+u32 buffer_first_line_on_screen(TextBuffer *buffer) {
+	return buffer->first_line_on_screen;
+}
+
+u32 buffer_last_line_on_screen(TextBuffer *buffer) {
+	return buffer->last_line_on_screen;
+}
+
+void buffer_set_undo_enabled(TextBuffer *buffer, bool enabled) {
+	buffer->store_undo_events = enabled;
+}
+
+Rect buffer_rect(TextBuffer *buffer) {
+	return rect4(buffer->x1, buffer->y1, buffer->x2, buffer->y2);
+}
+
 const char *buffer_get_path(TextBuffer *buffer) {
 	return buffer->path;
 }
@@ -340,7 +382,7 @@ bool buffer_indent_with_spaces(TextBuffer *buffer) {
 	return buffer_settings(buffer)->indent_with_spaces;
 }
 
-u32 buffer_get_num_lines(TextBuffer *buffer) {
+u32 buffer_line_count(TextBuffer *buffer) {
 	return buffer->nlines;
 }
 
