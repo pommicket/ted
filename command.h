@@ -80,7 +80,9 @@ typedef enum {
 	CMD_BACKSPACE_WORD,
 	CMD_DELETE_WORD,
 	
+	/// increment number at cursor
 	CMD_INCREMENT_NUMBER,
+	/// decrement number at cursor
 	CMD_DECREMENT_NUMBER,
 
 	/// open a file

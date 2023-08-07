@@ -804,8 +804,11 @@ void macro_execute(Ted *ted, u32 index);
 // === menu.c ===
 /// register a new menu
 void menu_register(Ted *ted, const MenuInfo *infop);
+/// close the currently opened menu.
 void menu_close(Ted *ted);
+/// open menu by name (with `NULL` context pointer).
 void menu_open(Ted *ted, const char *menu_name);
+/// open menu with context pointer which will be passed to the menu callback.
 void menu_open_with_context(Ted *ted, const char *menu_name, void *context);
 /// get the `context` value passed to the last \ref menu_open_with_context,
 /// or `NULL` if no menu is open.
