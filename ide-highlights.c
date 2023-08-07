@@ -12,18 +12,19 @@ void highlights_init(Ted *ted) {
 	ted->highlights = calloc(1, sizeof *ted->highlights);
 }
 
+static void highlights_close(Ted *ted) {
+	Highlights *hls = ted->highlights;
+	arr_clear(hls->highlights);
+	ted_cancel_lsp_request(ted, &hls->last_request);
+	hls->requested_position = (LSPDocumentPosition){0};
+}
+
 void highlights_quit(Ted *ted) {
 	highlights_close(ted);
 	free(ted->highlights);
 	ted->highlights = NULL;
 }
 
-void highlights_close(Ted *ted) {
-	Highlights *hls = ted->highlights;
-	arr_clear(hls->highlights);
-	ted_cancel_lsp_request(ted, &hls->last_request);
-	hls->requested_position = (LSPDocumentPosition){0};
-}
 
 static void highlights_send_request(Ted *ted) {
 	TextBuffer *buffer = ted->active_buffer;

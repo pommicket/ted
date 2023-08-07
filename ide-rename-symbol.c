@@ -4,6 +4,11 @@ struct RenameSymbol {
 	LSPServerRequestID request_id;
 };
 
+static void rename_symbol_clear(Ted *ted) {
+	RenameSymbol *rs = ted->rename_symbol;
+	ted_cancel_lsp_request(ted, &rs->request_id);
+}
+
 void rename_symbol_quit(Ted *ted) {
 	rename_symbol_clear(ted);
 	free(ted->rename_symbol);
@@ -25,11 +30,6 @@ void rename_symbol_at_cursor(Ted *ted, TextBuffer *buffer, const char *new_name)
 		rs->request_id = lsp_send_request(lsp, &request);
 	}
 	
-}
-
-void rename_symbol_clear(Ted *ted) {
-	RenameSymbol *rs = ted->rename_symbol;
-	ted_cancel_lsp_request(ted, &rs->request_id);
 }
 
 void rename_symbol_frame(Ted *ted) {

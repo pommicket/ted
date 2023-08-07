@@ -1,4 +1,9 @@
 /*
+TODO:
+- public Node API
+- public Selector/FileSelector API
+- more public TextBuffer API
+
 FUTURE FEATURES:
 - autodetect indentation (tabs vs spaces)
 - config variables
@@ -7,6 +12,7 @@ FUTURE FEATURES:
 - plugins?
    - built-in plugins
        - "remove file..." menu
+       - auto-close brackets
 - with macros we can really test performance of buffer_insert_text_at_pos, etc. (which should ideally be fast)
 - manual.md
 - LSP request timeout

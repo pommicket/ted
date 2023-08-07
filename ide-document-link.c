@@ -17,13 +17,7 @@ void document_link_init(Ted *ted) {
 	ted->document_links = calloc(1, sizeof *ted->document_links);
 }
 
-void document_link_quit(Ted *ted) {
-	document_link_clear(ted);
-	free(ted->document_links);
-	ted->document_links = NULL;
-}
-
-void document_link_clear(Ted *ted) {
+static void document_link_clear(Ted *ted) {
 	DocumentLinks *dl = ted->document_links;
 	arr_foreach_ptr(dl->links, DocumentLink, l) {
 		free(l->target);
@@ -31,6 +25,12 @@ void document_link_clear(Ted *ted) {
 	}
 	arr_clear(dl->links);
 	dl->requested_document = 0;
+}
+
+void document_link_quit(Ted *ted) {
+	document_link_clear(ted);
+	free(ted->document_links);
+	ted->document_links = NULL;
 }
 
 static bool document_link_activation_key_down(Ted *ted) {

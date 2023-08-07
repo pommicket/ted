@@ -21,18 +21,18 @@ void hover_init(Ted *ted) {
 	ted->hover = calloc(1, sizeof *ted->hover);
 }
 
-void hover_quit(Ted *ted) {
-	hover_close(ted);
-	free(ted->hover);
-	ted->hover = NULL;
-}
-
-void hover_close(Ted *ted) {
+static void hover_close(Ted *ted) {
 	Hover *hover = ted->hover;
 	hover->open = false;
 	free(hover->text);
 	hover->text = NULL;
 	ted_cancel_lsp_request(ted, &hover->last_request);
+}
+
+void hover_quit(Ted *ted) {
+	hover_close(ted);
+	free(ted->hover);
+	ted->hover = NULL;
 }
 
 void hover_reset_timer(Ted *ted) {

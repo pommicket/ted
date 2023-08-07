@@ -180,6 +180,7 @@ typedef struct {
 /// extract key modifier from \ref KeyCombo
 #define KEY_COMBO_MODIFIER(combo) ((u32)((combo.value) & 0xff))
 
+/// enum used with \ref autocomplete_open
 enum {
 	/// autocomplete/signature help was manually triggered
 	TRIGGER_INVOKED = 0x12000,
@@ -245,7 +246,7 @@ typedef enum {
 
 /// Information about a programming language
 ///
-/// Used for dynamic language registration.
+/// Used for dynamic language registration (\ref syntax_register_language).
 /// Please zero all the fields of the struct which you aren't using.
 ///
 /// The fields `id` and `name` MUST NOT be 0, or `ted` will reject your language.
@@ -254,12 +255,19 @@ typedef struct {
 	///
 	/// To avoid conflict, try picking a unique number.
 	Language id;
+	/// Unique name for the language
 	char name[30];
+	/// LSP identifier given by the specification https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/
 	char lsp_identifier[32];
+	/// function used for syntax highlighting
 	SyntaxHighlightFunction highlighter;
+	/// reserved for future use
 	char reserved[128];
 } LanguageInfo;
 
+/// information about a menu
+///
+/// used for dynamic menu registration (see \ref menu_register)
 typedef struct {
 	/// identifier used to open the menu.
 	///
@@ -308,6 +316,9 @@ typedef struct {
 /// which was passed to \ref ted_add_edit_notify.
 typedef void (*EditNotify)(void *context, TextBuffer *buffer, const EditInfo *info);
 
+/// ID number of an \ref EditNotify callback.
+///
+/// Can be used to remove the callback with \ref ted_remove_edit_notify.
 typedef u64 EditNotifyID;
 
 // === buffer.c ===
@@ -699,9 +710,13 @@ u32 color_blend(u32 bg, u32 fg);
 u32 color_apply_opacity(u32 color, float opacity);
 
 // === command.c ===
+/// parse command
 Command command_from_str(const char *str);
+/// get string representation of command
 const char *command_to_str(Command c);
+/// execute command with integer argument
 void command_execute(Ted *ted, Command c, i64 argument);
+/// execute command with string argument
 void command_execute_string_argument(Ted *ted, Command c, const char *string);
 
 // === config.c ===
@@ -714,6 +729,7 @@ char *settings_get_root_dir(Settings *settings, const char *path);
 /// which buffer will be searched?
 TextBuffer *find_search_buffer(Ted *ted);
 /// update find results.
+///
 /// if `force` is true, the results will be updated even if the pattern & flags have not been changed.
 void find_update(Ted *ted, bool force);
 /// replace the match we are currently highlighting, or do nothing if there is no highlighted match
@@ -736,8 +752,12 @@ u32 gl_compile_shader(char error_buf[256], const char *code, u32 shader_type);
 u32 gl_link_program(char error_buf[256], u32 *shaders, size_t count);
 /// create a shader program from vertex shader and fragment shader source
 u32 gl_compile_and_link_shaders(char error_buf[256], const char *vshader_code, const char *fshader_code);
+/// get vertex attribute location
+///
 /// prints a debug message if `attrib` is not found
 u32 gl_attrib_location(u32 program, const char *attrib);
+/// get shader uniform location
+///
 /// prints a debug message if `uniform` is not found
 i32 gl_uniform_location(u32 program, const char *uniform);
 /// queue a filled rectangle with the given color.
@@ -757,6 +777,7 @@ bool autocomplete_has_phantom(Ted *ted);
 /// is this point in the autocomplete box?
 bool autocomplete_box_contains_point(Ted *ted, vec2 point);
 /// open autocomplete
+///
 /// trigger should either be a character (e.g. '.') or one of the TRIGGER_* constants.
 void autocomplete_open(Ted *ted, uint32_t trigger);
 /// select the completion the cursor is on,
@@ -778,30 +799,32 @@ void definition_cancel_lookup(Ted *ted);
 // === ide-document-link.c ===
 /// get document link at this position in the active buffer.
 ///
+/// this will always return `NULL` if the document link activation key isn't presed.
 /// the returned pointer won't be freed immediately, but could be on the next frame,
 /// so don't keep it around long.
 const char *document_link_at_buffer_pos(Ted *ted, BufferPos pos);
-void document_link_clear(Ted *ted);
 
 // === ide-highlights.c ===
-void highlights_close(Ted *ted);
 
 // === ide-hover.c ===
 /// called for example whenever the mouse moves to reset the timer before hover info is displayed
 void hover_reset_timer(Ted *ted);
-void hover_close(Ted *ted);
 
 // === ide-rename-symbol.c ===
+/// renname symbol at cursor of `buffer` to `new_name`
 void rename_symbol_at_cursor(Ted *ted, TextBuffer *buffer, const char *new_name);
-void rename_symbol_clear(Ted *ted);
 
 // === ide-signature-help.c ===
 /// figure out new signature help
 void signature_help_retrigger(Ted *ted);
-/// open signature help. `trigger` should either be the trigger character (e.g. ',')
+/// open signature help.
+///
+/// `trigger` should either be the trigger character (e.g. ',')
 /// or one of the TRIGGER_* constants.
 void signature_help_open(Ted *ted, uint32_t trigger);
+/// is the signature help window open?
 bool signature_help_is_open(Ted *ted);
+/// close the signature help window
 void signature_help_close(Ted *ted);
 
 // === ide-usages.c ===
@@ -811,8 +834,11 @@ void usages_cancel_lookup(Ted *ted);
 void usages_find(Ted *ted);
 
 // === macro.c ===
+/// start recording macro with index
 void macro_start_recording(Ted *ted, u32 index);
+/// stop recording macro
 void macro_stop_recording(Ted *ted);
+/// execute macro with index
 void macro_execute(Ted *ted, u32 index);
 
 // === menu.c ===
@@ -876,7 +902,9 @@ void node_split_switch(Ted *ted);
 void node_split_swap(Ted *ted);
 
 // === session.c ===
+/// store ted session
 void session_write(Ted *ted);
+/// load ted session
 void session_read(Ted *ted);
 
 // === syntax.c ===
@@ -1056,23 +1084,35 @@ void selector_down(Ted *ted, Selector *s, i64 n);
 /// sort entries alphabetically
 void selector_sort_entries_by_name(Selector *s);
 /// returns a null-terminated UTF-8 string of the entry selected, or NULL if none was.
+///
 /// also, sel->cursor will be set to the index of the entry, even if the mouse was used.
 /// you should call free() on the return value.
 char *selector_update(Ted *ted, Selector *s);
+/// render selector
+///
 /// NOTE: also renders the line buffer
 void selector_render(Ted *ted, Selector *s);
+/// free resources uesd by file selecor
 void file_selector_free(FileSelector *fs);
 /// returns the name of the selected file, or NULL if none was selected.
+///
 /// the returned pointer should be freed.
 char *file_selector_update(Ted *ted, FileSelector *fs);
+/// render file selector
 void file_selector_render(Ted *ted, FileSelector *fs);
+/// get a good size of button for this text
 vec2 button_get_size(Ted *ted, const char *text);
+/// render button
 void button_render(Ted *ted, Rect button, const char *text, u32 color);
 /// returns true if the button was clicked on.
 bool button_update(Ted *ted, Rect button);
 /// returns selected option, or POPUP_NONE if none was selected
 PopupOption popup_update(Ted *ted, u32 options);
+/// render popup menu.
+///
+/// `options` should be a bitwise or of the POPUP_* constants.
 void popup_render(Ted *ted, u32 options, const char *title, const char *body);
+/// update and render checkbox
 vec2 checkbox_frame(Ted *ted, bool *value, const char *label, vec2 pos);
 
 

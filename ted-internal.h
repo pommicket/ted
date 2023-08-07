@@ -177,7 +177,7 @@ struct TextBuffer {
 	/// NULL if this buffer is untitled or doesn't correspond to a file (e.g. line buffers)
 	char *path;
 	/// we keep a back-pointer to the ted instance so we don't have to pass it in to every buffer function
-	struct Ted *ted;
+	Ted *ted;
 	/// number of characters scrolled in the x direction (multiply by space width to get pixels)
 	double scroll_x;
 	/// number of characters scrolled in the y direction
