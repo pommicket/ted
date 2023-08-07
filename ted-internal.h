@@ -167,6 +167,8 @@ typedef struct ConfigPart ConfigPart;
 /// A single undoable edit to a buffer
 typedef struct BufferEdit BufferEdit;
 
+typedef struct EditNotifyInfo EditNotifyInfo;
+
 struct TextBuffer {
 	/// NULL if this buffer is untitled or doesn't correspond to a file (e.g. line buffers)
 	char *path;
@@ -248,6 +250,9 @@ struct TextBuffer {
 	BufferEdit *undo_history;
 	/// dynamic array of redo history
 	BufferEdit *redo_history;
+	
+	u64 edit_notify_id;
+	EditNotifyInfo *edit_notifys;
 };
 
 /// an entry in a selector menu (e.g. the "open" menu)

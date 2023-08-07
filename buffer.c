@@ -24,6 +24,12 @@ struct BufferEdit {
 	double time; // time at start of edit (i.e. the time just before the edit), in seconds since epoch
 };
 
+struct EditNotifyInfo {
+	EditNotify fn;
+	void *context;
+	EditNotifyID id;
+};
+
 // this is a macro so we get -Wformat warnings
 #define buffer_error(buffer, ...) \
 	snprintf(buffer->error, sizeof buffer->error - 1, __VA_ARGS__)
@@ -761,8 +767,6 @@ static void buffer_line_free(Line *line) {
 	free(line->str);
 }
 
-// Free a buffer. Once a buffer is freed, you can call buffer_create on it again.
-// Does not free the pointer `buffer` (buffer might not have even been allocated with malloc)
 void buffer_free(TextBuffer *buffer) {
 	if (!buffer->ted->quit) { // don't send didClose on quit (calling buffer_lsp would actually create a LSP if this is called after destroying all the LSPs which isnt good)
 		
@@ -787,10 +791,10 @@ void buffer_free(TextBuffer *buffer) {
 
 	arr_free(buffer->undo_history);
 	arr_free(buffer->redo_history);
+	arr_free(buffer->edit_notifys);
 	memset(buffer, 0, sizeof *buffer);
 }
 
-// clear contents, undo history, etc. of a buffer
 void buffer_clear(TextBuffer *buffer) {
 	bool is_line_buffer = buffer->is_line_buffer;
 	Ted *ted = buffer->ted;
@@ -1613,6 +1617,8 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 		return pos;
 	}
 	
+	const u32 insertion_len = (u32)str.len;
+	
 	// create a copy of str. we need to do this to remove carriage returns and newlines in the case of line buffers
 	char32_t str_copy[256];
 	char32_t *str_alloc = NULL;
@@ -1734,6 +1740,9 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 	free(str_alloc);
 	
 	signature_help_retrigger(buffer->ted);
+	arr_foreach_ptr(buffer->edit_notifys, EditNotifyInfo, n) {
+		n->fn(buffer, n->context, pos, 0, insertion_len);
+	}
 	
 	return b;
 }
@@ -2103,6 +2112,8 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 	// Not doing this might also cause other bugs, best to keep it here just in case.
 	nchars = (u32)buffer_get_text_at_pos(buffer, pos, NULL, nchars);
 	
+	const u32 deletion_len = nchars;
+	
 	if (autocomplete_is_open(buffer->ted)) {
 		// close completions if a non-word character is deleted
 		bool close_completions = false;
@@ -2242,6 +2253,10 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 
 	buffer_lines_modified(buffer, line_idx, line_idx);
 	signature_help_retrigger(buffer->ted);
+	
+	arr_foreach_ptr(buffer->edit_notifys, EditNotifyInfo, info) {
+		info->fn(buffer, info->context, pos, deletion_len, 0);
+	}
 }
 
 // Delete characters between the given buffer positions. Returns number of characters deleted.
@@ -3502,5 +3517,25 @@ void buffer_highlight_lsp_range(TextBuffer *buffer, LSPRange range, ColorSetting
 		b.y += char_height;
 		Rect r2 = rect_endpoints(a, b); buffer_clip_rect(buffer, &r2);
 		gl_geometry_rect(r2, colors[COLOR_HOVER_HL]);
+	}
+}
+
+u64 buffer_add_edit_notify(TextBuffer *buffer, EditNotify notify, void *context) {
+	EditNotifyInfo info = {
+		.fn = notify,
+		.context = context,
+		.id = ++buffer->edit_notify_id,
+	};
+	arr_add(buffer->edit_notifys, info);
+	return info.id;
+}
+
+void buffer_remove_edit_notify(TextBuffer *buffer, EditNotifyID id) {
+	u32 i;
+	for (i = 0; i < arr_len(buffer->edit_notifys); ++i) {
+		if (buffer->edit_notifys[i].id == id) {
+			arr_remove(buffer->edit_notifys, i);
+			break;
+		}
 	}
 }

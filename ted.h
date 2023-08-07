@@ -281,6 +281,15 @@ typedef struct {
 	char reserved[128];
 } MenuInfo;
 
+/// this type of callback is called right after an edit is made to the buffer.
+///
+/// you will be given the number of characters deleted at the position, the number
+/// of characters inserted after the position, and the context pointer
+/// which was passed to \ref buffer_add_edit_notify.
+typedef void (*EditNotify)(TextBuffer *buffer, void *context, BufferPos pos, u32 chars_deleted, u32 chars_inserted);
+
+typedef u64 EditNotifyID;
+
 // === buffer.c ===
 /// Returns `true` if the buffer is in view-only mode.
 bool buffer_is_view_only(TextBuffer *buffer);
@@ -368,8 +377,11 @@ char *buffer_contents_utf8_alloc(TextBuffer *buffer);
 /// perform a series of checks to make sure the buffer doesn't have any invalid values
 void buffer_check_valid(TextBuffer *buffer);
 /// free all resources used by the buffer
+///
+/// Once a buffer is freed, you can call buffer_create on it again.
+/// Does not free the pointer `buffer` (buffer might not have even been allocated with malloc)
 void buffer_free(TextBuffer *buffer);
-/// clear buffer contents
+/// clear contents, undo history, etc. of a buffer
 void buffer_clear(TextBuffer *buffer);
 /// returns the length of the `line_number`th line (0-indexed),
 /// or 0 if `line_number` is out of range.
@@ -630,6 +642,12 @@ int buffer_pos_cmp(BufferPos p1, BufferPos p2);
 /// returns "`p2 - p1`", that is, the number of characters between `p1` and `p2`,
 /// but negative if `p1` comes after `p2`.
 i64 buffer_pos_diff(TextBuffer *buffer, BufferPos p1, BufferPos p2);
+/// add a \ref EditNotify callback which will be called whenever `buffer` is edited.
+///
+/// returns an ID which can be used with \ref buffer_remove_edit_notify
+EditNotifyID buffer_add_edit_notify(TextBuffer *buffer, EditNotify notify, void *context);
+/// remove edit notify callback. if `id` is zero or invalid, no action is taken.
+void buffer_remove_edit_notify(TextBuffer *buffer, EditNotifyID id);
 
 // === build.c ===
 /// clear build errors and stop

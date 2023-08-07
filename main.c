@@ -781,6 +781,7 @@ int main(int argc, char **argv) {
 			ted->mouse_state = SDL_GetMouseState(&mx, &my);
 			ted->mouse_pos = (vec2){(float)mx, (float)my};
 		}
+		
 		// default to arrow cursor
 		ted->cursor = ted->cursor_arrow;
 		if (!(ted->mouse_state & SDL_BUTTON_LMASK)) {
