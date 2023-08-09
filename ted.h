@@ -428,11 +428,6 @@ size_t buffer_contents_utf8(TextBuffer *buffer, char *out);
 char *buffer_contents_utf8_alloc(TextBuffer *buffer);
 /// perform a series of checks to make sure the buffer doesn't have any invalid values
 void buffer_check_valid(TextBuffer *buffer);
-/// free all resources used by the buffer
-///
-/// Once a buffer is freed, you can call buffer_create on it again.
-/// Does not free the pointer `buffer` (buffer might not have even been allocated with malloc)
-void buffer_free(TextBuffer *buffer);
 /// clear contents, undo history, etc. of a buffer
 void buffer_clear(TextBuffer *buffer);
 /// returns the length of the `line_number`th line (0-indexed),

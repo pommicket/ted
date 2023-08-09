@@ -74,7 +74,7 @@ void selector_sort_entries_by_name(Selector *s) {
 
 char *selector_update(Ted *ted, Selector *s) {
 	char *ret = NULL;
-	TextBuffer *line_buffer = &ted->line_buffer;
+	TextBuffer *line_buffer = ted->line_buffer;
 
 	ted->selector_open = s;
 	for (u32 i = 0; i < s->n_entries; ++i) {
@@ -138,7 +138,7 @@ void selector_render(Ted *ted, Selector *s) {
 
 	// search buffer
 	float line_buffer_height = ted_line_buffer_height(ted);
-	buffer_render(&ted->line_buffer, rect4(x1, y1, x2, y1 + line_buffer_height));
+	buffer_render(ted->line_buffer, rect4(x1, y1, x2, y1 + line_buffer_height));
 	y1 += line_buffer_height;
 		
 	TextRenderState text_state = text_render_state_default;
@@ -335,8 +335,7 @@ static bool file_selector_cd(Ted *ted, FileSelector *fs, const char *path) {
 }
 
 char *file_selector_update(Ted *ted, FileSelector *fs) {
-
-	TextBuffer *line_buffer = &ted->line_buffer;
+	TextBuffer *line_buffer = ted->line_buffer;
 	String32 search_term32 = buffer_get_line(line_buffer, 0);
 	fs->sel.enable_cursor = !fs->create_menu || search_term32.len == 0;
 	char *const cwd = fs->cwd;

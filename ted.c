@@ -491,7 +491,7 @@ void ted_delete_buffer(Ted *ted, TextBuffer *buffer) {
 }
 
 Node *ted_new_node(Ted *ted) {
-	if (arr_len(ted->nodes) >= 100) { // TODO: constant
+	if (arr_len(ted->nodes) >= TED_NODE_MAX) {
 		ted_error(ted, "Too many nodes.");
 		return NULL;
 	}
@@ -502,13 +502,12 @@ Node *ted_new_node(Ted *ted) {
 }
 
 TextBuffer *ted_new_buffer(Ted *ted) {
-	if (arr_len(ted->buffers) >= 100) { // TODO: constant
+	if (arr_len(ted->buffers) >= TED_BUFFER_MAX) {
 		ted_error(ted, "Too many buffers.");
 		return NULL;
 	}
-	TextBuffer *buffer = ted_calloc(ted, 1, sizeof *buffer);
+	TextBuffer *buffer = buffer_new(ted);
 	if (!buffer) return NULL;
-	buffer_create(buffer, ted);
 	arr_add(ted->buffers, buffer);
 	return buffer;
 }
@@ -519,7 +518,9 @@ float ted_line_buffer_height(Ted *ted) {
 }
 
 void ted_node_switch(Ted *ted, Node *node) {
-	assert(node->tabs);
+	while (!node->tabs) {
+		node = node->split_a;
+	}
 	ted_switch_to_buffer(ted, node->tabs[node->active_tab]);
 	ted->active_node = node;
 }

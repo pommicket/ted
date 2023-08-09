@@ -16,7 +16,7 @@ void build_stop(Ted *ted) {
 		free(*cmd);
 	}
 	arr_clear(ted->build_queue);
-	if (ted->active_buffer == &ted->build_buffer) {
+	if (ted->active_buffer == ted->build_buffer) {
 		ted_switch_to_buffer(ted, NULL);
 		ted_reset_active_buffer(ted);
 	}
@@ -47,7 +47,7 @@ static bool build_run_next_command_in_queue(Ted *ted) {
 		if (!error) {
 			ted->building = true;
 			ted->build_shown = true;
-			TextBuffer *build_buffer = &ted->build_buffer;
+			TextBuffer *build_buffer = ted->build_buffer;
 			char32_t text[] = {'$', ' '};
 			buffer_insert_text_at_cursor(build_buffer, str32(text, 2));
 			buffer_insert_utf8_at_cursor(build_buffer, command);
@@ -68,7 +68,7 @@ static bool build_run_next_command_in_queue(Ted *ted) {
 
 void build_setup_buffer(Ted *ted) {
 	// new empty build output buffer
-	TextBuffer *build_buffer = &ted->build_buffer;
+	TextBuffer *build_buffer = ted->build_buffer;
 	buffer_new_file(build_buffer, NULL);
 	build_buffer->store_undo_events = false; // don't need undo events for build output buffer
 }
@@ -150,7 +150,7 @@ static void build_go_to_error(Ted *ted) {
 			buffer->center_cursor_next_frame = true;
 
 			// move cursor to error in build output
-			TextBuffer *build_buffer = &ted->build_buffer;
+			TextBuffer *build_buffer = ted->build_buffer;
 			BufferPos error_pos = {.line = error.build_output_line, .index = 0};
 			buffer_cursor_move_to_pos(build_buffer, error_pos);
 			buffer_center_cursor(build_buffer);
@@ -201,7 +201,7 @@ static bool is_source_path(char32_t c) {
 void build_check_for_errors(Ted *ted) {
 	const Settings *settings = ted_active_settings(ted);
 	
-	TextBuffer *buffer = &ted->build_buffer;
+	TextBuffer *buffer = ted->build_buffer;
 	arr_clear(ted->build_errors);
 	for (u32 line_idx = 0; line_idx < buffer->nlines; ++line_idx) {
 		String32 line = buffer_get_line(buffer, line_idx);
@@ -309,7 +309,7 @@ void build_check_for_errors(Ted *ted) {
 }
 
 void build_frame(Ted *ted, float x1, float y1, float x2, float y2) {
-	TextBuffer *buffer = &ted->build_buffer;
+	TextBuffer *buffer = ted->build_buffer;
 	assert(ted->build_shown);
 	char buf[256];
 	if (ted->building) {

@@ -68,7 +68,7 @@ void menu_open_with_context(Ted *ted, const char *menu_name, void *context) {
 	
 	ted_switch_to_buffer(ted, NULL);
 	*ted->warn_overwrite = 0; // clear warn_overwrite
-	buffer_clear(&ted->line_buffer);
+	buffer_clear(ted->line_buffer);
 	if (info->open) info->open(ted);
 }
 
@@ -82,7 +82,7 @@ void menu_escape(Ted *ted) {
 	if (*ted->warn_overwrite) {
 		// just close "are you sure you want to overwrite?"
 		*ted->warn_overwrite = 0;
-		ted_switch_to_buffer(ted, &ted->line_buffer);
+		ted_switch_to_buffer(ted, ted->line_buffer);
 	} else {
 		menu_close(ted);
 	}
@@ -136,7 +136,7 @@ void menu_render(Ted *ted) {
 }
 
 void menu_shell_move(Ted *ted, int direction) {
-	TextBuffer *line_buffer = &ted->line_buffer;
+	TextBuffer *line_buffer = ted->line_buffer;
 	if (line_buffer->modified) {
 		// don't do it if the command has been edited
 		return;
@@ -167,7 +167,7 @@ void menu_shell_down(Ted *ted) {
 }
 
 static void open_menu_open(Ted *ted) {
-	ted_switch_to_buffer(ted, &ted->line_buffer);
+	ted_switch_to_buffer(ted, ted->line_buffer);
 	ted->file_selector.create_menu = false;
 }
 
@@ -190,12 +190,12 @@ static void open_menu_render(Ted *ted) {
 
 static bool open_menu_close(Ted *ted) {
 	file_selector_free(&ted->file_selector);
-	buffer_clear(&ted->line_buffer);
+	buffer_clear(ted->line_buffer);
 	return true;
 }
 
 static void save_as_menu_open(Ted *ted) {
-	ted_switch_to_buffer(ted, &ted->line_buffer);
+	ted_switch_to_buffer(ted, ted->line_buffer);
 	ted->file_selector.create_menu = true;
 }
 
@@ -216,7 +216,7 @@ static void save_as_menu_update(Ted *ted) {
 		case POPUP_NO:
 			// back to the file selector
 			*ted->warn_overwrite = '\0';
-			ted_switch_to_buffer(ted, &ted->line_buffer);
+			ted_switch_to_buffer(ted, ted->line_buffer);
 			break;
 		case POPUP_CANCEL:
 			// close "save as" menu
@@ -262,7 +262,7 @@ static void save_as_menu_render(Ted *ted) {
 
 static bool save_as_menu_close(Ted *ted) {
 	file_selector_free(&ted->file_selector);
-	buffer_clear(&ted->line_buffer);
+	buffer_clear(ted->line_buffer);
 	return true;
 }
 
@@ -350,8 +350,8 @@ static bool ask_reload_menu_close(Ted *ted) {
 }
 
 static void command_selector_open(Ted *ted) {
-	ted_switch_to_buffer(ted, &ted->line_buffer);
-	buffer_insert_char_at_cursor(&ted->argument_buffer, '1');
+	ted_switch_to_buffer(ted, ted->line_buffer);
+	buffer_insert_char_at_cursor(ted->argument_buffer, '1');
 	Selector *selector = &ted->command_selector;
 	selector->enable_cursor = true;
 	selector->cursor = 0;
@@ -360,7 +360,7 @@ static void command_selector_open(Ted *ted) {
 static void command_selector_update(Ted *ted) {
 	const Settings *settings = ted_active_settings(ted);
 	const u32 *colors = settings->colors;
-	TextBuffer *line_buffer = &ted->line_buffer;
+	TextBuffer *line_buffer = ted->line_buffer;
 	Selector *selector = &ted->command_selector;
 	SelectorEntry *entries = selector->entries = calloc(CMD_COUNT, sizeof *selector->entries);
 	char *search_term = str32_to_utf8_cstr(buffer_get_line(line_buffer, 0));
@@ -382,7 +382,7 @@ static void command_selector_update(Ted *ted) {
 	if (chosen_command) {
 		Command c = command_from_str(chosen_command);
 		if (c != CMD_UNKNOWN) {
-			char *argument = str32_to_utf8_cstr(buffer_get_line(&ted->argument_buffer, 0)), *endp = NULL;
+			char *argument = str32_to_utf8_cstr(buffer_get_line(ted->argument_buffer, 0)), *endp = NULL;
 			long long arg = 1;
 			bool execute = true;
 			if (*argument) {
@@ -420,7 +420,7 @@ static void command_selector_render(Ted *ted) {
 	const char *text = "Argument";
 	text_utf8(font_bold, text, x1, y1, colors[COLOR_TEXT]);
 	float x = x1 + text_get_size_vec2(font_bold, text).x + padding;
-	buffer_render(&ted->argument_buffer, rect4(x, y1, x2, y1 + line_buffer_height));
+	buffer_render(ted->argument_buffer, rect4(x, y1, x2, y1 + line_buffer_height));
 
 	y1 += line_buffer_height + padding;
 
@@ -433,18 +433,18 @@ static void command_selector_render(Ted *ted) {
 
 static bool command_selector_close(Ted *ted) {
 	Selector *selector = &ted->command_selector;
-	buffer_clear(&ted->line_buffer);
-	buffer_clear(&ted->argument_buffer);
+	buffer_clear(ted->line_buffer);
+	buffer_clear(ted->argument_buffer);
 	free(selector->entries); selector->entries = NULL; selector->n_entries = 0;
 	return true;
 }
 
 static void goto_line_menu_open(Ted *ted) {
-	ted_switch_to_buffer(ted, &ted->line_buffer);
+	ted_switch_to_buffer(ted, ted->line_buffer);
 }
 
 static void goto_line_menu_update(Ted *ted) {
-	TextBuffer *line_buffer = &ted->line_buffer;
+	TextBuffer *line_buffer = ted->line_buffer;
 	
 	char *contents = str32_to_utf8_cstr(buffer_get_line(line_buffer, 0));
 	char *end;
@@ -495,21 +495,21 @@ static void goto_line_menu_render(Ted *ted) {
 	text_render(font_bold);
 	
 	// line buffer
-	buffer_render(&ted->line_buffer, rect4(x1, y1, x2, y2));
+	buffer_render(ted->line_buffer, rect4(x1, y1, x2, y2));
 }
 
 static bool goto_line_menu_close(Ted *ted) {
-	buffer_clear(&ted->line_buffer);
+	buffer_clear(ted->line_buffer);
 	return true;
 }
 
 static void shell_menu_open(Ted *ted) {
-	ted_switch_to_buffer(ted, &ted->line_buffer);
+	ted_switch_to_buffer(ted, ted->line_buffer);
 	ted->shell_history_pos = arr_len(ted->shell_history);
 }
 
 static void shell_menu_update(Ted *ted) {
-	TextBuffer *line_buffer = &ted->line_buffer;
+	TextBuffer *line_buffer = ted->line_buffer;
 	if (line_buffer->line_buffer_submitted) {
 		char *command = str32_to_utf8_cstr(buffer_get_line(line_buffer, 0));
 		if (ted->shell_history_pos == arr_len(ted->shell_history) || line_buffer->modified) {
@@ -540,11 +540,11 @@ static void shell_menu_render(Ted *ted) {
 	text_utf8(ted->font_bold, text, bounds.pos.x, bounds.pos.y, colors[COLOR_TEXT]);
 	rect_shrink_left(&bounds, text_get_size_vec2(ted->font_bold, text).x + padding);
 	text_render(ted->font_bold);
-	buffer_render(&ted->line_buffer, bounds);
+	buffer_render(ted->line_buffer, bounds);
 }
 
 static bool shell_menu_close(Ted *ted) {
-	buffer_clear(&ted->line_buffer);
+	buffer_clear(ted->line_buffer);
 	return true;
 }
 

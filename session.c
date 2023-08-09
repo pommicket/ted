@@ -173,18 +173,20 @@ static void session_write_node(Ted *ted, FILE *fp, Node *node) {
 	}
 }
 
-static Status session_read_node(Ted *ted, FILE *fp) {
-	Node *node = ted_new_node(ted);
+static Status session_read_node(Ted *ted, FILE *fp, Node *node) {
 	bool is_split = read_bool(fp);
 	if (is_split) {
 		node->split_pos = clampf(read_float(fp), 0, 1);
 		node->split_vertical = read_bool(fp);
 		u16 split_a_index = read_u16(fp), split_b_index = read_u16(fp);
-		if (split_a_index == split_b_index || split_a_index >= arr_len(ted->nodes) || split_b_index >= arr_len(ted->nodes)) {
+		if (split_a_index == split_b_index || split_a_index >= arr_len(ted->nodes)
+			|| split_b_index >= arr_len(ted->nodes)) {
 			return false;
 		}
 		node->split_a = ted->nodes[split_a_index];
 		node->split_b = ted->nodes[split_b_index];
+		if (node->split_a == node || node->split_b == node)
+			return false;
 	} else {
 		node->active_tab = read_u16(fp);
 		u16 ntabs = clamp_u16(read_u16(fp), 0, TED_MAX_TABS);
@@ -218,7 +220,6 @@ static bool session_read_buffer(Ted *ted, FILE *fp) {
 	TextBuffer *buffer = ted_new_buffer(ted);
 	char filename[TED_PATH_MAX] = {0};
 	read_cstr(fp, filename, sizeof filename);
-	buffer_create(buffer, ted);
 	if (!buffer_has_error(buffer)) {
 		if (*filename) {
 			if (!buffer_load_file(buffer, filename))
@@ -288,8 +289,11 @@ static void session_read_file(Ted *ted, FILE *fp) {
 	}
 	
 	u16 nnodes = read_u16(fp);
-	for (u16 i = 0; i < nnodes; ++i) {
-		if (!session_read_node(ted, fp)) {
+	for (u16 i = 0; i < nnodes; i++) {
+		ted_new_node(ted);
+	}
+	for (u16 i = 0; i < nnodes; i++) {
+		if (!session_read_node(ted, fp, ted->nodes[i])) {
 			arr_foreach_ptr(ted->buffers, TextBufferPtr, pbuffer) {
 				buffer_free(*pbuffer);
 			}
@@ -312,16 +316,15 @@ static void session_read_file(Ted *ted, FILE *fp) {
 
 	if (active_buffer_idx == U16_MAX) {
 		ted->active_buffer = NULL;
-	} else {
-		if (active_buffer_idx >= arr_len(ted->buffers))
-			active_buffer_idx = 0;
+	} else if (active_buffer_idx < arr_len(ted->buffers)) {
 		ted->active_buffer = ted->buffers[active_buffer_idx];
 	}
 
-	if (nbuffers && !ted->active_buffer) {
+	if (arr_len(ted->buffers) && !ted->active_buffer) {
 		// set active buffer to something
 		ted->active_buffer = ted->buffers[0];
 	}
+	ted_check_for_node_problems(ted);
 }
 
 void session_write(Ted *ted) {

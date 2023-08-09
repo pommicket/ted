@@ -41,11 +41,11 @@ void rename_symbol_frame(Ted *ted) {
 }
 
 static void rename_symbol_menu_open(Ted *ted) {
-	ted_switch_to_buffer(ted, &ted->line_buffer);
+	ted_switch_to_buffer(ted, ted->line_buffer);
 }
 
 static void rename_symbol_menu_update(Ted *ted) {
-	TextBuffer *line_buffer = &ted->line_buffer;
+	TextBuffer *line_buffer = ted->line_buffer;
 	if (line_buffer->line_buffer_submitted) {
 		char *new_name = str32_to_utf8_cstr(buffer_get_line(line_buffer, 0));
 		rename_symbol_at_cursor(ted, ted->prev_active_buffer, new_name);
@@ -104,12 +104,12 @@ static void rename_symbol_menu_render(Ted *ted) {
 	rect_shrink_left(&bounds, text_get_size_vec2(ted->font_bold, text).x + padding);
 	text_render(ted->font_bold);
 	
-	buffer_render(&ted->line_buffer, bounds);
+	buffer_render(ted->line_buffer, bounds);
 }
 
 static bool rename_symbol_menu_close(Ted *ted) {
 	rename_symbol_clear(ted);
-	buffer_clear(&ted->line_buffer);
+	buffer_clear(ted->line_buffer);
 	return true;
 }
 

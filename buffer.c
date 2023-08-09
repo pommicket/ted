@@ -34,16 +34,16 @@ bool buffer_has_error(TextBuffer *buffer) {
 
 // returns the buffer's last error
 const char *buffer_get_error(TextBuffer *buffer) {
-	return buffer->error;
+	return buffer ? buffer->error : "";
 }
 
 void buffer_clear_error(TextBuffer *buffer) {
 	*buffer->error = '\0';
 }
 
-// set the buffer's error to indicate that we're out of memory
+// set error to indicate that we're out of memory
 static void buffer_out_of_mem(TextBuffer *buffer) {
-	buffer_error(buffer, "Out of memory.");
+	ted_error(buffer->ted, "Out of memory.");
 }
 
 
@@ -180,20 +180,33 @@ static char *buffer_strdup(TextBuffer *buffer, const char *src) {
 	return dup;
 }
 
-void buffer_create(TextBuffer *buffer, Ted *ted) {
-	memset(buffer, 0, sizeof *buffer);
+static void buffer_set_up(Ted *ted, TextBuffer *buffer) {
 	buffer->store_undo_events = true;
 	buffer->ted = ted;
 	buffer->settings_idx = -1;
 }
 
-void line_buffer_create(TextBuffer *buffer, Ted *ted) {
-	buffer_create(buffer, ted);
+static void line_buffer_set_up(Ted *ted, TextBuffer *buffer) {
+	buffer_set_up(ted, buffer);
 	buffer->is_line_buffer = true;
 	if ((buffer->lines = buffer_calloc(buffer, 1, sizeof *buffer->lines))) {
 		buffer->nlines = 1;
 		buffer->lines_capacity = 1;
 	}
+}
+
+TextBuffer *buffer_new(Ted *ted) {
+	TextBuffer *buffer = ted_calloc(ted, 1, sizeof *buffer);
+	if (!buffer) return NULL;
+	buffer_set_up(ted, buffer);
+	return buffer;
+}
+
+TextBuffer *line_buffer_new(Ted *ted) {
+	TextBuffer *buffer = ted_calloc(ted, 1, sizeof *buffer);
+	if (!buffer) return NULL;
+	line_buffer_set_up(ted, buffer);
+	return buffer;
 }
 
 void buffer_pos_validate(TextBuffer *buffer, BufferPos *p) {
@@ -803,11 +816,9 @@ static void buffer_line_free(Line *line) {
 	free(line->str);
 }
 
-void buffer_free(TextBuffer *buffer) {
-	if (!buffer) return;
-	
-	if (!buffer->ted->quit) { // don't send didClose on quit (calling buffer_lsp would actually create a LSP if this is called after destroying all the LSPs which isnt good)
-		
+static void buffer_free_inner(TextBuffer *buffer) {
+	Ted *ted = buffer->ted;
+	if (!ted->quit) { // don't send didClose on quit (calling buffer_lsp would actually create a LSP if this is called after destroying all the LSPs which isnt good)
 		LSP *lsp = buffer_lsp(buffer);
 		if (lsp) {
 			buffer_send_lsp_did_close(buffer, lsp, NULL);	
@@ -832,18 +843,20 @@ void buffer_free(TextBuffer *buffer) {
 	memset(buffer, 0, sizeof *buffer);
 }
 
+void buffer_free(TextBuffer *buffer) {
+	if (!buffer) return;
+	buffer_free_inner(buffer);
+	free(buffer);
+}
+
 void buffer_clear(TextBuffer *buffer) {
 	bool is_line_buffer = buffer->is_line_buffer;
 	Ted *ted = buffer->ted;
-	char error[sizeof buffer->error];
-	memcpy(error, buffer->error, sizeof error);
-	buffer_free(buffer);
-	if (is_line_buffer) {
-		line_buffer_create(buffer, ted);
-	} else {
-		buffer_create(buffer, ted);
-	}
-	memcpy(buffer->error, error, sizeof error);
+	buffer_free_inner(buffer);
+	if (is_line_buffer)
+		line_buffer_set_up(ted, buffer);
+	else
+		buffer_set_up(ted, buffer);
 }
 
 
@@ -2650,7 +2663,7 @@ void buffer_paste(TextBuffer *buffer) {
 // if an error occurs, buffer is left untouched (except for the error field) and the function returns false.
 Status buffer_load_file(TextBuffer *buffer, const char *path) {
 	if (!unicode_is_valid_utf8(path)) {
-		buffer_error(buffer, "Path is not valid UTF8.");
+		buffer_error(buffer, "Path is not valid UTF-8.");
 		return false;
 	}
 	if (!path || !path_is_absolute(path)) {
@@ -3154,7 +3167,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	}
 
 	// change cursor to ibeam when it's hovering over the buffer
-	if ((!menu_is_any_open(ted) || buffer == &ted->line_buffer) && rect_contains_point(rect4(x1, y1, x2, y2), ted->mouse_pos)) {
+	if ((!menu_is_any_open(ted) || buffer == ted->line_buffer) && rect_contains_point(rect4(x1, y1, x2, y2), ted->mouse_pos)) {
 		ted->cursor = ted->cursor_ibeam;
 	}
 

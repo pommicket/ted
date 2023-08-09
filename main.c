@@ -1,6 +1,5 @@
 /*
 TODO:
-- set limit for # of nodes/buffers/tabs
 - public Node API
 - public Selector/FileSelector API
 
@@ -520,15 +519,15 @@ int main(int argc, char **argv) {
 	
 	PROFILE_TIME(create_start)
 	{
-		TextBuffer *lbuffer = &ted->line_buffer;
-		line_buffer_create(lbuffer, ted);
-		if (buffer_has_error(lbuffer))
+		TextBuffer *lbuffer = ted->line_buffer = line_buffer_new(ted);
+		if (!lbuffer || buffer_has_error(lbuffer))
 			die("Error creating line buffer: %s", buffer_get_error(lbuffer));
 	}
-	line_buffer_create(&ted->find_buffer, ted);
-	line_buffer_create(&ted->replace_buffer, ted);
-	line_buffer_create(&ted->argument_buffer, ted);
-	buffer_create(&ted->build_buffer, ted);
+	ted->find_buffer = line_buffer_new(ted);
+	ted->replace_buffer = line_buffer_new(ted);
+	ted->argument_buffer = line_buffer_new(ted);
+	ted->build_buffer = buffer_new(ted);
+	buffer_new_file(ted->build_buffer, NULL);
 
 	for (u32 i = 0; i < arr_len(starting_files); ++i) {
 		const char *filename = starting_files[i];
@@ -695,7 +694,7 @@ int main(int argc, char **argv) {
 							}
 						}
 						if (add && ted->build_shown)
-							if (buffer_handle_click(ted, &ted->build_buffer, pos, times)) // handle build buffer clicks
+							if (buffer_handle_click(ted, ted->build_buffer, pos, times)) // handle build buffer clicks
 								add = false;
 					}
 				}
@@ -1121,7 +1120,11 @@ int main(int argc, char **argv) {
 	#if !NDEBUG
 		for (u16 i = 0; i < arr_len(ted->buffers); ++i)
 			buffer_check_valid(ted->buffers[i]);
-		buffer_check_valid(&ted->line_buffer);
+		buffer_check_valid(ted->line_buffer);
+		buffer_check_valid(ted->argument_buffer);
+		buffer_check_valid(ted->find_buffer);
+		buffer_check_valid(ted->replace_buffer);
+		buffer_check_valid(ted->build_buffer);
 	#endif
 	
 		if (ted->dragging_tab_node)
@@ -1229,11 +1232,11 @@ int main(int argc, char **argv) {
 		node_free(*pnode);
 	}
 	arr_clear(ted->nodes);
-	buffer_free(&ted->line_buffer);
-	buffer_free(&ted->find_buffer);
-	buffer_free(&ted->replace_buffer);
-	buffer_free(&ted->build_buffer);
-	buffer_free(&ted->argument_buffer);
+	buffer_free(ted->line_buffer);
+	buffer_free(ted->find_buffer);
+	buffer_free(ted->replace_buffer);
+	buffer_free(ted->build_buffer);
+	buffer_free(ted->argument_buffer);
 	ted_free_fonts(ted);
 	config_free(ted);
 	macros_free(ted);

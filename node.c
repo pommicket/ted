@@ -148,6 +148,7 @@ void node_close(Ted *ted, Node *node) {
 		}
 		// replace parent with other side of split
 		*parent = *other_side;
+		free(other_side);
 		arr_remove_item(ted->nodes, other_side);
 		if (was_active) {
 			Node *new_active_node = parent;

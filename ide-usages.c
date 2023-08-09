@@ -47,7 +47,7 @@ void usages_process_lsp_response(Ted *ted, const LSPResponse *response) {
 	LSP *lsp = ted_get_lsp_by_id(ted, usages->last_request.lsp);
 	const LSPResponseReferences *refs = &response->data.references;
 	if (lsp && arr_len(refs->locations)) { 
-		TextBuffer *buffer = &ted->build_buffer;
+		TextBuffer *buffer = ted->build_buffer;
 		build_setup_buffer(ted);
 		ted->build_shown = true;
 		char last_path[TED_PATH_MAX] = {0};

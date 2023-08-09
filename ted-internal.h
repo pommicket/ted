@@ -22,6 +22,10 @@
 #define TED_LSP_MAX 200
 /// max number of macros
 #define TED_MACRO_MAX 256
+/// max number of nodes
+#define TED_NODE_MAX 256
+/// max number of buffers
+#define TED_BUFFER_MAX 1024
 
 /// Version string
 #define TED_VERSION_FULL "ted v. " TED_VERSION
@@ -460,15 +464,15 @@ struct Ted {
 	FileSelector file_selector;
 	Selector command_selector;
 	/// general-purpose line buffer for inputs -- used for menus
-	TextBuffer line_buffer;
+	TextBuffer *line_buffer;
 	/// use for "find" term in find/find+replace
-	TextBuffer find_buffer;
+	TextBuffer *find_buffer;
 	/// "replace" for find+replace
-	TextBuffer replace_buffer;
+	TextBuffer *replace_buffer;
 	/// buffer for build output (view only)
-	TextBuffer build_buffer;
+	TextBuffer *build_buffer;
 	/// used for command selector
-	TextBuffer argument_buffer;
+	TextBuffer *argument_buffer;
 	/// time which the cursor error animation started (cursor turns red, e.g. when there's no autocomplete suggestion)
 	double cursor_error_time;
 	/// should start_cwd be searched for files? set to true if the executable isn't "installed"
@@ -593,9 +597,11 @@ struct Ted {
 
 // === buffer.c ===
 /// create a new empty buffer with no file name
-void buffer_create(TextBuffer *buffer, Ted *ted);
+TextBuffer *buffer_new(Ted *ted);
 /// create a new empty line buffer
-void line_buffer_create(TextBuffer *buffer, Ted *ted);
+TextBuffer *line_buffer_new(Ted *ted);
+/// free all resources used by the buffer and the pointer `buffer` itself
+void buffer_free(TextBuffer *buffer);
 /// Does this buffer have an error?
 bool buffer_has_error(TextBuffer *buffer);
 /// get buffer error

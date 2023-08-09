@@ -19,7 +19,9 @@ static u32 find_replace_flags(Ted *ted) {
 }
 
 TextBuffer *find_search_buffer(Ted *ted) {
-	if (ted->active_buffer && ted->active_buffer != &ted->find_buffer && ted->active_buffer != &ted->replace_buffer) {
+	if (ted->active_buffer
+		&& ted->active_buffer != ted->find_buffer
+		&& ted->active_buffer != ted->replace_buffer) {
 		return ted->active_buffer;
 	}
 	return ted->prev_active_buffer;
@@ -38,7 +40,7 @@ static void ted_error_from_pcre2_error(Ted *ted, int err) {
 }
 
 static bool find_compile_pattern(Ted *ted) {
-	TextBuffer *find_buffer = &ted->find_buffer;
+	TextBuffer *find_buffer = ted->find_buffer;
 	String32 term = buffer_get_line(find_buffer, 0);
 	if (term.len) {
 		pcre2_match_data *match_data = pcre2_match_data_create(FIND_MAX_GROUPS, NULL);
@@ -143,7 +145,7 @@ static void find_search_line(Ted *ted, u32 line, FindResult **results) {
 
 // check if the search term needs to be recompiled
 void find_update(Ted *ted, bool force) {
-	TextBuffer *find_buffer = &ted->find_buffer;
+	TextBuffer *find_buffer = ted->find_buffer;
 	u32 flags = find_compilation_flags(ted);
 	if (!force
 		&& !find_buffer->modified // check if pattern has been modified,
@@ -234,7 +236,7 @@ static bool find_replace_match(Ted *ted, u32 match_idx) {
 		return false;
 	assert(match.start.line == match.end.line);
 	String32 line = buffer_get_line(buffer, match.start.line);
-	String32 replacement = buffer_get_line(&ted->replace_buffer, 0);
+	String32 replacement = buffer_get_line(ted->replace_buffer, 0);
 	// we are currently highlighting the find pattern, let's replace it
 	
 	// get size of buffer needed.
@@ -338,7 +340,8 @@ void find_menu_frame(Ted *ted, Rect menu_bounds) {
 	bool const replace = ted->replace;
 	const float line_buffer_height = ted_line_buffer_height(ted);
 	
-	TextBuffer *buffer = find_search_buffer(ted), *find_buffer = &ted->find_buffer, *replace_buffer = &ted->replace_buffer;
+	TextBuffer *buffer = find_search_buffer(ted),
+		*find_buffer = ted->find_buffer, *replace_buffer = ted->replace_buffer;
 	if (!buffer) return;
 	
 	u32 first_rendered_line = buffer_first_rendered_line(buffer);
@@ -469,10 +472,10 @@ void find_menu_frame(Ted *ted, Rect menu_bounds) {
 
 void find_open(Ted *ted, bool replace) {
 	if (menu_is_any_open(ted)) return;
-	if (ted->active_buffer == &ted->build_buffer) return; 
+	if (ted->active_buffer == ted->build_buffer) return; 
 	if (!ted->find)
 		ted->prev_active_buffer = ted->active_buffer;
-	ted_switch_to_buffer(ted, &ted->find_buffer);
+	ted_switch_to_buffer(ted, ted->find_buffer);
 	buffer_select_all(ted->active_buffer);
 	ted->find = true;
 	ted->replace = replace;

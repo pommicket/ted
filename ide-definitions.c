@@ -129,7 +129,7 @@ static void definitions_selector_filter_entries(Ted *ted) {
 	Selector *sel = &defs->selector;
 	
 	// create selector entries based on search term
-	char *search_term = str32_to_utf8_cstr(buffer_get_line(&ted->line_buffer, 0));
+	char *search_term = str32_to_utf8_cstr(buffer_get_line(ted->line_buffer, 0));
 
 	arr_clear(sel->entries);
 	
@@ -245,7 +245,7 @@ void definitions_send_request_if_needed(Ted *ted) {
 	if (!lsp)
 		return;
 	Definitions *defs = &ted->definitions;
-	char *query = buffer_contents_utf8_alloc(&ted->line_buffer);
+	char *query = buffer_contents_utf8_alloc(ted->line_buffer);
 	if (defs->last_request_query && strcmp(defs->last_request_query, query) == 0) {
 		free(query);
 		return; // no need to update symbols
@@ -273,7 +273,7 @@ static void definitions_selector_open(Ted *ted) {
 	} else {
 		defs->all_definitions = tags_get_symbols(ted);
 	}
-	ted_switch_to_buffer(ted, &ted->line_buffer);
+	ted_switch_to_buffer(ted, ted->line_buffer);
 	buffer_select_all(ted->active_buffer);
 	defs->selector.cursor = 0;
 }

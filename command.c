@@ -203,14 +203,14 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 		break;
 	case CMD_UP:
 		if (ted->selector_open) selector_up(ted, ted->selector_open, argument);
-		else if (menu_is_open(ted, MENU_SHELL) && buffer == &ted->line_buffer)
+		else if (menu_is_open(ted, MENU_SHELL) && buffer == ted->line_buffer)
 			menu_shell_up(ted);
 		else if (buffer) buffer_cursor_move_up(buffer, argument);
 		autocomplete_close(ted);
 		break;
 	case CMD_DOWN:
 		if (ted->selector_open) selector_down(ted, ted->selector_open, argument);
-		else if (menu_is_open(ted, MENU_SHELL) && buffer == &ted->line_buffer)
+		else if (menu_is_open(ted, MENU_SHELL) && buffer == ted->line_buffer)
 			menu_shell_down(ted);
 		else if (buffer) buffer_cursor_move_down(buffer, argument);
 		autocomplete_close(ted);
@@ -325,11 +325,11 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 		}
 		break;
 	case CMD_TAB:
-		if (ted->replace && buffer == &ted->find_buffer) {
-			ted_switch_to_buffer(ted, &ted->replace_buffer);
+		if (ted->replace && buffer == ted->find_buffer) {
+			ted_switch_to_buffer(ted, ted->replace_buffer);
 			buffer_select_all(buffer);
-		} else if (menu_is_open(ted, MENU_COMMAND_SELECTOR) && buffer == &ted->argument_buffer) {
-			buffer = &ted->line_buffer;
+		} else if (menu_is_open(ted, MENU_COMMAND_SELECTOR) && buffer == ted->argument_buffer) {
+			buffer = ted->line_buffer;
 			ted_switch_to_buffer(ted, buffer);
 			buffer_select_all(buffer);
 		} else if (autocomplete_is_open(ted) || autocomplete_has_phantom(ted)) {
@@ -342,11 +342,11 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 		}
 		break;
 	case CMD_BACKTAB:
-		if (ted->replace && buffer == &ted->replace_buffer) {
-			ted_switch_to_buffer(ted, &ted->find_buffer);
+		if (ted->replace && buffer == ted->replace_buffer) {
+			ted_switch_to_buffer(ted, ted->find_buffer);
 			buffer_select_all(buffer);
-		} else if (menu_is_open(ted, MENU_COMMAND_SELECTOR) && buffer == &ted->line_buffer) {
-			buffer = &ted->argument_buffer;
+		} else if (menu_is_open(ted, MENU_COMMAND_SELECTOR) && buffer == ted->line_buffer) {
+			buffer = ted->argument_buffer;
 			ted_switch_to_buffer(ted, buffer);
 			buffer_select_all(buffer);
 		} else if (buffer) {
@@ -359,7 +359,7 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 	case CMD_NEWLINE:
 	case CMD_NEWLINE_BACK:
 		if (ted->find) {
-			if (buffer == &ted->find_buffer || buffer == &ted->replace_buffer) {
+			if (buffer == ted->find_buffer || buffer == ted->replace_buffer) {
 				if (c == CMD_NEWLINE)
 					find_next(ted);
 				else
