@@ -301,24 +301,20 @@ struct FileSelector {
 
 // A node is a collection of tabs OR a split of two node
 struct Node {
-	/// dynamic array of indices into ted->buffers, or `NULL` if this is a split
-	u16 *tabs;
+	/// dynamic array of buffers, or `NULL` if this is a split
+	TextBuffer **tabs;
 	/// number from 0 to 1 indicating where the split is.
 	float split_pos;
 	/// index of active tab in `tabs`.
 	u16 active_tab;
 	/// is the split vertical? if false, this split looks like a|b
 	bool split_vertical;
-	/// split left/upper half; index into `ted->nodes`
-	u16 split_a;
+	/// split left/upper half
+	Node *split_a;
 	/// split right/lower half
-	u16 split_b;
+	Node *split_b;
 };
 
-/// max number of buffers open at one time
-#define TED_MAX_BUFFERS 256
-/// max number of nodes open at one time
-#define TED_MAX_NODES 256
 /// max tabs per node
 #define TED_MAX_TABS 100
 /// max strings in all config files
@@ -420,6 +416,9 @@ typedef struct {
 typedef struct {
 	vec2 pos;
 } MouseRelease;
+
+typedef TextBuffer *TextBufferPtr;
+typedef Node *NodePtr;
 
 struct Ted {
 	/// all running LSP servers
@@ -570,12 +569,9 @@ struct Ted {
 	char build_dir[TED_PATH_MAX];
 	/// where we are reading tags from
 	char tags_dir[TED_PATH_MAX];
-	bool nodes_used[TED_MAX_NODES];
 	/// `nodes[0]` is always the "root node", if any buffers are open.
-	Node nodes[TED_MAX_NODES];
-	/// NOTE: the buffer at index 0 is reserved as a "null buffer" and should not be used.
-	bool buffers_used[TED_MAX_BUFFERS];
-	TextBuffer buffers[TED_MAX_BUFFERS];
+	Node **nodes;
+	TextBuffer **buffers;
 	/// number of config file strings
 	u32 nstrings;
 	/// config file strings
@@ -844,8 +840,12 @@ void ted_go_to_lsp_document_position(Ted *ted, LSP *lsp, LSPDocumentPosition pos
 void ted_cancel_lsp_request(Ted *ted, LSPServerRequestID *request);
 /// convert LSPWindowMessageType to MessageType
 MessageType ted_message_type_from_lsp(LSPWindowMessageType type);
-/// Returns the index of an available node, or -1 if none are available 
-i32 ted_new_node(Ted *ted);
+/// delete buffer - does NOT remove it from the node tree
+void ted_delete_buffer(Ted *ted, TextBuffer *buffer);
+/// Returns a new node, or NULL on out of memory
+Node *ted_new_node(Ted *ted);
+/// Returns a new buffer, or NULL on out of memory
+TextBuffer *ted_new_buffer(Ted *ted);
 /// check for orphaned nodes and node cycles
 void ted_check_for_node_problems(Ted *ted);
 /// load ted configuration

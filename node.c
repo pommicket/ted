@@ -10,8 +10,8 @@ static void node_switch_to_tab(Ted *ted, Node *node, u16 new_tab_index) {
 	if (node == ted->active_node) {
 		// switch active buffer
 		assert(node->tabs);
-		u16 buffer_idx = node->tabs[new_tab_index];
-		ted_switch_to_buffer(ted, &ted->buffers[buffer_idx]);
+		TextBuffer *buffer = node->tabs[new_tab_index];
+		ted_switch_to_buffer(ted, buffer);
 	}
 }
 
@@ -41,130 +41,124 @@ void node_tabs_swap(Node *node, i32 tab1i, i32 tab2i) {
 	u16 tab1 = (u16)tab1i, tab2 = (u16)tab2i;
 	if (node->active_tab == tab1) node->active_tab = tab2;
 	else if (node->active_tab == tab2) node->active_tab = tab1;
-	u16 tmp = node->tabs[tab1];
+	TextBuffer *temp = node->tabs[tab1];
 	node->tabs[tab1] = node->tabs[tab2];
-	node->tabs[tab2] = tmp;
+	node->tabs[tab2] = temp;
 }
 
 void node_free(Node *node) {
 	arr_free(node->tabs);
 	memset(node, 0, sizeof *node);
+	free(node);
 }
 
-i32 node_parent(Ted *ted, i32 node_idx) {
-	const bool *nodes_used = ted->nodes_used;
-	if (node_idx < 0 || node_idx >= TED_MAX_NODES || !nodes_used[node_idx])
-		return -1;
-	for (u16 i = 0; i < TED_MAX_NODES; ++i) {
-		if (nodes_used[i]) {
-			Node *node = &ted->nodes[i];
-			if (!node->tabs) {
-				if (node->split_a == node_idx || node->split_b == node_idx)
-					return i;
-			}
+Node *node_parent(Ted *ted, Node *child) {
+	if (!child)
+		return NULL;
+	arr_foreach_ptr(ted->nodes, NodePtr, pnode) {
+		Node *node = *pnode;
+		if (!node->tabs) {
+			if (node->split_a == child || node->split_b == child)
+				return node;
 		}
 	}
-	return -1;
+	return NULL;
 }
 
 // the root has depth 0, and a child node has 1 more than its parent's depth.
-static u8 node_depth(Ted *ted, i32 node_idx) {
+static u8 node_depth(Ted *ted, Node *node) {
 	u8 depth = 0;
-	while (node_idx != -1) {
-		node_idx = node_parent(ted, node_idx);
+	while (node) {
+		node = node_parent(ted, node);
 		++depth;
 	}
 	return depth;
 }
 
 void node_join(Ted *ted, Node *node) {
-	i32 parent_idx = node_parent(ted, (u16)(node - ted->nodes));
-	if (parent_idx >= 0) {
-		Node *parent = &ted->nodes[parent_idx];
-		Node *a = &ted->nodes[parent->split_a];
-		Node *b = &ted->nodes[parent->split_b];
+	Node *parent = node_parent(ted, node);
+	if (parent) {
+		Node *a = parent->split_a;
+		Node *b = parent->split_b;
 		if (a->tabs && b->tabs) {
 			if (ted->active_node == a || ted->active_node == b) {
 				ted->active_node = parent;
 			}
-			arr_foreach_ptr(a->tabs, u16, tab) {
+			arr_foreach_ptr(a->tabs, TextBufferPtr, tab) {
 				arr_add(parent->tabs, *tab);
 			}
-			arr_foreach_ptr(b->tabs, u16, tab) {
+			arr_foreach_ptr(b->tabs, TextBufferPtr, tab) {
 				arr_add(parent->tabs, *tab);
 			}
 			if (!parent->tabs) {
 				ted_out_of_mem(ted);
-			} else {
-				if (node == a) {
-					parent->active_tab = a->active_tab;
-				} else {
-					parent->active_tab = (u16)arr_len(a->tabs) + b->active_tab;
-				}
-				node_free(a);
-				node_free(b);
-				ted->nodes_used[parent->split_a] = false;
-				ted->nodes_used[parent->split_b] = false;
-				// this isn't really needed since parent->tabs is not NULL anymore.
-				parent->split_a = 0;
-				parent->split_b = 0;
+				return;
 			}
+			
+			parent->split_a = NULL;
+			parent->split_b = NULL;
+			if (node == a) {
+				parent->active_tab = a->active_tab;
+			} else {
+				parent->active_tab = (u16)arr_len(a->tabs) + b->active_tab;
+			}
+			node_free(a);
+			node_free(b);
+			arr_remove_item(ted->nodes, a);
+			arr_remove_item(ted->nodes, b);
+			
 		}
 	}
 }
 
-void node_close(Ted *ted, i32 node_idx) {
+void node_close(Ted *ted, Node *node) {
 	ted->dragging_tab_node = NULL;
 	ted->resizing_split = NULL;
-	if (node_idx < 0 || node_idx >= TED_MAX_NODES) {
+	if (!node) {
 		return;
 	}
-	if (!ted->nodes_used[node_idx]) {
-		return;
-	}
-	i32 parent_idx = node_parent(ted, node_idx);
-	ted->nodes_used[node_idx] = false;
-
-	Node *node = &ted->nodes[node_idx];
+	
+	
+	Node *parent = node_parent(ted, node);
 	bool was_active = ted->active_node == node;
 
 	// delete all associated buffers
-	arr_foreach_ptr(node->tabs, u16, tab) {
-		u16 buffer_index = *tab;
-		ted_delete_buffer(ted, buffer_index);
+	arr_foreach_ptr(node->tabs, TextBufferPtr, tab) {
+		TextBuffer *buffer = *tab;
+		ted_delete_buffer(ted, buffer);
 	}
 
 	node_free(node);
 
-	if (parent_idx < 0) {
+	if (!parent) {
 		// no parent; this must be the root node
 		ted->active_node = NULL;
 	} else {
 		// turn parent from split node into tab node
-		Node *parent = &ted->nodes[parent_idx];
 		if (parent->tabs) {
 			assert(0); // this node's parent should be a split node
 			return;
 		}
-		u16 other_side;
-		if (node_idx == parent->split_a) {
+		Node *other_side;
+		if (node == parent->split_a) {
 			other_side = parent->split_b;
 		} else {
-			assert(node_idx == parent->split_b);
+			assert(node == parent->split_b);
 			other_side = parent->split_a;
 		}
 		// replace parent with other side of split
-		*parent = ted->nodes[other_side];
-
-		ted->nodes_used[other_side] = false;
+		*parent = *other_side;
+		arr_remove_item(ted->nodes, other_side);
 		if (was_active) {
 			Node *new_active_node = parent;
 			// make sure we don't set the active node to a split
 			while (!new_active_node->tabs)
-				new_active_node = &ted->nodes[new_active_node->split_a];
+				new_active_node = new_active_node->split_a;
 			ted_node_switch(ted, new_active_node);
 		}
 	}
+	
+	arr_remove_item(ted->nodes, node);
 }
 
 
@@ -179,14 +173,14 @@ bool node_tab_close(Ted *ted, Node *node, i32 index) {
 	
 	if (ntabs == 1) {
 		// only 1 tab left, just close the node
-		node_close(ted, (u16)(node - ted->nodes));
+		node_close(ted, node);
 		return false;
 	} else {
 		bool was_active = ted->active_node == node; // ted->active_node will be set to NULL when the active buffer is deleted.
-		u16 buffer_index = node->tabs[index];
+		TextBuffer *buffer = node->tabs[index];
 		// remove tab from array
 		arr_remove(node->tabs, (size_t)index);
-		ted_delete_buffer(ted, buffer_index);
+		ted_delete_buffer(ted, buffer);
 
 		ntabs = (u16)arr_len(node->tabs); // update ntabs
 		assert(ntabs);
@@ -196,7 +190,7 @@ bool node_tab_close(Ted *ted, Node *node, i32 index) {
 		node->active_tab = clamp_u16(node->active_tab, 0, ntabs - 1);
 		if (was_active) {
 			// fix active buffer if necessary
-			ted_switch_to_buffer(ted, &ted->buffers[node->tabs[node->active_tab]]);
+			ted_switch_to_buffer(ted, node->tabs[node->active_tab]);
 		}
 		return true;
 	}
@@ -240,7 +234,7 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 							if (tab_index <= arr_len(node->tabs)) {
 								Node *drag_node = ted->dragging_tab_node;
 								u16 drag_index = ted->dragging_tab_idx;
-								u16 tab = drag_node->tabs[drag_index];
+								TextBuffer *tab = drag_node->tabs[drag_index];
 
 								// remove the old tab
 								arr_remove(drag_node->tabs, drag_index);
@@ -253,7 +247,7 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 								arr_insert(node->tabs, tab_index, tab);
 								if (arr_len(drag_node->tabs) == 0) {
 									// removed the last tab from a node; close it
-									node_close(ted, (u16)(drag_node - ted->nodes));
+									node_close(ted, drag_node);
 								} else {
 									// make sure active tab is valid
 									drag_node->active_tab = clamp_u16(drag_node->active_tab, 0, (u16)arr_len(drag_node->tabs) - 1);
@@ -261,7 +255,7 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 
 								ted->dragging_tab_node = NULL; // stop dragging
 								// switch to this buffer
-								ted_switch_to_buffer(ted, &ted->buffers[tab]);
+								ted_switch_to_buffer(ted, tab);
 							}
 						}
 					}
@@ -271,8 +265,7 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 					if (rect_contains_point(tab_bar_rect, click->pos)) {
 						u16 tab_index = (u16)((click->pos.x - r.pos.x) / tab_width);
 						if (tab_index < arr_len(node->tabs)) {
-							u16 buffer_idx = node->tabs[tab_index];
-							TextBuffer *buffer = &ted->buffers[buffer_idx];
+							TextBuffer *buffer = node->tabs[tab_index];
 							// close that tab
 							if (buffer_unsaved_changes(buffer)) {
 								// make sure unsaved changes dialog is opened
@@ -292,7 +285,7 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 
 			TextRenderState text_state = text_render_state_default;
 			for (u16 i = 0; i < ntabs; ++i) {
-				TextBuffer *buffer = &ted->buffers[node->tabs[i]];
+				TextBuffer *buffer = node->tabs[i];
 				char tab_title[256];
 				const char *filename = buffer_display_filename(buffer);
 				Rect tab_rect = rect_xywh(r.pos.x + tab_width * i, r.pos.y, tab_width, tab_bar_height);
@@ -340,9 +333,7 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 			text_render(font);
 		}
 
-		u16 buffer_index = node->tabs[node->active_tab];
-		TextBuffer *buffer = &ted->buffers[buffer_index];
-		assert(ted->buffers_used[buffer_index]);
+		TextBuffer *buffer = node->tabs[node->active_tab];
 		Rect buffer_rect = r;
 		buffer_rect.pos.y += tab_bar_height;
 		
@@ -355,8 +346,7 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 	} else {
 		float padding = settings->padding;
 		// this node is a split
-		Node *a = &ted->nodes[node->split_a];
-		Node *b = &ted->nodes[node->split_b];
+		Node *a = node->split_a, *b = node->split_b;
 		Rect r1 = r, r2 = r;
 		SDL_Cursor *resize_cursor = node->split_vertical ? ted->cursor_resize_v : ted->cursor_resize_h;
 		if (node == ted->resizing_split) {
@@ -399,14 +389,12 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 }
 
 void node_split(Ted *ted, Node *node, bool vertical) {
-	if (node_depth(ted, (u16)(node - ted->nodes)) >= 4) return; // prevent splitting too deep
+	if (node_depth(ted, node) >= 4) return; // prevent splitting too deep
 
 	if (arr_len(node->tabs) > 1) { // need at least 2 tabs to split
-		i32 left_idx = ted_new_node(ted);
-		i32 right_idx = ted_new_node(ted);
-		if (left_idx >= 0 && right_idx >= 0) {
-			Node *left = &ted->nodes[left_idx];
-			Node *right = &ted->nodes[right_idx];
+		Node *left = ted_new_node(ted);
+		Node *right = ted_new_node(ted);
+		if (left && right) {
 			u16 active_tab = node->active_tab;
 			// put active tab on the right
 			arr_add(right->tabs, node->tabs[active_tab]);
@@ -418,38 +406,31 @@ void node_split(Ted *ted, Node *node, bool vertical) {
 			}
 
 			arr_clear(node->tabs);
-			node->split_a = (u16)left_idx;
-			node->split_b = (u16)right_idx;
+			node->split_a = left;
+			node->split_b = right;
 			node->split_vertical = vertical;
 			node->split_pos = 0.5f;
 			if (node == ted->active_node)
-				ted_node_switch(ted, &ted->nodes[right_idx]);
+				ted_node_switch(ted, right);
 		}
 	}
 }
 
 void node_split_switch(Ted *ted) {
-	assert(ted->active_node);
-	u16 active_node_idx = (u16)(ted->active_node - ted->nodes);
-	i32 parent_idx = node_parent(ted, active_node_idx);
-	if (parent_idx < 0) return;
-	Node *parent = &ted->nodes[parent_idx];
-	if (parent) {
-		if (parent->split_a == active_node_idx) {
-			ted_node_switch(ted, &ted->nodes[parent->split_b]);
-		} else {
-			ted_node_switch(ted, &ted->nodes[parent->split_a]);
-		}
+	Node *parent = node_parent(ted, ted->active_node);
+	if (!parent) return;
+	if (parent->split_a == ted->active_node) {
+		ted_node_switch(ted, parent->split_b);
+	} else {
+		ted_node_switch(ted, parent->split_a);
 	}
 }
 
 void node_split_swap(Ted *ted) {
 	assert(ted->active_node);
-	u16 active_node_idx = (u16)(ted->active_node - ted->nodes);
-	i32 parent_idx = node_parent(ted, active_node_idx);
-	if (parent_idx < 0) return;
-	Node *parent = &ted->nodes[parent_idx];
-	u16 temp = parent->split_a;
+	Node *parent = node_parent(ted, ted->active_node);
+	if (!parent) return;
+	Node *temp = parent->split_a;
 	parent->split_a = parent->split_b;
 	parent->split_b = temp;
 }

@@ -211,4 +211,15 @@ static size_t unicode_utf16_to_utf8_offset(const char *str, size_t utf16_offset)
 	return SIZE_MAX;
 }
 
+static bool unicode_is_valid_utf8(const char *cstr) {
+	char32_t c = 0;
+	while (*cstr) {
+		size_t n = unicode_utf8_to_utf32(&c, cstr, 4);
+		if (n >= (size_t)-2)
+			return false;
+		cstr += n;
+	}
+	return true;
+}
+
 #endif // UNICODE_H_

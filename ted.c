@@ -295,7 +295,7 @@ void ted_path_full(Ted *ted, const char *relpath, char *abspath, size_t abspath_
 }
 
 static bool ted_is_regular_buffer(Ted *ted, TextBuffer *buffer) {
-	return buffer >= ted->buffers && buffer < ted->buffers + TED_MAX_BUFFERS;
+	return arr_index_of(ted->buffers, buffer) >= 0;
 }
 
 Status ted_get_file(Ted const *ted, const char *name, char *out, size_t outsz) {
@@ -430,21 +430,15 @@ void ted_free_fonts(Ted *ted) {
 
 // get node and tab containing buffer
 static Node *ted_buffer_location_in_node_tree(Ted *ted, TextBuffer *buffer, u16 *tab_idx) {
-	// now we need to figure out where this buffer is
-	u16 idx = (u16)(buffer - ted->buffers);
-	const bool *nodes_used = ted->nodes_used;
-	for (u16 i = 0; i < TED_MAX_NODES; ++i) {
-		if (!nodes_used[i]) continue;
-		Node *node = &ted->nodes[i];
-		arr_foreach_ptr(node->tabs, u16, tab) {
-			if (idx == *tab) {
-				if (tab_idx)
-					*tab_idx = (u16)(tab - node->tabs);
-				return node;
-			}
+	arr_foreach_ptr(ted->nodes, NodePtr, pnode) {
+		Node *node = *pnode;
+		i32 index = arr_index_of(node->tabs, buffer);
+		if (index >= 0) {
+			if (tab_idx)
+				*tab_idx = (u16)index;
+			return node;
 		}
 	}
-	assert(0);
 	return NULL;
 }
 
@@ -457,10 +451,14 @@ void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer) {
 			find_update(ted, true); // make sure find results are for this file
 	}
 
-	if (buffer >= ted->buffers && buffer < ted->buffers + TED_MAX_BUFFERS) {
+	if (ted_is_regular_buffer(ted, buffer)) {
 		ted->prev_active_buffer = buffer;
 		u16 active_tab=0;
 		Node *node = ted_buffer_location_in_node_tree(ted, buffer, &active_tab);
+		if (!node) {
+			assert(0);
+			return;
+		}
 		node->active_tab = active_tab;
 		ted->active_node = node;
 		signature_help_retrigger(ted);
@@ -471,11 +469,11 @@ void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer) {
 }
 
 void ted_reset_active_buffer(Ted *ted) {
-	if (ted->nodes_used[0]) {
-		Node *node = &ted->nodes[0];
+	if (arr_len(ted->nodes)) {
+		Node *node = ted->nodes[0];
 		while (!node->tabs)
-			node = &ted->nodes[node->split_a]; // arbitrarily pick split_a.
-		ted_switch_to_buffer(ted, &ted->buffers[node->tabs[node->active_tab]]);
+			node = node->split_a; // arbitrarily pick split_a.
+		ted_switch_to_buffer(ted, node->tabs[node->active_tab]);
 	} else {
 		// there's nothing to set it to
 		ted_switch_to_buffer(ted, NULL);
@@ -483,41 +481,36 @@ void ted_reset_active_buffer(Ted *ted) {
 }
 
 
-static i32 ted_new_buffer(Ted *ted) {
-	bool *buffers_used = ted->buffers_used;
-	for (i32 i = 1; // start from 1, so as not to use the null buffer
-		i < TED_MAX_BUFFERS; ++i) {
-		if (!buffers_used[i]) {
-			buffers_used[i] = true;
-			buffer_create(&ted->buffers[i], ted);
-			return i;
-		}
-	}
-	return -1;
-}
-
-void ted_delete_buffer(Ted *ted, u16 index) {
-	TextBuffer *buffer = &ted->buffers[index];
+void ted_delete_buffer(Ted *ted, TextBuffer *buffer) {
 	if (buffer == ted->active_buffer)
 		ted_switch_to_buffer(ted, NULL); // make sure we don't set the active buffer to something invalid
 	if (buffer == ted->prev_active_buffer)
 		ted->prev_active_buffer = NULL;
 	buffer_free(buffer);
-	ted->buffers_used[index] = false;
+	arr_remove_item(ted->buffers, buffer);
 }
 
-i32 ted_new_node(Ted *ted) {
-	bool *nodes_used = ted->nodes_used;
-	for (i32 i = 0; i < TED_MAX_NODES; ++i) {
-		if (!nodes_used[i]) {
-			memset(&ted->nodes[i], 0, sizeof ted->nodes[i]); // zero new node
-			nodes_used[i] = true;
-			return i;
-		}
+Node *ted_new_node(Ted *ted) {
+	if (arr_len(ted->nodes) >= 100) { // TODO: constant
+		ted_error(ted, "Too many nodes.");
+		return NULL;
 	}
-	ted_error(ted, "Too many nodes.");
-	return -1;
-	
+	Node *node = ted_calloc(ted, 1, sizeof *node);
+	if (!node) return NULL;
+	arr_add(ted->nodes, node);
+	return node;
+}
+
+TextBuffer *ted_new_buffer(Ted *ted) {
+	if (arr_len(ted->buffers) >= 100) { // TODO: constant
+		ted_error(ted, "Too many buffers.");
+		return NULL;
+	}
+	TextBuffer *buffer = ted_calloc(ted, 1, sizeof *buffer);
+	if (!buffer) return NULL;
+	buffer_create(buffer, ted);
+	arr_add(ted->buffers, buffer);
+	return buffer;
 }
 
 float ted_line_buffer_height(Ted *ted) {
@@ -527,50 +520,42 @@ float ted_line_buffer_height(Ted *ted) {
 
 void ted_node_switch(Ted *ted, Node *node) {
 	assert(node->tabs);
-	ted_switch_to_buffer(ted, &ted->buffers[node->tabs[node->active_tab]]);
+	ted_switch_to_buffer(ted, node->tabs[node->active_tab]);
+	ted->active_node = node;
 }
 
-// Open a new buffer. Fills out *tab to the index of the tab used, and *buffer_idx to the index of the buffer.
-// Returns true on success.
-static Status ted_open_buffer(Ted *ted, u16 *buffer_idx, u16 *tab) {
-	i32 new_buffer_index = ted_new_buffer(ted);
-	if (new_buffer_index >= 0) {
-		Node *node = ted->active_node;
-		if (!node) {
-			if (!ted->nodes_used[0]) {
-				// no nodes open; create a root node
-				i32 node_idx = ted_new_node(ted);
-				assert(node_idx == 0);
-				node = &ted->nodes[node_idx];
-				ted->active_node = node;
-			} else if (ted->prev_active_buffer) {
-				// opening a file while a menu is open
-				// it may happen.... (currently happens for rename symbol)
-				node = ted_buffer_location_in_node_tree(ted, ted->prev_active_buffer, NULL);
-			} else {
-				// idk what is going on
-				ted_error(ted, "internal error: can't figure out where to put this buffer.");
-				ted_delete_buffer(ted, (u16)new_buffer_index);
-				return false;
-			}
-		}
-		if (arr_len(node->tabs) < TED_MAX_TABS) {
-			arr_add(node->tabs, (u16)new_buffer_index);
-			TextBuffer *new_buffer = &ted->buffers[new_buffer_index];
-			buffer_create(new_buffer, ted);
-			node->active_tab = (u16)(arr_len(node->tabs) - 1);
-			*buffer_idx = (u16)new_buffer_index;
-			*tab = node->active_tab;
-			ted_switch_to_buffer(ted, new_buffer);
-			return true;
+// Open a new buffer. Fills out *tab to the index of the tab used.
+static TextBuffer *ted_open_buffer(Ted *ted, u16 *tab) {
+	TextBuffer *new_buffer = ted_new_buffer(ted);
+	if (!new_buffer) return NULL;
+	Node *node = ted->active_node;
+	if (!node) {
+		if (!arr_len(ted->nodes)) {
+			// no nodes open; create a root node
+			node = ted->active_node = ted_new_node(ted);
+		} else if (ted->prev_active_buffer) {
+			// opening a file while a menu is open
+			// it may happen.... (currently happens for rename symbol)
+			node = ted_buffer_location_in_node_tree(ted, ted->prev_active_buffer, NULL);
 		} else {
-			ted_error(ted, "Too many tabs.");
-			ted_delete_buffer(ted, (u16)new_buffer_index);
-			return false;
+			// idk what is going on
+			ted_error(ted, "internal error: can't figure out where to put this buffer.");
+			ted_delete_buffer(ted, new_buffer);
+			return NULL;
 		}
-	} else {
+	}
+	
+	if (arr_len(node->tabs) >= TED_MAX_TABS) {
+		ted_error(ted, "Too many tabs.");
+		ted_delete_buffer(ted, new_buffer);
 		return false;
 	}
+	
+	arr_add(node->tabs, new_buffer);
+	node->active_tab = (u16)(arr_len(node->tabs) - 1);
+	*tab = node->active_tab;
+	ted_switch_to_buffer(ted, new_buffer);
+	return new_buffer;
 }
 
 TextBuffer *ted_get_buffer_with_file(Ted *ted, const char *path) {
@@ -580,13 +565,10 @@ TextBuffer *ted_get_buffer_with_file(Ted *ted, const char *path) {
 		return NULL;
 	}
 	
-	bool *buffers_used = ted->buffers_used;
-	TextBuffer *buffers = ted->buffers;
-	for (u16 i = 0; i < TED_MAX_BUFFERS; ++i) {
-		if (buffers_used[i]) {
-			if (buffers[i].path && paths_eq(path, buffers[i].path)) {
-				return &buffers[i];
-			}
+	arr_foreach_ptr(ted->buffers, TextBufferPtr, pbuffer) {
+		TextBuffer *buffer = *pbuffer;
+		if (buffer->path && paths_eq(path, buffer->path)) {
+			return buffer;
 		}
 	}
 	return NULL;
@@ -609,12 +591,14 @@ bool ted_open_file(Ted *ted, const char *filename) {
 	}
 	
 	// not open; we need to load it
-	u16 buffer_idx, tab_idx;
-	if (ted->active_buffer && !ted->active_buffer->path && buffer_empty(ted->active_buffer)) {
+	u16 tab_idx;
+	TextBuffer *buffer = NULL;
+	if (ted->active_buffer && !ted->active_buffer->path
+		&& ted_is_regular_buffer(ted, ted->active_buffer)
+		&& buffer_empty(ted->active_buffer)) {
 		// the active buffer is just an empty untitled buffer. open it here.
 		return buffer_load_file(ted->active_buffer, path);
-	} else if (ted_open_buffer(ted, &buffer_idx, &tab_idx)) {
-		TextBuffer *buffer = &ted->buffers[buffer_idx];
+	} else if ((buffer = ted_open_buffer(ted, &tab_idx))) {
 		if (buffer_load_file(buffer, path)) {
 			return true;
 		} else {
@@ -628,7 +612,7 @@ bool ted_open_file(Ted *ted, const char *filename) {
 }
 
 bool ted_new_file(Ted *ted, const char *filename) {
-	u16 buffer_idx, tab_idx;
+	u16 tab_idx=0;
 	char path[TED_PATH_MAX];
 	if (filename)
 		ted_path_full(ted, filename, path, sizeof path);
@@ -638,8 +622,7 @@ bool ted_new_file(Ted *ted, const char *filename) {
 	if (buffer) {
 		ted_switch_to_buffer(ted, buffer);
 		return true;
-	} else if (ted_open_buffer(ted, &buffer_idx, &tab_idx)) {
-		buffer = &ted->buffers[buffer_idx];
+	} else if ((buffer = ted_open_buffer(ted, &tab_idx))) {
 		buffer_new_file(buffer, *path ? path : NULL);
 		if (!buffer_has_error(buffer)) {
 			return true;
@@ -656,21 +639,18 @@ bool ted_new_file(Ted *ted, const char *filename) {
 
 bool ted_save_all(Ted *ted) {
 	bool success = true;
-	bool *buffers_used = ted->buffers_used;
-	for (u16 i = 0; i < TED_MAX_BUFFERS; ++i) {
-		if (buffers_used[i]) {
-			TextBuffer *buffer = &ted->buffers[i];
-			if (buffer_unsaved_changes(buffer)) {
-				if (!buffer->path) {
-					ted_switch_to_buffer(ted, buffer);
-					menu_open(ted, MENU_SAVE_AS);
-					success = false; // we haven't saved this buffer yet; we've just opened the "save as" menu.
-					break;
-				} else {
-					if (!buffer_save(buffer)) {
-						success = false;
-						ted_error_from_buffer(ted, buffer);
-					}
+	arr_foreach_ptr(ted->buffers, TextBufferPtr, pbuffer) {
+		TextBuffer *buffer = *pbuffer;
+		if (buffer_unsaved_changes(buffer)) {
+			if (!buffer->path) {
+				ted_switch_to_buffer(ted, buffer);
+				menu_open(ted, MENU_SAVE_AS);
+				success = false; // we haven't saved this buffer yet; we've just opened the "save as" menu.
+				break;
+			} else {
+				if (!buffer_save(buffer)) {
+					success = false;
+					ted_error_from_buffer(ted, buffer);
 				}
 			}
 		}
@@ -679,13 +659,10 @@ bool ted_save_all(Ted *ted) {
 }
 
 void ted_reload_all(Ted *ted) {
-	bool *buffers_used = ted->buffers_used;
-	for (u64 i = 0; i < TED_MAX_BUFFERS; ++i) {
-		if (buffers_used[i]) {
-			TextBuffer *buffer = &ted->buffers[i];
-			if (!buffer_unsaved_changes(buffer)) {
-				buffer_reload(buffer);
-			}
+	arr_foreach_ptr(ted->buffers, TextBufferPtr, pbuffer) {
+		TextBuffer *buffer = *pbuffer;
+		if (!buffer_unsaved_changes(buffer)) {
+			buffer_reload(buffer);
 		}
 	}
 	if (menu_is_open(ted, MENU_ASK_RELOAD)) {
@@ -763,18 +740,13 @@ void ted_press_key(Ted *ted, SDL_Keycode keycode, SDL_Keymod modifier) {
 }
 
 bool ted_get_mouse_buffer_pos(Ted *ted, TextBuffer **pbuffer, BufferPos *ppos) {
-	for (u32 i = 0; i < TED_MAX_NODES; ++i) {
-		if (ted->nodes_used[i]) {
-			Node *node = &ted->nodes[i];
-			if (node->tabs) {
-				TextBuffer *buffer = &ted->buffers[node->tabs[node->active_tab]];
-				BufferPos pos = {0};
-				if (buffer_pixels_to_pos(buffer, ted->mouse_pos, &pos)) {
-					if (ppos) *ppos = pos;
-					if (pbuffer) *pbuffer = buffer;
-					return true;
-				}
-			}
+	arr_foreach_ptr(ted->buffers, TextBufferPtr, pbuf) {
+		TextBuffer *buffer = *pbuf;
+		BufferPos pos = {0};
+		if (buffer_pixels_to_pos(buffer, ted->mouse_pos, &pos)) {
+			if (ppos) *ppos = pos;
+			if (pbuffer) *pbuffer = buffer;
+			return true;
 		}
 	}
 	return false;
@@ -806,32 +778,35 @@ void ted_cancel_lsp_request(Ted *ted, LSPServerRequestID *request) {
 }
 
 
-static void mark_node_reachable(Ted *ted, u16 node, bool reachable[TED_MAX_NODES]) {
-	if (reachable[node]) {
-		ted_error(ted, "Node %u reachable in 2 different ways\nThis should never happen.", node);
-		ted_log(ted, "Node %u reachable in 2 different ways\n", node);
+static void mark_node_reachable(Ted *ted, Node *node, bool *reachable) {
+	i32 i = arr_index_of(ted->nodes, node);
+	if (i < 0) return;
+	if (reachable[i]) {
+		ted_error(ted, "Node %d reachable in 2 different ways\nThis should never happen.", i);
+		ted_log(ted, "Node %d reachable in 2 different ways\n", i);
 		node_close(ted, node);
 		return;
 	}
-	reachable[node] = true;
-	Node *n = &ted->nodes[node];
-	if (!n->tabs) {
-		mark_node_reachable(ted, n->split_a, reachable);
-		mark_node_reachable(ted, n->split_b, reachable);
+	reachable[i] = true;
+	if (!node->tabs) {
+		mark_node_reachable(ted, node->split_a, reachable);
+		mark_node_reachable(ted, node->split_b, reachable);
 	}
 }
 
 void ted_check_for_node_problems(Ted *ted) {
-	bool reachable[TED_MAX_NODES] = {0};
-	if (ted->nodes_used[0])
-		mark_node_reachable(ted, 0, reachable);
-	for (u16 i = 0; i < TED_MAX_NODES; ++i) {
-		if (ted->nodes_used[i] && !reachable[i]) {
+	bool *reachable = ted_calloc(ted, arr_len(ted->nodes), 1);
+	if (arr_len(ted->nodes))
+		mark_node_reachable(ted, ted->nodes[0], reachable);
+	for (u32 i = 0; i < arr_len(ted->nodes); ++i) {
+		if (!reachable[i]) {
 			ted_error(ted, "ORPHANED NODE %u\nThis should never happen.", i);
 			ted_log(ted, "ORPHANED NODE %u\n", i);
-			node_close(ted, i);
+			node_close(ted, ted->nodes[i]);
+			--i;
 		}
 	}
+	free(reachable);
 }
 
 MessageType ted_message_type_from_lsp(LSPWindowMessageType type) {

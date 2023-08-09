@@ -804,6 +804,8 @@ static void buffer_line_free(Line *line) {
 }
 
 void buffer_free(TextBuffer *buffer) {
+	if (!buffer) return;
+	
 	if (!buffer->ted->quit) { // don't send didClose on quit (calling buffer_lsp would actually create a LSP if this is called after destroying all the LSPs which isnt good)
 		
 		LSP *lsp = buffer_lsp(buffer);
@@ -2647,6 +2649,10 @@ void buffer_paste(TextBuffer *buffer) {
 
 // if an error occurs, buffer is left untouched (except for the error field) and the function returns false.
 Status buffer_load_file(TextBuffer *buffer, const char *path) {
+	if (!unicode_is_valid_utf8(path)) {
+		buffer_error(buffer, "Path is not valid UTF8.");
+		return false;
+	}
 	if (!path || !path_is_absolute(path)) {
 		buffer_error(buffer, "Loaded path '%s' is not an absolute path.", path);
 		return false;

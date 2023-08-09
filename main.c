@@ -1,5 +1,6 @@
 /*
 TODO:
+- set limit for # of nodes/buffers/tabs
 - public Node API
 - public Selector/FileSelector API
 
@@ -683,15 +684,13 @@ int main(int argc, char **argv) {
 					// could switch to a different buffer.
 					// line buffer click handling, IS done in buffer_render (yes this is less than ideal)
 					if (!menu_is_any_open(ted)) {
-						for (u32 i = 0; i < TED_MAX_NODES; ++i) {
-							if (ted->nodes_used[i]) {
-								Node *node = &ted->nodes[i];
-								if (node->tabs) {
-									buffer = &ted->buffers[node->tabs[node->active_tab]];
-									if (buffer_handle_click(ted, buffer, pos, times)) {
-										add = false;
-										break;
-									}
+						arr_foreach_ptr(ted->nodes, NodePtr, pnode) {
+							Node *node = *pnode;
+							if (node->tabs) {
+								buffer = node->tabs[node->active_tab];
+								if (buffer_handle_click(ted, buffer, pos, times)) {
+									add = false;
+									break;
 								}
 							}
 						}
@@ -966,7 +965,6 @@ int main(int argc, char **argv) {
 		{
 			const float padding = ted_active_settings(ted)->padding;
 			float x1 = padding, y = window_height-padding, x2 = window_width-padding;
-			Node *node = &ted->nodes[0];
 			if (ted->find) {
 				float y2 = y;
 				y -= find_menu_height(ted);
@@ -1003,7 +1001,8 @@ int main(int argc, char **argv) {
 				y -= padding;
 			}
 
-			if (ted->nodes_used[0]) {
+			if (arr_len(ted->nodes)) {
+				Node *node = ted->nodes[0];
 				float y1 = padding;
 				node_frame(ted, node, rect4(x1, y1, x2, y));
 				autocomplete_frame(ted);
@@ -1038,8 +1037,8 @@ int main(int argc, char **argv) {
 		if (text_has_err()) {
 			ted_error(ted, "Couldn't render text: %s", text_get_err());
 		}
-		for (u16 i = 0; i < TED_MAX_BUFFERS; ++i) {
-			TextBuffer *buffer = &ted->buffers[i];
+		arr_foreach_ptr(ted->buffers, TextBufferPtr, pbuffer) {
+			TextBuffer *buffer = *pbuffer;
 			if (buffer_has_error(buffer)) {
 				ted_error_from_buffer(ted, buffer);
 				buffer_clear_error(buffer);
@@ -1120,9 +1119,8 @@ int main(int argc, char **argv) {
 		ted_check_for_node_problems(ted);
 
 	#if !NDEBUG
-		for (u16 i = 0; i < TED_MAX_BUFFERS; ++i)
-			if (ted->buffers_used[i])
-				buffer_check_valid(&ted->buffers[i]);
+		for (u16 i = 0; i < arr_len(ted->buffers); ++i)
+			buffer_check_valid(ted->buffers[i]);
 		buffer_check_valid(&ted->line_buffer);
 	#endif
 	
@@ -1224,12 +1222,13 @@ int main(int argc, char **argv) {
 	SDL_GL_DeleteContext(glctx);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
-	for (u16 i = 0; i < TED_MAX_BUFFERS; ++i)
-		if (ted->buffers_used[i])
-			buffer_free(&ted->buffers[i]);
-	for (u16 i = 0; i < TED_MAX_NODES; ++i)
-		if (ted->nodes_used[i])
-			node_free(&ted->nodes[i]);
+	for (u16 i = 0; i < arr_len(ted->buffers); ++i)
+		buffer_free(ted->buffers[i]);
+	arr_clear(ted->buffers);
+	arr_foreach_ptr(ted->nodes, NodePtr, pnode) {
+		node_free(*pnode);
+	}
+	arr_clear(ted->nodes);
 	buffer_free(&ted->line_buffer);
 	buffer_free(&ted->find_buffer);
 	buffer_free(&ted->replace_buffer);

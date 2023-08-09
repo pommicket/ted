@@ -902,14 +902,28 @@ void node_tab_switch(Ted *ted, Node *node, i32 tab);
 ///
 /// if `node` is a split or either index is out of range, nothing happens.
 void node_tabs_swap(Node *node, i32 tab1, i32 tab2);
-/// returns index of parent in ted->nodes, or -1 if this is the root node.
-i32 node_parent(Ted *ted, i32 node_idx);
+/* TODO
+/// get two children of split node.
+///
+/// if `node` isn't a split, returns false and sets `*child1` and `*child2` to `NULL`.
+bool node_children(Node *node, Node **child1, Node **child2);
+/// returns true if this node is a vertical split
+bool node_split_is_vertical(Node *node);
+/// get number of tabs in node
+u32 node_tab_count(Ted *ted, Node *node);
+/// get buffer in tab at index of node.
+///
+/// returns `NULL` if `tab` is out of range.
+TextBuffer *node_tab_get(Ted *ted, Node *node, u32 tab);
+*/
+/// returns parent node, or NULL if this is the root node.
+Node *node_parent(Ted *ted, Node *node);
 /// join this node with its sibling
 void node_join(Ted *ted, Node *node);
 /// close a node, WITHOUT checking for unsaved changes
 ///
-/// does nothing if node_idx is out of range
-void node_close(Ted *ted, i32 node_idx);
+/// does nothing if `node` is `NULL`.
+void node_close(Ted *ted, Node *node);
 /// close tab, WITHOUT checking for unsaved changes!
 /// returns true if the node is still open
 ///
@@ -1069,9 +1083,6 @@ bool ted_open_file(Ted *ted, const char *filename);
 /// if `filename` is NULL, this creates an untitled buffer.
 /// returns true on success.
 bool ted_new_file(Ted *ted, const char *filename);
-/// Opposite of ted_new_buffer
-/// Make sure you set active_buffer to something else if you delete it!
-void ted_delete_buffer(Ted *ted, u16 index);
 /// save all changes to all buffers with unsaved changes.
 bool ted_save_all(Ted *ted);
 /// sets the active buffer to this buffer, and updates active_node, etc. accordingly

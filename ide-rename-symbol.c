@@ -207,17 +207,16 @@ void rename_symbol_process_lsp_response(Ted *ted, const LSPResponse *response) {
 		}
 	}
 	done:
-	
-	// end all edit chains in all buffers
-	// they're almost definitely all created by us
-	for (u16 i = 0; i < TED_MAX_BUFFERS; ++i) {
-		if (ted->buffers_used[i]) {
-			TextBuffer *buffer = &ted->buffers[i];
-			buffer_end_edit_chain(buffer);
+
+	{
+		// end all edit chains in all buffers
+		// they're almost definitely all created by us
+		arr_foreach_ptr(ted->buffers, TextBufferPtr, pbuffer) {
+			buffer_end_edit_chain(*pbuffer);
 		}
+		
+		ted_save_all(ted);
 	}
-	
-	ted_save_all(ted);
 	
 	cleanup:
 	rename_symbol_clear(ted);

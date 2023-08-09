@@ -208,6 +208,18 @@ static void *arr_remove_(void *arr, size_t member_size, size_t index) {
 	}
 }
 
+static i32 arr_index_of_(void *arr, size_t member_size, const void *item) {
+	if (!arr) return -1;
+	
+	ArrHeader *hdr = arr_hdr_(arr);
+	for (size_t i = 0; i < hdr->len; ++i) {
+		if (memcmp((const char *)arr + i * member_size, item, member_size) == 0)
+			return (i32)i;
+	}
+	
+	return -1;
+}
+
 static void *arr_remove_multiple_(void *arr, size_t member_size, size_t index, size_t count) {
 	ArrHeader *hdr = arr_hdr_(arr);
 	assert(index < hdr->len);
@@ -269,6 +281,8 @@ static void *arr_copy_(const void *arr, size_t member_size) {
 #define arr_qsort(a, cmp) qsort((a), arr_len(a), sizeof *(a), (cmp))
 #define arr_remove_last(a) do { assert(a); if (--arr_hdr_(a)->len == 0) arr_free(a); } while (0)
 #define arr_remove(a, i) (void)((a) = arr_remove_((a), sizeof *(a), (i)))
+#define arr_remove_item(a, item) do { for (u32 _i = 0; _i < arr_len((a)); ++_i) if ((a)[_i] == item) { arr_remove((a), _i); break; } } while (0);
+#define arr_index_of(a, item) (sizeof((a)[0] == (item)), arr_index_of_((a), sizeof *(a), &(item)))
 #define arr_remove_multiple(a, i, n) (void)((a) = arr_remove_multiple_((a), sizeof *(a), (i), (n)))
 #define arr_insert(a, i, x) do { u32 _index = (i); (a) = arr_cast_typeof(a) arr_grow1_((a), sizeof *(a)); \
 	if (a) { memmove((a) + _index + 1, (a) + _index, (arr_len(a) - _index) * sizeof *(a));\

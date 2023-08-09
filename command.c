@@ -443,17 +443,14 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 			ted->quit = true;
 		} else {
 			*ted->warn_unsaved_names = 0;
-			bool *buffers_used = ted->buffers_used;
 			bool first = true;
 			
-			for (u16 i = 0; i < TED_MAX_BUFFERS; ++i) {
-				if (buffers_used[i]) {
-					buffer = &ted->buffers[i];
-					if (buffer_unsaved_changes(buffer)) {
-						const char *path = buffer_display_filename(buffer);
-						strbuf_catf(ted->warn_unsaved_names, "%s%s", first ? "" : ", ", path);
-						first = false;
-					}
+			arr_foreach_ptr(ted->buffers, TextBufferPtr, pbuffer) {
+				buffer = *pbuffer;
+				if (buffer_unsaved_changes(buffer)) {
+					const char *path = buffer_display_filename(buffer);
+					strbuf_catf(ted->warn_unsaved_names, "%s%s", first ? "" : ", ", path);
+					first = false;
 				}
 			}
 			
@@ -569,7 +566,7 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 			find_close(ted);
 		} else if (node) {
 			u16 tab_idx = node->active_tab;
-			buffer = &ted->buffers[node->tabs[tab_idx]];
+			buffer = node->tabs[tab_idx];
 			// (an argument of 2 overrides the unsaved changes dialog)
 			if (argument != 2 && buffer_unsaved_changes(buffer)) {
 				// there are unsaved changes!
@@ -581,7 +578,7 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 			}
 		} else if (ted->build_shown) {
 			build_stop(ted);
-		} else if (ted->nodes_used[0]) {
+		} else if (arr_len(ted->nodes)) {
 			// there are nodes open, but no active node.
 			// do nothing.
 		} else {

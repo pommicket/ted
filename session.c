@@ -1,7 +1,7 @@
 #include "ted-internal.h"
 
 #define SESSION_FILENAME "session.txt"
-#define SESSION_VERSION "\x7fTED0002"
+#define SESSION_VERSION "\x7fTED0003"
 
 static void write_u8(FILE *fp, u8 x) {
 	putc(x, fp);
@@ -156,39 +156,35 @@ static BufferPos buffer_pos_read(TextBuffer *buffer, FILE *fp) {
 }
 
 
-static void session_write_node(Ted *ted, FILE *fp, u16 node_idx) {
-	Node *node = &ted->nodes[node_idx];
-	write_u16(fp, node_idx);
+static void session_write_node(Ted *ted, FILE *fp, Node *node) {
 	bool is_split = !node->tabs;
 	write_bool(fp, is_split);
 	if (is_split) {
 		write_float(fp, node->split_pos);
 		write_bool(fp, node->split_vertical);
-		write_u16(fp, node->split_a);
-		write_u16(fp, node->split_b);
+		write_u16(fp, (u16)arr_index_of(ted->nodes, node->split_a));
+		write_u16(fp, (u16)arr_index_of(ted->nodes, node->split_b));
 	} else {
 		write_u16(fp, node->active_tab); // active tab
 		write_u16(fp, (u16)arr_len(node->tabs)); // ntabs
-		arr_foreach_ptr(node->tabs, u16, tab) {
-			write_u16(fp, *tab);
+		arr_foreach_ptr(node->tabs, TextBufferPtr, pbuf) {
+			write_u16(fp, (u16)arr_index_of(ted->buffers, *pbuf));
 		}
 	}
 }
 
-static void session_read_node(Ted *ted, FILE *fp) {
-	u16 node_idx = read_u16(fp);
-	if (node_idx >= TED_MAX_NODES) {
-		debug_println("WARNING: Invalid node index (see %s:%d)!\n", __FILE__, __LINE__);
-		return;
-	}
-	ted->nodes_used[node_idx] = true;
-	Node *node = &ted->nodes[node_idx];
+static Status session_read_node(Ted *ted, FILE *fp) {
+	Node *node = ted_new_node(ted);
 	bool is_split = read_bool(fp);
 	if (is_split) {
 		node->split_pos = clampf(read_float(fp), 0, 1);
 		node->split_vertical = read_bool(fp);
-		node->split_a = clamp_u16(read_u16(fp), 0, TED_MAX_NODES);
-		node->split_b = clamp_u16(read_u16(fp), 0, TED_MAX_NODES);
+		u16 split_a_index = read_u16(fp), split_b_index = read_u16(fp);
+		if (split_a_index == split_b_index || split_a_index >= arr_len(ted->nodes) || split_b_index >= arr_len(ted->nodes)) {
+			return false;
+		}
+		node->split_a = ted->nodes[split_a_index];
+		node->split_b = ted->nodes[split_b_index];
 	} else {
 		node->active_tab = read_u16(fp);
 		u16 ntabs = clamp_u16(read_u16(fp), 0, TED_MAX_TABS);
@@ -196,15 +192,14 @@ static void session_read_node(Ted *ted, FILE *fp) {
 			node->active_tab = 0;
 		for (u16 i = 0; i < ntabs; ++i) {
 			u16 buf_idx = read_u16(fp);
-			if (buf_idx >= TED_MAX_BUFFERS) continue;
-			arr_add(node->tabs, buf_idx);
+			if (buf_idx >= arr_len(ted->buffers)) return false;
+			arr_add(node->tabs, ted->buffers[buf_idx]);
 		}
 	}
+	return true;
 }
 
-static void session_write_buffer(Ted *ted, FILE *fp, u16 buffer_idx) {
-	write_u16(fp, buffer_idx);
-	TextBuffer *buffer = &ted->buffers[buffer_idx];
+static void session_write_buffer(FILE *fp, TextBuffer *buffer) {
 	// some info about the buffer that should be restored
 	if (buffer_is_named_file(buffer))
 		write_cstr(fp, buffer->path);
@@ -219,14 +214,8 @@ static void session_write_buffer(Ted *ted, FILE *fp, u16 buffer_idx) {
 		buffer_pos_write(buffer->selection_pos, fp);
 }
 
-static void session_read_buffer(Ted *ted, FILE *fp) {
-	u16 buffer_idx = read_u16(fp);
-	if (buffer_idx >= TED_MAX_BUFFERS) {
-		debug_println("WARNING: Invalid buffer index (see %s:%d)!\n", __FILE__, __LINE__);
-		return;
-	}
-	TextBuffer *buffer = &ted->buffers[buffer_idx];
-	ted->buffers_used[buffer_idx] = true;
+static bool session_read_buffer(Ted *ted, FILE *fp) {
+	TextBuffer *buffer = ted_new_buffer(ted);
 	char filename[TED_PATH_MAX] = {0};
 	read_cstr(fp, filename, sizeof filename);
 	buffer_create(buffer, ted);
@@ -251,6 +240,7 @@ static void session_read_buffer(Ted *ted, FILE *fp) {
 			buffer->selection = false;
 		}
 	}
+	return true;
 }
 
 static void session_write_file(Ted *ted, FILE *fp) {
@@ -258,24 +248,19 @@ static void session_write_file(Ted *ted, FILE *fp) {
 
 	write_cstr(fp, ted->cwd);
 
-	write_u16(fp, ted->active_node ? (u16)(ted->active_node - ted->nodes) : U16_MAX); // active node idx
-	write_u16(fp, ted->active_buffer ? (u16)(ted->active_buffer - ted->buffers) : U16_MAX); // active buffer idx
+	write_u16(fp, (u16)arr_index_of(ted->nodes, ted->active_node)); // active node idx
+	write_u16(fp, (u16)arr_index_of(ted->buffers, ted->active_buffer)); // active buffer idx
 
-	u16 nnodes = 0;
-	for (u16 i = 0; i < TED_MAX_NODES; ++i)
-		nnodes += ted->nodes_used[i];
-	write_u16(fp, nnodes);
-	for (u16 i = 0; i < TED_MAX_NODES; ++i)
-		if (ted->nodes_used[i])
-			session_write_node(ted, fp, i);
-
-	u16 nbuffers = 0;
-	for (u16 i = 0; i < TED_MAX_BUFFERS; ++i)
-		nbuffers += ted->buffers_used[i];
-	write_u16(fp, nbuffers);
-	for (u16 i = 0; i < TED_MAX_BUFFERS; ++i)
-		if (ted->buffers_used[i])
-			session_write_buffer(ted, fp, i);
+	write_u16(fp, (u16)arr_len(ted->buffers));
+	arr_foreach_ptr(ted->buffers, TextBufferPtr, pbuffer) {
+		TextBuffer *buffer = *pbuffer;
+		session_write_buffer(fp, buffer);
+	}
+	
+	write_u16(fp, (u16)arr_len(ted->nodes));
+	arr_foreach_ptr(ted->nodes, NodePtr, pnode) {
+		session_write_node(ted, fp, *pnode);
+	}
 }
 
 static void session_read_file(Ted *ted, FILE *fp) {
@@ -291,40 +276,51 @@ static void session_read_file(Ted *ted, FILE *fp) {
 	u16 active_node_idx = read_u16(fp);
 	u16 active_buffer_idx = read_u16(fp);
 
-	u16 nnodes = clamp_u16(read_u16(fp), 0, TED_MAX_NODES);
-	for (u16 i = 0; i < nnodes; ++i) {
-		session_read_node(ted, fp);
-	}
-
-	u16 nbuffers = clamp_u16(read_u16(fp), 0, TED_MAX_BUFFERS);
+	u16 nbuffers = read_u16(fp);
 	for (u16 i = 0; i < nbuffers; ++i) {
-		session_read_buffer(ted, fp);
+		if (!session_read_buffer(ted, fp)) {
+			arr_foreach_ptr(ted->buffers, TextBufferPtr, pbuffer) {
+				buffer_free(*pbuffer);
+			}
+			arr_clear(ted->buffers);
+			return;
+		}
+	}
+	
+	u16 nnodes = read_u16(fp);
+	for (u16 i = 0; i < nnodes; ++i) {
+		if (!session_read_node(ted, fp)) {
+			arr_foreach_ptr(ted->buffers, TextBufferPtr, pbuffer) {
+				buffer_free(*pbuffer);
+			}
+			arr_clear(ted->buffers);
+			arr_foreach_ptr(ted->nodes, NodePtr, pnode) {
+				node_free(*pnode);
+			}
+			arr_clear(ted->nodes);
+			return;
+		}
 	}
 
 	if (active_node_idx == U16_MAX) {
 		ted->active_node = NULL;
 	} else {
-		active_node_idx = clamp_u16(active_node_idx, 0, TED_MAX_NODES);
-		if (ted->nodes_used[active_node_idx])
-			ted->active_node = &ted->nodes[active_node_idx];
+		if (active_node_idx >= arr_len(ted->nodes))
+			active_node_idx = 0;
+		ted->active_node = ted->nodes[active_node_idx];
 	}
 
 	if (active_buffer_idx == U16_MAX) {
 		ted->active_buffer = NULL;
 	} else {
-		active_buffer_idx = clamp_u16(active_buffer_idx, 0, TED_MAX_BUFFERS);
-		if (ted->buffers_used[active_buffer_idx])
-			ted->active_buffer = &ted->buffers[active_buffer_idx];
+		if (active_buffer_idx >= arr_len(ted->buffers))
+			active_buffer_idx = 0;
+		ted->active_buffer = ted->buffers[active_buffer_idx];
 	}
 
 	if (nbuffers && !ted->active_buffer) {
 		// set active buffer to something
-		for (u16 i = 0; i < TED_MAX_BUFFERS; ++i) {
-			if (ted->buffers_used[i]) {
-				ted_switch_to_buffer(ted, &ted->buffers[i]);
-				break;
-			}
-		}
+		ted->active_buffer = ted->buffers[0];
 	}
 }
 
