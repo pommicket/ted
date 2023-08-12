@@ -3,6 +3,18 @@
 
 #include "ted-internal.h"
 
+struct BuildError {
+	char *path;
+	u32 line;
+	u32 column;
+	/// if this is 1, then column == UTF-32 index.
+	/// if this is 4, for example, then column 4 in a line starting with a tab would
+	/// be the character right after the tab.
+	u8 columns_per_tab;
+	/// which line in the build output corresponds to this error
+	u32 build_output_line;
+};
+
 void build_stop(Ted *ted) {
 	if (ted->building)
 		process_kill(&ted->build_process);

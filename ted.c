@@ -5,6 +5,11 @@
 	#include <SDL_syswm.h>
 #endif
 
+struct LoadedFont {
+	char *path;
+	Font *font;
+};
+
 void die(const char *fmt, ...) {
 	char buf[256] = {0};
 	

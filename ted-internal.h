@@ -238,17 +238,7 @@ struct Node {
 /// "find" menu result
 typedef struct FindResult FindResult;
 
-typedef struct {
-	char *path;
-	u32 line;
-	u32 column;
-	/// if this is 1, then column == UTF-32 index.
-	/// if this is 4, for example, then column 4 in a line starting with a tab would
-	/// be the character right after the tab.
-	u8 columns_per_tab;
-	/// which line in the build output corresponds to this error
-	u32 build_output_line;
-} BuildError;
+typedef struct BuildError BuildError;
 
 /// `LSPSymbolKind`s are translated to these. this is a much coarser categorization
 typedef enum {
@@ -294,34 +284,14 @@ typedef struct {
 	LSPDocumentPosition position;
 } SymbolInfo;
 
-typedef struct {
-	LSPServerRequestID last_request;
-	double last_request_time;	
-	/// last query string which we sent a request for
-	char *last_request_query;
-	/// for "go to definition of..." menu
-	Selector selector;
-	/// an array of all definitions (gotten from workspace/symbols) for "go to definition" menu
-	SymbolInfo *all_definitions;
-} Definitions;
+typedef struct Definitions Definitions;
 
 /// "highlight" information from LSP server
 typedef struct Highlights Highlights;
 
-typedef struct {
-	Command command;
-	CommandArgument argument;
-} Action;
+typedef struct Macro Macro;
 
-typedef struct {
-	// dynamic array
-	Action *actions;
-} Macro;
-
-typedef struct {
-	char *path;
-	Font *font;
-} LoadedFont;
+typedef struct LoadedFont LoadedFont;
 
 typedef struct {
 	vec2 pos;
@@ -341,7 +311,7 @@ struct Ted {
 	/// current time (see time_get_seconds), as of the start of this frame
 	double frame_time;
 	
-	Macro macros[TED_MACRO_MAX];
+	Macro *macros;
 	Macro *recording_macro;
 	bool executing_macro;
 	
@@ -415,7 +385,7 @@ struct Ted {
 	SignatureHelp *signature_help;
 	DocumentLinks *document_links;
 	Hover *hover;
-	Definitions definitions;
+	Definitions *definitions;
 	Highlights *highlights;
 	Usages *usages;
 	RenameSymbol *rename_symbol;
@@ -685,6 +655,7 @@ void definitions_init(Ted *ted);
 void definition_goto(Ted *ted, LSP *lsp, const char *name, LSPDocumentPosition pos, GotoType type);
 void definitions_process_lsp_response(Ted *ted, LSP *lsp, const LSPResponse *response);
 void definitions_frame(Ted *ted);
+void definitions_quit(Ted *ted);
 
 // === ide-document-link.c ===
 void document_link_init(Ted *ted);
@@ -724,6 +695,7 @@ void usages_quit(Ted *ted);
 
 // === macro.c ===
 void macro_add(Ted *ted, Command command, const CommandArgument *argument);
+void macros_init(Ted *ted);
 void macros_free(Ted *ted);
 
 // === menu.c ===

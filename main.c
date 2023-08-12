@@ -498,6 +498,8 @@ int main(int argc, char **argv) {
 	gl_geometry_init();
 	text_init();
 	menu_init(ted);
+	find_init(ted);
+	macros_init(ted);
 	definitions_init(ted);
 	autocomplete_init(ted);
 	signature_help_init(ted);
@@ -506,7 +508,6 @@ int main(int argc, char **argv) {
 	hover_init(ted);
 	rename_symbol_init(ted);
 	document_link_init(ted);
-	find_init(ted);
 	PROFILE_TIME(gl_end)
 	
 	
@@ -1199,6 +1200,7 @@ int main(int argc, char **argv) {
 	session_write(ted);
 	rename_symbol_quit(ted);
 	document_link_quit(ted);
+	definitions_quit(ted);
 	menu_quit(ted);
 	arr_free(ted->edit_notifys);
 

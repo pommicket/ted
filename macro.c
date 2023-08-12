@@ -1,7 +1,17 @@
 #include "ted-internal.h"
 
+typedef struct MacroAction {
+	Command command;
+	CommandArgument argument;
+} MacroAction;
+
+struct Macro {
+	// dynamic array
+	MacroAction *actions;
+};
+
 static void macro_clear(Macro *macro) {
-	arr_foreach_ptr(macro->actions, Action, act) {
+	arr_foreach_ptr(macro->actions, MacroAction, act) {
 		free((char *)act->argument.string);
 	}
 	arr_free(macro->actions);
@@ -34,7 +44,7 @@ void macro_add(Ted *ted, Command command, const CommandArgument *argument) {
 	CommandArgument arg = *argument;
 	if (arg.string)
 		arg.string = str_dup(arg.string);
-	Action action = {
+	MacroAction action = {
 		.command = command,
 		.argument = arg
 	};
@@ -51,10 +61,14 @@ void macro_execute(Ted *ted, u32 index) {
 	
 	ted->executing_macro = true;
 	const CommandContext context = {.running_macro = true};
-	arr_foreach_ptr(macro->actions, Action, act) {
+	arr_foreach_ptr(macro->actions, MacroAction, act) {
 		command_execute_ex(ted, act->command, &act->argument, &context);
 	}
 	ted->executing_macro = false;
+}
+
+void macros_init(Ted *ted) {
+	ted->macros = calloc(TED_MACRO_MAX, sizeof *ted->macros);
 }
 
 void macros_free(Ted *ted) {
@@ -62,4 +76,6 @@ void macros_free(Ted *ted) {
 		Macro *macro = &ted->macros[i];
 		macro_clear(macro);
 	}
+	free(ted->macros);
+	ted->macros = NULL;
 }

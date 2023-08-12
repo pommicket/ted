@@ -3,8 +3,19 @@
 
 #include "ted-internal.h"
 
+struct Definitions {
+	LSPServerRequestID last_request;
+	double last_request_time;
+	/// last query string which we sent a request for
+	char *last_request_query;
+	/// for "go to definition of..." menu
+	Selector selector;
+	/// an array of all definitions (gotten from workspace/symbols) for "go to definition" menu
+	SymbolInfo *all_definitions;
+};
+
 void definition_cancel_lookup(Ted *ted) {
-	Definitions *defs = &ted->definitions;
+	Definitions *defs = ted->definitions;
 	ted_cancel_lsp_request(ted, &defs->last_request);
 }
 
@@ -54,7 +65,7 @@ static SymbolKind symbol_kind_to_ted(LSPSymbolKind kind) {
 }
 
 void definition_goto(Ted *ted, LSP *lsp, const char *name, LSPDocumentPosition position, GotoType type) {
-	Definitions *defs = &ted->definitions;
+	Definitions *defs = ted->definitions;
 	if (lsp) {
 		// cancel old request
 		definition_cancel_lookup(ted);
@@ -91,7 +102,7 @@ void definition_goto(Ted *ted, LSP *lsp, const char *name, LSPDocumentPosition p
 }
 
 void definitions_frame(Ted *ted) {
-	Definitions *defs = &ted->definitions;
+	Definitions *defs = ted->definitions;
 	if (defs->last_request.id && ted->frame_time - defs->last_request_time > 0.2) {
 		ted->cursor = ted->cursor_wait;
 	}
@@ -125,7 +136,7 @@ static int definition_entry_qsort_cmp(const void *av, const void *bv) {
 
 // put the entries matching the search term into the selector.
 static void definitions_selector_filter_entries(Ted *ted) {
-	Definitions *defs = &ted->definitions;
+	Definitions *defs = ted->definitions;
 	Selector *sel = &defs->selector;
 	
 	// create selector entries based on search term
@@ -159,7 +170,7 @@ static void definitions_selector_filter_entries(Ted *ted) {
 
 
 void definitions_process_lsp_response(Ted *ted, LSP *lsp, const LSPResponse *response) {
-	Definitions *defs = &ted->definitions;
+	Definitions *defs = ted->definitions;
 	if (response->request.id != defs->last_request.id) {
 		// response to an old/irrelevant request
 		return;
@@ -244,7 +255,7 @@ void definitions_send_request_if_needed(Ted *ted) {
 	LSP *lsp = buffer_lsp(ted->prev_active_buffer);
 	if (!lsp)
 		return;
-	Definitions *defs = &ted->definitions;
+	Definitions *defs = ted->definitions;
 	char *query = buffer_contents_utf8_alloc(ted->line_buffer);
 	if (defs->last_request_query && strcmp(defs->last_request_query, query) == 0) {
 		free(query);
@@ -262,7 +273,7 @@ void definitions_send_request_if_needed(Ted *ted) {
 }
 
 static void definitions_selector_open(Ted *ted) {
-	Definitions *defs = &ted->definitions;
+	Definitions *defs = ted->definitions;
 	definitions_clear_entries(defs);
 	LSP *lsp = ted->prev_active_buffer
 		? buffer_lsp(ted->prev_active_buffer)
@@ -280,7 +291,7 @@ static void definitions_selector_open(Ted *ted) {
 
 
 static bool definitions_selector_close(Ted *ted) {
-	Definitions *defs = &ted->definitions;
+	Definitions *defs = ted->definitions;
 	definitions_clear_entries(defs);
 	ted_cancel_lsp_request(ted, &defs->last_request);
 	free(defs->last_request_query);
@@ -289,7 +300,7 @@ static bool definitions_selector_close(Ted *ted) {
 }
 
 static void definitions_selector_update(Ted *ted) {
-	Definitions *defs = &ted->definitions;
+	Definitions *defs = ted->definitions;
 	Selector *sel = &defs->selector;
 	sel->enable_cursor = true;
 	
@@ -331,7 +342,7 @@ static void definitions_selector_update(Ted *ted) {
 
 static void definitions_selector_render(Ted *ted) {
 	Rect bounds = selection_menu_render_bg(ted);
-	Definitions *defs = &ted->definitions;
+	Definitions *defs = ted->definitions;
 	Selector *sel = &defs->selector;
 	sel->bounds = bounds;
 	selector_render(ted, sel);
@@ -346,4 +357,11 @@ void definitions_init(Ted *ted) {
 	};
 	strbuf_cpy(info.name, MENU_GOTO_DEFINITION);
 	menu_register(ted, &info);
+	
+	ted->definitions = calloc(1, sizeof *ted->definitions);
+}
+
+void definitions_quit(Ted *ted) {
+	free(ted->definitions);
+	ted->definitions = NULL;
 }
