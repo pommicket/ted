@@ -310,7 +310,7 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 				{
 					if (buffer_unsaved_changes(buffer))
 						strbuf_printf(tab_title, "*%s*", filename);
-					else if (buffer->view_only)
+					else if (buffer_is_view_only(buffer))
 						strbuf_printf(tab_title, "VIEW %s", filename);
 					else
 						strbuf_printf(tab_title, "%s", filename);

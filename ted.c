@@ -147,8 +147,9 @@ void ted_log(Ted *ted, const char *fmt, ...) {
 
 
 void ted_error_from_buffer(Ted *ted, TextBuffer *buffer) {
-	if (*buffer->error)
-		ted_error(ted, "%s", buffer->error);
+	const char *err = buffer_get_error(buffer);
+	if (err)
+		ted_error(ted, "%s", err);
 }
 
 void ted_out_of_mem(Ted *ted) {
@@ -183,7 +184,7 @@ char *ted_get_root_dir_of(Ted *ted, const char *path) {
 char *ted_get_root_dir(Ted *ted) {
 	TextBuffer *buffer = ted->active_buffer;
 	if (buffer && buffer_is_named_file(buffer)) {
-		return ted_get_root_dir_of(ted, buffer->path);
+		return ted_get_root_dir_of(ted, buffer_get_path(buffer));
 	} else {
 		return ted_get_root_dir_of(ted, ted->cwd);
 	}
@@ -448,7 +449,7 @@ void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer) {
 	autocomplete_close(ted);
 	if (buffer != search_buffer) {
 		if (ted->find)
-			find_update(ted, true); // make sure find results are for this file
+			find_redo_search(ted); // make sure find results are for this file
 	}
 
 	if (ted_is_regular_buffer(ted, buffer)) {
@@ -568,7 +569,8 @@ TextBuffer *ted_get_buffer_with_file(Ted *ted, const char *path) {
 	
 	arr_foreach_ptr(ted->buffers, TextBufferPtr, pbuffer) {
 		TextBuffer *buffer = *pbuffer;
-		if (buffer->path && paths_eq(path, buffer->path)) {
+		const char *buf_path = buffer_get_path(buffer);
+		if (buf_path && paths_eq(path, buf_path)) {
 			return buffer;
 		}
 	}
@@ -594,7 +596,8 @@ bool ted_open_file(Ted *ted, const char *filename) {
 	// not open; we need to load it
 	u16 tab_idx;
 	TextBuffer *buffer = NULL;
-	if (ted->active_buffer && !ted->active_buffer->path
+	if (ted->active_buffer
+		&& !buffer_is_named_file(ted->active_buffer)
 		&& ted_is_regular_buffer(ted, ted->active_buffer)
 		&& buffer_empty(ted->active_buffer)) {
 		// the active buffer is just an empty untitled buffer. open it here.
@@ -643,7 +646,7 @@ bool ted_save_all(Ted *ted) {
 	arr_foreach_ptr(ted->buffers, TextBufferPtr, pbuffer) {
 		TextBuffer *buffer = *pbuffer;
 		if (buffer_unsaved_changes(buffer)) {
-			if (!buffer->path) {
+			if (!buffer_is_named_file(buffer)) {
 				ted_switch_to_buffer(ted, buffer);
 				menu_open(ted, MENU_SAVE_AS);
 				success = false; // we haven't saved this buffer yet; we've just opened the "save as" menu.
@@ -764,7 +767,7 @@ void ted_go_to_lsp_document_position(Ted *ted, LSP *lsp, LSPDocumentPosition pos
 		TextBuffer *buffer = ted->active_buffer;
 		BufferPos pos = buffer_pos_from_lsp(buffer, position.pos);
 		buffer_cursor_move_to_pos(buffer, pos);
-		buffer->center_cursor_next_frame = true;
+		buffer_center_cursor_next_frame(buffer);
 	} else {
 		ted_flash_error_cursor(ted);
 	}

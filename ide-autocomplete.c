@@ -94,8 +94,8 @@ static bool autocomplete_should_display_phantom(Ted *ted) {
 	TextBuffer *buffer = ted->active_buffer;
 	bool show = !ac->open
 		&& buffer
-		&& !buffer->view_only
-		&& !buffer->is_line_buffer
+		&& !buffer_is_view_only(buffer)
+		&& !buffer_is_line_buffer(buffer)
 		&& buffer_settings(buffer)->phantom_completions
 		&& is32_word(buffer_char_before_cursor(buffer))
 		&& !is32_word(buffer_char_at_cursor(buffer));
@@ -198,7 +198,7 @@ static void autocomplete_no_suggestions(Ted *ted) {
 }
 
 static void autocomplete_send_completion_request(Ted *ted, TextBuffer *buffer, BufferPos pos, uint32_t trigger, bool phantom) {
-	if (!buffer->path)
+	if (!buffer_is_named_file(buffer))
 		return; // no can do
 	
 	LSP *lsp = buffer_lsp(buffer);
@@ -218,7 +218,7 @@ static void autocomplete_send_completion_request(Ted *ted, TextBuffer *buffer, B
 	
 	request.data.completion = (LSPRequestCompletion) {
 		.position = {
-			.document = lsp_document_id(lsp, buffer->path),
+			.document = buffer_lsp_document_id(buffer),
 			.pos = buffer_pos_to_lsp_position(buffer, pos)
 		},
 		.context = {
@@ -245,7 +245,7 @@ static void autocomplete_find_completions(Ted *ted, uint32_t trigger, bool phant
 	TextBuffer *buffer = ted->active_buffer;
 	if (!buffer)
 		return;
-	BufferPos pos = buffer->cursor_pos;
+	BufferPos pos = buffer_cursor_pos(buffer);
 	if (buffer_pos_eq(pos, ac->last_pos))
 		return; // no need to update completions.
 	ac->trigger = trigger;
@@ -451,11 +451,11 @@ void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *response) {
 
 void autocomplete_open(Ted *ted, uint32_t trigger) {
 	Autocomplete *ac = ted->autocomplete;
-	if (ac->open) return;
 	TextBuffer *buffer = ted->active_buffer;
+	if (ac->open) return;
 	if (!buffer) return;
-	if (!buffer->path) return;
-	if (buffer->view_only) return;
+	if (!buffer_is_named_file(buffer)) return;
+	if (buffer_is_view_only(buffer)) return;
 	autocomplete_clear_phantom(ac);
 	const Settings *settings = buffer_settings(buffer);
 	bool regenerated = false;
@@ -542,7 +542,7 @@ void autocomplete_frame(Ted *ted) {
 		if (*word_at_cursor && str_has_prefix(ac->phantom, word_at_cursor)) {
 			const char *completion = ac->phantom + strlen(word_at_cursor);
 			if (*completion) {
-				vec2 pos = buffer_pos_to_pixels(buffer, buffer->cursor_pos);
+				vec2 pos = buffer_pos_to_pixels(buffer, buffer_cursor_pos(buffer));
 				#if 0
 				vec2 size = text_get_size_vec2(font, completion);
 				// this makes the text below the phantom less visible.
@@ -600,9 +600,9 @@ void autocomplete_frame(Ted *ted) {
 		menu_height = 200.f;
 	}
 	
-	vec2 cursor_pos = buffer_pos_to_pixels(buffer, buffer->cursor_pos);
-	bool open_up = cursor_pos.y > 0.5f * (buffer->y1 + buffer->y2); // should the completion menu open upwards?
-	bool open_left = cursor_pos.x > 0.5f * (buffer->x1 + buffer->x2);
+	vec2 cursor_pos = buffer_pos_to_pixels(buffer, buffer_cursor_pos(buffer));
+	bool open_up = cursor_pos.y > rect_ymid(buffer_rect(buffer)); // should the completion menu open upwards?
+	bool open_left = cursor_pos.x > rect_xmid(buffer_rect(buffer));
 	float x = cursor_pos.x, start_y = cursor_pos.y;
 	if (open_left) x -= menu_width;
 	if (open_up)
@@ -646,9 +646,9 @@ void autocomplete_frame(Ted *ted) {
 		// we've got some wacky calculations to figure out the
 		// bounding rect for the documentation
 		float doc_width = open_left ? ac->rect.pos.x - 2*padding
-			: buffer->x2 - (ac->rect.pos.x + ac->rect.size.x + 2*padding);
+			: rect_x2(buffer_rect(buffer)) - (ac->rect.pos.x + ac->rect.size.x + 2*padding);
 		if (doc_width > 800) doc_width = 800;
-		float doc_height = buffer->y2 - (ac->rect.pos.y + 2*padding);
+		float doc_height = rect_y2(buffer_rect(buffer)) - (ac->rect.pos.y + 2*padding);
 		if (doc_height > char_height * 20) doc_height = char_height * 20;
 		
 		// if the rect is too small, there's no point in showing it

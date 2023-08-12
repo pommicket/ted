@@ -52,7 +52,7 @@ static bool build_run_next_command_in_queue(Ted *ted) {
 			buffer_insert_text_at_cursor(build_buffer, str32(text, 2));
 			buffer_insert_utf8_at_cursor(build_buffer, command);
 			buffer_insert_char_at_cursor(build_buffer, '\n');
-			build_buffer->view_only = true;
+			buffer_set_view_only(build_buffer, true);
 			free(command);
 			return true;
 		} else {
@@ -70,7 +70,7 @@ void build_setup_buffer(Ted *ted) {
 	// new empty build output buffer
 	TextBuffer *build_buffer = ted->build_buffer;
 	buffer_new_file(build_buffer, NULL);
-	build_buffer->store_undo_events = false; // don't need undo events for build output buffer
+	buffer_set_undo_enabled(build_buffer, false); // don't need undo events for build output buffer
 }
 
 void build_queue_finish(Ted *ted) {
@@ -147,7 +147,7 @@ static void build_go_to_error(Ted *ted) {
 			
 			// move cursor to error
 			buffer_cursor_move_to_pos(buffer, pos);
-			buffer->center_cursor_next_frame = true;
+			buffer_center_cursor(buffer);
 
 			// move cursor to error in build output
 			TextBuffer *build_buffer = ted->build_buffer;
@@ -203,7 +203,7 @@ void build_check_for_errors(Ted *ted) {
 	
 	TextBuffer *buffer = ted->build_buffer;
 	arr_clear(ted->build_errors);
-	for (u32 line_idx = 0; line_idx < buffer->nlines; ++line_idx) {
+	for (u32 line_idx = 0; line_idx < buffer_line_count(buffer); ++line_idx) {
 		String32 line = buffer_get_line(buffer, line_idx);
 		if (line.len < 3) {
 			continue;
@@ -313,7 +313,7 @@ void build_frame(Ted *ted, float x1, float y1, float x2, float y2) {
 	assert(ted->build_shown);
 	char buf[256];
 	if (ted->building) {
-		buffer->view_only = false; // disable view only temporarily so we can edit it
+		buffer_set_view_only(buffer, false); // disable view only temporarily so we can edit it
 		bool any_text_inserted = false;
 		while (1) {
 			char incomplete[4];
@@ -363,8 +363,7 @@ void build_frame(Ted *ted, float x1, float y1, float x2, float y2) {
 
 		if (any_text_inserted) {
 			// show bottom of output (only relevant if there are no build errors)
-			buffer->cursor_pos = buffer_pos_end_of_file(buffer);
-			buffer_scroll_to_cursor(buffer);
+			buffer_cursor_move_to_end_of_file(buffer);
 		}
 
 		ProcessExitInfo info = {0};
@@ -380,7 +379,7 @@ void build_frame(Ted *ted, float x1, float y1, float x2, float y2) {
 				build_check_for_errors(ted);
 			}
 		}
-		buffer->view_only = true;
+		buffer_set_view_only(buffer, true);
 	}
 	buffer_render(buffer, rect4(x1, y1, x2, y2));
 }

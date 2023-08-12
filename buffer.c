@@ -8,6 +8,12 @@
 
 #define BUFFER_UNTITLED "Untitled" // what to call untitled buffers
 
+/// A single line in a buffer
+typedef struct Line Line;
+
+/// A single undoable edit to a buffer
+typedef struct BufferEdit BufferEdit;
+
 struct Line {
 	SyntaxState syntax;
 	u32 len;
@@ -23,6 +29,87 @@ struct BufferEdit {
 	char32_t *prev_text;
 	double time; // time at start of edit (i.e. the time just before the edit), in seconds since epoch
 };
+
+struct TextBuffer {
+	/// NULL if this buffer is untitled or doesn't correspond to a file (e.g. line buffers)
+	char *path;
+	/// we keep a back-pointer to the ted instance so we don't have to pass it in to every buffer function
+	Ted *ted;
+	/// number of characters scrolled in the x direction (multiply by space width to get pixels)
+	double scroll_x;
+	/// number of characters scrolled in the y direction
+	double scroll_y;
+	/// last write time to \ref path
+	double last_write_time;
+	/// the language the buffer has been manually set to, or \ref LANG_NONE if it hasn't been set to anything
+	i64 manual_language;
+	/// position of cursor
+	BufferPos cursor_pos;
+	/// if \ref selection is true, the text between \ref selection_pos and \ref cursor_pos is selected.
+	BufferPos selection_pos;
+	/// "previous" position of cursor, for \ref CMD_PREVIOUS_POSITION
+	BufferPos prev_cursor_pos;
+	/// "line buffers" are buffers which can only have one line of text (used for inputs)
+	bool is_line_buffer;
+	/// is anything selected?
+	bool selection;
+	/// set to false to disable undo events
+	bool store_undo_events;
+	/// will the next undo event be chained with the ones after?
+	bool will_chain_edits;
+	/// will the next undo event be chained with the previous one?
+	bool chaining_edits;
+	/// view-only mode
+	bool view_only;
+	/// (line buffers only) set to true when submitted. you have to reset it to false.
+	bool line_buffer_submitted;
+	/// If set to true, buffer will be scrolled to the cursor position next frame.
+	/// This is to fix the problem that \ref x1, \ref y1, \ref x2, \ref y2 are not updated until the buffer is rendered.
+	bool center_cursor_next_frame;
+	/// x coordinate of left side of buffer
+	float x1;
+	/// y coordinate of top side of buffer
+	float y1;
+	/// x coordinate of right side of buffer
+	float x2;
+	/// y coordinate of bottom side of buffer
+	float y2;
+	/// number of lines in buffer
+	u32 nlines;
+	/// capacity of \ref lines
+	u32 lines_capacity;
+	
+	/// cached settings index (into ted->all_settings), or -1 if has not been computed yet
+	i32 settings_idx;
+	
+	/// which LSP this document is open in
+	LSPID lsp_opened_in;
+	/// determining which LSP to use for a buffer takes some work,
+	/// so we don't want to do it every single frame.
+	/// this keeps track of the last time we actually checked what the correct LSP is.
+	double last_lsp_check;
+
+	/// where in the undo history was the last write? used by \ref buffer_unsaved_changes
+	u32 undo_history_write_pos;
+	/// which lines are on screen? updated when \ref buffer_render is called.
+	u32 first_line_on_screen, last_line_on_screen;
+
+	/// to cache syntax highlighting properly, it is important to keep track of the
+	/// first and last line modified since last frame.
+	u32 frame_earliest_line_modified;
+	/// see \ref frame_earliest_line_modified.
+	u32 frame_latest_line_modified;
+
+	/// lines
+	Line *lines;
+	/// last error
+	char error[256];
+	/// dynamic array of undo history
+	BufferEdit *undo_history;
+	/// dynamic array of redo history
+	BufferEdit *redo_history;
+};
+
 
 // this is a macro so we get -Wformat warnings
 #define buffer_error(buffer, ...) \
@@ -82,6 +169,17 @@ bool buffer_is_named_file(TextBuffer *buffer) {
 	return buffer->path != NULL;
 }
 
+bool buffer_is_line_buffer(TextBuffer *buffer) {
+	return buffer->is_line_buffer;
+}
+
+bool line_buffer_is_submitted(TextBuffer *buffer) {
+	return buffer->is_line_buffer && buffer->line_buffer_submitted;
+}
+
+void line_buffer_clear_submitted(TextBuffer *buffer) {
+	buffer->line_buffer_submitted = false;
+}
 
 bool buffer_is_view_only(TextBuffer *buffer) {
 	return buffer->view_only;
@@ -105,6 +203,10 @@ double buffer_last_write_time(TextBuffer *buffer) {
 
 BufferPos buffer_cursor_pos(TextBuffer *buffer) {
 	return buffer->cursor_pos;
+}
+
+bool buffer_has_selection(TextBuffer *buffer) {
+	return buffer->selection;
 }
 
 bool buffer_selection_pos(TextBuffer *buffer, BufferPos *pos) {
@@ -1107,7 +1209,10 @@ void buffer_scroll_to_cursor(TextBuffer *buffer) {
 	buffer_scroll_to_pos(buffer, buffer->cursor_pos);
 }
 
-// scroll so that the cursor is in the center of the screen
+void buffer_set_manual_language(TextBuffer *buffer, u32 language) {
+	buffer->manual_language = language;
+}
+
 void buffer_center_cursor(TextBuffer *buffer) {
 	double cursor_line = buffer->cursor_pos.line;
 	double cursor_col  = buffer_index_to_xoff(buffer, (u32)cursor_line, buffer->cursor_pos.index)
@@ -1119,6 +1224,10 @@ void buffer_center_cursor(TextBuffer *buffer) {
 	buffer->scroll_y = cursor_line - display_lines * 0.5;
 
 	buffer_correct_scroll(buffer);
+}
+
+void buffer_center_cursor_next_frame(TextBuffer *buffer) {
+	buffer->center_cursor_next_frame = true;
 }
 
 // move left (if `by` is negative) or right (if `by` is positive) by the specified amount.
@@ -1549,7 +1658,6 @@ void buffer_cursor_move_to_end_of_file(TextBuffer *buffer) {
 
 static void buffer_lines_modified(TextBuffer *buffer, u32 first_line, u32 last_line) {
 	assert(last_line >= first_line);
-	buffer->modified = true;
 	if (first_line < buffer->frame_earliest_line_modified)
 		buffer->frame_earliest_line_modified = first_line;
 	if (last_line > buffer->frame_latest_line_modified)
@@ -2606,8 +2714,6 @@ void buffer_redo(TextBuffer *buffer, i64 ntimes) {
 //  buffer_end_edit_chain(buffer)
 // pressing ctrl+z will undo both the insertion of text1 and text2.
 void buffer_start_edit_chain(TextBuffer *buffer) {
-	assert(!buffer->chaining_edits);
-	assert(!buffer->will_chain_edits);
 	buffer->will_chain_edits = true;
 }
 

@@ -1,5 +1,6 @@
 /*
 TODO:
+- fix find
 - public Node API
 - public Selector/FileSelector API
 
@@ -798,7 +799,7 @@ int main(int argc, char **argv) {
 			TextBuffer *buffer = ted->active_buffer;
 			if (buffer) {
 				if (buffer_is_named_file(buffer)) {
-					const char *buffer_path = buffer->path;
+					const char *buffer_path = buffer_get_path(buffer);
 					assert(*buffer_path);
 					char *last_sep = strrchr(buffer_path, PATH_SEPARATOR);
 					if (last_sep) {

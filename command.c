@@ -318,8 +318,8 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 		}
 		break;
 	case CMD_COPY_PATH:
-		if (buffer) {
-			SDL_SetClipboardText(buffer->path);
+		if (buffer && buffer_is_named_file(buffer)) {
+			SDL_SetClipboardText(buffer_get_path(buffer));
 		} else {
 			SDL_SetClipboardText(ted->cwd);
 		}
@@ -335,7 +335,7 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 		} else if (autocomplete_is_open(ted) || autocomplete_has_phantom(ted)) {
 			autocomplete_select_completion(ted);
 		} else if (buffer) {
-			if (buffer->selection)
+			if (buffer_has_selection(buffer))
 				buffer_indent_selection(buffer);
 			else
 				buffer_insert_tab_at_cursor(buffer);
@@ -350,7 +350,7 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 			ted_switch_to_buffer(ted, buffer);
 			buffer_select_all(buffer);
 		} else if (buffer) {
-			if (buffer->selection)
+			if (buffer_has_selection(buffer))
 				buffer_dedent_selection(buffer);
 			else
 				buffer_dedent_cursor_line(buffer);
@@ -417,7 +417,7 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 	case CMD_SAVE:
 		ted->last_save_time = ted->frame_time;
 		if (buffer) {
-			if (!buffer->path) {
+			if (!buffer_is_named_file(buffer)) {
 				command_execute(ted, CMD_SAVE_AS, 1);
 				return;
 			}
@@ -426,7 +426,7 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 		break;
 	case CMD_SAVE_AS:
 		ted->last_save_time = ted->frame_time;
-		if (buffer && !buffer->is_line_buffer) {
+		if (buffer && !buffer_is_line_buffer(buffer)) {
 			menu_open(ted, MENU_SAVE_AS);
 		}
 		break;
@@ -465,11 +465,11 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 		break;
 	
 	case CMD_SET_LANGUAGE:
-		if (buffer && !buffer->is_line_buffer) {
+		if (buffer && !buffer_is_line_buffer(buffer)) {
 			if (argument <= 0 || argument > LANG_USER_MAX || !language_is_valid((Language)argument))
-				buffer->manual_language = 0;
+				buffer_set_manual_language(buffer, 0);
 			else
-				buffer->manual_language = argument;
+				buffer_set_manual_language(buffer, (u32)argument);
 		}
 		break;
 	case CMD_AUTOCOMPLETE:
@@ -556,7 +556,7 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 		break;
 
 	case CMD_VIEW_ONLY:
-		if (buffer) buffer->view_only = !buffer->view_only;
+		if (buffer) buffer_set_view_only(buffer, !buffer_is_view_only(buffer));
 		break;
 
 	case CMD_TAB_CLOSE: {

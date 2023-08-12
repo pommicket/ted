@@ -148,18 +148,19 @@ void signature_help_frame(Ted *ted) {
 	u32 *colors = settings->colors;
 	float border = settings->border_thickness;
 	
-	float width = buffer->x2 - buffer->x1;
+	Rect buf_rect = buffer_rect(buffer);
+	float width = buf_rect.size.x;
 	float height = FLT_MAX;
 	const float char_height = text_font_char_height(font);
 	// make sure signature help doesn't take up too much space
 	while (1) {
 		height = char_height * signature_count;
-		if (height < (buffer->y2 - buffer->y1) * 0.25f)
+		if (height < buffer_rect(buffer).size.y * 0.25f)
 			break;
 		--signature_count;
 		if (signature_count == 0) return;
 	}
-	float x = buffer->x1, y = buffer->y2 - height;
+	float x = buf_rect.pos.x, y = rect_y2(buf_rect) - height;
 	gl_geometry_rect(rect_xywh(x, y - border, width, border),
 		colors[COLOR_AUTOCOMPLETE_BORDER]);
 	gl_geometry_rect(rect_xywh(x, y, width, height),
@@ -173,8 +174,8 @@ void signature_help_frame(Ted *ted) {
 		state.y = y;
 		state.min_x = x;
 		state.min_y = y;
-		state.max_x = buffer->x2;
-		state.max_y = buffer->y2;
+		state.max_x = rect_x2(buf_rect);
+		state.max_y = rect_y2(buf_rect);
 		rgba_u32_to_floats(colors[COLOR_TEXT], state.color);
 		
 		text_utf8_with_state(font, &state, signature->label_pre);

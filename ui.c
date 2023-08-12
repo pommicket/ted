@@ -90,8 +90,8 @@ char *selector_update(Ted *ted, Selector *s) {
 		}
 	}
 
-	if (line_buffer->line_buffer_submitted) {
-		line_buffer->line_buffer_submitted = false;
+	if (line_buffer_is_submitted(line_buffer)) {
+		line_buffer_clear_submitted(line_buffer);
 		if (!ret) {
 			if (s->enable_cursor) {
 				// select this option

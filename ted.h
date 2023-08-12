@@ -334,6 +334,8 @@ double buffer_get_scroll_lines(TextBuffer *buffer);
 double buffer_last_write_time(TextBuffer *buffer);
 /// get position of the cursor
 BufferPos buffer_cursor_pos(TextBuffer *buffer);
+/// returns true if anything is selected
+bool buffer_has_selection(TextBuffer *buffer);
 /// get position of non-cursor end of selection.
 ///
 /// `pos` is allowed to be NULL.
@@ -347,6 +349,10 @@ const char *buffer_get_path(TextBuffer *buffer);
 void buffer_clear_undo_redo(TextBuffer *buffer);
 /// set whether undo history should be kept
 void buffer_set_undo_enabled(TextBuffer *buffer, bool enabled);
+/// set manual language override for buffer.
+///
+/// passing `language = 0` goes back to automatic language detection.
+void buffer_set_manual_language(TextBuffer *buffer, u32 language);
 /// first line which will appear on screen
 u32 buffer_first_line_on_screen(TextBuffer *buffer);
 /// last line which will appear on screen
@@ -361,6 +367,14 @@ const char *buffer_display_filename(TextBuffer *buffer);
 bool buffer_is_named_file(TextBuffer *buffer);
 /// does this buffer have unsaved changes?
 bool buffer_unsaved_changes(TextBuffer *buffer);
+/// is this a line buffer?
+bool buffer_is_line_buffer(TextBuffer *buffer);
+/// has this line buffer been submitted?
+///
+/// returns false if `buffer` is not a line buffer.
+bool line_buffer_is_submitted(TextBuffer *buffer);
+/// clear submission status of line buffer.
+void line_buffer_clear_submitted(TextBuffer *buffer);
 /// returns the character after position pos, or 0 if pos is invalid
 char32_t buffer_char_at_pos(TextBuffer *buffer, BufferPos pos);
 /// returns the character after the cursor
@@ -744,10 +758,8 @@ char *settings_get_root_dir(Settings *settings, const char *path);
 // === find.c ===
 /// which buffer will be searched?
 TextBuffer *find_search_buffer(Ted *ted);
-/// update find results.
-///
-/// if `force` is true, the results will be updated even if the pattern & flags have not been changed.
-void find_update(Ted *ted, bool force);
+/// discard find results and perform search again.
+void find_redo_search(Ted *ted);
 /// replace the match we are currently highlighting, or do nothing if there is no highlighted match
 void find_replace(Ted *ted);
 /// go to next find result

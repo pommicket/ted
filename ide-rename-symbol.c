@@ -25,7 +25,7 @@ void rename_symbol_at_cursor(Ted *ted, TextBuffer *buffer, const char *new_name)
 		// send the request
 		LSPRequest request = {.type = LSP_REQUEST_RENAME};
 		LSPRequestRename *data = &request.data.rename;
-		data->position = buffer_pos_to_lsp_document_position(buffer, buffer->cursor_pos);
+		data->position = buffer_cursor_pos_as_lsp_document_position(buffer);
 		data->new_name = str_dup(new_name);
 		rs->request_id = lsp_send_request(lsp, &request);
 	}
@@ -46,7 +46,7 @@ static void rename_symbol_menu_open(Ted *ted) {
 
 static void rename_symbol_menu_update(Ted *ted) {
 	TextBuffer *line_buffer = ted->line_buffer;
-	if (line_buffer->line_buffer_submitted) {
+	if (line_buffer_is_submitted(line_buffer)) {
 		char *new_name = str32_to_utf8_cstr(buffer_get_line(line_buffer, 0));
 		rename_symbol_at_cursor(ted, ted->prev_active_buffer, new_name);
 		free(new_name);
@@ -71,7 +71,7 @@ static void rename_symbol_menu_render(Ted *ted) {
 	const float line_buffer_height = ted_line_buffer_height(ted);
 	
 	u32 sym_start=0, sym_end=0;
-	BufferPos cursor_pos = buffer->cursor_pos;
+	BufferPos cursor_pos = buffer_cursor_pos(buffer);
 	buffer_word_span_at_pos(buffer, cursor_pos, &sym_start, &sym_end);
 	BufferPos bpos0 = {
 		.line = cursor_pos.line,
@@ -149,10 +149,8 @@ void rename_symbol_process_lsp_response(Ted *ted, const LSPResponse *response) {
 			if (!ted_open_file(ted, path)) goto done;
 			
 			TextBuffer *buffer = ted_get_buffer_with_file(ted, path);
-			if (!buffer->will_chain_edits) {
-				// chain all edits together so they can be undone with one ctrl+z
-				buffer_start_edit_chain(buffer);
-			}
+			// chain all edits together so they can be undone with one ctrl+z
+			buffer_start_edit_chain(buffer);
 			
 			if (!buffer) {
 				// this should never happen since we just

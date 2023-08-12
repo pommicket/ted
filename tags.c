@@ -281,7 +281,7 @@ top:;
 								// the tags file gives us a (1-indexed) line number
 								BufferPos pos = {.line = (u32)line_number - 1, .index = 0};
 								buffer_cursor_move_to_pos(buffer, pos);
-								buffer->center_cursor_next_frame = true;
+								buffer_center_cursor_next_frame(buffer);
 								success = true;
 							} else if (address[0] == '/') {
 								// the tags file gives us a pattern to look for
@@ -324,7 +324,7 @@ top:;
 								if (code) {
 									pcre2_match_data *match_data = pcre2_match_data_create(10, NULL);
 									if (match_data) {
-										for (u32 line_idx = 0; line_idx < buffer->nlines; ++line_idx) {
+										for (u32 line_idx = 0, line_count = buffer_line_count(buffer); line_idx < line_count; ++line_idx) {
 											String32 line = buffer_get_line(buffer, line_idx);
 											int n = pcre2_match(code, line.str, line.len, 0, PCRE2_NOTEMPTY,
 												match_data, NULL);
@@ -334,7 +334,7 @@ top:;
 												PCRE2_SIZE index = ovector[0];
 												BufferPos pos = {line_idx, (u32)index};
 												buffer_cursor_move_to_pos(buffer, pos);
-												buffer->center_cursor_next_frame = true;
+												buffer_center_cursor_next_frame(buffer);
 												success = true;
 												break;
 											}

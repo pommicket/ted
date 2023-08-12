@@ -26,12 +26,7 @@ void menu_close(Ted *ted) {
 	}
 	
 	ted_switch_to_buffer(ted, ted->prev_active_buffer);
-	TextBuffer *buffer = ted->active_buffer;
 	ted->prev_active_buffer = NULL;
-	if (buffer) {
-		buffer->scroll_x = ted->prev_active_buffer_scroll.x;
-		buffer->scroll_y = ted->prev_active_buffer_scroll.y;
-	}
 	ted->menu_open_idx = 0;
 	ted->menu_context = NULL;
 	ted->selector_open = NULL;
@@ -62,9 +57,7 @@ void menu_open_with_context(Ted *ted, const char *menu_name, void *context) {
 	const MenuInfo *info = &ted->all_menus[menu_idx];
 	ted->menu_open_idx = menu_idx;
 	ted->menu_context = context;
-	TextBuffer *prev_buf = ted->prev_active_buffer = ted->active_buffer;
-	if (prev_buf)
-		ted->prev_active_buffer_scroll = (dvec2) {prev_buf->scroll_x, prev_buf->scroll_y};
+	ted->prev_active_buffer = ted->active_buffer;
 	
 	ted_switch_to_buffer(ted, NULL);
 	*ted->warn_overwrite = 0; // clear warn_overwrite
@@ -135,12 +128,18 @@ void menu_render(Ted *ted) {
 		info->render(ted);
 }
 
+static void menu_edit_notify(void *context, TextBuffer *buffer, const EditInfo *info) {
+	(void)info;
+	
+	Ted *ted = context;
+	if (buffer == ted->line_buffer && menu_is_open(ted, MENU_SHELL)) {
+		ted->shell_command_modified = true;
+	}
+	
+}
+
 void menu_shell_move(Ted *ted, int direction) {
 	TextBuffer *line_buffer = ted->line_buffer;
-	if (line_buffer->modified) {
-		// don't do it if the command has been edited
-		return;
-	}
 	i64 pos = ted->shell_history_pos;
 	pos += direction;
 	if (pos >= 0 && pos <= arr_len(ted->shell_history)) {
@@ -149,13 +148,13 @@ void menu_shell_move(Ted *ted, int direction) {
 		if (pos == arr_len(ted->shell_history)) {
 			// bottom of history; just clear line buffer
 		} else {
-			line_buffer->store_undo_events = false;
+			buffer_set_undo_enabled(line_buffer, false);
 			buffer_insert_utf8_at_cursor(line_buffer, ted->shell_history[pos]);
-			line_buffer->store_undo_events = true;
-			line_buffer->modified = false;
+			buffer_set_undo_enabled(line_buffer, true);
+			ted->shell_command_modified = true;
 		}
 		// line_buffer->x/y1/2 are wrong (all 0), because of buffer_clear
-		line_buffer->center_cursor_next_frame = true;
+		buffer_center_cursor_next_frame(line_buffer);
 	}
 }
 
@@ -330,8 +329,6 @@ static void ask_reload_menu_update(Ted *ted) {
 		break;
 	case POPUP_NO:
 		menu_close(ted);
-		if (buffer)
-			buffer->last_write_time = timespec_to_seconds(time_last_modified(buffer->path));
 		break;
 	case POPUP_CANCEL: assert(0); break;
 	}
@@ -452,10 +449,10 @@ static void goto_line_menu_update(Ted *ted) {
 	TextBuffer *buffer = ted->prev_active_buffer;
 	if (*contents != '\0' && *end == '\0') {
 		if (line_number < 1) line_number = 1;
-		if (line_number > (long)buffer->nlines) line_number = (long)buffer->nlines; 
+		if (line_number > (long)buffer_line_count(buffer)) line_number = (long)buffer_line_count(buffer); 
 		BufferPos pos = {(u32)line_number - 1, 0};
 		
-		if (line_buffer->line_buffer_submitted) {
+		if (line_buffer_is_submitted(line_buffer)) {
 			// let's go there!
 			menu_close(ted);
 			buffer_cursor_move_to_pos(buffer, pos);
@@ -465,7 +462,7 @@ static void goto_line_menu_update(Ted *ted) {
 			buffer_scroll_center_pos(buffer, pos);
 		}
 	}
-	line_buffer->line_buffer_submitted = false;
+	line_buffer_clear_submitted(line_buffer);
 	free(contents);
 }
 
@@ -506,13 +503,14 @@ static bool goto_line_menu_close(Ted *ted) {
 static void shell_menu_open(Ted *ted) {
 	ted_switch_to_buffer(ted, ted->line_buffer);
 	ted->shell_history_pos = arr_len(ted->shell_history);
+	ted->shell_command_modified = false;
 }
 
 static void shell_menu_update(Ted *ted) {
 	TextBuffer *line_buffer = ted->line_buffer;
-	if (line_buffer->line_buffer_submitted) {
+	if (line_buffer_is_submitted(line_buffer)) {
 		char *command = str32_to_utf8_cstr(buffer_get_line(line_buffer, 0));
-		if (ted->shell_history_pos == arr_len(ted->shell_history) || line_buffer->modified) {
+		if (ted->shell_history_pos == arr_len(ted->shell_history) || ted->shell_command_modified) {
 			arr_add(ted->shell_history, command);
 		}
 		menu_close(ted);
@@ -561,6 +559,8 @@ void menu_register(Ted *ted, const MenuInfo *infop) {
 void menu_init(Ted *ted) {
 	// dummy 0 entry so that nothing has index 0.
 	arr_add(ted->all_menus, (MenuInfo){0});
+	
+	ted_add_edit_notify(ted, menu_edit_notify, ted);
 	
 	MenuInfo save_as_menu = {
 		.open = save_as_menu_open,

@@ -77,7 +77,7 @@ void usages_process_lsp_response(Ted *ted, const LSPResponse *response) {
 			char *line_text = NULL;
 			if (last_buffer) {
 				// read the line from the buffer
-				if (line < last_buffer->nlines) {
+				if (line < buffer_line_count(last_buffer)) {
 					line_text = buffer_get_line_utf8(last_buffer, line);
 				}
 			} else if (last_file) {
@@ -122,7 +122,7 @@ void usages_process_lsp_response(Ted *ted, const LSPResponse *response) {
 		}
 		if (last_file)
 			fclose(last_file);
-		buffer->view_only = true;
+		buffer_set_view_only(buffer, true);
 		
 		// the build_dir doesn't really matter since we're using absolute paths
 		// but might as well set it to something reasonable.

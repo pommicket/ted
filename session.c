@@ -204,16 +204,18 @@ static Status session_read_node(Ted *ted, FILE *fp, Node *node) {
 static void session_write_buffer(FILE *fp, TextBuffer *buffer) {
 	// some info about the buffer that should be restored
 	if (buffer_is_named_file(buffer))
-		write_cstr(fp, buffer->path);
+		write_cstr(fp, buffer_get_path(buffer));
 	else
 		write_char(fp, 0);
-	write_double(fp, buffer->scroll_x);
-	write_double(fp, buffer->scroll_y);
-	write_bool(fp, buffer->view_only);
-	buffer_pos_write(buffer->cursor_pos, fp);
-	write_bool(fp, buffer->selection);
-	if (buffer->selection)
-		buffer_pos_write(buffer->selection_pos, fp);
+	write_double(fp, buffer_get_scroll_columns(buffer));
+	write_double(fp, buffer_get_scroll_lines(buffer));
+	write_bool(fp, buffer_is_view_only(buffer));
+	buffer_pos_write(buffer_cursor_pos(buffer), fp);
+	BufferPos sel_pos = {0};
+	bool has_selection = buffer_selection_pos(buffer, &sel_pos);
+	write_bool(fp, has_selection);
+	if (has_selection)
+		buffer_pos_write(sel_pos, fp);
 }
 
 static bool session_read_buffer(Ted *ted, FILE *fp) {
@@ -227,19 +229,19 @@ static bool session_read_buffer(Ted *ted, FILE *fp) {
 		} else {
 			buffer_new_file(buffer, NULL);
 		}
-		buffer->scroll_x = read_double(fp);
-		buffer->scroll_y = read_double(fp);
-		buffer->view_only = read_bool(fp);
-		buffer->cursor_pos = buffer_pos_read(buffer, fp);
-		buffer->selection = read_bool(fp);
-		if (buffer->selection)
-			buffer->selection_pos = buffer_pos_read(buffer, fp);
-		buffer_pos_validate(buffer, &buffer->cursor_pos);
-		buffer_pos_validate(buffer, &buffer->selection_pos);
-		if (buffer->selection && buffer_pos_eq(buffer->cursor_pos, buffer->selection_pos)) {
-			// this could happen if the file was changed on disk
-			buffer->selection = false;
+		double scroll_x = read_double(fp);
+		double scroll_y = read_double(fp);
+		buffer_set_view_only(buffer, read_bool(fp));
+		BufferPos cursor_pos = buffer_pos_read(buffer, fp);
+		bool has_selection = read_bool(fp);
+		if (has_selection) {
+			buffer_cursor_move_to_pos(buffer, buffer_pos_read(buffer, fp));
+			buffer_select_to_pos(buffer, cursor_pos);
+		} else {
+			buffer_cursor_move_to_pos(buffer, cursor_pos);
 		}
+		buffer_scroll_to_pos(buffer, buffer_pos_start_of_file(buffer));
+		buffer_scroll(buffer, scroll_x, scroll_y);
 	}
 	return true;
 }

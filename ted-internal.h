@@ -161,104 +161,15 @@ struct Settings {
 	KeyAction *key_actions;
 };
 
-/// A single line in a buffer
-typedef struct Line Line;
-
 /// This structure is used temporarily when loading settings
 /// It's needed because we want more specific contexts to be dealt with last.
 typedef struct ConfigPart ConfigPart;
-
-/// A single undoable edit to a buffer
-typedef struct BufferEdit BufferEdit;
 
 typedef struct EditNotifyInfo {
 	EditNotify fn;
 	void *context;
 	EditNotifyID id;
 } EditNotifyInfo;
-
-struct TextBuffer {
-	/// NULL if this buffer is untitled or doesn't correspond to a file (e.g. line buffers)
-	char *path;
-	/// we keep a back-pointer to the ted instance so we don't have to pass it in to every buffer function
-	Ted *ted;
-	/// number of characters scrolled in the x direction (multiply by space width to get pixels)
-	double scroll_x;
-	/// number of characters scrolled in the y direction
-	double scroll_y;
-	/// last write time to \ref path
-	double last_write_time;
-	/// the language the buffer has been manually set to, or \ref LANG_NONE if it hasn't been set to anything
-	i64 manual_language;
-	/// position of cursor
-	BufferPos cursor_pos;
-	/// if \ref selection is true, the text between \ref selection_pos and \ref cursor_pos is selected.
-	BufferPos selection_pos;
-	/// "previous" position of cursor, for \ref CMD_PREVIOUS_POSITION
-	BufferPos prev_cursor_pos;
-	/// "line buffers" are buffers which can only have one line of text (used for inputs)
-	bool is_line_buffer;
-	/// is anything selected?
-	bool selection;
-	/// set to false to disable undo events
-	bool store_undo_events;
-	/// This is set to true whenever a change is made to the buffer, and never set to false by buffer_ functions.
-	/// (Distinct from \ref buffer_unsaved_changes)
-	bool modified;
-	/// will the next undo event be chained with the ones after?
-	bool will_chain_edits;
-	/// will the next undo event be chained with the previous one?
-	bool chaining_edits;
-	/// view-only mode
-	bool view_only;
-	/// (line buffers only) set to true when submitted. you have to reset it to false.
-	bool line_buffer_submitted;
-	/// If set to true, buffer will be scrolled to the cursor position next frame.
-	/// This is to fix the problem that \ref x1, \ref y1, \ref x2, \ref y2 are not updated until the buffer is rendered.
-	bool center_cursor_next_frame;
-	/// x coordinate of left side of buffer
-	float x1;
-	/// y coordinate of top side of buffer
-	float y1;
-	/// x coordinate of right side of buffer
-	float x2;
-	/// y coordinate of bottom side of buffer
-	float y2;
-	/// number of lines in buffer
-	u32 nlines;
-	/// capacity of \ref lines
-	u32 lines_capacity;
-	
-	/// cached settings index (into ted->all_settings), or -1 if has not been computed yet
-	i32 settings_idx;
-	
-	/// which LSP this document is open in
-	LSPID lsp_opened_in;
-	/// determining which LSP to use for a buffer takes some work,
-	/// so we don't want to do it every single frame.
-	/// this keeps track of the last time we actually checked what the correct LSP is.
-	double last_lsp_check;
-
-	/// where in the undo history was the last write? used by \ref buffer_unsaved_changes
-	u32 undo_history_write_pos;
-	/// which lines are on screen? updated when \ref buffer_render is called.
-	u32 first_line_on_screen, last_line_on_screen;
-
-	/// to cache syntax highlighting properly, it is important to keep track of the
-	/// first and last line modified since last frame.
-	u32 frame_earliest_line_modified;
-	/// see \ref frame_earliest_line_modified.
-	u32 frame_latest_line_modified;
-
-	/// lines
-	Line *lines;
-	/// last error
-	char error[256];
-	/// dynamic array of undo history
-	BufferEdit *undo_history;
-	/// dynamic array of redo history
-	BufferEdit *redo_history;
-};
 
 /// an entry in a selector menu (e.g. the "open" menu)
 typedef struct {
@@ -516,9 +427,6 @@ struct Ted {
 	/// build error we are currently "on"
 	u32 build_error;
 	
-	/// used by menus to keep track of the scroll position so we can return to it.
-	dvec2 prev_active_buffer_scroll;
-	
 	SDL_Cursor *cursor_arrow, *cursor_ibeam, *cursor_wait,
 		*cursor_resize_h, *cursor_resize_v, *cursor_hand, *cursor_move;
 	/// which cursor to use this frame
@@ -539,6 +447,8 @@ struct Ted {
 	char **shell_history;
 	/// for keeping track of where we are in the shell history.
 	u32 shell_history_pos;
+	/// has the shell command been modified (if so, we block up/down)
+	bool shell_command_modified;
 
 	// points to a selector if any is open, otherwise NULL.
 	Selector *selector_open;
@@ -628,6 +538,11 @@ void buffer_highlight_lsp_range(TextBuffer *buffer, LSPRange range, ColorSetting
 /// process a mouse click.
 /// returns true if the event was consumed.
 bool buffer_handle_click(Ted *ted, TextBuffer *buffer, vec2 click, u8 times);
+/// next frame, scroll so that the cursor is in the center of the buffer's rectangle.
+///
+/// currently needed to avoid bad positioning when a buffer is created
+/// and buffer_center_cursor is called immediately after
+void buffer_center_cursor_next_frame(TextBuffer *buffer);
 
 // === build.c ===
 void build_frame(Ted *ted, float x1, float y1, float x2, float y2);
