@@ -197,6 +197,11 @@ double buffer_get_scroll_lines(TextBuffer *buffer) {
 	return buffer->scroll_y;
 }
 
+void buffer_scroll_to(TextBuffer *buffer, double cols, double lines) {
+	buffer->scroll_x = cols;
+	buffer->scroll_y = lines;
+}
+
 double buffer_last_write_time(TextBuffer *buffer) {
 	return buffer->last_write_time;
 }
@@ -693,7 +698,7 @@ static BufferPos buffer_pos_max(BufferPos p1, BufferPos p2) {
 }
 
 static void buffer_pos_print(BufferPos p) {
-	printf("[" U32_FMT ":" U32_FMT "]", p.line, p.index);
+	printf("[%" PRIu32  ":%" PRIu32 "]", p.line, p.index);
 }
 
 // for debugging
@@ -755,7 +760,7 @@ static Status buffer_edit_create(TextBuffer *buffer, BufferEdit *edit, BufferPos
 
 static void buffer_edit_print(BufferEdit *edit) {
 	buffer_pos_print(edit->pos);
-	printf(" (" U32_FMT " chars): ", edit->prev_len);
+	printf(" (%" PRIu32 " chars): ", edit->prev_len);
 	for (size_t i = 0; i < edit->prev_len; ++i) {
 		char32_t c = edit->prev_text[i];
 		if (c == '\n')
@@ -763,7 +768,7 @@ static void buffer_edit_print(BufferEdit *edit) {
 		else
 			printf("%lc", (wint_t)c);
 	}
-	printf(" => " U32_FMT " chars.\n", edit->new_len);
+	printf(" => %" PRIu32 " chars.\n", edit->new_len);
 }
 
 static void buffer_print_undo_history(TextBuffer *buffer) {
@@ -1053,19 +1058,14 @@ static u32 buffer_xoff_to_index(TextBuffer *buffer, u32 line_number, double xoff
 }
 
 
-void buffer_text_dimensions(TextBuffer *buffer, u32 *lines, u32 *columns) {
-	if (lines) {
-		*lines = buffer->nlines;
+u32 buffer_column_count(TextBuffer *buffer) {
+	double longest_line = 0;
+	// which line on screen is the longest?
+	for (u32 l = buffer->first_line_on_screen; l <= buffer->last_line_on_screen && l < buffer->nlines; ++l) {
+		Line *line = &buffer->lines[l];
+		longest_line = maxd(longest_line, buffer_index_to_xoff(buffer, l, line->len));
 	}
-	if (columns) {
-		double longest_line = 0;
-		// which line on screen is the longest?
-		for (u32 l = buffer->first_line_on_screen; l <= buffer->last_line_on_screen && l < buffer->nlines; ++l) {
-			Line *line = &buffer->lines[l];
-			longest_line = maxd(longest_line, buffer_index_to_xoff(buffer, l, line->len));
-		}
-		*columns = (u32)(longest_line / text_font_char_width(buffer_font(buffer), ' '));
-	}
+	return (u32)(longest_line / text_font_char_width(buffer_font(buffer), ' '));
 }
 
 
@@ -1083,8 +1083,7 @@ static void buffer_correct_scroll(TextBuffer *buffer) {
 		buffer->scroll_x = 0;
 	if (buffer->scroll_y < 0)
 		buffer->scroll_y = 0;
-	u32 nlines, ncols;
-	buffer_text_dimensions(buffer, &nlines, &ncols);
+	u32 nlines = buffer_line_count(buffer), ncols = buffer_column_count(buffer);
 	double max_scroll_x = (double)ncols  - buffer_display_cols(buffer);
 	max_scroll_x += 2; // allow "overscroll" (makes it so you can see the cursor when it's on the right side of the screen)
 	double max_scroll_y = (double)nlines - buffer_display_lines(buffer);
@@ -2265,7 +2264,7 @@ static void buffer_delete_lines(TextBuffer *buffer, u32 first_line_idx, u32 nlin
 void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) {
 	if (buffer->view_only) return;
 	if (nchars_ < 0) {
-		buffer_error(buffer, "Deleting negative characters (specifically, " I64_FMT ").", nchars_);
+		buffer_error(buffer, "Deleting negative characters (specifically, %" PRId64 ").", nchars_);
 		return;
 	}
 	if (nchars_ <= 0) return;
@@ -3243,7 +3242,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 		u32 cursor_line = buffer->cursor_pos.line;
 		for (u32 line = start_line; line < nlines; ++line) {
 			char str[32] = {0};
-			strbuf_printf(str, U32_FMT, line + 1); // convert line number to string
+			strbuf_printf(str, "%" PRIu32, line + 1); // convert line number to string
 			float x = x1 + line_number_width - text_get_size_vec2(font, str).x; // right justify
 			// set color
 			rgba_u32_to_floats(colors[line == cursor_line ? COLOR_CURSOR_LINE_NUMBER : COLOR_LINE_NUMBERS],

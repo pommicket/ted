@@ -17,6 +17,7 @@
 #if __GNUC__
 #define FALLTHROUGH __attribute__((fallthrough));
 #else
+/// used to mark switch cases that can fallthrough.
 #define FALLTHROUGH
 #endif
 
@@ -25,12 +26,11 @@
 #include <shlobj.h>
 #include <dbghelp.h>
 #define PATH_SEPARATOR '\\'
-#define PATH_SEPARATOR_STR "\\"
-// on windows, let the user use forwards slashes as well as backslashes
 #define ALL_PATH_SEPARATORS "\\/"
 #else
+/// the default path separator for this OS
 #define PATH_SEPARATOR '/'
-#define PATH_SEPARATOR_STR "/"
+/// a string containing all possible path separators for this OS
 #define ALL_PATH_SEPARATORS "/"
 #endif
 
@@ -50,51 +50,62 @@
 #if __linux__ || _WIN32
 #include <uchar.h>
 #else
-// OpenBSD has uchar.h but it doesn't seem to define char32_t ?
+/// UTF-32 character
+///
+/// OpenBSD has `uchar.h` but it doesn't seem to define `char32_t` ? (as of writing)
 typedef uint32_t char32_t;
 #endif
 
 #if !__TINYC__ && __STDC_VERSION__ >= 201112
 #define static_assert_if_possible(cond) _Static_assert(cond, "Static assertion failed");
 #else
+/// perform static assertion if it's available.
 #define static_assert_if_possible(cond)
 #endif
 
+/// 8-bit unsigned integer
 typedef uint8_t  u8;
+/// 16-bit unsigned integer
 typedef uint16_t u16;
+/// 32-bit unsigned integer
 typedef uint32_t u32;
+/// 64-bit unsigned integer
 typedef uint64_t u64;
 
-// (for u8 and u16, you can use %u)
-#define U32_FMT "%" PRIu32
-#define U64_FMT "%" PRIu64
+/// maximum value of \ref u8
 #define U8_MAX  0xff
+/// maximum value of \ref u16
 #define U16_MAX 0xffff
+/// maximum value of \ref u32
 #define U32_MAX 0xffffffff
+/// maximum value of \ref u64
 #define U64_MAX 0xffffffffffffffff
 
+/// 8-bit signed integer
 typedef int8_t  i8;
+/// 16-bit signed integer
 typedef int16_t i16;
+/// 32-bit signed integer
 typedef int32_t i32;
+/// 64-bit signed integer
 typedef int64_t i64;
 
-// (for i8 and i16, you can use %d)
-#define I32_FMT "%" PRId32
-#define I64_FMT "%" PRId64
+/// minimum value of \ref i8
 #define I8_MIN ((i8)0x80)
+/// minimum value of \ref i16
 #define I16_MIN ((i16)0x8000)
+/// minimum value of \ref i32
 #define I32_MIN ((i32)0x80000000)
+/// minimum value of \ref i64
 #define I64_MIN ((i64)0x8000000000000000)
+/// maximum value of \ref i8
 #define I8_MAX  0x7f
+/// maximum value of \ref i16
 #define I16_MAX 0x7fff
+/// maximum value of \ref i32
 #define I32_MAX 0x7fffffff
+/// maximum value of \ref i64
 #define I64_MAX 0x7fffffffffffffff
-
-typedef unsigned int  uint;
-typedef unsigned long ulong;
-
-typedef long long llong;
-typedef unsigned long long ullong;
 
 /// allows 
 /// ```
@@ -108,6 +119,7 @@ typedef unsigned long long ullong;
 #ifdef __GNUC__
 #define WarnUnusedResult __attribute__((warn_unused_result))
 #else
+/// add warn-if-unused attribute if it's available.
 #define WarnUnusedResult
 #endif
 
@@ -124,11 +136,13 @@ typedef unsigned long long ullong;
 #define PRINTF_FORMAT_STRING
 #endif
 
-/// this type is an alias for bool, except that it
+/// this type is an alias for `bool`, except that it
 /// produces a warning if it's not used.
-/// false = error, true = success
+///
+/// `false` = error, `true` = success
 #define Status bool WarnUnusedResult
 
+/// number of elements in static array
 #define arr_count(a) (sizeof (a) / sizeof *(a))
 
 #ifdef __GNUC__
@@ -142,7 +156,9 @@ typedef unsigned long long ullong;
 
 #define no_warn_end _Pragma("GCC diagnostic pop")
 #else
+///  disable compiler warnings temporarily
 #define no_warn_start
+///  reenable compiler warnings
 #define no_warn_end
 #endif
 
@@ -158,24 +174,24 @@ static void print(const char *fmt, ...) {
 }
 #define eprint print
 #else
+/// print to `stdout`, or debugger output on Windows
 #define print printf
+/// print to `stderr`, or debugger output on Windows
 #define eprint(...) fprintf(stderr, __VA_ARGS__)
 #endif
+/// like \ref print, but adds a newline
 #define println(...) print(__VA_ARGS__), print("\n")
+/// like \ref eprint, but adds a newline
 #define eprintln(...) eprint(__VA_ARGS__), eprint("\n")
 
 #if DEBUG
 #define debug_print print
 #define debug_println println
 #else
+/// like \ref print, but only enabled in debug mode
 #define debug_print(...)
+/// like \ref println, but only enabled in debug mode
 #define debug_println(...)
-#endif
-
-#if PROFILE
-#define PROFILE_TIME(var) double var = time_get_seconds();
-#else
-#define PROFILE_TIME(var)
 #endif
 
 #endif // BASE_H_

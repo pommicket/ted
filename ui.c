@@ -253,11 +253,11 @@ static Status file_selector_cd1(Ted *ted, FileSelector *fs, const char *name, si
 		}
 	} else {
 		char path[TED_PATH_MAX];
-		// join fs->cwd with name to get full path
-		str_printf(path, TED_PATH_MAX, "%s%s%*s", cwd, 
-				cwd[strlen(cwd) - 1] == PATH_SEPARATOR ?
-				"" : PATH_SEPARATOR_STR,
-				(int)name_len, name);
+		strbuf_cpy(path, cwd);
+		if (path[strlen(path) - 1] != PATH_SEPARATOR)
+			strbuf_catf(path, "%c", PATH_SEPARATOR);
+		strbuf_catf(path, "%*s", (int)name_len, name);
+		
 		if (fs_path_type(path) != FS_DIRECTORY) {
 			// trying to cd to something that's not a directory!
 			return false;
@@ -281,7 +281,7 @@ static Status file_selector_cd1(Ted *ted, FileSelector *fs, const char *name, si
 
 		// add path separator to end if not already there (which could happen in the case of /)
 		if (cwd[strlen(cwd) - 1] != PATH_SEPARATOR)
-			str_cat(cwd, sizeof fs->cwd, PATH_SEPARATOR_STR);
+			str_catf(cwd, sizeof fs->cwd, "%c", PATH_SEPARATOR);
 		// add name itself
 		strn_cat(cwd, sizeof fs->cwd, name, name_len);
 	}
@@ -297,10 +297,11 @@ static Status file_selector_cd_(Ted *ted, FileSelector *fs, const char *path, in
 		// absolute path (e.g. /foo, c:\foo)
 		// start out by replacing cwd with the start of the absolute path
 		if (path[0] == PATH_SEPARATOR) {
-			char new_cwd[TED_PATH_MAX];
+			char root[TED_PATH_MAX];
 			// necessary because the full path of \ on windows isn't just \, it's c:\ or something
-			ted_path_full(ted, PATH_SEPARATOR_STR, new_cwd, sizeof new_cwd);
-			strcpy(cwd, new_cwd);
+			char pathsep[] = {PATH_SEPARATOR, '\0'};
+			ted_path_full(ted, pathsep, root, sizeof root);
+			strcpy(cwd, root);
 			path += 1;
 		}
 		#if _WIN32
@@ -315,11 +316,11 @@ static Status file_selector_cd_(Ted *ted, FileSelector *fs, const char *path, in
 	const char *p = path;
 
 	while (*p) {
-		size_t len = strcspn(p, PATH_SEPARATOR_STR);
+		size_t len = strcspn(p, ALL_PATH_SEPARATORS);
 		if (!file_selector_cd1(ted, fs, p, len, symlink_depth))
 			return false;
 		p += len;
-		p += strspn(p, PATH_SEPARATOR_STR);
+		p += strspn(p, ALL_PATH_SEPARATORS);
 	}
 	
 	return true;

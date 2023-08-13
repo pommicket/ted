@@ -529,7 +529,7 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 		break;
 	case CMD_OPEN_CONFIG: {
 		char local_config_filename[TED_PATH_MAX];
-		strbuf_printf(local_config_filename, "%s" PATH_SEPARATOR_STR TED_CFG, ted->local_data_dir);
+		strbuf_printf(local_config_filename, "%s%c" TED_CFG, ted->local_data_dir, PATH_SEPARATOR);
 		ted_open_file(ted, local_config_filename);
 	} break;
 	case CMD_COMMAND_SELECTOR:

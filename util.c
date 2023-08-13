@@ -451,7 +451,7 @@ void path_full(const char *dir, const char *relpath, char *abspath, size_t abspa
 			}
 		} else {
 			if (len == 0 || abspath[len - 1] != PATH_SEPARATOR)
-				str_cat(abspath, abspath_size, PATH_SEPARATOR_STR);
+				str_catf(abspath, abspath_size, "%c", PATH_SEPARATOR);
 			strn_cat(abspath, abspath_size, relpath, component_len);
 		}
 		if (*component_end == 0)

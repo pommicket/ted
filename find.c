@@ -431,9 +431,9 @@ void find_menu_frame(Ted *ted, Rect menu_bounds) {
 		char str[32];
 		u32 match_idx = find_match_idx(ted);
 		if (match_idx == U32_MAX) {
-			strbuf_printf(str, U32_FMT " matches", arr_len(ted->find_results));
+			strbuf_printf(str, "%" PRIu32 " matches", arr_len(ted->find_results));
 		} else {
-			strbuf_printf(str, U32_FMT " of " U32_FMT, match_idx + 1, arr_len(ted->find_results));
+			strbuf_printf(str, "%" PRIu32 " of %" PRIu32, match_idx + 1, arr_len(ted->find_results));
 		}
 		text_get_size(font, str, &w, &h);
 		text_utf8(font, str, x2 - w, rect_ymid(find_buffer_bounds) - h * 0.5f, colors[COLOR_TEXT]);

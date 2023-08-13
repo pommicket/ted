@@ -14,6 +14,14 @@
 #include "sdl-inc.h"
 #include "lib/glcorearb.h"
 
+#if PROFILE
+#define PROFILE_TIME(var) double var = time_get_seconds();
+#else
+/// get current time for profiling
+#define PROFILE_TIME(var)
+#endif
+
+
 /// Minimum text size
 #define TEXT_SIZE_MIN 6
 /// Maximum text size
@@ -718,6 +726,8 @@ void node_free(Node *node);
 void node_frame(Ted *ted, Node *node, Rect r);
 
 // === syntax.c ===
+/// register built-in languages, etc.
+void syntax_init(void);
 /// free up resources used by `syntax.c`
 void syntax_quit(void);
 
@@ -726,6 +736,10 @@ void syntax_quit(void);
 SymbolInfo *tags_get_symbols(Ted *ted);
 
 // === ted.c ===
+/// set ted's active buffer to something nice
+void ted_reset_active_buffer(Ted *ted);
+/// set ted's error message to the buffer's error.
+void ted_error_from_buffer(Ted *ted, TextBuffer *buffer);
 /// Get LSP by ID. Returns NULL if there is no LSP with that ID.
 LSP *ted_get_lsp_by_id(Ted *ted, LSPID id);
 /// go to this LSP document position, opening a new buffer containing the file if necessary.
@@ -747,5 +761,9 @@ void ted_check_for_node_problems(Ted *ted);
 void ted_load_configs(Ted *ted);
 /// get colors to use for message box
 void ted_color_settings_for_message_type(MessageType type, ColorSetting *bg_color, ColorSetting *border_color);
+/// Load all the fonts ted will use, freeing any previous ones.
+void ted_load_fonts(Ted *ted);
+/// Free all of ted's fonts.
+void ted_free_fonts(Ted *ted);
 
 #endif // TED_INTERNAL_H_

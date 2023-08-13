@@ -317,12 +317,12 @@ Status ted_get_file(Ted const *ted, const char *name, char *out, size_t outsz) {
 			return true;
 	}
 	if (*ted->local_data_dir) {
-		str_printf(out, outsz, "%s" PATH_SEPARATOR_STR "%s", ted->local_data_dir, name);
+		str_printf(out, outsz, "%s%c%s", ted->local_data_dir, PATH_SEPARATOR, name);
 		if (fs_file_exists(out))
 			return true;
 	}
 	if (*ted->global_data_dir) {
-		str_printf(out, outsz, "%s" PATH_SEPARATOR_STR "%s", ted->global_data_dir, name);
+		str_printf(out, outsz, "%s%c%s", ted->global_data_dir, PATH_SEPARATOR, name);
 		if (fs_file_exists(out))
 			return true;
 	}
@@ -689,9 +689,9 @@ void ted_load_configs(Ted *ted) {
 	
 	// copy global config to local config
 	char local_config_filename[TED_PATH_MAX];
-	strbuf_printf(local_config_filename, "%s" PATH_SEPARATOR_STR TED_CFG, ted->local_data_dir);
+	strbuf_printf(local_config_filename, "%s%c" TED_CFG, ted->local_data_dir, PATH_SEPARATOR);
 	char global_config_filename[TED_PATH_MAX];
-	strbuf_printf(global_config_filename, "%s" PATH_SEPARATOR_STR TED_CFG, ted->global_data_dir);
+	strbuf_printf(global_config_filename, "%s%c" TED_CFG, ted->global_data_dir, PATH_SEPARATOR);
 	if (!fs_file_exists(local_config_filename)) {
 		if (fs_file_exists(global_config_filename)) {
 			if (!copy_file(global_config_filename, local_config_filename)) {
@@ -709,7 +709,7 @@ void ted_load_configs(Ted *ted) {
 	if (ted->search_start_cwd) {
 		// read config in start_cwd
 		char start_cwd_filename[TED_PATH_MAX];
-		strbuf_printf(start_cwd_filename, "%s" PATH_SEPARATOR_STR TED_CFG, ted->start_cwd);
+		strbuf_printf(start_cwd_filename, "%s%c" TED_CFG, ted->start_cwd, PATH_SEPARATOR);
 		
 		config_read(ted, &parts, start_cwd_filename);
 	}

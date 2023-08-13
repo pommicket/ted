@@ -2066,7 +2066,7 @@ static void syntax_highlight_ted_cfg(SyntaxState *state, const char32_t *line, u
 }
 
 
-void syntax_register_builtin_languages(void) {
+void syntax_init(void) {
 	static const LanguageInfo builtins[] = {
 		{
 			.id = LANG_TEXT,

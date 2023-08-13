@@ -77,38 +77,37 @@ static u8 node_depth(Ted *ted, Node *node) {
 
 void node_join(Ted *ted, Node *node) {
 	Node *parent = node_parent(ted, node);
-	if (parent) {
-		Node *a = parent->split_a;
-		Node *b = parent->split_b;
-		if (a->tabs && b->tabs) {
-			if (ted->active_node == a || ted->active_node == b) {
-				ted->active_node = parent;
-			}
-			arr_foreach_ptr(a->tabs, TextBufferPtr, tab) {
-				arr_add(parent->tabs, *tab);
-			}
-			arr_foreach_ptr(b->tabs, TextBufferPtr, tab) {
-				arr_add(parent->tabs, *tab);
-			}
-			if (!parent->tabs) {
-				ted_out_of_mem(ted);
-				return;
-			}
-			
-			parent->split_a = NULL;
-			parent->split_b = NULL;
-			if (node == a) {
-				parent->active_tab = a->active_tab;
-			} else {
-				parent->active_tab = (u16)arr_len(a->tabs) + b->active_tab;
-			}
-			node_free(a);
-			node_free(b);
-			arr_remove_item(ted->nodes, a);
-			arr_remove_item(ted->nodes, b);
-			
-		}
+	if (!parent) return;
+	
+	Node *a = parent->split_a;
+	Node *b = parent->split_b;
+	if (!(a->tabs && b->tabs)) return;
+	
+	if (ted->active_node == a || ted->active_node == b) {
+		ted->active_node = parent;
 	}
+	arr_foreach_ptr(a->tabs, TextBufferPtr, tab) {
+		arr_add(parent->tabs, *tab);
+	}
+	arr_foreach_ptr(b->tabs, TextBufferPtr, tab) {
+		arr_add(parent->tabs, *tab);
+	}
+	if (!parent->tabs) {
+		ted_out_of_mem(ted);
+		return;
+	}
+	
+	parent->split_a = NULL;
+	parent->split_b = NULL;
+	if (node == a) {
+		parent->active_tab = a->active_tab;
+	} else {
+		parent->active_tab = (u16)arr_len(a->tabs) + b->active_tab;
+	}
+	node_free(a);
+	node_free(b);
+	arr_remove_item(ted->nodes, a);
+	arr_remove_item(ted->nodes, b);
 }
 
 void node_close(Ted *ted, Node *node) {

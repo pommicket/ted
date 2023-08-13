@@ -97,6 +97,7 @@ enum SyntaxCharType {
 /// Type of syntax highlighting.
 typedef u8 SyntaxCharType;
 /// Function for syntax highlighting.
+///
 /// If you want to add a language to `ted`, you will need to implement this function.
 ///
 /// `state` is used to keep track of state between lines (e.g. whether or not we are in a multiline comment)\n
@@ -116,7 +117,7 @@ typedef void (*SyntaxHighlightFunction)(SyntaxState *state, const char32_t *line
 /// for markdown
 #define SYNTAX_LINK SYNTAX_CONSTANT
 
-/// Settings
+/// All of ted's settings
 typedef struct Settings Settings;
 
 /// A buffer - this includes line buffers, unnamed buffers, the build buffer, etc.
@@ -318,12 +319,14 @@ typedef u64 EditNotifyID;
 // === buffer.c ===
 /// Returns `true` if the buffer is in view-only mode.
 bool buffer_is_view_only(TextBuffer *buffer);
-/// Set whether the buffer should be in view only mode.
+/// Set whether the buffer should be in view-only mode.
 void buffer_set_view_only(TextBuffer *buffer, bool view_only);
 /// amount scrolled horizontally, in terms of the width of a space character
 double buffer_get_scroll_columns(TextBuffer *buffer);
-///n number of lines scrolled vertically
+/// number of lines scrolled vertically
 double buffer_get_scroll_lines(TextBuffer *buffer);
+/// set scroll position
+void buffer_scroll_to(TextBuffer *buffer, double cols, double lines);
 /// get last time buffer was written to, in the format of \ref time_get_seconds
 double buffer_last_write_time(TextBuffer *buffer);
 /// get position of the cursor
@@ -375,7 +378,7 @@ void line_buffer_clear_submitted(TextBuffer *buffer);
 char32_t buffer_char_at_pos(TextBuffer *buffer, BufferPos pos);
 /// returns the character after the cursor, or 0 if the cursor is at the end of a line
 char32_t buffer_char_at_cursor(TextBuffer *buffer);
-/// returns the character before position `pos`, or 0 if pos is invalid or at the start of a line
+/// returns the character before position `pos`, or 0 if `pos` is invalid or at the start of a line
 char32_t buffer_char_before_pos(TextBuffer *buffer, BufferPos pos);
 /// returns the character to the left of the cursor, or 0 if the cursor at the start of the line.
 char32_t buffer_char_before_cursor(TextBuffer *buffer);
@@ -383,9 +386,13 @@ char32_t buffer_char_before_cursor(TextBuffer *buffer);
 BufferPos buffer_pos_start_of_file(TextBuffer *buffer);
 /// buffer position of end of file
 BufferPos buffer_pos_end_of_file(TextBuffer *buffer);
-/// move position to matching bracket. returns the matching bracket character if there is one, otherwise returns 0 and does nothing.
+/// move position to matching bracket.
+///
+/// \returns the matching bracket character if there is one, or 0 otherwise.
 char32_t buffer_pos_move_to_matching_bracket(TextBuffer *buffer, BufferPos *pos);
-/// move cursor to matching bracket. returns true if cursor was to the right of a bracket.
+/// move cursor to matching bracket.
+///
+/// \returns `true` if cursor was to the right of a bracket.
 bool buffer_cursor_move_to_matching_bracket(TextBuffer *buffer);
 /// ensures that `p` refers to a valid position, moving it if needed.
 void buffer_pos_validate(TextBuffer *buffer, BufferPos *p);
@@ -393,7 +400,9 @@ void buffer_pos_validate(TextBuffer *buffer, BufferPos *p);
 bool buffer_pos_valid(TextBuffer *buffer, BufferPos p);
 /// get programming language of buffer contents
 Language buffer_language(TextBuffer *buffer);
-/// clip the rectangle so it's all inside the buffer. returns true if there's any rectangle left.
+/// clip the rectangle so it's all inside the buffer.
+///
+/// \returns `true` if there's any rectangle left.
 bool buffer_clip_rect(TextBuffer *buffer, Rect *r);
 /// Get the font used for this buffer.
 Font *buffer_font(TextBuffer *buffer);
@@ -407,30 +416,38 @@ u8 buffer_tab_width(TextBuffer *buffer);
 bool buffer_indent_with_spaces(TextBuffer *buffer);
 /// returns the number of lines in the buffer.
 u32 buffer_line_count(TextBuffer *buffer);
-/// get line contents. does not include a newline character.
+/// get line contents.
+///
+/// does not include a newline character.
+///
 /// NOTE: this string will be invalidated when the line is edited!!!
 /// only use it briefly!!
 ///
 /// returns an empty string if `line_number` is out of range.
 String32 buffer_get_line(TextBuffer *buffer, u32 line_number);
-/// get line contents. does not include a newline character.
+/// get line contents as UTF-8.
+///
+/// does not include a newline character.
 ///
 /// string must be freed by caller.
 /// returns an empty string if `line_number` is out of range.
 char *buffer_get_line_utf8(TextBuffer *buffer, u32 line_number);
 /// get at most `nchars` characters starting from position `pos`.
+///
 /// returns the number of characters actually available.
-/// you can pass NULL for text if you just want to know how many
+///
+/// you can pass `NULL` for `text` if you just want to know how many
 /// characters *could* be accessed before the end of the file.
 size_t buffer_get_text_at_pos(TextBuffer *buffer, BufferPos pos, char32_t *text, size_t nchars);
 /// returns a UTF-32 string of at most `nchars` code points from `buffer` starting at `pos`
+///
 /// the string should be passed to str32_free.
 String32 buffer_get_str32_text_at_pos(TextBuffer *buffer, BufferPos pos, size_t nchars);
 /// get UTF-8 string at position, up to `nchars` code points (NOT bytes).
 ///
 /// the resulting string should be freed.
 char *buffer_get_utf8_text_at_pos(TextBuffer *buffer, BufferPos pos, size_t nchars);
-/// Puts a UTF-8 string containing the contents of the buffer into out.
+/// Puts a UTF-8 string containing the contents of the buffer into `out`.
 ///
 /// Returns the number of bytes, including a null terminator.
 /// To use this function, first pass NULL for out to get the number of bytes you need to allocate.
@@ -441,30 +458,30 @@ size_t buffer_contents_utf8(TextBuffer *buffer, char *out);
 char *buffer_contents_utf8_alloc(TextBuffer *buffer);
 /// clear contents, undo history, etc. of a buffer
 void buffer_clear(TextBuffer *buffer);
-/// returns the length of the `line_number`th line (0-indexed),
+/// returns the number of characters in the `line_number`th line (0-indexed),
 /// or 0 if `line_number` is out of range.
 u32 buffer_line_len(TextBuffer *buffer, u32 line_number);
-/// returns the number of lines of text in the buffer into *lines (if not NULL),
-/// and the number of columns of text, i.e. the width of the longest column divided by the width of the space character, into *cols (if not NULL)
-void buffer_text_dimensions(TextBuffer *buffer, u32 *lines, u32 *columns);
-/// returns the number of rows of text that can fit in the buffer
+/// returns the length of the longest on-screen line in space widths.
+u32 buffer_column_count(TextBuffer *buffer);
+/// returns the number of lines of text that can fit on screen in the buffer
 float buffer_display_lines(TextBuffer *buffer);
-/// returns the number of columns of text that can fit in the buffer
+/// returns the number of columns of text that can fit on screen in the buffer
 float buffer_display_cols(TextBuffer *buffer);
 /// scroll by deltas (measured in lines and columns)
 void buffer_scroll(TextBuffer *buffer, double dx, double dy);
 /// returns the screen position of the character at the given position in the buffer.
 vec2 buffer_pos_to_pixels(TextBuffer *buffer, BufferPos pos);
 /// convert pixel coordinates to a position in the buffer, selecting the closest character.
-/// returns false if the position is not inside the buffer, but still sets *pos to the closest character.
+///
+/// returns false if the position is not inside the buffer, but still sets `*pos` to the closest character.
 bool buffer_pixels_to_pos(TextBuffer *buffer, vec2 pixel_coords, BufferPos *pos);
 /// scroll to `pos`, scrolling as little as possible while maintaining scrolloff.
 void buffer_scroll_to_pos(TextBuffer *buffer, BufferPos pos);
-/// scroll in such a way that this position is in the center of the screen
+/// scroll in such a way that `pos` is in the center of the buffer's screen rectangle.
 void buffer_scroll_center_pos(TextBuffer *buffer, BufferPos pos);
 /// scroll so that the cursor is on screen
 void buffer_scroll_to_cursor(TextBuffer *buffer);
-/// scroll so that the cursor is in the center of the buffer's rectangle.
+/// scroll so that the cursor is in the center of the buffer's screen rectangle.
 void buffer_center_cursor(TextBuffer *buffer);
 /// returns the number of characters successfully moved by.
 i64 buffer_pos_move_left(TextBuffer *buffer, BufferPos *pos, i64 by);
@@ -506,16 +523,20 @@ i64 buffer_cursor_move_right_words(TextBuffer *buffer, i64 nwords);
 void buffer_cursor_move_to_prev_pos(TextBuffer *buffer);
 /// Get the start and end index of the word at the given position.
 void buffer_word_span_at_pos(TextBuffer *buffer, BufferPos pos, u32 *word_start, u32 *word_end);
-/// Returns a string of word characters (see is32_word) around the position,
-/// or an empty string if neither of the characters to the left and right of the cursor are word characters.
+/// returns a string of word characters (see \ref is32_word) around the position.
+///
+/// returns an empty string if neither of the characters to the left and right of the cursor are word characters.
+//
 /// NOTE: The string is invalidated when the buffer is changed!!!
 /// The return value should NOT be freed.
 String32 buffer_word_at_pos(TextBuffer *buffer, BufferPos pos);
 /// Get the word at the cursor.
+///
 /// NOTE: The string is invalidated when the buffer is changed!!!
 /// The return value should NOT be freed.
 String32 buffer_word_at_cursor(TextBuffer *buffer);
 /// Get a UTF-8 string consisting of the word at the cursor.
+///
 /// The return value should be freed.
 char *buffer_word_at_cursor_utf8(TextBuffer *buffer);
 /// Used for \ref CMD_INCREMENT_NUMBER and \ref CMD_DECREMENT_NUMBER
@@ -603,28 +624,34 @@ void buffer_insert_utf8_at_pos(TextBuffer *buffer, BufferPos pos, const char *ut
 /// Insert UTF-8 text at the cursor, and move the cursor to the end of it.
 void buffer_insert_utf8_at_cursor(TextBuffer *buffer, const char *utf8);
 /// Insert a "tab" at the cursor position, and move the cursor past it.
+///
 /// This inserts spaces if ted is configured to indent with spaces.
 void buffer_insert_tab_at_cursor(TextBuffer *buffer);
 /// Insert a newline at the cursor position.
+///
 /// If `buffer` is a line buffer, this "submits" the buffer.
 /// If not, this auto-indents the next line, and moves the cursor to it.
 void buffer_newline(TextBuffer *buffer);
 /// Delete `nchars` characters after the cursor.
 void buffer_delete_chars_at_cursor(TextBuffer *buffer, i64 nchars);
-/// Delete `nchars` characters before *pos, and set *pos to just before the deleted characters.
-/// Returns the number of characters actually deleted.
+/// Delete `nchars` characters before `*pos`, and set `*pos` to just before the deleted characters.
+///
+/// \returns the number of characters actually deleted.
 i64 buffer_backspace_at_pos(TextBuffer *buffer, BufferPos *pos, i64 nchars);
 /// Delete `nchars` characters before the cursor position, and set the cursor position accordingly.
-/// Returns the number of characters actually deleted.
+///
+/// \returns the number of characters actually deleted.
 i64 buffer_backspace_at_cursor(TextBuffer *buffer, i64 nchars);
 /// Delete `nwords` words after the position.
 void buffer_delete_words_at_pos(TextBuffer *buffer, BufferPos pos, i64 nwords);
 /// Delete `nwords` words after the cursor.
 void buffer_delete_words_at_cursor(TextBuffer *buffer, i64 nwords);
-/// Delete `nwords` words before *pos, and set *pos to just before the deleted words.
+/// Delete `nwords` words before `*pos`, and set `*pos` to just before the deleted words.
+///
 /// Returns the number of words actually deleted.
 void buffer_backspace_words_at_pos(TextBuffer *buffer, BufferPos *pos, i64 nwords);
 /// Delete `nwords` words before the cursor position, and set the cursor position accordingly.
+///
 /// Returns the number of words actually deleted.
 void buffer_backspace_words_at_cursor(TextBuffer *buffer, i64 nwords);
 /// Undo `ntimes` times
@@ -643,17 +670,19 @@ void buffer_copy(TextBuffer *buffer);
 void buffer_cut(TextBuffer *buffer);
 /// Insert the clipboard contents at the cursor position.
 void buffer_paste(TextBuffer *buffer);
-/// Load the file `path`. If `path` is not an absolute path,
-/// this function will fail.
+/// Load the file at absolute path `path`.
 bool buffer_load_file(TextBuffer *buffer, const char *path);
 /// Reloads the file loaded in the buffer.
 void buffer_reload(TextBuffer *buffer);
 /// has this buffer been changed by another program since last save?
 bool buffer_externally_changed(TextBuffer *buffer);
 /// Clear `buffer`, and set its path to `path`.
+///
 /// if `path` is NULL, this will turn `buffer` into an untitled buffer.
 void buffer_new_file(TextBuffer *buffer, const char *path);
-/// Save the buffer to its current filename. This will rewrite the entire file,
+/// Save the buffer to its current filename.
+///
+/// This will rewrite the entire file,
 /// even if there are no unsaved changes.
 bool buffer_save(TextBuffer *buffer);
 /// Save, but with a different path.
@@ -698,7 +727,7 @@ bool buffer_pos_eq(BufferPos p1, BufferPos p2);
 ///
 /// faster than \ref buffer_pos_diff (constant time)
 int buffer_pos_cmp(BufferPos p1, BufferPos p2);
-/// returns "`p2 - p1`", that is, the number of characters between `p1` and `p2`,
+/// returns `p2 - p1`, that is, the number of characters between `p1` and `p2`,
 /// but negative if `p1` comes after `p2`.
 i64 buffer_pos_diff(TextBuffer *buffer, BufferPos p1, BufferPos p2);
 
@@ -735,6 +764,7 @@ void build_check_for_errors(Ted *ted);
 ColorSetting color_setting_from_str(const char *str);
 /// get string corresponding to color setting
 const char *color_setting_to_str(ColorSetting s);
+/// parse color (e.g. `"#ff0000"`)
 Status color_from_str(const char *str, u32 *color);
 /// perform alpha blending with `bg` and `fg`.
 u32 color_blend(u32 bg, u32 fg);
@@ -752,8 +782,8 @@ void command_execute(Ted *ted, Command c, i64 argument);
 void command_execute_string_argument(Ted *ted, Command c, const char *string);
 
 // === config.c ===
-/// returns the best guess for the root directory of the project containing `path`
-/// (which should be an absolute path).
+/// returns the best guess for the root directory of the project containing absolute path `path`.
+///
 /// the return value should be freed.
 char *settings_get_root_dir(Settings *settings, const char *path);
 
@@ -841,7 +871,7 @@ const char *document_link_at_buffer_pos(Ted *ted, BufferPos pos);
 void hover_reset_timer(Ted *ted);
 
 // === ide-rename-symbol.c ===
-/// renname symbol at cursor of `buffer` to `new_name`
+/// rename symbol at cursor of `buffer` to `new_name`
 void rename_symbol_at_cursor(Ted *ted, TextBuffer *buffer, const char *new_name);
 
 // === ide-signature-help.c ===
@@ -887,18 +917,20 @@ void *menu_get_context(Ted *ted);
 bool menu_is_open(Ted *ted, const char *menu_name);
 /// is any menu open?
 bool menu_is_any_open(Ted *ted);
-/// process a :escape command (by default this happens when the escape key is pressed)
+/// process a `:escape` command for the currently open menu
 void menu_escape(Ted *ted);
 /// get rectangle which menu takes up
 Rect menu_rect(Ted *ted);
 
 // === node.c ===
 /// go to the `n`th next tab (e.g. `n=1` goes to the next tab)
+///
 /// going past the end of the tabs will "wrap around" to the first one.
 ///
 /// if `node` is a split, nothing happens.
 void node_tab_next(Ted *ted, Node *node, i32 n);
 /// go to the `n`th previous tab (e.g. `n=1` goes to the previous tab)
+///
 /// going before the first tab will "wrap around" to the last one.
 ///
 /// if `node` is a split, nothing happens.
@@ -925,7 +957,7 @@ u32 node_tab_count(Ted *ted, Node *node);
 /// returns `NULL` if `tab` is out of range.
 TextBuffer *node_tab_get(Ted *ted, Node *node, u32 tab);
 */
-/// returns parent node, or NULL if this is the root node.
+/// returns parent node, or `NULL` if this is the root node.
 Node *node_parent(Ted *ted, Node *node);
 /// join this node with its sibling
 void node_join(Ted *ted, Node *node);
@@ -956,8 +988,6 @@ void session_read(Ted *ted);
 ///
 /// this should be done before loading configs so language-specific settings are recognized properly.
 void syntax_register_language(const LanguageInfo *info);
-/// register ted's built-in languages.
-void syntax_register_builtin_languages(void);
 /// returns `true` if `language` is a valid language ID
 bool language_is_valid(Language language);
 /// read language name from `str`. returns `LANG_NONE` if `str` is invalid.
@@ -966,22 +996,26 @@ Language language_from_str(const char *str);
 const char *language_to_str(Language language);
 /// get the color setting associated with the given syntax highlighting type
 ColorSetting syntax_char_type_to_color_setting(SyntaxCharType t);
-/// returns ')' for '(', '[' for ']', etc., or 0 if c is not a bracket
+/// returns ')' for '(', '[' for ']', etc., or 0 if `c` is not a bracket
 char32_t syntax_matching_bracket(Language lang, char32_t c);
 /// returns true for opening brackets, false for closing brackets/non-brackets
 bool syntax_is_opening_bracket(Language lang, char32_t c);
-/// This is the main syntax highlighting function. It will determine which colors to use for each character.
-/// Rather than returning colors, it returns a character type (e.g. comment) which can be converted to a color.
-/// To highlight multiple lines, start out with a zeroed SyntaxState, and pass a pointer to it each time.
-/// You can set char_types to NULL if you just want to advance the state, and don't care about the character types.
+/// main syntax highlighting function.
+///
+/// determines which colors to use for each character.
+///
+/// To highlight multiple lines, start out with a zeroed \ref SyntaxState, and pass a pointer to it each time.
+/// You can set `char_types` to `NULL` if you just want to advance the state, and don't care about the character types.
 void syntax_highlight(SyntaxState *state, Language lang, const char32_t *line, u32 line_len, SyntaxCharType *char_types);
 
 // === tags.c ===
+/// generate tags file
 void tags_generate(Ted *ted, bool run_in_build_window);
-/// find all tags beginning with the given prefix, returning them into `*out`, writing at most out_size entries.
-/// you may pass NULL for `out`, in which case just the number of matching tags is returned
+/// find all tags beginning with the given prefix, returning them into `out[0..out_size]`.
+///
+/// you can pass NULL for `out`, in which case just the number of matching tags is returned
 /// (still maxing out at `out_size`).
-/// each element in `out` should be freed when you're done with them.
+/// each element in `out` should be freed when you're done with it.
 size_t tags_beginning_with(Ted *ted, const char *prefix, char **out, size_t out_size, bool error_if_tags_does_not_exist);
 /// go to the definition of the given tag
 bool tag_goto(Ted *ted, const char *tag);
@@ -1027,11 +1061,11 @@ void ted_info(Ted *ted, PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRI
 void ted_log(Ted *ted, PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRINTF(2, 3);
 /// set error to "out of memory" message.
 void ted_out_of_mem(Ted *ted);
-/// allocate memory, producing an error message and returning NULL on failure
+/// allocate memory, producing an error message and returning `NULL` on failure
 void *ted_malloc(Ted *ted, size_t size);
-/// allocate memory, producing an error message and returning NULL on failure
+/// allocate memory, producing an error message and returning `NULL` on failure
 void *ted_calloc(Ted *ted, size_t n, size_t size);
-/// allocate memory, producing an error message and returning NULL on failure
+/// allocate memory, producing an error message and returning `NULL` on failure
 void *ted_realloc(Ted *ted, void *p, size_t new_size);
 /// get width of menu (e.g. "open file" menu) in pixels
 float ted_get_menu_width(Ted *ted);
@@ -1039,13 +1073,9 @@ float ted_get_menu_width(Ted *ted);
 /// (i.e. look for it in the local and global data directories),
 /// and return the full path.
 Status ted_get_file(Ted const *ted, const char *name, char *out, size_t outsz);
-/// get full path relative to ted->cwd.
+/// get full path relative to ted working directory.
 void ted_path_full(Ted *ted, const char *relpath, char *abspath, size_t abspath_size);
-/// set ted->active_buffer to something nice
-void ted_reset_active_buffer(Ted *ted);
-/// set ted's error message to the buffer's error.
-void ted_error_from_buffer(Ted *ted, TextBuffer *buffer);
-/// Returns the buffer containing the file at absolute path `path`, or NULL if there is none.
+/// Returns the buffer containing the file at absolute path `path`, or `NULL` if there is none.
 TextBuffer *ted_get_buffer_with_file(Ted *ted, const char *path);
 /// close this buffer, discarding unsaved changes.
 void ted_close_buffer(Ted *ted, TextBuffer *buffer);
@@ -1057,17 +1087,17 @@ bool ted_close_buffer_with_file(Ted *ted, const char *path);
 bool ted_save_all(Ted *ted);
 /// reload all buffers from their files
 void ted_reload_all(Ted *ted);
-/// Load all the fonts ted will use, freeing any previous ones.
-void ted_load_fonts(Ted *ted);
-/// Change ted's font size. Avoid calling this super often since it trashes all current font textures.
+/// Change ted's font size.
+///
+/// Avoid calling this super often since it trashes all current font textures.
 void ted_change_text_size(Ted *ted, float new_size);
-/// Free all of ted's fonts.
-void ted_free_fonts(Ted *ted);
 /// Get likely root directory of project containing `path`.
+///
 /// The returned value should be freed.
 char *ted_get_root_dir_of(Ted *ted, const char *path);
 /// Get the root directory of the project containing the active buffer's file,
 /// or `ted->cwd` if no file is open.
+///
 /// The returned value should be freed.
 char *ted_get_root_dir(Ted *ted);
 /// the settings of the active buffer, or the default settings if there is no active buffer
@@ -1075,27 +1105,31 @@ Settings *ted_active_settings(Ted *ted);
 /// Get the settings for a file at the given path in the given language.
 Settings *ted_get_settings(Ted *ted, const char *path, Language language);
 /// Get LSP which should be used for the given path and language.
+///
 /// If no running LSP server would cover the path and language, a new one is
 /// started if possible.
-/// Returns NULL on failure (e.g. there is no LSP server
+/// Returns `NULL` on failure (e.g. there is no LSP server
 /// specified for the given path and language).
 struct LSP *ted_get_lsp(Ted *ted, const char *path, Language language);
-/// Get the LSP of the active buffer/ted->cwd.
-/// Returns NULL if there is no such server.
+/// Get the LSP of the active buffer or directory.
+///
+/// Returns `NULL` if there is no such server.
 struct LSP *ted_active_lsp(Ted *ted);
-/// get the value of the given color setting, according to `ted_active_settings(ted)`.
+/// get the value of the given color setting, according to \ref ted_active_settings.
 u32 ted_active_color(Ted *ted, ColorSetting color);
 /// open the given file, or switch to it if it's already open.
+///
 /// returns true on success.
 bool ted_open_file(Ted *ted, const char *filename);
 /// create a new buffer for the file `filename`, or open it if it's already open.
-/// if `filename` is NULL, this creates an untitled buffer.
+///
+/// if `filename` is `NULL`, this creates an untitled buffer.
+///
 /// returns true on success.
 bool ted_new_file(Ted *ted, const char *filename);
 /// save all changes to all buffers with unsaved changes.
 bool ted_save_all(Ted *ted);
-/// sets the active buffer to this buffer, and updates active_node, etc. accordingly
-/// you can pass NULL to buffer to make it so no buffer is active.
+/// sets the active buffer to this buffer
 void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer);
 /// switch to this node
 void ted_node_switch(Ted *ted, Node *node);
@@ -1104,7 +1138,8 @@ void ted_reload_configs(Ted *ted);
 /// handle a key press
 void ted_press_key(Ted *ted, i32 keycode, u32 modifier);
 /// get the buffer and buffer position where the mouse is.
-/// returns false if the mouse is not in a buffer.
+///
+/// returns `false` if the mouse is not in a buffer.
 Status ted_get_mouse_buffer_pos(Ted *ted, TextBuffer **pbuffer, BufferPos *ppos);
 /// make the cursor red for a bit to indicate an error (e.g. no autocompletions)
 void ted_flash_error_cursor(Ted *ted);
@@ -1112,9 +1147,11 @@ void ted_flash_error_cursor(Ted *ted);
 float ted_line_buffer_height(Ted *ted);
 /// add a \ref EditNotify callback which will be called whenever `buffer` is edited.
 ///
-/// returns an ID which can be used with \ref ted_remove_edit_notify
+/// \returns an ID which can be used with \ref ted_remove_edit_notify
 EditNotifyID ted_add_edit_notify(Ted *ted, EditNotify notify, void *context);
-/// remove edit notify callback. if `id` is zero or invalid, no action is taken.
+/// remove edit notify callback.
+///
+/// if `id` is zero or invalid, no action is taken.
 void ted_remove_edit_notify(Ted *ted, EditNotifyID id);
 
 // === ui.c ===
@@ -1124,18 +1161,18 @@ void selector_up(Ted *ted, Selector *s, i64 n);
 void selector_down(Ted *ted, Selector *s, i64 n);
 /// sort entries alphabetically
 void selector_sort_entries_by_name(Selector *s);
-/// returns a null-terminated UTF-8 string of the entry selected, or NULL if none was.
+/// returns a null-terminated UTF-8 string of the entry selected, or `NULL` if none was.
 ///
-/// also, sel->cursor will be set to the index of the entry, even if the mouse was used.
-/// you should call free() on the return value.
+/// also, the cursor will be set to the index of the entry, even if the mouse was used.
+/// you should free the return value.
 char *selector_update(Ted *ted, Selector *s);
 /// render selector
 ///
 /// NOTE: also renders the line buffer
 void selector_render(Ted *ted, Selector *s);
-/// free resources uesd by file selecor
+/// free resources used by file selector
 void file_selector_free(FileSelector *fs);
-/// returns the name of the selected file, or NULL if none was selected.
+/// returns the name of the selected file, or `NULL` if none was selected.
 ///
 /// the returned pointer should be freed.
 char *file_selector_update(Ted *ted, FileSelector *fs);
@@ -1145,13 +1182,13 @@ void file_selector_render(Ted *ted, FileSelector *fs);
 vec2 button_get_size(Ted *ted, const char *text);
 /// render button
 void button_render(Ted *ted, Rect button, const char *text, u32 color);
-/// returns true if the button was clicked on.
+/// returns `true` if the button was clicked on.
 bool button_update(Ted *ted, Rect button);
-/// returns selected option, or POPUP_NONE if none was selected
+/// returns selected option, or 0 if none was selected
 PopupOption popup_update(Ted *ted, u32 options);
 /// render popup menu.
 ///
-/// `options` should be a bitwise or of the POPUP_* constants.
+/// `options` should be a bitwise-or of the `POPUP_*` constants.
 void popup_render(Ted *ted, u32 options, const char *title, const char *body);
 /// update and render checkbox
 vec2 checkbox_frame(Ted *ted, bool *value, const char *label, vec2 pos);

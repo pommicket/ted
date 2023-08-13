@@ -1,6 +1,7 @@
 /*
 TODO:
 - fix find
+- fix ask-reload menu (clicking "no" will probably do nothing)
 - public Node API
 - public Selector/FileSelector API
 - public Settings API
@@ -299,7 +300,7 @@ int main(int argc, char **argv) {
 	
 	command_init();
 	color_init();
-	syntax_register_builtin_languages();
+	syntax_init();
 	
 	// read command-line arguments
 	int dash_dash = argc;
