@@ -513,6 +513,8 @@ bool buffer_handle_click(Ted *ted, TextBuffer *buffer, vec2 click, u8 times);
 /// currently needed to avoid bad positioning when a buffer is created
 /// and buffer_center_cursor is called immediately after
 void buffer_center_cursor_next_frame(TextBuffer *buffer);
+/// perform a series of checks to make sure the buffer doesn't have any invalid values
+void buffer_check_valid(TextBuffer *buffer);
 
 // === build.c ===
 void build_frame(Ted *ted, float x1, float y1, float x2, float y2);

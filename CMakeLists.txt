@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.5)
 project(ted)
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 	set(SOURCES buffer.c build.c colors.c command.c config.c find.c gl.c ide-autocomplete.c

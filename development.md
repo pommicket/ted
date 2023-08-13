@@ -106,6 +106,12 @@ At the top of `syntax.c` there are a bunch of `SYNTAX_STATE_*` constants.
 Create a new enum for your language, and add any state that needs to be remembered across lines.
 Then implement the `syntax_highlight_<language>` function similar to the other ones.
 
+## Glossary
+
+- **buffer** - a text document
+- **column** - one space width
+- **line buffer** - a single-line buffer, e.g. the file name input in the "open file" menu
+
 ## Releasing
 
 When releasing a new version of `ted`:

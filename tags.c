@@ -3,24 +3,23 @@
 #include "ted-internal.h"
 #include "pcre-inc.h"
 
-static const char *tags_filename(Ted *ted, bool error_if_does_not_exist) {
-	change_directory(ted->cwd);
-	const char *filename = "tags";
-	ted_path_full(ted, ".", ted->tags_dir, sizeof ted->tags_dir);
-	if (!fs_file_exists(filename)) {
-		filename = "../tags";
-		ted_path_full(ted, "..", ted->tags_dir, sizeof ted->tags_dir);
-		if (!fs_file_exists(filename)) {
-			filename = "../../tags";
-			ted_path_full(ted, "../..", ted->tags_dir, sizeof ted->tags_dir);
-			if (!fs_file_exists(filename)) {
-				if (error_if_does_not_exist)
-					ted_error(ted, "No tags file. Try running ctags.");
-				filename = NULL;
-			}
-		}
+static bool get_tags_dir(Ted *ted, bool error_if_does_not_exist) {
+	char prev_dir[TED_PATH_MAX];
+	*prev_dir = '\0';
+	strbuf_cpy(ted->tags_dir, ted->cwd);
+	while (!streq(prev_dir, ted->tags_dir)) {
+		strbuf_cpy(prev_dir, ted->tags_dir);
+		char path[TED_PATH_MAX];
+		path_full(ted->tags_dir, "tags", path, sizeof path);
+		if (fs_file_exists(path))
+			return true;
+		
+		path_full(ted->tags_dir, "..", path, sizeof path);
+		strbuf_cpy(ted->tags_dir, path);
 	}
-	return filename;
+	if (error_if_does_not_exist)
+		ted_error(ted, "No tags file. Try running ctags.");
+	return false;
 }
 
 // is this a file we can generate tags for?
@@ -99,19 +98,22 @@ static void tags_generate_at_dir(Ted *ted, bool run_in_build_window, const char 
 
 // generate/re-generate tags.
 void tags_generate(Ted *ted, bool run_in_build_window) {
-	const char *filename = tags_filename(ted, false);
-	if (!filename) {
+	if (!get_tags_dir(ted, false)) {
 		char *root = ted_get_root_dir(ted);
 		strcpy(ted->tags_dir, root);
 		free(root);
 	}
-	change_directory(ted->tags_dir);
-	strcpy(ted->build_dir, ted->tags_dir);
-	remove("tags"); // delete old tags file
+	build_set_working_directory(ted, ted->tags_dir);
+	
+	{
+		char path[TED_PATH_MAX];
+		path_full(ted->tags_dir, "tags", path, sizeof path);
+		remove(path); // delete old tags file
+	}
+	
 	if (run_in_build_window) build_queue_start(ted);
 	tags_generate_at_dir(ted, run_in_build_window, ted->tags_dir, 0);
 	if (run_in_build_window) build_queue_finish(ted);
-	change_directory(ted->cwd);
 }
 
 static int tag_try(FILE *fp, const char *tag) {
@@ -140,8 +142,10 @@ static int tag_try(FILE *fp, const char *tag) {
 
 size_t tags_beginning_with(Ted *ted, const char *prefix, char **out, size_t out_size, bool error_if_tags_does_not_exist) {
 	assert(out_size);
-	const char *tags_name = tags_filename(ted, error_if_tags_does_not_exist);
-	if (!tags_name) return 0;
+	if (!get_tags_dir(ted, error_if_tags_does_not_exist))
+		return 0;
+	char tags_name[TED_PATH_MAX];
+	path_full(ted->tags_dir, "tags", tags_name, sizeof tags_name);
 	FILE *file = fopen(tags_name, "rb");
 	if (!file) return 0;
 	
@@ -200,13 +204,14 @@ size_t tags_beginning_with(Ted *ted, const char *prefix, char **out, size_t out_
 
 // returns true if the tag exists.
 bool tag_goto(Ted *ted, const char *tag) {
-	bool already_regenerated_tags;
-	already_regenerated_tags = false;
+	bool already_regenerated_tags = false;
 top:;
 	const Settings *settings = ted_active_settings(ted);
+	if (!get_tags_dir(ted, true))
+		return false;
+	char tags_name[TED_PATH_MAX];
+	path_full(ted->tags_dir, "tags", tags_name, sizeof tags_name);
 	
-	const char *tags_name = tags_filename(ted, true);
-	if (!tags_name) return false;
 	FILE *file = fopen(tags_name, "rb");
 	if (!file) return false;
 	
@@ -370,9 +375,10 @@ top:;
 
 SymbolInfo *tags_get_symbols(Ted *ted) {
 	// read tags file and extract tag names
-	const char *filename = tags_filename(ted, true);
-	if (!filename) return NULL;
-	FILE *file = fopen(filename, "rb");
+	if (!get_tags_dir(ted, true)) return NULL;
+	char tags_name[TED_PATH_MAX];
+	path_full(ted->tags_dir, "tags", tags_name, sizeof tags_name);
+	FILE *file = fopen(tags_name, "rb");
 	if (!file) return NULL;
 	
 	SymbolInfo *infos = NULL;

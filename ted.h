@@ -22,15 +22,12 @@ extern "C" {
 #include "command.h"
 
 /// Version number
-#define TED_VERSION "2.4.3"
+#define TED_VERSION "3.0"
 /// Maximum path size ted handles.
 #define TED_PATH_MAX 1024
 /// Config filename
 #define TED_CFG "ted.cfg"
 
-
-// If you are adding new languages, DO NOT change the constant values
-// of the previous languages. It will mess up config files which use :set-language!
 enum {
 	/// avoid using this and use LANG_TEXT instead.
 	LANG_NONE = 0,
@@ -87,7 +84,6 @@ typedef u32 SyntaxState;
 
 /// types of syntax highlighting
 enum SyntaxCharType {
-	// do not change these numbers as it will break backwards compatibility with plugins
 	SYNTAX_NORMAL = 0,
 	SYNTAX_KEYWORD = 1,
 	SYNTAX_BUILTIN = 2,
@@ -143,8 +139,6 @@ typedef struct {
 	/// line number (0-indexed)
 	u32 line;
 	/// UTF-32 index of character in line
-	///
-	/// (not the same as column, since a tab is `settings->tab_width` columns)
 	u32 index;
 } BufferPos;
 
@@ -155,9 +149,9 @@ enum {
 };
 /// see \ref KEY_COMBO
 enum {
-	KEY_MODIFIER_CTRL_BIT,
-	KEY_MODIFIER_SHIFT_BIT,
-	KEY_MODIFIER_ALT_BIT
+	KEY_MODIFIER_CTRL_BIT = 0,
+	KEY_MODIFIER_SHIFT_BIT = 1,
+	KEY_MODIFIER_ALT_BIT = 2,
 };
 /// see \ref KEY_COMBO
 #define KEY_MODIFIER_CTRL ((u32)1<<KEY_MODIFIER_CTRL_BIT)
@@ -193,15 +187,15 @@ enum {
 
 /// determines which thing associated with a symbol to go to
 typedef enum {
-	GOTO_DECLARATION,
-	GOTO_DEFINITION,
-	GOTO_IMPLEMENTATION,
-	GOTO_TYPE_DEFINITION,
+	GOTO_DECLARATION = 0,
+	GOTO_DEFINITION = 1,
+	GOTO_IMPLEMENTATION = 2,
+	GOTO_TYPE_DEFINITION = 3,
 } GotoType;
 
 /// options for a pop-up menu
 typedef enum {
-	POPUP_NONE,
+	POPUP_NONE = 0,
 	/// "Yes" button
 	POPUP_YES = 1<<1,
 	/// "No" button
@@ -345,9 +339,11 @@ bool buffer_selection_pos(TextBuffer *buffer, BufferPos *pos);
 ///
 /// This string can be freed if the buffer is saved under a different name or closed, so don't keep it around for long.
 const char *buffer_get_path(TextBuffer *buffer);
-/// clear undo and redo history
+/// clear undo/redo history
 void buffer_clear_undo_redo(TextBuffer *buffer);
 /// set whether undo history should be kept
+///
+/// if `enabled` is false, any previous undo/redo history will be cleared.
 void buffer_set_undo_enabled(TextBuffer *buffer, bool enabled);
 /// set manual language override for buffer.
 ///
@@ -375,11 +371,11 @@ bool buffer_is_line_buffer(TextBuffer *buffer);
 bool line_buffer_is_submitted(TextBuffer *buffer);
 /// clear submission status of line buffer.
 void line_buffer_clear_submitted(TextBuffer *buffer);
-/// returns the character after position pos, or 0 if pos is invalid
+/// returns the character after position `pos`, or 0 if `pos` is invalid or at the end of a line
 char32_t buffer_char_at_pos(TextBuffer *buffer, BufferPos pos);
-/// returns the character after the cursor
+/// returns the character after the cursor, or 0 if the cursor is at the end of a line
 char32_t buffer_char_at_cursor(TextBuffer *buffer);
-/// returns the character before position pos, or 0 if pos is invalid or at the start of a line
+/// returns the character before position `pos`, or 0 if pos is invalid or at the start of a line
 char32_t buffer_char_before_pos(TextBuffer *buffer, BufferPos pos);
 /// returns the character to the left of the cursor, or 0 if the cursor at the start of the line.
 char32_t buffer_char_before_cursor(TextBuffer *buffer);
@@ -431,17 +427,18 @@ size_t buffer_get_text_at_pos(TextBuffer *buffer, BufferPos pos, char32_t *text,
 /// the string should be passed to str32_free.
 String32 buffer_get_str32_text_at_pos(TextBuffer *buffer, BufferPos pos, size_t nchars);
 /// get UTF-8 string at position, up to `nchars` code points (NOT bytes).
+///
 /// the resulting string should be freed.
 char *buffer_get_utf8_text_at_pos(TextBuffer *buffer, BufferPos pos, size_t nchars);
 /// Puts a UTF-8 string containing the contents of the buffer into out.
+///
 /// Returns the number of bytes, including a null terminator.
 /// To use this function, first pass NULL for out to get the number of bytes you need to allocate.
 size_t buffer_contents_utf8(TextBuffer *buffer, char *out);
 /// Returns a UTF-8 string containing the contents of `buffer`.
-/// The return value should be freed..
+///
+/// The return value should be freed.
 char *buffer_contents_utf8_alloc(TextBuffer *buffer);
-/// perform a series of checks to make sure the buffer doesn't have any invalid values
-void buffer_check_valid(TextBuffer *buffer);
 /// clear contents, undo history, etc. of a buffer
 void buffer_clear(TextBuffer *buffer);
 /// returns the length of the `line_number`th line (0-indexed),
@@ -454,7 +451,7 @@ void buffer_text_dimensions(TextBuffer *buffer, u32 *lines, u32 *columns);
 float buffer_display_lines(TextBuffer *buffer);
 /// returns the number of columns of text that can fit in the buffer
 float buffer_display_cols(TextBuffer *buffer);
-/// scroll by deltas
+/// scroll by deltas (measured in lines and columns)
 void buffer_scroll(TextBuffer *buffer, double dx, double dy);
 /// returns the screen position of the character at the given position in the buffer.
 vec2 buffer_pos_to_pixels(TextBuffer *buffer, BufferPos pos);
@@ -527,7 +524,7 @@ char *buffer_word_at_cursor_utf8(TextBuffer *buffer);
 /// returns false if there was no number at `*ppos`.
 bool buffer_change_number_at_pos(TextBuffer *buffer, BufferPos *ppos, i64 by);
 /// Used for \ref CMD_INCREMENT_NUMBER and \ref CMD_DECREMENT_NUMBER
-void buffer_change_number_at_cursor(TextBuffer *buffer, i64 argument);
+bool buffer_change_number_at_cursor(TextBuffer *buffer, i64 argument);
 /// Buffer position corresponding to the start of line `line` (0-indexed).
 BufferPos buffer_pos_start_of_line(TextBuffer *buffer, u32 line);
 /// Buffer position corresponding to the end of line `line` (0-indexed).
@@ -592,7 +589,8 @@ void buffer_select_page_down(TextBuffer *buffer, i64 npages);
 /// Delete `nchars` characters starting from `pos`.
 void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars);
 /// Delete characters between the two positions.
-/// The order of `p1` and `p2` is irrelevant.
+///
+/// The order of `p1` and `p2` doesn't matter.
 i64 buffer_delete_chars_between(TextBuffer *buffer, BufferPos p1, BufferPos p2);
 /// Delete current selection.
 i64 buffer_delete_selection(TextBuffer *buffer);
@@ -712,12 +710,16 @@ void build_queue_start(Ted *ted);
 /// add a command to the build queue. call \ref build_queue_start before this.
 void build_queue_command(Ted *ted, const char *command);
 /// call this after calling \ref build_queue_start, \ref build_queue_command.
-/// make sure you set `ted->build_dir` before running this!
+///
+/// make sure you call \ref build_set_working_directory before calling this!
 void build_queue_finish(Ted *ted);
 /// set up the build output buffer.
 void build_setup_buffer(Ted *ted);
+/// set directory for build commands.
+void build_set_working_directory(Ted *ted, const char *dir);
 /// run a single command in the build window.
-/// make sure you set `ted->build_dir` before running this!
+///
+/// make sure you call \ref build_set_working_directory before calling this!
 void build_start_with_command(Ted *ted, const char *command);
 /// figure out which build command to run, and run it.
 void build_start(Ted *ted);

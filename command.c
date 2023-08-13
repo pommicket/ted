@@ -653,7 +653,7 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 	case CMD_SHELL: {
 		const char *str = argument_str;
 		if (str) {
-			strbuf_cpy(ted->build_dir, ted->cwd);
+			build_set_working_directory(ted, ted->cwd);
 			build_start_with_command(ted, str);
 		} else {
 			menu_open(ted, MENU_SHELL);

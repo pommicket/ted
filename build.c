@@ -50,11 +50,12 @@ static bool build_run_next_command_in_queue(Ted *ted) {
 		return false;
 	assert(!ted->build_process);
 	assert(*ted->build_dir);
-	change_directory(ted->build_dir);
 	char *command = ted->build_queue[0];
 	arr_remove(ted->build_queue, 0);
 	if (ted_save_all(ted)) {
-		ted->build_process = process_run(command);
+		ProcessSettings settings = {0};
+		settings.working_directory = ted->build_dir;
+		ted->build_process = process_run_ex(command, &settings);
 		const char *error = process_geterr(ted->build_process);
 		if (!error) {
 			ted->building = true;
@@ -90,6 +91,11 @@ void build_queue_finish(Ted *ted) {
 	build_run_next_command_in_queue(ted); // run the first command
 }
 
+void build_set_working_directory(Ted *ted, const char *dir) {
+	assert(strlen(dir) < TED_PATH_MAX - 1);
+	strbuf_cpy(ted->build_dir, dir);
+}
+
 void build_start_with_command(Ted *ted, const char *command) {
 	build_queue_start(ted);
 	build_queue_command(ted, command);
@@ -98,27 +104,39 @@ void build_start_with_command(Ted *ted, const char *command) {
 
 void build_start(Ted *ted) {
 	Settings *settings = ted_active_settings(ted);
-	char *command = settings->build_command;
-	char *root = ted_get_root_dir(ted);
-	strbuf_cpy(ted->build_dir, root);
+	const char *command = settings->build_command;
+	
+	{
+		char *root = ted_get_root_dir(ted);
+		build_set_working_directory(ted, root);
+		free(root);
+	}
+	
 	if (*command == 0) {
 		command = settings->build_default_command;
-		change_directory(root);
-	
-	#if _WIN32
-		if (fs_file_exists("make.bat")) {
-			command = "make.bat";
-		} else
-	#endif
-		if (fs_file_exists("Cargo.toml")) {
-			command = "cargo build";
-		} else if (fs_file_exists("Makefile")) {
-			command = "make -j16";
-		} else if (fs_file_exists("go.mod")) {
-			command = "go build";
+		typedef struct {
+			const char *filename;
+			const char *command;
+		} Assoc;
+		
+		Assoc associations[] = {
+		#if _WIN32
+			{"make.bat", "make.bat"},
+		#endif
+			{"Cargo.toml", "cargo build"},
+			{"Makefile", "make -j16"},
+			{"go.mod", "go build"},
+		};
+		for (size_t i = 0; i < arr_count(associations); ++i) {
+			Assoc *assoc = &associations[i];
+			char path[TED_PATH_MAX];
+			path_full(ted->build_dir, assoc->filename, path, sizeof path);
+			if (fs_file_exists(path)) {
+				command = assoc->command;
+				break;
+			}
 		}
 	}
-	free(root);
 	if (*command)
 		build_start_with_command(ted, command);
 }
@@ -209,7 +227,6 @@ static bool is_source_path(char32_t c) {
 		|| strchr(allowed_ascii_symbols_in_path, (char)c);
 }
 
-// make sure you set ted->build_dir before running this!
 void build_check_for_errors(Ted *ted) {
 	const Settings *settings = ted_active_settings(ted);
 	

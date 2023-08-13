@@ -3,9 +3,11 @@ TODO:
 - fix find
 - public Node API
 - public Selector/FileSelector API
+- public Settings API
 
 FUTURE FEATURES:
 - autodetect indentation (tabs vs spaces)
+- custom file/build command associations
 - config variables
 - bind key to series of commands
    - convert macro to command list

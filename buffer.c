@@ -229,6 +229,8 @@ u32 buffer_last_line_on_screen(TextBuffer *buffer) {
 
 void buffer_set_undo_enabled(TextBuffer *buffer, bool enabled) {
 	buffer->store_undo_events = enabled;
+	if (!enabled)
+		buffer_clear_undo_redo(buffer);
 }
 
 Rect buffer_rect(TextBuffer *buffer) {
@@ -2234,10 +2236,11 @@ bool buffer_change_number_at_pos(TextBuffer *buffer, BufferPos *ppos, i64 by) {
 	return ret;
 }
 
-void buffer_change_number_at_cursor(TextBuffer *buffer, i64 by) {
+bool buffer_change_number_at_cursor(TextBuffer *buffer, i64 by) {
 	buffer_start_edit_chain(buffer);
-	buffer_change_number_at_pos(buffer, &buffer->cursor_pos, by);
+	bool ret = buffer_change_number_at_pos(buffer, &buffer->cursor_pos, by);
 	buffer_end_edit_chain(buffer);
+	return ret;
 }
 
 // decrease the number of lines in the buffer.

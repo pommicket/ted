@@ -514,7 +514,7 @@ static void shell_menu_update(Ted *ted) {
 			arr_add(ted->shell_history, command);
 		}
 		menu_close(ted);
-		strbuf_cpy(ted->build_dir, ted->cwd);
+		build_set_working_directory(ted, ted->cwd);
 		build_start_with_command(ted, command);
 	}
 }

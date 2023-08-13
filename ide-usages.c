@@ -124,10 +124,10 @@ void usages_process_lsp_response(Ted *ted, const LSPResponse *response) {
 			fclose(last_file);
 		buffer_set_view_only(buffer, true);
 		
-		// the build_dir doesn't really matter since we're using absolute paths
+		// the build directory doesn't really matter since we're using absolute paths
 		// but might as well set it to something reasonable.
 		char *root = ted_get_root_dir(ted);
-		strbuf_cpy(ted->build_dir, root);
+		build_set_working_directory(ted, root);
 		free(root);
 		
 		build_check_for_errors(ted);
