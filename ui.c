@@ -7,7 +7,99 @@
 #include <unistd.h>
 #endif
 
+struct Selector {
+	SelectorEntry *entries;
+	Rect bounds;
+	u32 cursor;
+	float scroll;
+	bool enable_cursor;
+};
+
+struct FileSelector {
+	char title[32];
+	Selector sel;
+	Rect bounds;
+	char cwd[TED_PATH_MAX];
+	/// indicates that this is for creating files, not opening files
+	bool create_menu;
+};
+
 static Status file_selector_cd_(Ted *ted, FileSelector *fs, const char *path, int symlink_depth);
+
+static void selector_init(Selector *s) {
+	s->enable_cursor = true;
+}
+
+Selector *selector_new(void) {
+	Selector *s = calloc(1, sizeof *s);
+	selector_init(s);
+	return s;
+}
+
+void selector_free(Selector *s) {
+	selector_clear(s);
+	free(s);
+}
+
+void selector_clear_entries(Selector *s) {
+	arr_foreach_ptr(s->entries, SelectorEntry, e) {
+		free((void *)e->name);
+		free((void *)e->detail);
+	}
+	arr_clear(s->entries);
+}
+
+void selector_clear(Selector *s) {
+	selector_clear_entries(s);
+	s->scroll = 0;
+	s->cursor = 0;
+}
+
+void selector_set_cursor(Selector *s, u32 pos) {
+	s->cursor = pos;
+}
+
+u32 selector_get_cursor(Selector *s) {
+	return s->cursor;
+}
+
+Status selector_get_entry(Selector *s, u32 index, SelectorEntry *entry) {
+	if (index >= arr_len(s->entries))
+		return false;
+	*entry = s->entries[index];
+	return true;
+}
+
+void selector_set_bounds(Selector *s, Rect bounds) {
+	s->bounds = bounds;
+}
+
+Status selector_get_cursor_entry(Selector *s, SelectorEntry *entry) {
+	return selector_get_entry(s, s->cursor, entry);
+}
+
+FileSelector *file_selector_new(void) {
+	FileSelector *s = calloc(1, sizeof *s);
+	selector_init(&s->sel);
+	return s;
+}
+
+void file_selector_set_create(FileSelector *s, bool create) {
+	s->create_menu = create;
+}
+
+void file_selector_free(FileSelector *s) {
+	file_selector_clear(s);
+	free(s);
+}
+
+void file_selector_set_bounds(FileSelector *s, Rect bounds) {
+	s->bounds = bounds;
+}
+
+void file_selector_set_title(FileSelector *s, const char *title) {
+	strbuf_cpy(s->title, title);
+}
 
 static float selector_entries_start_y(Ted *ted, const Selector *s) {
 	float padding = ted_active_settings(ted)->padding;
@@ -24,7 +116,7 @@ static u32 selector_n_display_entries(Ted *ted, const Selector *s) {
 }
 
 static void selector_clamp_scroll(Ted *ted, Selector *s) {
-	float max_scroll = (float)s->n_entries - (float)selector_n_display_entries(ted, s);
+	float max_scroll = (float)arr_len(s->entries) - (float)selector_n_display_entries(ted, s);
 	if (max_scroll < 0) max_scroll = 0;
 	s->scroll = clampf(s->scroll, 0, max_scroll);
 }
@@ -51,11 +143,11 @@ static bool selector_entry_pos(Ted *ted, const Selector *s, u32 i, Rect *r) {
 }
 
 void selector_up(Ted *ted, Selector *s, i64 n) {
-	if (!s->enable_cursor || s->n_entries == 0) {
+	if (!s->enable_cursor || arr_len(s->entries) == 0) {
 		// can't do anything
 		return;
 	}
-	s->cursor = (u32)mod_i64(s->cursor - n, s->n_entries);
+	s->cursor = (u32)mod_i64(s->cursor - n, arr_len(s->entries));
 	selector_scroll_to_cursor(ted, s);
 }
 
@@ -69,7 +161,7 @@ static int selectory_entry_cmp_name(const void *av, const void *bv) {
 }
 
 void selector_sort_entries_by_name(Selector *s) {
-	qsort(s->entries, s->n_entries, sizeof *s->entries, selectory_entry_cmp_name);
+	qsort(s->entries, arr_len(s->entries), sizeof *s->entries, selectory_entry_cmp_name);
 }
 
 char *selector_update(Ted *ted, Selector *s) {
@@ -77,7 +169,7 @@ char *selector_update(Ted *ted, Selector *s) {
 	TextBuffer *line_buffer = ted->line_buffer;
 
 	ted->selector_open = s;
-	for (u32 i = 0; i < s->n_entries; ++i) {
+	for (u32 i = 0; i < arr_len(s->entries); ++i) {
 		// check if this entry was clicked on
 		Rect entry_rect;
 		if (selector_entry_pos(ted, s, i, &entry_rect)) {
@@ -95,7 +187,7 @@ char *selector_update(Ted *ted, Selector *s) {
 		if (!ret) {
 			if (s->enable_cursor) {
 				// select this option
-				if (s->cursor < s->n_entries)
+				if (s->cursor < arr_len(s->entries))
 					ret = str_dup(s->entries[s->cursor].name);
 
 			} else {
@@ -114,7 +206,6 @@ char *selector_update(Ted *ted, Selector *s) {
 
 void selector_render(Ted *ted, Selector *s) {
 	const Settings *settings = ted_active_settings(ted);
-	const u32 *colors = settings->colors;
 	Font *font = ted->font;
 	float padding = settings->padding;
 
@@ -123,24 +214,25 @@ void selector_render(Ted *ted, Selector *s) {
 	float x1, y1, x2, y2;
 	rect_coords(bounds, &x1, &y1, &x2, &y2);
 
-	for (u32 i = 0; i < s->n_entries; ++i) {
+	for (u32 i = 0; i < arr_len(s->entries); ++i) {
 		// highlight entry user is hovering over/selecting
 		Rect entry_rect;
 		if (selector_entry_pos(ted, s, i, &entry_rect)) {
 			rect_clip_to_rect(&entry_rect, bounds);
 			if (rect_contains_point(entry_rect, ted->mouse_pos) || (s->enable_cursor && s->cursor == i)) {
 				// highlight it
-				gl_geometry_rect(entry_rect, colors[COLOR_MENU_HL]);
+				gl_geometry_rect(entry_rect, settings_color(settings, COLOR_MENU_HL));
 			}
 		}
 	}
 	gl_geometry_draw();
 
-	// search buffer
-	float line_buffer_height = ted_line_buffer_height(ted);
-	buffer_render(ted->line_buffer, rect4(x1, y1, x2, y1 + line_buffer_height));
-	y1 += line_buffer_height;
-		
+	{
+		float line_buffer_height = ted_line_buffer_height(ted);
+		buffer_render(ted->line_buffer, rect4(x1, y1, x2, y1 + line_buffer_height));
+		y1 += line_buffer_height;
+	}
+	
 	TextRenderState text_state = text_render_state_default;
 	text_state.min_x = x1;
 	text_state.max_x = x2;
@@ -149,8 +241,8 @@ void selector_render(Ted *ted, Selector *s) {
 	text_state.render = true;
 
 	// render entries themselves
-	SelectorEntry *entries = s->entries;
-	for (u32 i = 0; i < s->n_entries; ++i) {
+	SelectorEntry *const entries = s->entries;
+	for (u32 i = 0; i < arr_len(entries); ++i) {
 		Rect r;
 		if (selector_entry_pos(ted, s, i, &r)) {
 			SelectorEntry *entry = &entries[i];
@@ -158,7 +250,7 @@ void selector_render(Ted *ted, Selector *s) {
 			text_state.x = x; text_state.y = y;
 			
 			// draw name
-			rgba_u32_to_floats(entry->color, text_state.color);
+			settings_color_floats(settings, entry->color ? entry->color : COLOR_TEXT, text_state.color);
 			text_state_break_kerning(&text_state);
 			text_utf8_with_state(font, &text_state, entry->name);
 			
@@ -168,7 +260,7 @@ void selector_render(Ted *ted, Selector *s) {
 				TextRenderState detail_state = text_state;
 				detail_state.x = maxd(text_state.x + 2 * padding, x2 - detail_size);
 				
-				rgba_u32_to_floats(colors[COLOR_COMMENT], detail_state.color);
+				settings_color_floats(settings, COLOR_COMMENT, detail_state.color);
 				text_utf8_with_state(font, &detail_state, entry->detail);
 			}
 		}
@@ -176,45 +268,21 @@ void selector_render(Ted *ted, Selector *s) {
 	text_render(font);
 }
 
-
-// clear the entries in the file selector
-static void file_selector_clear_entries(FileSelector *fs) {
-	for (u32 i = 0; i < fs->n_entries; ++i) {
-		free(fs->entries[i].name);
-		free(fs->entries[i].path);
-	}
-	free(fs->entries);
-	arr_free(fs->sel.entries);
-	fs->entries = NULL;
-	fs->n_entries = fs->sel.n_entries = 0;
-}
-
-void file_selector_free(FileSelector *fs) {
-	file_selector_clear_entries(fs);
+void file_selector_clear(FileSelector *fs) {
+	selector_clear(&fs->sel);
 	memset(fs, 0, sizeof *fs);
 }
 
-static int qsort_file_entry_cmp(void *search_termv, const void *av, const void *bv) {
-	const char *search_term = search_termv;
-	const FileEntry *a = av, *b = bv;
+static int file_selector_entry_cmp(void *context, const SelectorEntry *a, const SelectorEntry *b) {
+	(void)context;
+	FsType a_type = (FsType)a->userdata, b_type = (FsType)b->userdata;
 	// put directories first
-	if (a->type == FS_DIRECTORY && b->type != FS_DIRECTORY) {
+	if (a_type == FS_DIRECTORY && b_type != FS_DIRECTORY) {
 		return -1;
 	}
-	if (a->type != FS_DIRECTORY && b->type == FS_DIRECTORY) {
+	if (a_type != FS_DIRECTORY && b_type == FS_DIRECTORY) {
 		return +1;
 	}
-	if (search_term) {
-		bool a_prefix = str_has_prefix(a->name, search_term);
-		bool b_prefix = str_has_prefix(b->name, search_term);
-		if (a_prefix && !b_prefix) {
-			return -1;
-		}
-		if (b_prefix && !a_prefix) {
-			return +1;
-		}
-	}
-	
 	return strcmp_case_insensitive(a->name, b->name);
 }
 
@@ -335,6 +403,18 @@ static bool file_selector_cd(Ted *ted, FileSelector *fs, const char *path) {
 	return file_selector_cd_(ted, fs, path, 0);
 }
 
+static ColorSetting color_setting_for_file_type(FsType type) {
+	switch (type) {
+        case FS_FILE: return COLOR_TEXT;
+        case FS_DIRECTORY: return COLOR_TEXT_FOLDER;
+        default: return COLOR_TEXT_OTHER;
+	}
+}
+
+void selector_sort_entries(Selector *s, int (*compar)(void *context, const SelectorEntry *e1, const SelectorEntry *e2), void *context) {
+	qsort_with_context(s->entries, arr_len(s->entries), sizeof *s->entries, (int (*) (void *, const void *, const void *))compar, context);
+}
+
 char *file_selector_update(Ted *ted, FileSelector *fs) {
 	TextBuffer *line_buffer = ted->line_buffer;
 	String32 search_term32 = buffer_get_line(line_buffer, 0);
@@ -412,7 +492,8 @@ char *file_selector_update(Ted *ted, FileSelector *fs) {
 	}
 	
 	// free previous entries
-	file_selector_clear_entries(fs);
+	selector_clear_entries(&fs->sel);
+	
 	// get new entries
 	FsDirectoryEntry **files;
 	// if the directory we're in gets deleted, go back a directory.
@@ -428,55 +509,23 @@ char *file_selector_update(Ted *ted, FileSelector *fs) {
 		file_selector_cd(ted, fs, "..");
 	}
 
-	char *search_term = str32_to_utf8_cstr(buffer_get_line(line_buffer, 0));
 	if (files) {
-		u32 nfiles;
-		for (nfiles = 0; files[nfiles]; ++nfiles);
-
-		// filter entries
-		bool increment = true;
-		for (u32 i = 0; i < nfiles; i += increment, increment = true) {
-			// remove if the file name does not contain the search term,
-			bool remove = search_term && *search_term && !strstr_case_insensitive(files[i]->name, search_term);
-			// or if this is just the current directory
-			remove |= streq(files[i]->name, ".");
-			if (remove) {
-				// remove this one
-				free(files[i]);
-				--nfiles;
-				if (nfiles) {
-					files[i] = files[nfiles];
-				}
-				increment = false;
+		for (u32 i = 0; files[i]; ++i) {
+			char *name = files[i]->name;
+			if (streq(name, ".")) {
+				continue;
 			}
+			SelectorEntry entry = {
+				.color = color_setting_for_file_type(files[i]->type),
+				.name = name,
+				.userdata = files[i]->type,
+			};
+			selector_add_entry(&fs->sel, &entry);
 		}
-		
-		if (nfiles) {
-			FileEntry *entries = ted_calloc(ted, nfiles, sizeof *entries);
-			if (entries) {
-				fs->n_entries = nfiles;
-				if (fs->sel.cursor >= fs->n_entries) fs->sel.cursor = nfiles - 1;
-				fs->entries = entries;
-				for (u32 i = 0; i < nfiles; ++i) {
-					char *name = files[i]->name;
-					entries[i].name = str_dup(name);
-					entries[i].type = files[i]->type;
-					// add cwd to start of file name
-					size_t path_size = strlen(name) + strlen(cwd) + 3;
-					char *path = ted_calloc(ted, 1, path_size);
-					if (path) {
-						path_full(cwd, name, path, path_size);
-						entries[i].path = path;
-					} else {
-						entries[i].path = NULL; // what can we do?
-					}
-					free(files[i]);
-					files[i] = NULL;
-				}
-			}
-			qsort_with_context(entries, nfiles, sizeof *entries, qsort_file_entry_cmp, search_term);
-		}
+		selector_sort_entries(&fs->sel, file_selector_entry_cmp, NULL);
 
+		for (u32 i = 0; files[i]; ++i)
+			free(files[i]);
 		free(files);
 		// set cwd to this (if no buffers are open, the "open" menu should use the last file selector's cwd)
 		strbuf_cpy(ted->cwd, cwd);
@@ -484,7 +533,6 @@ char *file_selector_update(Ted *ted, FileSelector *fs) {
 		ted_error(ted, "Couldn't list directory '%s'.", cwd);
 	}
 	
-	free(search_term);
 	return NULL;
 }
 
@@ -524,26 +572,6 @@ void file_selector_render(Ted *ted, FileSelector *fs) {
 	// render selector
 	Selector *sel = &fs->sel;
 	sel->bounds = bounds;
-	arr_clear(sel->entries);
-	for (u32 i = 0; i < fs->n_entries; ++i) {
-		ColorSetting color = 0;
-		switch (fs->entries[i].type) {
-		case FS_FILE:
-			color = COLOR_TEXT;
-			break;
-		case FS_DIRECTORY:
-			color = COLOR_TEXT_FOLDER;
-			break;
-		default:
-			color = COLOR_TEXT_OTHER;
-			break;
-		}
-		SelectorEntry entry = {.name = fs->entries[i].name, .color = colors[color]};
-		arr_add(sel->entries, entry);
-	}
-	if (sel->entries)
-		sel->n_entries = fs->n_entries;
-
 	selector_render(ted, sel);
 	text_render(font_bold);
 }
@@ -689,4 +717,14 @@ vec2 checkbox_frame(Ted *ted, bool *value, const char *label, vec2 pos) {
 	gl_geometry_draw();
 	text_render(font);
 	return vec2_add(size, (vec2){checkbox_size + padding * 0.5f, 0});
+}
+
+void selector_add_entry(Selector *s, const SelectorEntry *entry) {
+	SelectorEntry s_entry = {
+		.color = entry->color,
+		.name = str_dup(entry->name),
+		.detail = str_dup(entry->detail),
+		.userdata = entry->userdata,
+	};
+	arr_add(s->entries, s_entry);
 }

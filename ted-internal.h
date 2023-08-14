@@ -179,49 +179,6 @@ typedef struct EditNotifyInfo {
 	EditNotifyID id;
 } EditNotifyInfo;
 
-/// an entry in a selector menu (e.g. the "open" menu)
-typedef struct {
-	/// label
-	const char *name;
-	/// if not NULL, this will show on the right side of the entry.
-	const char *detail;
-	/// color to draw text in
-	u32 color;
-	/// use this for whatever you want
-	u64 userdata;
-} SelectorEntry;
-
-struct Selector {
-	SelectorEntry *entries;
-	u32 n_entries;
-	Rect bounds;
-	/// index where the selector thing is
-	u32 cursor;
-	float scroll;
-	/// whether or not we should let the user select entries using a cursor.
-	bool enable_cursor;
-};
-
-/// file entries for file selectors
-typedef struct {
-	/// just the file name
-	char *name;
-	/// full path
-	char *path;
-	FsType type;
-} FileEntry;
-
-struct FileSelector {
-	char title[32];
-	Selector sel;
-	Rect bounds;
-	u32 n_entries;
-	FileEntry *entries;
-	char cwd[TED_PATH_MAX];
-	/// indicates that this is for creating files, not opening files
-	bool create_menu;
-};
-
 /// max tabs per node
 #define TED_MAX_TABS 100
 /// max strings in all config files
@@ -334,8 +291,8 @@ struct Ted {
 	/// index of currently open menu, or 0 if no menu is open
 	u32 menu_open_idx;
 	void *menu_context;
-	FileSelector file_selector;
-	Selector command_selector;
+	FileSelector *file_selector;
+	Selector *command_selector;
 	/// general-purpose line buffer for inputs -- used for menus
 	TextBuffer *line_buffer;
 	/// use for "find" term in find/find+replace

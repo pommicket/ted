@@ -1,6 +1,6 @@
 /*
 TODO:
-- public Selector/FileSelector API
+- selector search
 - public Settings API
 
 FUTURE FEATURES:
@@ -495,6 +495,7 @@ int main(int argc, char **argv) {
 	}
 #endif
 
+	ted->file_selector = file_selector_new();
 	gl_geometry_init();
 	text_init();
 	menu_init(ted);
@@ -1203,6 +1204,8 @@ int main(int argc, char **argv) {
 	definitions_quit(ted);
 	menu_quit(ted);
 	arr_free(ted->edit_notifys);
+	
+	file_selector_free(ted->file_selector); ted->file_selector = NULL;
 
 	
 	for (int i = 0; i < TED_LSP_MAX; ++i) {

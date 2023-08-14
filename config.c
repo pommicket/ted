@@ -1245,7 +1245,7 @@ static char *last_separator(char *path) {
 	return NULL;
 }
 
-char *settings_get_root_dir(Settings *settings, const char *path) {
+char *settings_get_root_dir(const Settings *settings, const char *path) {
 	char best_path[TED_PATH_MAX];
 	*best_path = '\0';
 	u32 best_path_score = 0;
@@ -1299,4 +1299,17 @@ char *settings_get_root_dir(Settings *settings, const char *path) {
 		*sep = '\0';
 		return str_dup(pathbuf);
 	}
+}
+
+u32 settings_color(const Settings *settings, ColorSetting color) {
+	if (color >= COLOR_COUNT) {
+		assert(0);
+		return 0xff00ffff;
+	}
+	return settings->colors[color];
+}
+
+void settings_color_floats(const Settings *settings, ColorSetting color, float f[4]) {
+	rgba_u32_to_floats(settings_color(settings, color), f);
+	
 }

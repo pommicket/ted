@@ -167,11 +167,11 @@ void menu_shell_down(Ted *ted) {
 
 static void open_menu_open(Ted *ted) {
 	ted_switch_to_buffer(ted, ted->line_buffer);
-	ted->file_selector.create_menu = false;
+	file_selector_set_create(ted->file_selector, false);
 }
 
 static void open_menu_update(Ted *ted) {
-	char *selected_file = file_selector_update(ted, &ted->file_selector);
+	char *selected_file = file_selector_update(ted, ted->file_selector);
 	if (selected_file) {
 		// open that file!
 		menu_close(ted);
@@ -181,21 +181,21 @@ static void open_menu_update(Ted *ted) {
 }
 
 static void open_menu_render(Ted *ted) {
-	FileSelector *fs = &ted->file_selector;
-	strbuf_cpy(fs->title, "Open...");
-	fs->bounds = selection_menu_render_bg(ted);
+	FileSelector *fs = ted->file_selector;
+	file_selector_set_title(fs, "Open...");
+	file_selector_set_bounds(fs, selection_menu_render_bg(ted));
 	file_selector_render(ted, fs);
 }
 
 static bool open_menu_close(Ted *ted) {
-	file_selector_free(&ted->file_selector);
+	file_selector_clear(ted->file_selector);
 	buffer_clear(ted->line_buffer);
 	return true;
 }
 
 static void save_as_menu_open(Ted *ted) {
 	ted_switch_to_buffer(ted, ted->line_buffer);
-	ted->file_selector.create_menu = true;
+	file_selector_set_create(ted->file_selector, true);
 }
 
 static void save_as_menu_update(Ted *ted) {
@@ -223,7 +223,7 @@ static void save_as_menu_update(Ted *ted) {
 			break;
 		}
 	} else {
-		char *selected_file = file_selector_update(ted, &ted->file_selector);
+		char *selected_file = file_selector_update(ted, ted->file_selector);
 		if (selected_file) {
 			TextBuffer *buffer = ted->prev_active_buffer;
 			if (buffer) {
@@ -253,14 +253,14 @@ static void save_as_menu_render(Ted *ted) {
 		return;
 	}
 
-	FileSelector *fs = &ted->file_selector;
-	strbuf_cpy(fs->title, "Save as...");
-	fs->bounds = selection_menu_render_bg(ted);
+	FileSelector *fs = ted->file_selector;
+	file_selector_set_title(fs, "Save as...");
+	file_selector_set_bounds(fs, selection_menu_render_bg(ted));
 	file_selector_render(ted, fs);
 }
 
 static bool save_as_menu_close(Ted *ted) {
-	file_selector_free(&ted->file_selector);
+	file_selector_clear(ted->file_selector);
 	buffer_clear(ted->line_buffer);
 	return true;
 }
@@ -351,33 +351,15 @@ static bool ask_reload_menu_close(Ted *ted) {
 static void command_selector_open(Ted *ted) {
 	ted_switch_to_buffer(ted, ted->line_buffer);
 	buffer_insert_char_at_cursor(ted->argument_buffer, '1');
-	Selector *selector = &ted->command_selector;
-	selector->enable_cursor = true;
-	selector->cursor = 0;
+	Selector *selector = ted->command_selector;
+	selector_set_cursor(selector, 0);
 }
 
 static void command_selector_update(Ted *ted) {
-	const Settings *settings = ted_active_settings(ted);
-	const u32 *colors = settings->colors;
 	TextBuffer *line_buffer = ted->line_buffer;
-	Selector *selector = &ted->command_selector;
-	SelectorEntry *entries = selector->entries = calloc(CMD_COUNT, sizeof *selector->entries);
+	Selector *selector = ted->command_selector;
 	char *search_term = str32_to_utf8_cstr(buffer_get_line(line_buffer, 0));
-	if (entries) {
-		SelectorEntry *entry = entries;
-		for (Command c = 0; c < CMD_COUNT; ++c) {
-			const char *name = command_to_str(c);
-			if (c != CMD_UNKNOWN && *name && strstr_case_insensitive(name, search_term)) {
-				entry->name = name;
-				entry->color = colors[COLOR_TEXT];
-				++entry;
-			}
-		}
-		selector->n_entries = (u32)(entry - entries);
-		selector_sort_entries_by_name(selector);
-	}
-
-	char *chosen_command = selector_update(ted, &ted->command_selector);
+	char *chosen_command = selector_update(ted, selector);
 	if (chosen_command) {
 		Command c = command_from_str(chosen_command);
 		if (c != CMD_UNKNOWN) {
@@ -423,18 +405,16 @@ static void command_selector_render(Ted *ted) {
 
 	y1 += line_buffer_height + padding;
 
-	Selector *selector = &ted->command_selector;
-	selector->bounds = rect4(x1, y1, x2, y2);
+	Selector *selector = ted->command_selector;
+	selector_set_bounds(selector, rect4(x1, y1, x2, y2));
 	selector_render(ted, selector);
 
 	text_render(font_bold);
 }
 
 static bool command_selector_close(Ted *ted) {
-	Selector *selector = &ted->command_selector;
 	buffer_clear(ted->line_buffer);
 	buffer_clear(ted->argument_buffer);
-	free(selector->entries); selector->entries = NULL; selector->n_entries = 0;
 	return true;
 }
 
@@ -564,6 +544,17 @@ void menu_init(Ted *ted) {
 	
 	ted_add_edit_notify(ted, menu_edit_notify, ted);
 	
+	ted->command_selector = selector_new();
+        for (Command c = 0; c < CMD_COUNT; ++c) {
+		const char *name = command_to_str(c);
+		if (c != CMD_UNKNOWN && *name) {
+			SelectorEntry entry = {
+				.name = name
+			};
+			selector_add_entry(ted->command_selector, &entry);
+		}
+        }
+	
 	MenuInfo save_as_menu = {
 		.open = save_as_menu_open,
 		.update = save_as_menu_update,
@@ -630,4 +621,5 @@ void menu_init(Ted *ted) {
 
 void menu_quit(Ted *ted) {
 	arr_clear(ted->all_menus);
+	selector_free(ted->command_selector);
 }

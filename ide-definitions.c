@@ -9,7 +9,7 @@ struct Definitions {
 	/// last query string which we sent a request for
 	char *last_request_query;
 	/// for "go to definition of..." menu
-	Selector selector;
+	Selector *selector;
 	/// an array of all definitions (gotten from workspace/symbols) for "go to definition" menu
 	SymbolInfo *all_definitions;
 };
@@ -114,8 +114,7 @@ static void definitions_clear_entries(Definitions *defs) {
 		free(def->detail);
 	}
 	arr_clear(defs->all_definitions);
-	arr_clear(defs->selector.entries);
-	defs->selector.n_entries = 0;
+	selector_clear(defs->selector);
 }
 
 static int definition_entry_qsort_cmp(const void *av, const void *bv) {
@@ -133,41 +132,6 @@ static int definition_entry_qsort_cmp(const void *av, const void *bv) {
 	if (!a->detail && !b->detail) return 0;
 	return strcmp(a->detail, b->detail);
 }
-
-// put the entries matching the search term into the selector.
-static void definitions_selector_filter_entries(Ted *ted) {
-	Definitions *defs = ted->definitions;
-	Selector *sel = &defs->selector;
-	
-	// create selector entries based on search term
-	char *search_term = str32_to_utf8_cstr(buffer_get_line(ted->line_buffer, 0));
-
-	arr_clear(sel->entries);
-	
-	for (u32 i = 0; i < arr_len(defs->all_definitions); ++i) {
-		SymbolInfo *info = &defs->all_definitions[i];
-		if (!search_term || strstr_case_insensitive(info->name, search_term)) {
-			SelectorEntry *entry = arr_addp(sel->entries);
-			entry->name = info->name;
-			entry->color = info->color;
-			entry->detail = info->detail;
-			// this isn't exactly ideal but we're sorting these entries so
-			// it's probably the nicest way of keeping track of the definition
-			// this corresponds to
-			entry->userdata = i;
-		}
-		// don't try to display too many entries
-		if (arr_len(sel->entries) >= 1000)
-			break;
-	}
-	free(search_term);
-	
-	arr_qsort(sel->entries, definition_entry_qsort_cmp);
-	
-	sel->n_entries = arr_len(sel->entries);
-	sel->cursor = clamp_u32(sel->cursor, 0, sel->n_entries);
-}
-
 
 void definitions_process_lsp_response(Ted *ted, LSP *lsp, const LSPResponse *response) {
 	Definitions *defs = ted->definitions;
@@ -242,8 +206,6 @@ void definitions_process_lsp_response(Ted *ted, LSP *lsp, const LSPResponse *res
 				def->position.pos.line + 1);
 		}
 		
-		definitions_selector_filter_entries(ted);
-		
 		} break;
 	default:
 		debug_println("?? bad request type in %s : %u:%u", __func__,  response->request.id, response->request.type);
@@ -286,7 +248,7 @@ static void definitions_selector_open(Ted *ted) {
 	}
 	ted_switch_to_buffer(ted, ted->line_buffer);
 	buffer_select_all(ted->active_buffer);
-	defs->selector.cursor = 0;
+	selector_set_cursor(defs->selector, 0);
 }
 
 
@@ -301,11 +263,8 @@ static bool definitions_selector_close(Ted *ted) {
 
 static void definitions_selector_update(Ted *ted) {
 	Definitions *defs = ted->definitions;
-	Selector *sel = &defs->selector;
-	sel->enable_cursor = true;
+	Selector *sel = defs->selector;
 	
-	definitions_selector_filter_entries(ted);
-
 	// send new request if search term has changed.
 	// this is needed because e.g. clangd gives an incomplete list
 	definitions_send_request_if_needed(ted);
@@ -315,11 +274,13 @@ static void definitions_selector_update(Ted *ted) {
 		// for LSP go-to-definition, we ignore `chosen` and use the cursor instead.
 		// this is because a single symbol can have multiple definitions,
 		// e.g. with overloading.
-		if (sel->cursor >= sel->n_entries) {
-			assert(0);
+		SelectorEntry cursor_entry = {0};
+		if (!selector_get_cursor_entry(sel, &cursor_entry)) {
+			assert(0); // shouldn't happen since `chosen` is true.
 			return;
 		}
-		u64 def_idx = sel->entries[sel->cursor].userdata;
+		
+		u64 def_idx = cursor_entry.userdata;
 		if (def_idx >= arr_len(defs->all_definitions)) {
 			assert(0);
 			return;
@@ -343,8 +304,8 @@ static void definitions_selector_update(Ted *ted) {
 static void definitions_selector_render(Ted *ted) {
 	Rect bounds = selection_menu_render_bg(ted);
 	Definitions *defs = ted->definitions;
-	Selector *sel = &defs->selector;
-	sel->bounds = bounds;
+	Selector *sel = defs->selector;
+	selector_set_bounds(sel, bounds);
 	selector_render(ted, sel);
 }
 
@@ -358,10 +319,13 @@ void definitions_init(Ted *ted) {
 	strbuf_cpy(info.name, MENU_GOTO_DEFINITION);
 	menu_register(ted, &info);
 	
-	ted->definitions = calloc(1, sizeof *ted->definitions);
+	Definitions *defs = ted->definitions = ted_calloc(ted, 1, sizeof *ted->definitions);
+	defs->selector = selector_new();
 }
 
 void definitions_quit(Ted *ted) {
-	free(ted->definitions);
+	Definitions *defs = ted->definitions;
+	selector_free(defs->selector);
+	free(defs);
 	ted->definitions = NULL;
 }

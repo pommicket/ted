@@ -132,6 +132,28 @@ typedef struct Selector Selector;
 /// a selector menu for files (e.g. the "open" menu)
 typedef struct FileSelector FileSelector;
 
+/// an entry in a \ref Selector
+///
+/// only `name` needs to be filled in; everything else can be zeroed.
+typedef struct SelectorEntry {
+	/// color to draw text in
+	///
+	/// if this is zero, \ref COLOR_TEXT will be used.
+	ColorSetting color;
+	/// label
+	///
+	/// a copy of this string will be made, so you can free the pointer immediately after calling \ref selector_add_entry
+	const char *name;
+	/// if not NULL, this will show on the right side of the entry.
+	///
+	/// a copy of this string will be made, so you can free the pointer immediately after calling \ref selector_add_entry
+	const char *detail;
+	/// use this for whatever you want
+	u64 userdata;
+	/// reserved for future use -- must be zeroed.
+	char reserved[32];
+} SelectorEntry;
+
 /// a split or collection of tabs
 ///
 /// this handles ted's split-screen and tab features.
@@ -786,7 +808,12 @@ void command_execute_string_argument(Ted *ted, Command c, const char *string);
 /// returns the best guess for the root directory of the project containing absolute path `path`.
 ///
 /// the return value should be freed.
-char *settings_get_root_dir(Settings *settings, const char *path);
+char *settings_get_root_dir(const Settings *settings, const char *path);
+/// get color in `0xRRGGBBAA` format
+u32 settings_color(const Settings *settings, ColorSetting color);
+/// get color as four floats
+void settings_color_floats(const Settings *settings, ColorSetting color, float f[4]);
+
 
 // === find.c ===
 /// which buffer will be searched?
@@ -1168,29 +1195,6 @@ EditNotifyID ted_add_edit_notify(Ted *ted, EditNotify notify, void *context);
 void ted_remove_edit_notify(Ted *ted, EditNotifyID id);
 
 // === ui.c ===
-/// move selector cursor up by `n` entries
-void selector_up(Ted *ted, Selector *s, i64 n);
-/// move selector cursor down by `n` entries
-void selector_down(Ted *ted, Selector *s, i64 n);
-/// sort entries alphabetically
-void selector_sort_entries_by_name(Selector *s);
-/// returns a null-terminated UTF-8 string of the entry selected, or `NULL` if none was.
-///
-/// also, the cursor will be set to the index of the entry, even if the mouse was used.
-/// you should free the return value.
-char *selector_update(Ted *ted, Selector *s);
-/// render selector
-///
-/// NOTE: also renders the line buffer
-void selector_render(Ted *ted, Selector *s);
-/// free resources used by file selector
-void file_selector_free(FileSelector *fs);
-/// returns the name of the selected file, or `NULL` if none was selected.
-///
-/// the returned pointer should be freed.
-char *file_selector_update(Ted *ted, FileSelector *fs);
-/// render file selector
-void file_selector_render(Ted *ted, FileSelector *fs);
 /// get a good size of button for this text
 vec2 button_get_size(Ted *ted, const char *text);
 /// render button
@@ -1205,6 +1209,67 @@ PopupOption popup_update(Ted *ted, u32 options);
 void popup_render(Ted *ted, u32 options, const char *title, const char *body);
 /// update and render checkbox
 vec2 checkbox_frame(Ted *ted, bool *value, const char *label, vec2 pos);
+/// create a new selector
+Selector *selector_new(void);
+/// set location where selector will be rendered.
+void selector_set_bounds(Selector *s, Rect bounds);
+/// add a new entry to this selector
+void selector_add_entry(Selector *s, const SelectorEntry *entry);
+/// set cursor position
+void selector_set_cursor(Selector *s, u32 cursor);
+/// get cursor position
+u32 selector_get_cursor(Selector *s);
+/// get entry at index in selector.
+Status selector_get_entry(Selector *s, u32 index, SelectorEntry *entry);
+/// get entry at selector cursor
+///
+/// note that this can fail, e.g. if `s` has no entries.
+Status selector_get_cursor_entry(Selector *s, SelectorEntry *entry);
+/// clear all entries from this selector, WITHOUT resetting scroll or cursor position
+void selector_clear_entries(Selector *s);
+/// reset selector to \ref selector_new state
+void selector_clear(Selector *s);
+/// free resources used by selector
+void selector_free(Selector *s);
+/// move selector cursor up by `n` entries
+void selector_up(Ted *ted, Selector *s, i64 n);
+/// move selector cursor down by `n` entries
+void selector_down(Ted *ted, Selector *s, i64 n);
+/// sort entries by comparison function
+void selector_sort_entries(Selector *s, int (*compar)(void *context, const SelectorEntry *e1, const SelectorEntry *e2), void *context);
+/// sort entries alphabetically
+void selector_sort_entries_by_name(Selector *s);
+/// returns a null-terminated UTF-8 string of the entry selected, or `NULL` if none was.
+///
+/// also, the cursor will be set to the index of the entry, even if the mouse was used.
+/// you should free the return value.
+char *selector_update(Ted *ted, Selector *s);
+/// render selector
+///
+/// make sure you call \ref selector_set_bounds before this.
+void selector_render(Ted *ted, Selector *s);
+/// create a new file selector
+FileSelector *file_selector_new(void);
+/// set whether this file selector should allow inputting non-existent files
+void file_selector_set_create(FileSelector *s, bool create);
+/// free resources used by file selector
+void file_selector_free(FileSelector *s);
+/// set bounds for file selector
+void file_selector_set_bounds(FileSelector *s, Rect bounds);
+/// set file selector title (displayed above the selector in bold)
+void file_selector_set_title(FileSelector *s, const char *title);
+/// free resources used by file selector
+void file_selector_free(FileSelector *fs);
+/// returns the name of the selected file, or `NULL` if none was selected.
+///
+/// the returned pointer should be freed.
+char *file_selector_update(Ted *ted, FileSelector *fs);
+/// render file selector
+///
+/// make sure you call \ref file_selector_set_bounds before this.
+void file_selector_render(Ted *ted, FileSelector *fs);
+/// clear cwd, etc.
+void file_selector_clear(FileSelector *fs);
 
 
 #ifdef __cplusplus

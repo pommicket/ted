@@ -167,6 +167,7 @@ size_t strn_len(const char *src, size_t n) {
 
 // duplicates at most n characters from src
 char *strn_dup(const char *src, size_t n) {
+	if (!src) return NULL;
 	size_t len = strn_len(src, n);
 	if (n > len)
 		n = len;
