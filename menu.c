@@ -329,6 +329,8 @@ static void ask_reload_menu_update(Ted *ted) {
 		break;
 	case POPUP_NO:
 		menu_close(ted);
+		if (buffer)
+			buffer_ignore_changes_on_disk(buffer);
 		break;
 	case POPUP_CANCEL: assert(0); break;
 	}

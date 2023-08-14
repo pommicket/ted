@@ -206,6 +206,12 @@ double buffer_last_write_time(TextBuffer *buffer) {
 	return buffer->last_write_time;
 }
 
+void buffer_ignore_changes_on_disk(TextBuffer *buffer) {
+	buffer->last_write_time = timespec_to_seconds(time_last_modified(buffer->path));
+	// no matter what, buffer_unsaved_changes should return true
+	buffer->undo_history_write_pos = U32_MAX;
+}
+
 BufferPos buffer_cursor_pos(TextBuffer *buffer) {
 	return buffer->cursor_pos;
 }

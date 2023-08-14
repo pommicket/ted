@@ -329,6 +329,8 @@ double buffer_get_scroll_lines(TextBuffer *buffer);
 void buffer_scroll_to(TextBuffer *buffer, double cols, double lines);
 /// get last time buffer was written to, in the format of \ref time_get_seconds
 double buffer_last_write_time(TextBuffer *buffer);
+/// ignore any changes that have been made to the loaded file
+void buffer_ignore_changes_on_disk(TextBuffer *buffer);
 /// get position of the cursor
 BufferPos buffer_cursor_pos(TextBuffer *buffer);
 /// returns true if anything is selected

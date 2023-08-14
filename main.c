@@ -1,6 +1,5 @@
 /*
 TODO:
-- fix ask-reload menu (clicking "no" will probably do nothing)
 - public Node API
 - public Selector/FileSelector API
 - public Settings API
@@ -16,7 +15,7 @@ FUTURE FEATURES:
        - "remove file..." menu
        - auto-close brackets
 - with macros we can really test performance of buffer_insert_text_at_pos, etc. (which should ideally be fast)
-- manual.md
+- manual directory
 - LSP request timeout
 */
 
