@@ -246,7 +246,7 @@ typedef enum {
 /// Used for dynamic language registration (\ref syntax_register_language).
 /// Please zero all the fields of the struct which you aren't using.
 ///
-/// The fields `id` and `name` MUST NOT be 0, or `ted` will reject your language.
+/// The fields `id` and `name` MUST be filled in, or else `ted` will reject your language.
 typedef struct {
 	/// Language ID number. For user-defined languages, this must be `>= LANG_USER_MIN` and `< LANG_USER_MAX`.
 	///
@@ -270,17 +270,17 @@ typedef struct {
 	///
 	/// try to pick a unique name.
 	char name[24];
-	/// if non-NULL this will be called right after the menu is opened
+	/// if non-`NULL` this will be called right after the menu is opened
 	void (*open)(Ted *ted);
-	/// if non-NULL this will be called every frame
+	/// if non-`NULL` this will be called every frame
 	/// before anything is rendered to the screen.
 	void (*update)(Ted *ted);
-	/// if non-NULL this will be called every frame
+	/// if non-`NULL` this will be called every frame
 	/// after buffers, etc. have been rendered to the screen
 	/// (when the menu should be rendered)
 	void (*render)(Ted *ted);
-	/// if non-NULL this will be called right before the menu is closed.
-	/// if it returns false, the menu will not be closed.
+	/// if non-`NULL` this will be called right before the menu is closed.
+	/// if it returns `false`, the menu will not be closed.
 	bool (*close)(Ted *ted);
 	/// should be zeroed -- reserved for future use.
 	char reserved[128];
@@ -335,12 +335,12 @@ double buffer_last_write_time(TextBuffer *buffer);
 void buffer_ignore_changes_on_disk(TextBuffer *buffer);
 /// get position of the cursor
 BufferPos buffer_cursor_pos(TextBuffer *buffer);
-/// returns true if anything is selected
+/// returns `true` if anything is selected
 bool buffer_has_selection(TextBuffer *buffer);
 /// get position of non-cursor end of selection.
 ///
-/// `pos` is allowed to be NULL.
-/// returns false if nothing is selected.
+/// `pos` is allowed to be `NULL`.
+/// returns `false` if nothing is selected.
 bool buffer_selection_pos(TextBuffer *buffer, BufferPos *pos);
 /// Get path to buffer's file, or `NULL` if the buffer is unnamed.
 ///
@@ -350,7 +350,7 @@ const char *buffer_get_path(TextBuffer *buffer);
 void buffer_clear_undo_redo(TextBuffer *buffer);
 /// set whether undo history should be kept
 ///
-/// if `enabled` is false, any previous undo/redo history will be cleared.
+/// if `enabled` is `false`, any previous undo/redo history will be cleared.
 void buffer_set_undo_enabled(TextBuffer *buffer, bool enabled);
 /// set manual language override for buffer.
 ///
@@ -374,7 +374,7 @@ bool buffer_unsaved_changes(TextBuffer *buffer);
 bool buffer_is_line_buffer(TextBuffer *buffer);
 /// has this line buffer been submitted?
 ///
-/// returns false if `buffer` is not a line buffer.
+/// returns `false` if `buffer` is not a line buffer.
 bool line_buffer_is_submitted(TextBuffer *buffer);
 /// clear submission status of line buffer.
 void line_buffer_clear_submitted(TextBuffer *buffer);
@@ -453,8 +453,9 @@ String32 buffer_get_str32_text_at_pos(TextBuffer *buffer, BufferPos pos, size_t 
 char *buffer_get_utf8_text_at_pos(TextBuffer *buffer, BufferPos pos, size_t nchars);
 /// Puts a UTF-8 string containing the contents of the buffer into `out`.
 ///
-/// Returns the number of bytes, including a null terminator.
-/// To use this function, first pass NULL for out to get the number of bytes you need to allocate.
+/// To use this function, first pass `NULL` for `out` to get the number of bytes you need to allocate.
+///
+/// \returns the number of bytes, including a null terminator.
 size_t buffer_contents_utf8(TextBuffer *buffer, char *out);
 /// Returns a UTF-8 string containing the contents of `buffer`.
 ///
@@ -477,7 +478,7 @@ void buffer_scroll(TextBuffer *buffer, double dx, double dy);
 vec2 buffer_pos_to_pixels(TextBuffer *buffer, BufferPos pos);
 /// convert pixel coordinates to a position in the buffer, selecting the closest character.
 ///
-/// returns false if the position is not inside the buffer, but still sets `*pos` to the closest character.
+/// \returns `false` if the position is not inside the buffer (but still sets `*pos` to the closest character).
 bool buffer_pixels_to_pos(TextBuffer *buffer, vec2 pixel_coords, BufferPos *pos);
 /// scroll to `pos`, scrolling as little as possible while maintaining scrolloff.
 void buffer_scroll_to_pos(TextBuffer *buffer, BufferPos pos);
@@ -546,7 +547,7 @@ char *buffer_word_at_cursor_utf8(TextBuffer *buffer);
 /// Used for \ref CMD_INCREMENT_NUMBER and \ref CMD_DECREMENT_NUMBER
 ///
 /// Moves `*ppos` to the start of the (new) number.
-/// returns false if there was no number at `*ppos`.
+/// returns `false` if there was no number at `*ppos`.
 bool buffer_change_number_at_pos(TextBuffer *buffer, BufferPos *ppos, i64 by);
 /// Used for \ref CMD_INCREMENT_NUMBER and \ref CMD_DECREMENT_NUMBER
 bool buffer_change_number_at_cursor(TextBuffer *buffer, i64 argument);
@@ -564,7 +565,7 @@ void buffer_cursor_move_to_start_of_file(TextBuffer *buffer);
 void buffer_cursor_move_to_end_of_file(TextBuffer *buffer);
 /// Put text at a position.
 ///
-/// Returns the position of the end of the text, or (BufferPos){0} on error.
+/// Returns the position of the end of the text, or `(BufferPos){0}` on error.
 BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 str);
 /// Insert a single character at a position.
 void buffer_insert_char_at_pos(TextBuffer *buffer, BufferPos pos, char32_t c);
@@ -651,12 +652,8 @@ void buffer_delete_words_at_pos(TextBuffer *buffer, BufferPos pos, i64 nwords);
 /// Delete `nwords` words after the cursor.
 void buffer_delete_words_at_cursor(TextBuffer *buffer, i64 nwords);
 /// Delete `nwords` words before `*pos`, and set `*pos` to just before the deleted words.
-///
-/// Returns the number of words actually deleted.
 void buffer_backspace_words_at_pos(TextBuffer *buffer, BufferPos *pos, i64 nwords);
 /// Delete `nwords` words before the cursor position, and set the cursor position accordingly.
-///
-/// Returns the number of words actually deleted.
 void buffer_backspace_words_at_cursor(TextBuffer *buffer, i64 nwords);
 /// Undo `ntimes` times
 void buffer_undo(TextBuffer *buffer, i64 ntimes);
@@ -682,7 +679,7 @@ void buffer_reload(TextBuffer *buffer);
 bool buffer_externally_changed(TextBuffer *buffer);
 /// Clear `buffer`, and set its path to `path`.
 ///
-/// if `path` is NULL, this will turn `buffer` into an untitled buffer.
+/// if `path` is `NULL`, this will turn `buffer` into an untitled buffer.
 void buffer_new_file(TextBuffer *buffer, const char *path);
 /// Save the buffer to its current filename.
 ///
@@ -721,7 +718,7 @@ void buffer_uncomment_lines(TextBuffer *buffer, u32 first_line, u32 last_line);
 void buffer_toggle_comment_lines(TextBuffer *buffer, u32 first_line, u32 last_line);
 /// comment the selected lines, or uncomment them if they're all commented
 void buffer_toggle_comment_selection(TextBuffer *buffer);
-/// returns true if `p1` and `p2` are equal
+/// returns `true` if `p1` and `p2` are equal
 bool buffer_pos_eq(BufferPos p1, BufferPos p2);
 /// returns `-1` if `p1` comes before `p2`
 ///
@@ -842,7 +839,7 @@ bool autocomplete_has_phantom(Ted *ted);
 bool autocomplete_box_contains_point(Ted *ted, vec2 point);
 /// open autocomplete
 ///
-/// trigger should either be a character (e.g. '.') or one of the TRIGGER_* constants.
+/// trigger should either be a character (e.g. '.') or one of the `TRIGGER_*` constants.
 void autocomplete_open(Ted *ted, uint32_t trigger);
 /// select the completion the cursor is on,
 /// or select the phantom completion if there is one.
@@ -863,8 +860,8 @@ void definition_cancel_lookup(Ted *ted);
 // === ide-document-link.c ===
 /// get document link at this position in the active buffer.
 ///
-/// this will always return `NULL` if the document link activation key isn't presed.
-/// the returned pointer won't be freed immediately, but could be on the next frame,
+/// this will always return `NULL` if the document link activation key isn't pressed.
+/// the returned pointer could be freed on the next frame,
 /// so don't keep it around long.
 const char *document_link_at_buffer_pos(Ted *ted, BufferPos pos);
 
@@ -884,7 +881,7 @@ void signature_help_retrigger(Ted *ted);
 /// open signature help.
 ///
 /// `trigger` should either be the trigger character (e.g. ',')
-/// or one of the TRIGGER_* constants.
+/// or one of the `TRIGGER_*` constants.
 void signature_help_open(Ted *ted, uint32_t trigger);
 /// is the signature help window open?
 bool signature_help_is_open(Ted *ted);
@@ -959,7 +956,7 @@ Node *node_child2(Node *node);
 float node_split_pos(Node *node);
 /// set proportion of split devoted to left/top child.
 void node_split_set_pos(Node *node, float pos);
-/// returns true if this node is a vertical split
+/// returns `true` if this node is a vertical split
 bool node_split_is_vertical(Node *node);
 /// set whether this node is a vertical split
 void node_split_set_vertical(Node *node, bool is_vertical);
@@ -1015,7 +1012,7 @@ const char *language_to_str(Language language);
 ColorSetting syntax_char_type_to_color_setting(SyntaxCharType t);
 /// returns ')' for '(', '[' for ']', etc., or 0 if `c` is not a bracket
 char32_t syntax_matching_bracket(Language lang, char32_t c);
-/// returns true for opening brackets, false for closing brackets/non-brackets
+/// returns `true` for opening brackets, false for closing brackets/non-brackets
 bool syntax_is_opening_bracket(Language lang, char32_t c);
 /// main syntax highlighting function.
 ///
@@ -1030,7 +1027,7 @@ void syntax_highlight(SyntaxState *state, Language lang, const char32_t *line, u
 void tags_generate(Ted *ted, bool run_in_build_window);
 /// find all tags beginning with the given prefix, returning them into `out[0..out_size]`.
 ///
-/// you can pass NULL for `out`, in which case just the number of matching tags is returned
+/// you can pass `NULL` for `out`, in which case just the number of matching tags is returned
 /// (still maxing out at `out_size`).
 /// each element in `out` should be freed when you're done with it.
 size_t tags_beginning_with(Ted *ted, const char *prefix, char **out, size_t out_size, bool error_if_tags_does_not_exist);
@@ -1040,11 +1037,11 @@ bool tag_goto(Ted *ted, const char *tag);
 // === ted.c ===
 /// for fatal errors
 void die(PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRINTF(1, 2);
-/// returns the current active buffer, or NULL if no buffer is active.
+/// returns the current active buffer, or `NULL` if no buffer is active.
 TextBuffer *ted_get_active_buffer(Ted *ted);
 /// if a menu is open, returns the buffer that was open before the menu was opened.
 ///
-/// returns NULL if no menu is open or no buffer was open before the menu was opened.
+/// returns `NULL` if no menu is open or no buffer was open before the menu was opened.
 TextBuffer *ted_get_active_buffer_behind_menu(Ted *ted);
 /// get width of ted window
 float ted_window_width(Ted *ted);
@@ -1098,7 +1095,7 @@ TextBuffer *ted_get_buffer_with_file(Ted *ted, const char *path);
 void ted_close_buffer(Ted *ted, TextBuffer *buffer);
 /// close buffer with this absolute path, discarding unsaved changes.
 ///
-/// returns true if the buffer was actually present.
+/// returns `true` if the buffer was actually present.
 bool ted_close_buffer_with_file(Ted *ted, const char *path);
 /// save all buffers
 bool ted_save_all(Ted *ted);
@@ -1112,8 +1109,7 @@ void ted_change_text_size(Ted *ted, float new_size);
 ///
 /// The returned value should be freed.
 char *ted_get_root_dir_of(Ted *ted, const char *path);
-/// Get the root directory of the project containing the active buffer's file,
-/// or `ted->cwd` if no file is open.
+/// Get likely root directory of currently open project.
 ///
 /// The returned value should be freed.
 char *ted_get_root_dir(Ted *ted);
@@ -1121,14 +1117,14 @@ char *ted_get_root_dir(Ted *ted);
 Settings *ted_active_settings(Ted *ted);
 /// Get the settings for a file at the given path in the given language.
 Settings *ted_get_settings(Ted *ted, const char *path, Language language);
-/// Get LSP which should be used for the given path and language.
+/// Get LSP server which should be used for the given path and language.
 ///
-/// If no running LSP server would cover the path and language, a new one is
+/// If no running server would cover the path and language, a new one is
 /// started if possible.
 /// Returns `NULL` on failure (e.g. there is no LSP server
 /// specified for the given path and language).
 struct LSP *ted_get_lsp(Ted *ted, const char *path, Language language);
-/// Get the LSP of the active buffer or directory.
+/// Get the LSP server of the active buffer or directory.
 ///
 /// Returns `NULL` if there is no such server.
 struct LSP *ted_active_lsp(Ted *ted);
@@ -1136,13 +1132,13 @@ struct LSP *ted_active_lsp(Ted *ted);
 u32 ted_active_color(Ted *ted, ColorSetting color);
 /// open the given file, or switch to it if it's already open.
 ///
-/// returns true on success.
+/// returns `true` on success.
 bool ted_open_file(Ted *ted, const char *filename);
 /// create a new buffer for the file `filename`, or open it if it's already open.
 ///
 /// if `filename` is `NULL`, this creates an untitled buffer.
 ///
-/// returns true on success.
+/// returns `true` on success.
 bool ted_new_file(Ted *ted, const char *filename);
 /// save all changes to all buffers with unsaved changes.
 bool ted_save_all(Ted *ted);
