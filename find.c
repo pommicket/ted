@@ -568,7 +568,7 @@ static void find_edit_notify(void *context, TextBuffer *buffer, const EditInfo *
 			
 			find_research_lines(ted, line, line);
 		}
-	} else if (buffer == ted->line_buffer) {
+	} else if (buffer == ted->find_buffer) {
 		find_redo_search(ted);
 		buffer_scroll_to_cursor(buffer);	
 	}

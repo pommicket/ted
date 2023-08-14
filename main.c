@@ -1,6 +1,5 @@
 /*
 TODO:
-- fix find
 - fix ask-reload menu (clicking "no" will probably do nothing)
 - public Node API
 - public Selector/FileSelector API
