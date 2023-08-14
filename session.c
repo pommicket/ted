@@ -157,18 +157,21 @@ static BufferPos buffer_pos_read(TextBuffer *buffer, FILE *fp) {
 
 
 static void session_write_node(Ted *ted, FILE *fp, Node *node) {
-	bool is_split = !node->tabs;
+	bool is_split = node_child1(node) != NULL;
 	write_bool(fp, is_split);
 	if (is_split) {
-		write_float(fp, node->split_pos);
-		write_bool(fp, node->split_vertical);
-		write_u16(fp, (u16)arr_index_of(ted->nodes, node->split_a));
-		write_u16(fp, (u16)arr_index_of(ted->nodes, node->split_b));
+		write_float(fp, node_split_pos(node));
+		write_bool(fp, node_split_is_vertical(node));
+		Node *child1 = node_child1(node), *child2 = node_child2(node);
+		write_u16(fp, (u16)arr_index_of(ted->nodes, child1));
+		write_u16(fp, (u16)arr_index_of(ted->nodes, child2));
 	} else {
-		write_u16(fp, node->active_tab); // active tab
-		write_u16(fp, (u16)arr_len(node->tabs)); // ntabs
-		arr_foreach_ptr(node->tabs, TextBufferPtr, pbuf) {
-			write_u16(fp, (u16)arr_index_of(ted->buffers, *pbuf));
+		write_u16(fp, (u16)node_active_tab(node)); // active tab
+		u16 ntabs = (u16)node_tab_count(node);
+		write_u16(fp, ntabs);
+		for (u16 i = 0; i < ntabs; ++i) {
+			TextBuffer *tab = node_get_tab(node, i);
+			write_u16(fp, (u16)arr_index_of(ted->buffers, tab));
 		}
 	}
 }
@@ -176,27 +179,30 @@ static void session_write_node(Ted *ted, FILE *fp, Node *node) {
 static Status session_read_node(Ted *ted, FILE *fp, Node *node) {
 	bool is_split = read_bool(fp);
 	if (is_split) {
-		node->split_pos = clampf(read_float(fp), 0, 1);
-		node->split_vertical = read_bool(fp);
+		float split_pos = clampf(read_float(fp), 0, 1);
+		bool vertical = read_bool(fp);
 		u16 split_a_index = read_u16(fp), split_b_index = read_u16(fp);
 		if (split_a_index == split_b_index || split_a_index >= arr_len(ted->nodes)
 			|| split_b_index >= arr_len(ted->nodes)) {
 			return false;
 		}
-		node->split_a = ted->nodes[split_a_index];
-		node->split_b = ted->nodes[split_b_index];
-		if (node->split_a == node || node->split_b == node)
+		Node *child1 = ted->nodes[split_a_index];
+		Node *child2 = ted->nodes[split_b_index];
+		if (child1 == node || child2 == node)
 			return false;
+		node_init_split(node, child1, child2, split_pos, vertical);
 	} else {
-		node->active_tab = read_u16(fp);
+		u16 active_tab = read_u16(fp);
 		u16 ntabs = clamp_u16(read_u16(fp), 0, TED_MAX_TABS);
-		if (node->active_tab >= ntabs)
-			node->active_tab = 0;
+		if (active_tab >= ntabs)
+			active_tab = 0;
 		for (u16 i = 0; i < ntabs; ++i) {
 			u16 buf_idx = read_u16(fp);
 			if (buf_idx >= arr_len(ted->buffers)) return false;
-			arr_add(node->tabs, ted->buffers[buf_idx]);
+			if (!node_add_tab(ted, node, ted->buffers[buf_idx]))
+				return false;
 		}
+		node_tab_switch(ted, node, active_tab);
 	}
 	return true;
 }
@@ -292,7 +298,7 @@ static void session_read_file(Ted *ted, FILE *fp) {
 	
 	u16 nnodes = read_u16(fp);
 	for (u16 i = 0; i < nnodes; i++) {
-		ted_new_node(ted);
+		node_new(ted);
 	}
 	for (u16 i = 0; i < nnodes; i++) {
 		if (!session_read_node(ted, fp, ted->nodes[i])) {

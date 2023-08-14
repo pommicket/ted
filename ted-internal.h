@@ -222,22 +222,6 @@ struct FileSelector {
 	bool create_menu;
 };
 
-// A node is a collection of tabs OR a split of two node
-struct Node {
-	/// dynamic array of buffers, or `NULL` if this is a split
-	TextBuffer **tabs;
-	/// number from 0 to 1 indicating where the split is.
-	float split_pos;
-	/// index of active tab in `tabs`.
-	u16 active_tab;
-	/// is the split vertical? if false, this split looks like a|b
-	bool split_vertical;
-	/// split left/upper half
-	Node *split_a;
-	/// split right/lower half
-	Node *split_b;
-};
-
 /// max tabs per node
 #define TED_MAX_TABS 100
 /// max strings in all config files
@@ -722,7 +706,14 @@ void menu_shell_down(Ted *ted);
 Rect selection_menu_render_bg(Ted *ted);
 
 // === node.c ===
+Node *node_new(Ted *ted);
 void node_free(Node *node);
+/// don't call this if `buffer` is in any other nodes!
+///
+/// \returns false if there are too many tabs
+Status node_add_tab(Ted *ted, Node *node, TextBuffer *buffer);
+/// cannot be called if `node` has already been initialized or contains tabs.
+void node_init_split(Node *node, Node *child1, Node *child2, float split_pos, bool is_vertical);
 void node_frame(Ted *ted, Node *node, Rect r);
 
 // === syntax.c ===
@@ -751,8 +742,6 @@ void ted_cancel_lsp_request(Ted *ted, LSPServerRequestID *request);
 MessageType ted_message_type_from_lsp(LSPWindowMessageType type);
 /// delete buffer - does NOT remove it from the node tree
 void ted_delete_buffer(Ted *ted, TextBuffer *buffer);
-/// Returns a new node, or NULL on out of memory
-Node *ted_new_node(Ted *ted);
 /// Returns a new buffer, or NULL on out of memory
 TextBuffer *ted_new_buffer(Ted *ted);
 /// check for orphaned nodes and node cycles

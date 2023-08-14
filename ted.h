@@ -133,6 +133,8 @@ typedef struct Selector Selector;
 typedef struct FileSelector FileSelector;
 
 /// a split or collection of tabs
+///
+/// this handles ted's split-screen and tab features.
 typedef struct Node Node;
 
 /// A position in the buffer
@@ -940,25 +942,37 @@ void node_tab_prev(Ted *ted, Node *node, i32 n);
 /// switch to a specific tab.
 ///
 /// if `tab` is out of range or `node` is a split, nothing happens.
-void node_tab_switch(Ted *ted, Node *node, i32 tab);
+void node_tab_switch(Ted *ted, Node *node, u32 tab);
 /// swap the position of two tabs
 ///
 /// if `node` is a split or either index is out of range, nothing happens.
-void node_tabs_swap(Node *node, i32 tab1, i32 tab2);
-/* TODO
-/// get two children of split node.
+void node_tabs_swap(Node *node, u32 tab1, u32 tab2);
+/// get left/top child of split node.
 ///
-/// if `node` isn't a split, returns false and sets `*child1` and `*child2` to `NULL`.
-bool node_children(Node *node, Node **child1, Node **child2);
+/// returns `NULL` if `node` isn't a split node.
+Node *node_child1(Node *node);
+/// get right/bottom child of split node.
+///
+/// returns `NULL` if `node` isn't a split node.
+Node *node_child2(Node *node);
+/// returns the proportion of the split devoted to the left/top child.
+float node_split_pos(Node *node);
+/// set proportion of split devoted to left/top child.
+void node_split_set_pos(Node *node, float pos);
 /// returns true if this node is a vertical split
 bool node_split_is_vertical(Node *node);
+/// set whether this node is a vertical split
+void node_split_set_vertical(Node *node, bool is_vertical);
 /// get number of tabs in node
-u32 node_tab_count(Ted *ted, Node *node);
+u32 node_tab_count(Node *node);
+/// get index of active tab in node
+u32 node_active_tab(Node *node);
+/// returns index of tab containing `buffer`, or -1 if `node` doesn't contain `buffer`
+i32 node_index_of_tab(Node *node, TextBuffer *buffer);
 /// get buffer in tab at index of node.
 ///
 /// returns `NULL` if `tab` is out of range.
-TextBuffer *node_tab_get(Ted *ted, Node *node, u32 tab);
-*/
+TextBuffer *node_get_tab(Node *node, u32 tab);
 /// returns parent node, or `NULL` if this is the root node.
 Node *node_parent(Ted *ted, Node *node);
 /// join this node with its sibling
@@ -968,10 +982,11 @@ void node_join(Ted *ted, Node *node);
 /// does nothing if `node` is `NULL`.
 void node_close(Ted *ted, Node *node);
 /// close tab, WITHOUT checking for unsaved changes!
-/// returns true if the node is still open
 ///
-/// does nothing and returns false if node_idx is out of range
-bool node_tab_close(Ted *ted, Node *node, i32 index);
+/// returns `true` if the node is still open
+///
+/// does nothing and returns `false` if `index` is out of range
+bool node_tab_close(Ted *ted, Node *node, u32 index);
 /// make a split
 void node_split(Ted *ted, Node *node, bool vertical);
 /// switch to the other side of the current split.

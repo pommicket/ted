@@ -2,8 +2,101 @@
 
 #include "ted-internal.h"
 
+struct Node {
+	/// dynamic array of buffers, or `NULL` if this is a split
+	TextBuffer **tabs;
+	/// number from 0 to 1 indicating where the split is.
+	float split_pos;
+	/// index of active tab in `tabs`.
+	u16 active_tab;
+	/// is the split vertical? if false, this split looks like a|b
+	bool split_vertical;
+	/// split left/upper half
+	Node *split_a;
+	/// split right/lower half
+	Node *split_b;
+};
+
+Node *node_new(Ted *ted) {
+	if (arr_len(ted->nodes) >= TED_NODE_MAX) {
+		ted_error(ted, "Too many nodes.");
+		return NULL;
+	}
+	Node *node = ted_calloc(ted, 1, sizeof *node);
+	if (!node) return NULL;
+	arr_add(ted->nodes, node);
+	return node;
+}
+
+void node_init_split(Node *node, Node *child1, Node *child2, float split_pos, bool is_vertical) {
+	assert(!node->tabs && !node->split_a); // node should not be already initialized.
+	assert(child1 && child2);
+	assert(child1 != child2);
+	assert(node != child1);
+	assert(node != child2);
+	
+	node->split_a = child1;
+	node->split_b = child2;
+	node->split_pos = split_pos;
+	node->split_vertical = is_vertical;
+}
+
+Node *node_child1(Node *node) {
+	return node->split_a;
+}
+
+Node *node_child2(Node *node) {
+	return node->split_b;
+}
+
+float node_split_pos(Node *node) {
+	return node->split_pos;
+}
+
+void node_split_set_pos(Node *node, float pos) {
+	node->split_pos = pos;
+}
+
+bool node_split_is_vertical(Node *node) {
+	return node->split_vertical;
+}
+
+void node_split_set_vertical(Node *node, bool is_vertical) {
+	node->split_vertical = is_vertical;
+}
+
+u32 node_tab_count(Node *node) {
+	return arr_len(node->tabs);
+}
+
+u32 node_active_tab(Node *node) {
+	return node->active_tab;
+}
+
+TextBuffer *node_get_tab(Node *node, u32 tab) {
+	if (tab >= arr_len(node->tabs))
+		return NULL;
+	return node->tabs[tab];
+}
+
+i32 node_index_of_tab(Node *node, TextBuffer *buffer) {
+	return arr_index_of(node->tabs, buffer);
+}
+
+bool node_add_tab(Ted *ted, Node *node, TextBuffer *buffer) {
+	if (arr_len(node->tabs) >= TED_MAX_TABS) {
+		ted_error(ted, "Too many tabs.");
+		return false;
+	}
+	
+	arr_add(node->tabs, buffer);
+	return true;
+}
+
 static void node_switch_to_tab(Ted *ted, Node *node, u16 new_tab_index) {
 	if (new_tab_index >= arr_len(node->tabs))
+		return;
+	if (new_tab_index == node->active_tab)
 		return;
 	
 	node->active_tab = new_tab_index;
@@ -27,15 +120,15 @@ void node_tab_prev(Ted *ted, Node *node, i32 n) {
 	node_tab_next(ted, node, -n);
 }
 
-void node_tab_switch(Ted *ted, Node *node, i32 tab) {
+void node_tab_switch(Ted *ted, Node *node, u32 tab) {
 	assert(node->tabs);
-	if (tab >= 0 && tab < (i32)arr_len(node->tabs)) {
+	if (tab >= 0 && tab < node_tab_count(node)) {
 		node_switch_to_tab(ted, node, (u16)tab);
 	}
 }
 
-void node_tabs_swap(Node *node, i32 tab1i, i32 tab2i) {
-	if (tab1i < 0 || tab1i >= (i32)arr_len(node->tabs) || tab2i < 0 || tab2i >= (i32)arr_len(node->tabs))
+void node_tabs_swap(Node *node, u32 tab1i, u32 tab2i) {
+	if (tab1i >= arr_len(node->tabs) || tab2i >= arr_len(node->tabs))
 		return;
 	
 	u16 tab1 = (u16)tab1i, tab2 = (u16)tab2i;
@@ -162,12 +255,12 @@ void node_close(Ted *ted, Node *node) {
 }
 
 
-bool node_tab_close(Ted *ted, Node *node, i32 index) {
+bool node_tab_close(Ted *ted, Node *node, u32 index) {
 	ted->dragging_tab_node = NULL;
 
 	u16 ntabs = (u16)arr_len(node->tabs);
 	
-	if (index < 0 || index >= ntabs) {
+	if (index >= ntabs) {
 		return false;
 	}
 	
@@ -392,8 +485,8 @@ void node_split(Ted *ted, Node *node, bool vertical) {
 	if (node_depth(ted, node) >= 4) return; // prevent splitting too deep
 
 	if (arr_len(node->tabs) > 1) { // need at least 2 tabs to split
-		Node *left = ted_new_node(ted);
-		Node *right = ted_new_node(ted);
+		Node *left = node_new(ted);
+		Node *right = node_new(ted);
 		if (left && right) {
 			u16 active_tab = node->active_tab;
 			// put active tab on the right

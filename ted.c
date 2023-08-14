@@ -438,7 +438,7 @@ void ted_free_fonts(Ted *ted) {
 static Node *ted_buffer_location_in_node_tree(Ted *ted, TextBuffer *buffer, u16 *tab_idx) {
 	arr_foreach_ptr(ted->nodes, NodePtr, pnode) {
 		Node *node = *pnode;
-		i32 index = arr_index_of(node->tabs, buffer);
+		i32 index = node_index_of_tab(node, buffer);
 		if (index >= 0) {
 			if (tab_idx)
 				*tab_idx = (u16)index;
@@ -465,9 +465,9 @@ void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer) {
 			assert(0);
 			return;
 		}
-		node->active_tab = active_tab;
 		ted->active_node = node;
 		signature_help_retrigger(ted);
+		node_tab_switch(ted, node, active_tab);
 	} else {
 		ted->active_node = NULL;
 	}
@@ -477,9 +477,9 @@ void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer) {
 void ted_reset_active_buffer(Ted *ted) {
 	if (arr_len(ted->nodes)) {
 		Node *node = ted->nodes[0];
-		while (!node->tabs)
-			node = node->split_a; // arbitrarily pick split_a.
-		ted_switch_to_buffer(ted, node->tabs[node->active_tab]);
+		while (node_child1(node))
+			node = node_child1(node);
+		ted_switch_to_buffer(ted, node_get_tab(node, node_active_tab(node)));
 	} else {
 		// there's nothing to set it to
 		ted_switch_to_buffer(ted, NULL);
@@ -494,17 +494,6 @@ void ted_delete_buffer(Ted *ted, TextBuffer *buffer) {
 		ted->prev_active_buffer = NULL;
 	buffer_free(buffer);
 	arr_remove_item(ted->buffers, buffer);
-}
-
-Node *ted_new_node(Ted *ted) {
-	if (arr_len(ted->nodes) >= TED_NODE_MAX) {
-		ted_error(ted, "Too many nodes.");
-		return NULL;
-	}
-	Node *node = ted_calloc(ted, 1, sizeof *node);
-	if (!node) return NULL;
-	arr_add(ted->nodes, node);
-	return node;
 }
 
 TextBuffer *ted_new_buffer(Ted *ted) {
@@ -524,11 +513,10 @@ float ted_line_buffer_height(Ted *ted) {
 }
 
 void ted_node_switch(Ted *ted, Node *node) {
-	while (!node->tabs) {
-		node = node->split_a;
+	while (node_child1(node)) {
+		node = node_child1(node);
 	}
-	ted_switch_to_buffer(ted, node->tabs[node->active_tab]);
-	ted->active_node = node;
+	ted_switch_to_buffer(ted, node_get_tab(node, node_active_tab(node)));
 }
 
 // Open a new buffer. Fills out *tab to the index of the tab used.
@@ -539,7 +527,7 @@ static TextBuffer *ted_open_buffer(Ted *ted, u16 *tab) {
 	if (!node) {
 		if (!arr_len(ted->nodes)) {
 			// no nodes open; create a root node
-			node = ted->active_node = ted_new_node(ted);
+			node = ted->active_node = node_new(ted);
 		} else if (ted->prev_active_buffer) {
 			// opening a file while a menu is open
 			// it may happen.... (currently happens for rename symbol)
@@ -552,16 +540,14 @@ static TextBuffer *ted_open_buffer(Ted *ted, u16 *tab) {
 		}
 	}
 	
-	if (arr_len(node->tabs) >= TED_MAX_TABS) {
-		ted_error(ted, "Too many tabs.");
+	if (!node_add_tab(ted, node, new_buffer)) {
 		ted_delete_buffer(ted, new_buffer);
 		return false;
 	}
 	
-	arr_add(node->tabs, new_buffer);
-	node->active_tab = (u16)(arr_len(node->tabs) - 1);
-	*tab = node->active_tab;
-	ted_switch_to_buffer(ted, new_buffer);
+	u16 active_tab = (u16)(node_tab_count(node) - 1);
+	*tab = active_tab;
+	node_tab_switch(ted, node, active_tab);
 	return new_buffer;
 }
 
@@ -797,9 +783,9 @@ static void mark_node_reachable(Ted *ted, Node *node, bool *reachable) {
 		return;
 	}
 	reachable[i] = true;
-	if (!node->tabs) {
-		mark_node_reachable(ted, node->split_a, reachable);
-		mark_node_reachable(ted, node->split_b, reachable);
+	if (node_child1(node)) {
+		mark_node_reachable(ted, node_child1(node), reachable);
+		mark_node_reachable(ted, node_child2(node), reachable);
 	}
 }
 

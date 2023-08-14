@@ -1,6 +1,5 @@
 /*
 TODO:
-- public Node API
 - public Selector/FileSelector API
 - public Settings API
 
@@ -688,9 +687,9 @@ int main(int argc, char **argv) {
 					if (!menu_is_any_open(ted)) {
 						arr_foreach_ptr(ted->nodes, NodePtr, pnode) {
 							Node *node = *pnode;
-							if (node->tabs) {
-								buffer = node->tabs[node->active_tab];
-								if (buffer_handle_click(ted, buffer, pos, times)) {
+							TextBuffer *tab = node_get_tab(node, node_active_tab(node));
+							if (tab) {
+								if (buffer_handle_click(ted, tab, pos, times)) {
 									add = false;
 									break;
 								}

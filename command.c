@@ -565,8 +565,12 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 		} else if (ted->find) {
 			find_close(ted);
 		} else if (node) {
-			u16 tab_idx = node->active_tab;
-			buffer = node->tabs[tab_idx];
+			u32 tab_idx = node_active_tab(node);
+			buffer = node_get_tab(node, tab_idx);
+			if (!buffer) {
+				assert(0); // active_node shouldn't be set to a split node
+				return;
+			}
 			// (an argument of 2 overrides the unsaved changes dialog)
 			if (argument != 2 && buffer_unsaved_changes(buffer)) {
 				// there are unsaved changes!
@@ -574,7 +578,7 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 				strbuf_printf(ted->warn_unsaved_names, "%s", buffer_display_filename(buffer));
 				menu_open(ted, MENU_WARN_UNSAVED);
 			} else {
-				node_tab_close(ted, node, node->active_tab);
+				node_tab_close(ted, node, tab_idx);
 			}
 		} else if (ted->build_shown) {
 			build_stop(ted);
@@ -596,18 +600,17 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 			node_tab_prev(ted, node, (i32)argument);
 		break;
 	case CMD_TAB_SWITCH:
-		if (node && argument > I32_MIN && argument < I32_MAX)
-			node_tab_switch(ted, node, (i32)argument);
+		if (node && argument >= 0 && argument < U32_MAX)
+			node_tab_switch(ted, node, (u32)argument);
 		break;
 	case CMD_TAB_MOVE_LEFT: {
-		u16 active_tab = node->active_tab;
+		u32 active_tab = node_active_tab(node);
 		if (active_tab > 0)
 			node_tabs_swap(node, active_tab, active_tab - 1);
 	} break;
 	case CMD_TAB_MOVE_RIGHT: {
-		u16 active_tab = node->active_tab;
-		if ((uint)active_tab + 1 < arr_len(node->tabs))
-			node_tabs_swap(node, active_tab, active_tab + 1);
+		u32 active_tab = node_active_tab(node);
+		node_tabs_swap(node, active_tab, active_tab + 1);
 	} break;
 	case CMD_FIND:
 		if (buffer)
