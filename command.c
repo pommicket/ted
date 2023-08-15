@@ -259,11 +259,13 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 		autocomplete_close(ted);
 		break;
 	case CMD_START_OF_LINE:
-		if (buffer) buffer_cursor_move_to_start_of_line(buffer);
+		if (ted->selector_open) selector_home(ted, ted->selector_open);
+		else if (buffer) buffer_cursor_move_to_start_of_line(buffer);
 		autocomplete_close(ted);
 		break;
 	case CMD_END_OF_LINE:
-		if (buffer) buffer_cursor_move_to_end_of_line(buffer);
+		if (ted->selector_open) selector_end(ted, ted->selector_open);
+		else if (buffer) buffer_cursor_move_to_end_of_line(buffer);
 		autocomplete_close(ted);
 		break;
 	case CMD_SELECT_START_OF_LINE:
@@ -275,11 +277,13 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 		autocomplete_close(ted);
 		break;
 	case CMD_START_OF_FILE:
-		if (buffer) buffer_cursor_move_to_start_of_file(buffer);
+		if (ted->selector_open) selector_home(ted, ted->selector_open);
+		else if (buffer) buffer_cursor_move_to_start_of_file(buffer);
 		autocomplete_close(ted);
 		break;
 	case CMD_END_OF_FILE:
-		if (buffer) buffer_cursor_move_to_end_of_file(buffer);
+		if (ted->selector_open) selector_end(ted, ted->selector_open);
+		else if (buffer) buffer_cursor_move_to_end_of_file(buffer);
 		autocomplete_close(ted);
 		break;
 	case CMD_SELECT_START_OF_FILE:

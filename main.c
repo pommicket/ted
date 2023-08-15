@@ -1,7 +1,4 @@
 /*
-TODO:
-- use home/end with selector
-
 FUTURE FEATURES:
 - autodetect indentation (tabs vs spaces)
 - custom file/build command associations
@@ -75,7 +72,7 @@ FUTURE FEATURES:
 #include "ide-definitions.c"
 #include "ide-highlights.c"
 #include "ide-usages.c"
-#include "ide-d.c"
+#include "ide-document-link.c"
 #include "command.c"
 #include "macro.c"
 #include "config.c"

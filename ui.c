@@ -147,10 +147,8 @@ static void selector_scroll_to_cursor(Ted *ted, Selector *s) {
 
 static void selector_move(Ted *ted, Selector *s, i32 direction) {
 	assert(direction == -1 || direction == 1);
-	if (!s->enable_cursor || selector_filtered_entry_count(s) == 0) {
-		// can't do anything
+	if (!s->enable_cursor || selector_filtered_entry_count(s) == 0)
 		return;
-	}
 	
 	do
 		s->cursor = (u32)mod_i64((i64)s->cursor + direction, arr_len(s->entries));
@@ -164,6 +162,26 @@ void selector_up(Ted *ted, Selector *s) {
 
 void selector_down(Ted *ted, Selector *s) {
 	selector_move(ted, s, 1);
+}
+
+void selector_home(Ted *ted, Selector *s) {
+	if (!s->enable_cursor || selector_filtered_entry_count(s) == 0)
+		return;
+	
+	s->cursor = 0;
+	while (!selector_show_entry(s, &s->entries[s->cursor]))
+		++s->cursor;
+	selector_scroll_to_cursor(ted, s);
+}
+
+void selector_end(Ted *ted, Selector *s) {
+	if (!s->enable_cursor || selector_filtered_entry_count(s) == 0)
+		return;
+	
+	s->cursor = arr_len(s->entries) - 1;
+	while (!selector_show_entry(s, &s->entries[s->cursor]))
+		--s->cursor;
+	selector_scroll_to_cursor(ted, s);
 }
 
 static int selectory_entry_cmp_name(const void *av, const void *bv) {
@@ -182,12 +200,14 @@ static void selector_entry_rect_clip(Ted *ted, Selector *s, Rect *r) {
 	rect_clip_to_rect(r, entry_bounds);
 }
 
-static Rect selector_entry_rect_first(Ted *ted, Selector *s) {
+static Rect selector_entry_rect(Ted *ted, Selector *s, u32 i_display) {
 	float char_height = text_font_char_height(ted->font);
 	Rect r = {
 		.pos = {
 			s->bounds.pos.x,
-			selector_entries_start_y(ted, s) - char_height * s->scroll
+			selector_entries_start_y(ted, s) + char_height * (
+				(float)i_display - s->scroll
+			)
 		},
 		.size = {
 			s->bounds.size.x,
@@ -198,25 +218,24 @@ static Rect selector_entry_rect_first(Ted *ted, Selector *s) {
 	return r;
 }
 
-static void selector_entry_rect_next(Ted *ted, Selector *s, Rect *r) {
-	const float char_height = text_font_char_height(ted->font);
-	r->pos.y += char_height;
-	r->size = (vec2) { s->bounds.size.x, char_height };
-	selector_entry_rect_clip(ted, s, r);
-}
-
 char *selector_update(Ted *ted, Selector *s) {
 	char *ret = NULL;
 	TextBuffer *line_buffer = ted->line_buffer;
 	{
-		free(s->search_term);
+		char *prev_search_term = s->search_term;
 		s->search_term = buffer_get_line_utf8(line_buffer, 0);
+		if (prev_search_term && !streq(prev_search_term, s->search_term)) {
+			// reset cursor because not doing it looks weird
+			selector_home(ted, s);
+		}
+		free(prev_search_term);
 	}
 	
 	ted->selector_open = s;
-	Rect entry_rect = selector_entry_rect_first(ted, s);
+	u32 i_display = 0;
 	arr_foreach_ptr(s->entries, const SelectorEntry, e) {
 		if (!selector_show_entry(s, e)) continue;
+		Rect entry_rect = selector_entry_rect(ted, s, i_display++);
 		
 		// check if this entry was clicked on
 		if (ted_clicked_in_rect(ted, entry_rect)) {
@@ -225,7 +244,6 @@ char *selector_update(Ted *ted, Selector *s) {
 			ret = str_dup(e->name);
 			break;
 		}
-		selector_entry_rect_next(ted, s, &entry_rect);
 	}
 
 	if (line_buffer_is_submitted(line_buffer)) {
@@ -293,41 +311,38 @@ void selector_render(Ted *ted, Selector *s) {
 	text_state.max_y = y2;
 	text_state.render = true;
 
-	{
 	// render entries themselves
-	Rect r = selector_entry_rect_first(ted, s);
+	u32 i_display = 0;
 	for (u32 i = 0; i < arr_len(s->entries); ++i) {
 		const SelectorEntry *entry = &s->entries[i];
 		if (!selector_show_entry(s, entry)) continue;
-		if (r.size.x * r.size.y > 0) {
-			float x = r.pos.x, y = r.pos.y;
-			text_state.x = x; text_state.y = y;
-			
-			if (rect_contains_point(r, ted->mouse_pos) || (s->enable_cursor && s->cursor == i)) {
-				// highlight it
-				gl_geometry_rect(r, settings_color(settings, COLOR_MENU_HL));
-			}
-			
-			// draw name
-			settings_color_floats(settings, entry->color ? entry->color : COLOR_TEXT, text_state.color);
-			text_state_break_kerning(&text_state);
-			text_utf8_with_state(font, &text_state, entry->name);
-			
-			if (entry->detail) {
-				// draw detail
-				float detail_size = text_get_size_vec2(font, entry->detail).x;
-				TextRenderState detail_state = text_state;
-				detail_state.x = maxd(text_state.x + 2 * padding, x2 - detail_size);
-				
-				settings_color_floats(settings, COLOR_COMMENT, detail_state.color);
-				text_utf8_with_state(font, &detail_state, entry->detail);
-			}
+		Rect r = selector_entry_rect(ted, s, i_display++);
+		if (r.size.x * r.size.y <= 0) continue;
+		float x = r.pos.x, y = r.pos.y;
+		text_state.x = x; text_state.y = y;
+		
+		if (rect_contains_point(r, ted->mouse_pos) || (s->enable_cursor && s->cursor == i)) {
+			// highlight it
+			gl_geometry_rect(r, settings_color(settings, COLOR_MENU_HL));
 		}
-		selector_entry_rect_next(ted, s, &r);
+		
+		// draw name
+		settings_color_floats(settings, entry->color ? entry->color : COLOR_TEXT, text_state.color);
+		text_state_break_kerning(&text_state);
+		text_utf8_with_state(font, &text_state, entry->name);
+		
+		if (entry->detail) {
+			// draw detail
+			float detail_size = text_get_size_vec2(font, entry->detail).x;
+			TextRenderState detail_state = text_state;
+			detail_state.x = maxd(text_state.x + 2 * padding, x2 - detail_size);
+			
+			settings_color_floats(settings, COLOR_COMMENT, detail_state.color);
+			text_utf8_with_state(font, &detail_state, entry->detail);
+		}
 	}
 	gl_geometry_draw();
 	text_render(font);
-	}
 }
 
 void file_selector_clear(FileSelector *fs) {

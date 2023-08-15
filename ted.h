@@ -22,7 +22,7 @@ extern "C" {
 #include "command.h"
 
 /// Version number
-#define TED_VERSION "3.0"
+#define TED_VERSION "2.5"
 /// Maximum path size ted handles.
 #define TED_PATH_MAX 1024
 /// Config filename
@@ -1244,6 +1244,10 @@ void selector_free(Selector *s);
 void selector_up(Ted *ted, Selector *s);
 /// move selector cursor down
 void selector_down(Ted *ted, Selector *s);
+/// move selector cursor to the first entry
+void selector_home(Ted *ted, Selector *s);
+/// move selector cursor to the last entry
+void selector_end(Ted *ted, Selector *s);
 /// sort entries by comparison function
 void selector_sort_entries(Selector *s, int (*compar)(void *context, const SelectorEntry *e1, const SelectorEntry *e2), void *context);
 /// sort entries alphabetically
