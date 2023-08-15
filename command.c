@@ -202,14 +202,14 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 		autocomplete_close(ted);
 		break;
 	case CMD_UP:
-		if (ted->selector_open) selector_up(ted, ted->selector_open, argument);
+		if (ted->selector_open) selector_up(ted, ted->selector_open);
 		else if (menu_is_open(ted, MENU_SHELL) && buffer == ted->line_buffer)
 			menu_shell_up(ted);
 		else if (buffer) buffer_cursor_move_up(buffer, argument);
 		autocomplete_close(ted);
 		break;
 	case CMD_DOWN:
-		if (ted->selector_open) selector_down(ted, ted->selector_open, argument);
+		if (ted->selector_open) selector_down(ted, ted->selector_open);
 		else if (menu_is_open(ted, MENU_SHELL) && buffer == ted->line_buffer)
 			menu_shell_down(ted);
 		else if (buffer) buffer_cursor_move_down(buffer, argument);

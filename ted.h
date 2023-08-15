@@ -1231,10 +1231,10 @@ void selector_clear_entries(Selector *s);
 void selector_clear(Selector *s);
 /// free resources used by selector
 void selector_free(Selector *s);
-/// move selector cursor up by `n` entries
-void selector_up(Ted *ted, Selector *s, i64 n);
-/// move selector cursor down by `n` entries
-void selector_down(Ted *ted, Selector *s, i64 n);
+/// move selector cursor up
+void selector_up(Ted *ted, Selector *s);
+/// move selector cursor down
+void selector_down(Ted *ted, Selector *s);
 /// sort entries by comparison function
 void selector_sort_entries(Selector *s, int (*compar)(void *context, const SelectorEntry *e1, const SelectorEntry *e2), void *context);
 /// sort entries alphabetically

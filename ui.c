@@ -9,6 +9,7 @@
 
 struct Selector {
 	SelectorEntry *entries;
+	char *search_term;
 	Rect bounds;
 	u32 cursor;
 	float scroll;
@@ -51,6 +52,8 @@ void selector_clear_entries(Selector *s) {
 
 void selector_clear(Selector *s) {
 	selector_clear_entries(s);
+	free(s->search_term);
+	s->search_term = NULL;
 	s->scroll = 0;
 	s->cursor = 0;
 }
@@ -109,50 +112,58 @@ static float selector_entries_start_y(Ted *ted, const Selector *s) {
 }
 
 // number of entries that can be displayed on the screen
-static u32 selector_n_display_entries(Ted *ted, const Selector *s) {
+static u32 selector_max_displayable_entries(Ted *ted, const Selector *s) {
 	float char_height = text_font_char_height(ted->font);
 	float entries_h = rect_y2(s->bounds) - selector_entries_start_y(ted, s);
 	return (u32)(entries_h / char_height);
 }
 
+static bool selector_show_entry(Selector *s, const SelectorEntry *e) {
+	return !s->search_term || strstr_case_insensitive(e->name, s->search_term);
+}
+
+static u32 selector_filtered_entry_count(Selector *s) {
+	u32 count = 0;
+	arr_foreach_ptr(s->entries, const SelectorEntry, e) {
+		count += selector_show_entry(s, e);
+	}
+	return count;
+}
+
 static void selector_clamp_scroll(Ted *ted, Selector *s) {
-	float max_scroll = (float)arr_len(s->entries) - (float)selector_n_display_entries(ted, s);
+	float max_scroll = (float)selector_filtered_entry_count(s) - (float)selector_max_displayable_entries(ted, s);
 	if (max_scroll < 0) max_scroll = 0;
 	s->scroll = clampf(s->scroll, 0, max_scroll);
 }
 
 static void selector_scroll_to_cursor(Ted *ted, Selector *s) {
-	u32 n_display_entries = selector_n_display_entries(ted, s);
+	u32 max_entries = selector_max_displayable_entries(ted, s);
 	float scrolloff = ted_active_settings(ted)->scrolloff;
-	float min_scroll = (float)s->cursor - ((float)n_display_entries - scrolloff);
+	float min_scroll = (float)s->cursor - ((float)max_entries - scrolloff);
 	float max_scroll = (float)s->cursor - scrolloff;
 	s->scroll = clampf(s->scroll, min_scroll, max_scroll);
 	selector_clamp_scroll(ted, s);
 }
 
-// where is the ith entry in the selector on the screen?
-// returns false if it's completely offscreen
-static bool selector_entry_pos(Ted *ted, const Selector *s, u32 i, Rect *r) {
-	Rect bounds = s->bounds;
-	float char_height = text_font_char_height(ted->font);
-	*r = rect_xywh(bounds.pos.x, selector_entries_start_y(ted, s)
-		- char_height * s->scroll
-		+ char_height * (float)i, 
-		bounds.size.x, char_height);
-	return rect_clip_to_rect(r, bounds);
-}
-
-void selector_up(Ted *ted, Selector *s, i64 n) {
-	if (!s->enable_cursor || arr_len(s->entries) == 0) {
+static void selector_move(Ted *ted, Selector *s, i32 direction) {
+	assert(direction == -1 || direction == 1);
+	if (!s->enable_cursor || selector_filtered_entry_count(s) == 0) {
 		// can't do anything
 		return;
 	}
-	s->cursor = (u32)mod_i64(s->cursor - n, arr_len(s->entries));
+	
+	do
+		s->cursor = (u32)mod_i64((i64)s->cursor + direction, arr_len(s->entries));
+	while (!selector_show_entry(s, &s->entries[s->cursor]));
 	selector_scroll_to_cursor(ted, s);
 }
 
-void selector_down(Ted *ted, Selector *s, i64 n) {
-	selector_up(ted, s, -n);
+void selector_up(Ted *ted, Selector *s) {
+	selector_move(ted, s, -1);
+}
+
+void selector_down(Ted *ted, Selector *s) {
+	selector_move(ted, s, 1);
 }
 
 static int selectory_entry_cmp_name(const void *av, const void *bv) {
@@ -164,22 +175,57 @@ void selector_sort_entries_by_name(Selector *s) {
 	qsort(s->entries, arr_len(s->entries), sizeof *s->entries, selectory_entry_cmp_name);
 }
 
+static void selector_entry_rect_clip(Ted *ted, Selector *s, Rect *r) {
+	Rect entry_bounds = s->bounds;
+	entry_bounds.pos.y = selector_entries_start_y(ted, s);
+	entry_bounds.size.y -= entry_bounds.pos.y - s->bounds.pos.y;
+	rect_clip_to_rect(r, entry_bounds);
+}
+
+static Rect selector_entry_rect_first(Ted *ted, Selector *s) {
+	float char_height = text_font_char_height(ted->font);
+	Rect r = {
+		.pos = {
+			s->bounds.pos.x,
+			selector_entries_start_y(ted, s) - char_height * s->scroll
+		},
+		.size = {
+			s->bounds.size.x,
+			char_height,
+		}
+	};
+	selector_entry_rect_clip(ted, s, &r);
+	return r;
+}
+
+static void selector_entry_rect_next(Ted *ted, Selector *s, Rect *r) {
+	const float char_height = text_font_char_height(ted->font);
+	r->pos.y += char_height;
+	r->size = (vec2) { s->bounds.size.x, char_height };
+	selector_entry_rect_clip(ted, s, r);
+}
+
 char *selector_update(Ted *ted, Selector *s) {
 	char *ret = NULL;
 	TextBuffer *line_buffer = ted->line_buffer;
-
+	{
+		free(s->search_term);
+		s->search_term = buffer_get_line_utf8(line_buffer, 0);
+	}
+	
 	ted->selector_open = s;
-	for (u32 i = 0; i < arr_len(s->entries); ++i) {
+	Rect entry_rect = selector_entry_rect_first(ted, s);
+	arr_foreach_ptr(s->entries, const SelectorEntry, e) {
+		if (!selector_show_entry(s, e)) continue;
+		
 		// check if this entry was clicked on
-		Rect entry_rect;
-		if (selector_entry_pos(ted, s, i, &entry_rect)) {
-			if (ted_clicked_in_rect(ted, entry_rect)) {
-				// this option was selected
-				s->cursor = i; // indicate the index of the selected entry using s->cursor
-				ret = str_dup(s->entries[i].name);
-				break;
-			}
+		if (ted_clicked_in_rect(ted, entry_rect)) {
+			// this option was selected
+			s->cursor = (u32)(e - s->entries); // indicate the index of the selected entry using s->cursor
+			ret = str_dup(e->name);
+			break;
 		}
+		selector_entry_rect_next(ted, s, &entry_rect);
 	}
 
 	if (line_buffer_is_submitted(line_buffer)) {
@@ -192,7 +238,7 @@ char *selector_update(Ted *ted, Selector *s) {
 
 			} else {
 				// user typed in submission
-				ret = str32_to_utf8_cstr(buffer_get_line(line_buffer, 0));
+				ret = buffer_get_line_utf8(line_buffer, 0);
 			}
 		}
 	}
@@ -211,21 +257,28 @@ void selector_render(Ted *ted, Selector *s) {
 
 	Rect bounds = s->bounds;
 	
-	float x1, y1, x2, y2;
-	rect_coords(bounds, &x1, &y1, &x2, &y2);
-
-	for (u32 i = 0; i < arr_len(s->entries); ++i) {
-		// highlight entry user is hovering over/selecting
-		Rect entry_rect;
-		if (selector_entry_pos(ted, s, i, &entry_rect)) {
-			rect_clip_to_rect(&entry_rect, bounds);
-			if (rect_contains_point(entry_rect, ted->mouse_pos) || (s->enable_cursor && s->cursor == i)) {
-				// highlight it
-				gl_geometry_rect(entry_rect, settings_color(settings, COLOR_MENU_HL));
+	if (arr_len(s->entries)) {
+		// clamp cursor
+		s->cursor = clamp_u32(s->cursor, 0, arr_len(s->entries) - 1);
+		
+		// make sure cursor points to an entry in the filtered list
+		u32 prev = U32_MAX;
+		for (u32 i = 0; i < arr_len(s->entries); ++i) {
+			if (selector_show_entry(s, &s->entries[i]))
+				prev = i;
+			if (i >= s->cursor && prev != U32_MAX) {
+				s->cursor = prev;
+				break;
 			}
 		}
+		if (!selector_show_entry(s, &s->entries[s->cursor])) {
+			s->cursor = prev;
+		}
 	}
-	gl_geometry_draw();
+	
+	
+	float x1, y1, x2, y2;
+	rect_coords(bounds, &x1, &y1, &x2, &y2);
 
 	{
 		float line_buffer_height = ted_line_buffer_height(ted);
@@ -240,14 +293,20 @@ void selector_render(Ted *ted, Selector *s) {
 	text_state.max_y = y2;
 	text_state.render = true;
 
+	{
 	// render entries themselves
-	SelectorEntry *const entries = s->entries;
-	for (u32 i = 0; i < arr_len(entries); ++i) {
-		Rect r;
-		if (selector_entry_pos(ted, s, i, &r)) {
-			SelectorEntry *entry = &entries[i];
+	Rect r = selector_entry_rect_first(ted, s);
+	for (u32 i = 0; i < arr_len(s->entries); ++i) {
+		const SelectorEntry *entry = &s->entries[i];
+		if (!selector_show_entry(s, entry)) continue;
+		if (r.size.x * r.size.y > 0) {
 			float x = r.pos.x, y = r.pos.y;
 			text_state.x = x; text_state.y = y;
+			
+			if (rect_contains_point(r, ted->mouse_pos) || (s->enable_cursor && s->cursor == i)) {
+				// highlight it
+				gl_geometry_rect(r, settings_color(settings, COLOR_MENU_HL));
+			}
 			
 			// draw name
 			settings_color_floats(settings, entry->color ? entry->color : COLOR_TEXT, text_state.color);
@@ -264,8 +323,11 @@ void selector_render(Ted *ted, Selector *s) {
 				text_utf8_with_state(font, &detail_state, entry->detail);
 			}
 		}
+		selector_entry_rect_next(ted, s, &r);
 	}
+	gl_geometry_draw();
 	text_render(font);
+	}
 }
 
 void file_selector_clear(FileSelector *fs) {

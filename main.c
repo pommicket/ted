@@ -1,7 +1,7 @@
 /*
 TODO:
-- selector search
 - public Settings API
+- use home/end with selector
 
 FUTURE FEATURES:
 - autodetect indentation (tabs vs spaces)
