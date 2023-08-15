@@ -133,6 +133,21 @@ static int definition_entry_qsort_cmp(const void *av, const void *bv) {
 	return strcmp(a->detail, b->detail);
 }
 
+/// put definitions from `ted->definitions->all_definitions` into `ted->definitions->selector`'s entries.
+static void definitions_selector_update_entries(Ted *ted) {
+	Definitions *defs = ted->definitions;
+	Selector *sel = defs->selector;
+	selector_clear(sel);
+	arr_foreach_ptr(defs->all_definitions, SymbolInfo, info) {
+		SelectorEntry entry = {
+			.color = info->color,
+			.name = info->name,
+			.detail = info->detail,
+		};
+		selector_add_entry(sel, &entry);
+	}
+}
+
 void definitions_process_lsp_response(Ted *ted, LSP *lsp, const LSPResponse *response) {
 	Definitions *defs = ted->definitions;
 	if (response->request.id != defs->last_request.id) {
@@ -182,7 +197,6 @@ void definitions_process_lsp_response(Ted *ted, LSP *lsp, const LSPResponse *res
 		// handle workspace/symbol response
 		const LSPResponseWorkspaceSymbols *response_syms = &response->data.workspace_symbols;
 		const LSPSymbolInformation *symbols = response_syms->symbols;
-		const Settings *settings = ted_active_settings(ted);
 		
 		definitions_clear_entries(defs);
 		arr_set_len(defs->all_definitions, arr_len(symbols));
@@ -192,7 +206,7 @@ void definitions_process_lsp_response(Ted *ted, LSP *lsp, const LSPResponse *res
 			
 			def->name = str_dup(lsp_response_string(response, symbol->name));
 			SymbolKind kind = symbol_kind_to_ted(symbol->kind);
-			def->color = settings_color(settings, color_for_symbol_kind(kind));
+			def->color = color_for_symbol_kind(kind);
 			def->from_lsp = true;
 			def->position = lsp_location_start_position(symbol->location);
 			const char *container_name = lsp_response_string(response, symbol->container);
@@ -204,6 +218,8 @@ void definitions_process_lsp_response(Ted *ted, LSP *lsp, const LSPResponse *res
 				filename,
 				def->position.pos.line + 1);
 		}
+		
+		definitions_selector_update_entries(ted);
 		
 		} break;
 	default:
@@ -244,6 +260,7 @@ static void definitions_selector_open(Ted *ted) {
 		definitions_send_request_if_needed(ted);
 	} else {
 		defs->all_definitions = tags_get_symbols(ted);
+		definitions_selector_update_entries(ted);
 	}
 	ted_switch_to_buffer(ted, ted->line_buffer);
 	buffer_select_all(ted->active_buffer);
@@ -270,20 +287,7 @@ static void definitions_selector_update(Ted *ted) {
 	
 	char *chosen = selector_update(ted, sel);
 	if (chosen) {
-		// for LSP go-to-definition, we ignore `chosen` and use the cursor instead.
-		// this is because a single symbol can have multiple definitions,
-		// e.g. with overloading.
-		SelectorEntry cursor_entry = {0};
-		if (!selector_get_cursor_entry(sel, &cursor_entry)) {
-			assert(0); // shouldn't happen since `chosen` is true.
-			return;
-		}
-		
-		u64 def_idx = cursor_entry.userdata;
-		if (def_idx >= arr_len(defs->all_definitions)) {
-			assert(0);
-			return;
-		}
+		u64 def_idx = selector_get_cursor(sel);
 		SymbolInfo *info = &defs->all_definitions[def_idx];
 		if (info->from_lsp) {
 			// NOTE: we need to get this before calling menu_close,

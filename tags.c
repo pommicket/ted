@@ -382,7 +382,6 @@ SymbolInfo *tags_get_symbols(Ted *ted) {
 	if (!file) return NULL;
 	
 	SymbolInfo *infos = NULL;
-	u32 color = ted_active_color(ted, COLOR_TEXT);
 	if (file) {
 		char line[1024];
 		while (fgets(line, sizeof line, file)) {
@@ -390,7 +389,7 @@ SymbolInfo *tags_get_symbols(Ted *ted) {
 				size_t len = strcspn(line, "\t");
 				SymbolInfo *info = arr_addp(infos);
 				info->name = strn_dup(line, len);
-				info->color = color;
+				info->color = COLOR_TEXT;
 			}
 		}
 		fclose(file);
