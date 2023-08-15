@@ -100,7 +100,7 @@ const char *color_setting_to_str(ColorSetting s) {
 
 // converts #rrggbb/#rrggbbaa to a color. returns false if it's not in the right format.
 Status color_from_str(const char *str, u32 *color) {
-	uint r = 0, g = 0, b = 0, a = 0xff;
+	u32 r = 0, g = 0, b = 0, a = 0xff;
 	bool success = false;
 	switch (strlen(str)) {
 	case 4:

@@ -353,7 +353,7 @@ int main(int argc, char **argv) {
 		wchar_t *appdata = NULL;
 		KNOWNFOLDERID id = FOLDERID_LocalAppData;
 		if (SHGetKnownFolderPath(&id, 0, NULL, &appdata) == S_OK) {
-			strbuf_printf(ted->local_data_dir, "%ls" PATH_SEPARATOR_STR "ted", appdata);
+			strbuf_printf(ted->local_data_dir, "%ls%cted", appdata, PATH_SEPARATOR);
 			CoTaskMemFree(appdata);
 		}
 		id = FOLDERID_Profile;

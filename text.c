@@ -265,7 +265,7 @@ Font *text_font_load(const char *ttf_filename, float font_size) {
 	u32 file_size = (u32)ftell(ttf_file);
 	fseek(ttf_file, 0, SEEK_SET);
 	if (file_size >= (50UL<<20)) { // fonts aren't usually bigger than 50 MB
-		text_set_err("Font file too big (%u megabytes).", (uint)(file_size >> 20));
+		text_set_err("Font file too big (%u megabytes).", (unsigned)(file_size >> 20));
 	}
 	
 	u8 *file_data = NULL;

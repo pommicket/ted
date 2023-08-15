@@ -6,7 +6,7 @@
 #include <sys/stat.h>
 #include <io.h>
 #include <sysinfoapi.h>
-
+#include <direct.h>
 
 static FsType windows_file_attributes_to_type(DWORD attrs) {
 	if (attrs == INVALID_FILE_ATTRIBUTES)
@@ -43,7 +43,7 @@ FsDirectoryEntry **fs_list_directory(const char *dirname) {
 	HANDLE fhandle;
 	assert(*dirname);
 	sprintf_s(file_pattern, sizeof file_pattern, "%s%s*", dirname,
-		dirname[strlen(dirname) - 1] == PATH_SEPARATOR ? "" : PATH_SEPARATOR_STR);
+		strchr(ALL_PATH_SEPARATORS, dirname[strlen(dirname) - 1]) ? "" : "\\");
 	wchar_t wide_pattern[4100] = {0};
 	if (MultiByteToWideChar(CP_UTF8, 0, file_pattern, -1, wide_pattern, arr_count(wide_pattern)) == 0)
 		return NULL;
@@ -414,7 +414,17 @@ int process_check_status(Process **pprocess, ProcessExitInfo *info) {
 
 
 bool open_with_default_application(const char *path) {
-	todo ShellExecuteW?
+	WCHAR wide_path[4100];
+	if (MultiByteToWideChar(CP_UTF8, 0, path, -1, wide_path, arr_count(wide_path)) == 0)
+		return false;
+	return (u64)ShellExecuteW(
+		NULL,
+		L"open",
+		wide_path,
+		NULL,
+		NULL,
+		0
+	) > 32;
 }
 
 

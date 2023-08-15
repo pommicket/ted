@@ -222,11 +222,14 @@ static i32 arr_index_of_(void *arr, size_t member_size, const void *item) {
 
 static void *arr_remove_multiple_(void *arr, size_t member_size, size_t index, size_t count) {
 	ArrHeader *hdr = arr_hdr_(arr);
-	assert(index < hdr->len);
+	u32 old_len = hdr->len;
+	if (index >= old_len) return arr;
+	if (count > old_len - index)
+		count = old_len - index;
 	memmove((char *)arr + index * member_size,
 		(char *)arr + (index + count) * member_size,
 		(hdr->len - (index + count)) * member_size);
-	hdr->len -= count;
+	hdr->len -= (u32)count;
 	if (hdr->len == 0) {
 		free(hdr);
 		return NULL;

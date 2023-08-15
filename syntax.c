@@ -720,7 +720,7 @@ static void syntax_highlight_python(SyntaxState *state, const char32_t *line, u3
 	bool string_is_dbl_quoted = (*state & SYNTAX_STATE_PYTHON_STRING_DBL_QUOTED) != 0;
 	bool string_is_multiline = true;
 	bool in_number = false;
-	uint backslashes = 0;
+	u32 backslashes = 0;
 	
 	for (u32 i = 0; i < line_len; ++i) {
 		char32_t c = line[i];
@@ -1356,7 +1356,7 @@ static void syntax_highlight_javascript_like(
 	bool string_is_regex = false;
 	bool in_number = false;
 	bool in_string = string_is_template;
-	uint backslashes = 0;
+	u32 backslashes = 0;
 	
 	for (u32 i = 0; i < line_len; ++i) {
 		char32_t c = line[i];
