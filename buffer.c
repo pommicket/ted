@@ -3209,14 +3209,13 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	float char_height = text_font_char_height(font);
 
 	Ted *ted = buffer->ted;
-	const u32 *colors = settings->colors;
 	const float padding = settings->padding;
 	const float border_thickness = settings->border_thickness;
 	
 	u32 start_line = buffer_first_rendered_line(buffer); // line to start rendering from
 	
 	
-	u32 border_color = colors[COLOR_BORDER]; // color of border around buffer
+	u32 border_color = settings_color(settings, COLOR_BORDER); // color of border around buffer
 	// bounding box around buffer
 	gl_geometry_rect_border(rect4(x1, y1, x2, y2), border_thickness, border_color);
 	
@@ -3251,7 +3250,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 			strbuf_printf(str, "%" PRIu32, line + 1); // convert line number to string
 			float x = x1 + line_number_width - text_get_size_vec2(font, str).x; // right justify
 			// set color
-			rgba_u32_to_floats(colors[line == cursor_line ? COLOR_CURSOR_LINE_NUMBER : COLOR_LINE_NUMBERS],
+			settings_color_floats(settings, line == cursor_line ? COLOR_CURSOR_LINE_NUMBER : COLOR_LINE_NUMBERS,
 				text_state.color);
 			text_state.x = x; text_state.y = y;
 			text_state_break_kerning(&text_state);
@@ -3263,7 +3262,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 		x1 += line_number_width;
 		x1 += 2; // a little bit of padding
 		// line separating line numbers from text
-		gl_geometry_rect(rect_xywh(x1, y1, border_thickness, y2 - y1), colors[COLOR_LINE_NUMBERS_SEPARATOR]);
+		gl_geometry_rect(rect_xywh(x1, y1, border_thickness, y2 - y1), settings_color(settings, COLOR_LINE_NUMBERS_SEPARATOR));
 		x1 += border_thickness;
 	}
 
@@ -3305,7 +3304,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	if (!buffer->is_line_buffer) { // highlight line cursor is on
 		Rect hl_rect = rect_xywh(x1, cursor_display_pos.y, x2-x1-1, char_height);
 		buffer_clip_rect(buffer, &hl_rect);
-		gl_geometry_rect(hl_rect, colors[COLOR_CURSOR_LINE_BG]);
+		gl_geometry_rect(hl_rect, settings_color(settings, COLOR_CURSOR_LINE_BG));
 	}
 
 	
@@ -3346,7 +3345,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 					(vec2){(float)highlight_width, char_height}
 				);
 				buffer_clip_rect(buffer, &hl_rect);
-				gl_geometry_rect(hl_rect, colors[buffer->view_only ? COLOR_VIEW_ONLY_SELECTION_BG : COLOR_SELECTION_BG]);
+				gl_geometry_rect(hl_rect, settings_color(settings, buffer->view_only ? COLOR_VIEW_ONLY_SELECTION_BG : COLOR_SELECTION_BG));
 			}
 			index1 = 0;
 		}
@@ -3394,7 +3393,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	text_state.max_x = x2;
 	text_state.max_y = y2;
 	if (!syntax_highlighting)
-		rgba_u32_to_floats(colors[COLOR_TEXT], text_state.color);
+		settings_color_floats(settings, COLOR_TEXT, text_state.color);
 
 	buffer->first_line_on_screen = start_line;
 	buffer->last_line_on_screen = 0;
@@ -3412,7 +3411,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 			if (syntax_highlighting) {
 				SyntaxCharType type = char_types[i];
 				ColorSetting color = syntax_char_type_to_color_setting(type);
-				rgba_u32_to_floats(colors[color], text_state.color);
+				rgba_u32_to_floats(settings_color(settings, color), text_state.color);
 			}
 			buffer_render_char(buffer, font, &text_state, c);
 		}
@@ -3445,7 +3444,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 				vec2 gl_pos = buffer_pos_to_pixels(buffer, pos);
 				Rect hl_rect = rect(gl_pos, (vec2){text_font_char_width(font, c), char_height});
 				if (buffer_clip_rect(buffer, &hl_rect)) {
-					gl_geometry_rect(hl_rect, colors[COLOR_MATCHING_BRACKET_HL]);
+					gl_geometry_rect(hl_rect, settings_color(settings, COLOR_MATCHING_BRACKET_HL));
 				}
 			}
 		}
@@ -3469,11 +3468,11 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 		if (is_on) {
 			if (buffer_clip_rect(buffer, &cursor_rect)) {
 				// draw cursor
-				u32 color = colors[COLOR_CURSOR];
-				if (buffer->view_only)
-					color = colors[COLOR_VIEW_ONLY_CURSOR];
+				u32 color = settings_color(settings, buffer->view_only ? COLOR_VIEW_ONLY_CURSOR : COLOR_CURSOR);
 				if (error_animation) {
-					color = color_interpolate(maxf(0, 2 * ((float)(error_animation_dt / error_animation_duration) - 0.5f)), colors[COLOR_CURSOR_ERROR], colors[COLOR_CURSOR]);
+					color = color_interpolate(maxf(0, 2 * ((float)(error_animation_dt / error_animation_duration) - 0.5f)),
+						settings_color(settings, COLOR_CURSOR_ERROR),
+						settings_color(settings, COLOR_CURSOR));
 				}
 				
 				gl_geometry_rect(cursor_rect, color);
@@ -3561,7 +3560,7 @@ void buffer_dedent_cursor_line(TextBuffer *buffer) {
 
 
 void buffer_comment_lines(TextBuffer *buffer, u32 first_line, u32 last_line) {
-	Settings *settings = buffer_settings(buffer);
+	const Settings *settings = buffer_settings(buffer);
 	const char *start = settings->comment_start, *end = settings->comment_end;
 	if (!start[0] && !end[0])
 		return;
@@ -3616,7 +3615,7 @@ static bool buffer_line_ends_with_ascii(TextBuffer *buffer, u32 line_idx, const 
 }
 
 void buffer_uncomment_lines(TextBuffer *buffer, u32 first_line, u32 last_line) {
-	Settings *settings = buffer_settings(buffer);
+	const Settings *settings = buffer_settings(buffer);
 	const char *start = settings->comment_start, *end = settings->comment_end;
 	if (!start[0] && !end[0])
 		return;
@@ -3640,7 +3639,7 @@ void buffer_uncomment_lines(TextBuffer *buffer, u32 first_line, u32 last_line) {
 }
 
 void buffer_toggle_comment_lines(TextBuffer *buffer, u32 first_line, u32 last_line) {
-	Settings *settings = buffer_settings(buffer);
+	const Settings *settings = buffer_settings(buffer);
 	const char *start = settings->comment_start, *end = settings->comment_end;
 	if (!start[0] && !end[0])
 		return;
@@ -3667,7 +3666,7 @@ void buffer_toggle_comment_selection(TextBuffer *buffer) {
 
 void buffer_highlight_lsp_range(TextBuffer *buffer, LSPRange range, ColorSetting color) {
 	Font *font = buffer_font(buffer);
-	const u32 *colors = buffer_settings(buffer)->colors;
+	const Settings *settings = buffer_settings(buffer);
 	const float char_height = text_font_char_height(font);
 	BufferPos range_start = buffer_pos_from_lsp(buffer, range.start);
 	BufferPos range_end = buffer_pos_from_lsp(buffer, range.end);
@@ -3677,14 +3676,14 @@ void buffer_highlight_lsp_range(TextBuffer *buffer, LSPRange range, ColorSetting
 		vec2 b = buffer_pos_to_pixels(buffer, range_end);
 		b.y += char_height;
 		Rect r = rect_endpoints(a, b); buffer_clip_rect(buffer, &r);
-		gl_geometry_rect(r, colors[color]);
+		gl_geometry_rect(r, settings_color(settings, color));
 	} else if (range_end.line - range_start.line < 1000) { // prevent gigantic highlights from slowing things down
 		// multiple lines.
 		vec2 a = buffer_pos_to_pixels(buffer, range_start);
 		vec2 b = buffer_pos_to_pixels(buffer, buffer_pos_end_of_line(buffer, range_start.line));
 		b.y += char_height;
 		Rect r1 = rect_endpoints(a, b); buffer_clip_rect(buffer, &r1);
-		gl_geometry_rect(r1, colors[COLOR_HOVER_HL]);
+		gl_geometry_rect(r1, settings_color(settings, COLOR_HOVER_HL));
 		
 		for (u32 line = range_start.line + 1; line < range_end.line; ++line) {
 			// these lines are fully contained in the range.
@@ -3694,7 +3693,7 @@ void buffer_highlight_lsp_range(TextBuffer *buffer, LSPRange range, ColorSetting
 			b = buffer_pos_to_pixels(buffer, end);
 			b.y += char_height;
 			Rect r = rect_endpoints(a, b); buffer_clip_rect(buffer, &r);
-			gl_geometry_rect(r, colors[COLOR_HOVER_HL]);
+			gl_geometry_rect(r, settings_color(settings, COLOR_HOVER_HL));
 		}
 		
 		// last line
@@ -3702,6 +3701,6 @@ void buffer_highlight_lsp_range(TextBuffer *buffer, LSPRange range, ColorSetting
 		b = buffer_pos_to_pixels(buffer, range_end);
 		b.y += char_height;
 		Rect r2 = rect_endpoints(a, b); buffer_clip_rect(buffer, &r2);
-		gl_geometry_rect(r2, colors[COLOR_HOVER_HL]);
+		gl_geometry_rect(r2, settings_color(settings, COLOR_HOVER_HL));
 	}
 }

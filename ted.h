@@ -813,7 +813,16 @@ char *settings_get_root_dir(const Settings *settings, const char *path);
 u32 settings_color(const Settings *settings, ColorSetting color);
 /// get color as four floats
 void settings_color_floats(const Settings *settings, ColorSetting color, float f[4]);
-
+/// get tab width
+u16 settings_tab_width(const Settings *settings);
+/// get whether to indent with spaces
+bool settings_indent_with_spaces(const Settings *settings);
+/// get whether auto-indent is enabled
+bool settings_auto_indent(const Settings *settings);
+/// get border thickness
+float settings_border_thickness(const Settings *settings);
+/// get padding
+float settings_padding(const Settings *settings);
 
 // === find.c ===
 /// which buffer will be searched?

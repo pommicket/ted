@@ -39,7 +39,7 @@ static void signature_help_clear(SignatureHelp *help) {
 
 static void signature_help_send_request(Ted *ted) {
 	SignatureHelp *help = ted->signature_help;
-	Settings *settings = ted_active_settings(ted);
+	const Settings *settings = ted_active_settings(ted);
 	if (!settings->signature_help_enabled) {
 		signature_help_clear(help);
 		return;
@@ -86,7 +86,7 @@ void signature_help_close(Ted *ted) {
 
 void signature_help_process_lsp_response(Ted *ted, const LSPResponse *response) {
 	SignatureHelp *help = ted->signature_help;
-	Settings *settings = ted_active_settings(ted);
+	const Settings *settings = ted_active_settings(ted);
 	if (!settings->signature_help_enabled) return;
 	
 	if (response->request.type != LSP_REQUEST_SIGNATURE_HELP)
@@ -129,7 +129,7 @@ void signature_help_process_lsp_response(Ted *ted, const LSPResponse *response) 
 }
 
 void signature_help_frame(Ted *ted) {
-	Settings *settings = ted_active_settings(ted);
+	const Settings *settings = ted_active_settings(ted);
 	if (!settings->signature_help_enabled)
 		return;
 	
@@ -145,7 +145,6 @@ void signature_help_frame(Ted *ted) {
 	if (!buffer)
 		return;
 	
-	u32 *colors = settings->colors;
 	float border = settings->border_thickness;
 	
 	Rect buf_rect = buffer_rect(buffer);
@@ -162,9 +161,9 @@ void signature_help_frame(Ted *ted) {
 	}
 	float x = buf_rect.pos.x, y = rect_y2(buf_rect) - height;
 	gl_geometry_rect(rect_xywh(x, y - border, width, border),
-		colors[COLOR_AUTOCOMPLETE_BORDER]);
+		settings_color(settings, COLOR_AUTOCOMPLETE_BORDER));
 	gl_geometry_rect(rect_xywh(x, y, width, height),
-		colors[COLOR_AUTOCOMPLETE_BG]);
+		settings_color(settings, COLOR_AUTOCOMPLETE_BG));
 	
 	// draw the signatures
 	for (int s = 0; s < signature_count; ++s) {
@@ -176,7 +175,7 @@ void signature_help_frame(Ted *ted) {
 		state.min_y = y;
 		state.max_x = rect_x2(buf_rect);
 		state.max_y = rect_y2(buf_rect);
-		rgba_u32_to_floats(colors[COLOR_TEXT], state.color);
+		settings_color_floats(settings, COLOR_TEXT, state.color);
 		
 		text_utf8_with_state(font, &state, signature->label_pre);
 		text_utf8_with_state(font_bold, &state, signature->label_active);

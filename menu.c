@@ -93,7 +93,6 @@ Rect selection_menu_render_bg(Ted *ted) {
 	const Settings *settings = ted_active_settings(ted);
 	const float menu_width = ted_get_menu_width(ted);
 	const float padding = settings->padding;
-	const u32 *colors = settings->colors;
 	const float window_width = ted->window_width, window_height = ted->window_height;
 	Rect bounds = rect_xywh(
 		window_width * 0.5f - 0.5f * menu_width, padding,
@@ -104,8 +103,8 @@ Rect selection_menu_render_bg(Ted *ted) {
 	rect_coords(bounds, &x1, &y1, &x2, &y2);
 
 	// menu rectangle & border
-	gl_geometry_rect(bounds, colors[COLOR_MENU_BG]);
-	gl_geometry_rect_border(bounds, settings->border_thickness, colors[COLOR_BORDER]);
+	gl_geometry_rect(bounds, settings_color(settings, COLOR_MENU_BG));
+	gl_geometry_rect_border(bounds, settings->border_thickness, settings_color(settings, COLOR_BORDER));
 	gl_geometry_draw();
 	
 	x1 += padding;
@@ -117,11 +116,10 @@ Rect selection_menu_render_bg(Ted *ted) {
 
 void menu_render(Ted *ted) {
 	const Settings *settings = ted_active_settings(ted);
-	const u32 *colors = settings->colors;
 	const float window_width = ted->window_width, window_height = ted->window_height;
 	const MenuInfo *info = &ted->all_menus[ted->menu_open_idx];
 	// render backdrop
-	gl_geometry_rect(rect_xywh(0, 0, window_width, window_height), colors[COLOR_MENU_BACKDROP]);
+	gl_geometry_rect(rect_xywh(0, 0, window_width, window_height), settings_color(settings, COLOR_MENU_BACKDROP));
 	gl_geometry_draw();
 
 	if (info->render)
@@ -388,7 +386,6 @@ static void command_selector_update(Ted *ted) {
 static void command_selector_render(Ted *ted) {
 	const Settings *settings = ted_active_settings(ted);
 	const float padding = settings->padding;
-	const u32 *colors = settings->colors;
 	const float line_buffer_height = ted_line_buffer_height(ted);
 	Font *font_bold = ted->font_bold;
 	
@@ -399,7 +396,7 @@ static void command_selector_render(Ted *ted) {
 	
 	// argument field
 	const char *text = "Argument";
-	text_utf8(font_bold, text, x1, y1, colors[COLOR_TEXT]);
+	text_utf8(font_bold, text, x1, y1, settings_color(settings, COLOR_TEXT));
 	float x = x1 + text_get_size_vec2(font_bold, text).x + padding;
 	buffer_render(ted->argument_buffer, rect4(x, y1, x2, y1 + line_buffer_height));
 
@@ -451,14 +448,13 @@ static void goto_line_menu_update(Ted *ted) {
 static void goto_line_menu_render(Ted *ted) {
 	const Settings *settings = ted_active_settings(ted);
 	const float padding = settings->padding;
-	const u32 *colors = settings->colors;
 	const float window_width = ted->window_width, window_height = ted->window_height;
 	Font *font_bold = ted->font_bold;
 	
 	float menu_height = ted_line_buffer_height(ted) + 2 * padding;
 	Rect r = rect_xywh(padding, window_height - menu_height - padding, window_width - 2 * padding, menu_height);
-	gl_geometry_rect(r, colors[COLOR_MENU_BG]);
-	gl_geometry_rect_border(r, settings->border_thickness, colors[COLOR_BORDER]);
+	gl_geometry_rect(r, settings_color(settings, COLOR_MENU_BG));
+	gl_geometry_rect_border(r, settings->border_thickness, settings_color(settings, COLOR_BORDER));
 	const char *text = "Go to line...";
 	vec2 text_size = text_get_size_vec2(font_bold, text);
 	float x1=0, y1=0, x2=0, y2=0;
@@ -468,7 +464,7 @@ static void goto_line_menu_render(Ted *ted) {
 	x2 -= padding;
 	y2 -= padding;
 	// render "Go to line" text
-	text_utf8(font_bold, text, x1, 0.5f * (y1 + y2 - text_size.y), colors[COLOR_TEXT]);
+	text_utf8(font_bold, text, x1, 0.5f * (y1 + y2 - text_size.y), settings_color(settings, COLOR_TEXT));
 	x1 += text_size.x + padding;
 	gl_geometry_draw();
 	text_render(font_bold);
@@ -505,19 +501,18 @@ static void shell_menu_render(Ted *ted) {
 	const float line_buffer_height = ted_line_buffer_height(ted);
 	const Settings *settings = ted_active_settings(ted);
 	const float padding = settings->padding;
-	const u32 *colors = settings->colors;
 	const float width = ted_get_menu_width(ted);
 	const float height = line_buffer_height + 2 * padding;
 	Rect bounds = {
 		.pos = {(ted->window_width - width) / 2, padding},
 		.size = {width, height},
 	};
-	gl_geometry_rect(bounds, colors[COLOR_MENU_BG]);
-	gl_geometry_rect_border(bounds, settings->border_thickness, colors[COLOR_BORDER]);
+	gl_geometry_rect(bounds, settings_color(settings, COLOR_MENU_BG));
+	gl_geometry_rect_border(bounds, settings->border_thickness, settings_color(settings, COLOR_BORDER));
 	gl_geometry_draw();
 	rect_shrink(&bounds, padding);
 	const char *text = "Run";
-	text_utf8(ted->font_bold, text, bounds.pos.x, bounds.pos.y, colors[COLOR_TEXT]);
+	text_utf8(ted->font_bold, text, bounds.pos.x, bounds.pos.y, settings_color(settings, COLOR_TEXT));
 	rect_shrink_left(&bounds, text_get_size_vec2(ted->font_bold, text).x + padding);
 	text_render(ted->font_bold);
 	buffer_render(ted->line_buffer, bounds);

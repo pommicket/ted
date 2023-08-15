@@ -183,7 +183,6 @@ void definitions_process_lsp_response(Ted *ted, LSP *lsp, const LSPResponse *res
 		const LSPResponseWorkspaceSymbols *response_syms = &response->data.workspace_symbols;
 		const LSPSymbolInformation *symbols = response_syms->symbols;
 		const Settings *settings = ted_active_settings(ted);
-		const u32 *colors = settings->colors;
 		
 		definitions_clear_entries(defs);
 		arr_set_len(defs->all_definitions, arr_len(symbols));
@@ -193,7 +192,7 @@ void definitions_process_lsp_response(Ted *ted, LSP *lsp, const LSPResponse *res
 			
 			def->name = str_dup(lsp_response_string(response, symbol->name));
 			SymbolKind kind = symbol_kind_to_ted(symbol->kind);
-			def->color = colors[color_for_symbol_kind(kind)];
+			def->color = settings_color(settings, color_for_symbol_kind(kind));
 			def->from_lsp = true;
 			def->position = lsp_location_start_position(symbol->location);
 			const char *container_name = lsp_response_string(response, symbol->container);

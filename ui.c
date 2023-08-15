@@ -600,14 +600,13 @@ char *file_selector_update(Ted *ted, FileSelector *fs) {
 
 void file_selector_render(Ted *ted, FileSelector *fs) {
 	const Settings *settings = ted_active_settings(ted);
-	const u32 *colors = settings->colors;
 	Rect bounds = fs->bounds;
 	Font *font = ted->font, *font_bold = ted->font_bold;
 	float padding = settings->padding;
 	float char_height = text_font_char_height(font);
 	
 	if (*fs->title) {
-		text_utf8(font_bold, fs->title, bounds.pos.x, bounds.pos.y, colors[COLOR_TEXT]);
+		text_utf8(font_bold, fs->title, bounds.pos.x, bounds.pos.y, settings_color(settings, COLOR_TEXT));
 		rect_shrink_top(&bounds, text_font_char_height(font_bold) * 0.75f + padding);
 	}
 
@@ -623,7 +622,7 @@ void file_selector_render(Ted *ted, FileSelector *fs) {
 			state.x = rect_x2(bounds) - text_width - padding;
 		}
 		state.y = bounds.pos.y;
-		rgba_u32_to_floats(colors[COLOR_TEXT], state.color);
+		settings_color_floats(settings, COLOR_TEXT, state.color);
 		state.min_x = bounds.pos.x;
 		state.max_x = rect_x2(bounds);
 		
@@ -643,16 +642,14 @@ vec2 button_get_size(Ted *ted, const char *text) {
 	return vec2_add_const(text_get_size_vec2(ted->font, text), 2 * border_thickness);
 }
 
-void button_render(Ted *ted, Rect button, const char *text, u32 color) {
-	const u32 *colors = ted_active_settings(ted)->colors;
-	
+void button_render(Ted *ted, Rect button, const char *text, u32 color) {	
 	if (rect_contains_point(button, ted->mouse_pos)) {
 		// highlight button when hovering over it
 		u32 new_color = (color & 0xffffff00) | ((color & 0xff) / 3);
 		gl_geometry_rect(button, new_color);
 	}
 	
-	gl_geometry_rect_border(button, ted_active_settings(ted)->border_thickness, colors[COLOR_BORDER]);
+	gl_geometry_rect_border(button, ted_active_settings(ted)->border_thickness, ted_active_color(ted, COLOR_BORDER));
 	gl_geometry_draw();
 
 	vec2 pos = rect_center(button);
@@ -705,7 +702,6 @@ void popup_render(Ted *ted, u32 options, const char *title, const char *body) {
 	Font *font_bold = ted->font_bold;
 	Rect r, button_yes, button_no, button_cancel;
 	const Settings *settings = ted_active_settings(ted);
-	const u32 *colors = settings->colors;
 	const float char_height_bold = text_font_char_height(font_bold);
 	const float padding = settings->padding;
 	const float border_thickness = settings->border_thickness;
@@ -716,20 +712,21 @@ void popup_render(Ted *ted, u32 options, const char *title, const char *body) {
 	float y = r.pos.y;
 	
 	// popup rectangle
-	gl_geometry_rect(r, colors[COLOR_MENU_BG]);
-	gl_geometry_rect_border(r, border_thickness, colors[COLOR_BORDER]);
+	gl_geometry_rect(r, settings_color(settings, COLOR_MENU_BG));
+	gl_geometry_rect_border(r, border_thickness, settings_color(settings, COLOR_BORDER));
 	// line separating text from body
-	gl_geometry_rect(rect_xywh(r.pos.x, y + char_height_bold, r.size.x, border_thickness), colors[COLOR_BORDER]);
+	gl_geometry_rect(rect_xywh(r.pos.x, y + char_height_bold, r.size.x, border_thickness),
+		settings_color(settings, COLOR_BORDER));
 	
-	if (options & POPUP_YES) button_render(ted, button_yes, "Yes", colors[COLOR_YES]);
-	if (options & POPUP_NO) button_render(ted, button_no, "No", colors[COLOR_NO]);
-	if (options & POPUP_CANCEL) button_render(ted, button_cancel, "Cancel", colors[COLOR_CANCEL]);
+	if (options & POPUP_YES) button_render(ted, button_yes, "Yes", settings_color(settings, COLOR_YES));
+	if (options & POPUP_NO) button_render(ted, button_no, "No", settings_color(settings, COLOR_NO));
+	if (options & POPUP_CANCEL) button_render(ted, button_cancel, "Cancel", settings_color(settings, COLOR_CANCEL));
 
 	// title text
 	vec2 title_size = {0};
 	text_get_size(font_bold, title, &title_size.x, &title_size.y);
 	vec2 title_pos = {(window_width - title_size.x) * 0.5f, y};
-	text_utf8(font_bold, title, title_pos.x, title_pos.y, colors[COLOR_TEXT]);
+	text_utf8(font_bold, title, title_pos.x, title_pos.y, settings_color(settings, COLOR_TEXT));
 	text_render(font_bold);
 
 	// body text
@@ -742,7 +739,7 @@ void popup_render(Ted *ted, u32 options, const char *title, const char *body) {
 	state.wrap = true;
 	state.x = text_x1;
 	state.y = y + char_height_bold + padding;
-	rgba_u32_to_floats(colors[COLOR_TEXT], state.color);
+	settings_color_floats(settings, COLOR_TEXT, state.color);
 	text_utf8_with_state(font, &state, body);
 
 	text_render(font);
@@ -754,9 +751,9 @@ vec2 checkbox_frame(Ted *ted, bool *value, const char *label, vec2 pos) {
 	float char_height = text_font_char_height(font);
 	float checkbox_size = char_height;
 	const Settings *settings = ted_active_settings(ted);
-	const u32 *colors = settings->colors;
-	float padding = settings->padding;
-	float border_thickness = settings->border_thickness;
+	const float padding = settings->padding;
+	const float border_thickness = settings->border_thickness;
+	const u32 color_text = settings_color(settings, COLOR_TEXT);
 	
 	Rect checkbox_rect = rect(pos, (vec2){checkbox_size, checkbox_size});
 	
@@ -765,16 +762,16 @@ vec2 checkbox_frame(Ted *ted, bool *value, const char *label, vec2 pos) {
 	}
 	
 	checkbox_rect.pos = vec2_add(checkbox_rect.pos, (vec2){0.5f, 0.5f});
-	gl_geometry_rect_border(checkbox_rect, border_thickness, colors[COLOR_TEXT]);
+	gl_geometry_rect_border(checkbox_rect, border_thickness, color_text);
 	if (*value) {
 		Rect r = checkbox_rect;
 		rect_shrink(&r, border_thickness + 2);
-		gl_geometry_rect(r, colors[COLOR_TEXT]);
+		gl_geometry_rect(r, color_text);
 	}
 	
 	vec2 text_pos = vec2_add(pos, (vec2){checkbox_size + padding * 0.5f, 0});
 	vec2 size = text_get_size_vec2(font, label);
-	text_utf8(font, label, text_pos.x, text_pos.y, colors[COLOR_TEXT]);
+	text_utf8(font, label, text_pos.x, text_pos.y, color_text);
 	
 	gl_geometry_draw();
 	text_render(font);

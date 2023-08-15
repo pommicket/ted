@@ -103,7 +103,7 @@ void build_start_with_command(Ted *ted, const char *command) {
 }
 
 void build_start(Ted *ted) {
-	Settings *settings = ted_active_settings(ted);
+	const Settings *settings = ted_active_settings(ted);
 	const char *command = settings->build_command;
 	
 	{

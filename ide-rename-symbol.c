@@ -67,7 +67,6 @@ static void rename_symbol_menu_render(Ted *ted) {
 	}
 	const Settings *settings = buffer_settings(buffer);
 	const float padding = settings->padding;
-	const u32 *colors = settings->colors;
 	const float line_buffer_height = ted_line_buffer_height(ted);
 	
 	u32 sym_start=0, sym_end=0;
@@ -86,8 +85,8 @@ static void rename_symbol_menu_render(Ted *ted) {
 	vec2 p1 = buffer_pos_to_pixels(buffer, bpos1);
 	p1.y += text_font_char_height(buffer_font(buffer));
 	Rect highlight = rect_endpoints(p0, p1);
-	gl_geometry_rect_border(highlight, settings->border_thickness, colors[COLOR_BORDER]);
-	gl_geometry_rect(highlight, colors[COLOR_HOVER_HL]);
+	gl_geometry_rect_border(highlight, settings->border_thickness, settings_color(settings, COLOR_BORDER));
+	gl_geometry_rect(highlight, settings_color(settings, COLOR_HOVER_HL));
 	
 	const float width = ted_get_menu_width(ted);
 	const float height = line_buffer_height + 2 * padding;
@@ -95,12 +94,12 @@ static void rename_symbol_menu_render(Ted *ted) {
 		.pos = {(ted->window_width - width) / 2, padding},
 		.size = {width, height},
 	};
-	gl_geometry_rect(bounds, colors[COLOR_MENU_BG]);
-	gl_geometry_rect_border(bounds, settings->border_thickness, colors[COLOR_BORDER]);
+	gl_geometry_rect(bounds, settings_color(settings, COLOR_MENU_BG));
+	gl_geometry_rect_border(bounds, settings->border_thickness, settings_color(settings, COLOR_BORDER));
 	gl_geometry_draw();
 	rect_shrink(&bounds, padding);
 	const char *text = "Rename symbol to...";
-	text_utf8(ted->font_bold, text, bounds.pos.x, bounds.pos.y, colors[COLOR_TEXT]);
+	text_utf8(ted->font_bold, text, bounds.pos.x, bounds.pos.y, settings_color(settings, COLOR_TEXT));
 	rect_shrink_left(&bounds, text_get_size_vec2(ted->font_bold, text).x + padding);
 	text_render(ted->font_bold);
 	

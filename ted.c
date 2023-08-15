@@ -180,7 +180,7 @@ void *ted_realloc(Ted *ted, void *p, size_t new_size) {
 }
 
 char *ted_get_root_dir_of(Ted *ted, const char *path) {
-	Settings *settings = ted_active_settings(ted);
+	const Settings *settings = ted_active_settings(ted);
 	return settings_get_root_dir(settings, path);
 }
 
@@ -237,7 +237,7 @@ LSP *ted_get_lsp_by_id(Ted *ted, LSPID id) {
 }
 
 LSP *ted_get_lsp(Ted *ted, const char *path, Language language) {
-	Settings *settings = ted_get_settings(ted, path, language);
+	const Settings *settings = ted_get_settings(ted, path, language);
 	if (!settings->lsp_enabled)
 		return NULL;
 	
@@ -293,7 +293,7 @@ LSP *ted_active_lsp(Ted *ted) {
 }
 
 u32 ted_active_color(Ted *ted, ColorSetting color) {
-	return ted_active_settings(ted)->colors[color];
+	return settings_color(ted_active_settings(ted), color);
 }
 
 void ted_path_full(Ted *ted, const char *relpath, char *abspath, size_t abspath_size) {
@@ -405,7 +405,7 @@ void ted_load_fonts(Ted *ted) {
 	}
 	
 	ted_free_fonts(ted);
-	Settings *settings = ted_active_settings(ted);
+	const Settings *settings = ted_active_settings(ted);
 	ted->font = ted_load_multifont(ted, settings->font);
 	if (!ted->font) {
 		ted->font = ted_load_multifont(ted, "assets/font.ttf");

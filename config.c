@@ -1313,3 +1313,23 @@ void settings_color_floats(const Settings *settings, ColorSetting color, float f
 	rgba_u32_to_floats(settings_color(settings, color), f);
 	
 }
+
+u16 settings_tab_width(const Settings *settings) {
+	return settings->tab_width;
+}
+
+bool settings_indent_with_spaces(const Settings *settings) {
+	return settings->indent_with_spaces;
+}
+
+bool settings_auto_indent(const Settings *settings) {
+	return settings->auto_indent;
+}
+
+float settings_border_thickness(const Settings *settings) {
+	return settings->border_thickness;
+}
+
+float settings_padding(const Settings *settings) {
+	return settings->padding;
+}

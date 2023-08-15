@@ -68,7 +68,7 @@ static Rect document_link_get_rect(Ted *ted, DocumentLink *link) {
 }
 
 void document_link_frame(Ted *ted) {
-	Settings *settings = ted_active_settings(ted);
+	const Settings *settings = ted_active_settings(ted);
 	if (!settings->document_links) {
 		document_link_clear(ted);
 		return;

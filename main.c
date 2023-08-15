@@ -1,6 +1,5 @@
 /*
 TODO:
-- public Settings API
 - use home/end with selector
 
 FUTURE FEATURES:
@@ -619,7 +618,7 @@ int main(int argc, char **argv) {
 		
 		
 		{
-			Settings *active_settings = ted_active_settings(ted);
+			const Settings *active_settings = ted_active_settings(ted);
 			// we don't properly handle variable-width fonts
 			text_font_set_force_monospace(ted->font, active_settings->force_monospace);
 			text_font_set_force_monospace(ted->font_bold, active_settings->force_monospace);
@@ -637,7 +636,7 @@ int main(int argc, char **argv) {
 			case SDL_MOUSEWHEEL: {
 				if (ted_is_ctrl_down(ted)) {
 					// adjust text size with ctrl+scroll
-					Settings *settings = ted_active_settings(ted);
+					const Settings *settings = ted_active_settings(ted);
 					scroll_wheel_text_size_change += settings->ctrl_scroll_adjust_text_size * event.wheel.preciseY;
 				} else if (key_modifier == 0) {
 					// scroll with mouse wheel
@@ -752,7 +751,7 @@ int main(int argc, char **argv) {
 					command_execute_string_argument(ted, CMD_INSERT_TEXT, text);
 					// check for trigger character
 					LSP *lsp = buffer_lsp(buffer);
-					Settings *settings = buffer_settings(buffer);
+					const Settings *settings = buffer_settings(buffer);
 					if (lsp && settings->trigger_characters) {
 						u32 last_code_point = (u32)strlen(text) - 1;
 						while (last_code_point > 0 &&
@@ -928,7 +927,7 @@ int main(int argc, char **argv) {
 		
 		{
 			// background shader
-			Settings *s = ted_active_settings(ted);
+			const Settings *s = ted_active_settings(ted);
 			if (s->bg_shader) {
 				GLuint shader = s->bg_shader->shader;
 				GLuint buffer = s->bg_shader->buffer;
@@ -1065,7 +1064,7 @@ int main(int argc, char **argv) {
 		// message box
 		if (*ted->message_shown) {
 			double time_passed = ted->frame_time - ted->message_time;
-			Settings *settings = ted_active_settings(ted);
+			const Settings *settings = ted_active_settings(ted);
 			if (time_passed > settings->error_display_time) {
 				// stop showing error
 				*ted->message_shown = '\0';

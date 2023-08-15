@@ -332,9 +332,9 @@ void find_menu_frame(Ted *ted, Rect menu_bounds) {
 	const float char_height = text_font_char_height(font);
 
 	const Settings *settings = ted_active_settings(ted);
+	const u32 color_text = settings_color(settings, COLOR_TEXT);
 	const float padding = settings->padding;
 	const float border_thickness = settings->border_thickness;
-	const u32 *colors = settings->colors;
 	bool const replace = ted->replace;
 	const float line_buffer_height = ted_line_buffer_height(ted);
 	
@@ -346,8 +346,8 @@ void find_menu_frame(Ted *ted, Rect menu_bounds) {
 	u32 last_rendered_line = buffer_last_rendered_line(buffer);
 	
 
-	gl_geometry_rect(menu_bounds, colors[COLOR_MENU_BG]);
-	gl_geometry_rect_border(menu_bounds, border_thickness, colors[COLOR_BORDER]);
+	gl_geometry_rect(menu_bounds, settings_color(settings, COLOR_MENU_BG));
+	gl_geometry_rect_border(menu_bounds, border_thickness, settings_color(settings, COLOR_BORDER));
 	rect_shrink(&menu_bounds, border_thickness);
 
 	float x1, y1, x2, y2;
@@ -404,7 +404,7 @@ void find_menu_frame(Ted *ted, Rect menu_bounds) {
 			pos2.y += char_height;
 			Rect hl_rect = rect4(pos1.x, pos1.y, pos2.x, pos2.y);
 			if (buffer_clip_rect(buffer, &hl_rect))
-				gl_geometry_rect(hl_rect, colors[COLOR_FIND_HL]);
+				gl_geometry_rect(hl_rect, settings_color(settings, COLOR_FIND_HL));
 		}
 	}
 	
@@ -418,12 +418,12 @@ void find_menu_frame(Ted *ted, Rect menu_bounds) {
 	replace_buffer_bounds.pos.y += line_buffer_height + padding;
 
 	
-	button_render(ted, button_prev, prev_text, colors[COLOR_TEXT]);
-	button_render(ted, button_next, next_text, colors[COLOR_TEXT]);
+	button_render(ted, button_prev, prev_text, color_text);
+	button_render(ted, button_next, next_text, color_text);
 	if (replace) {
-		button_render(ted, button_replace, replace_text, colors[COLOR_TEXT]);
-		button_render(ted, button_replace_find, replace_find_text, colors[COLOR_TEXT]);
-		button_render(ted, button_replace_all, replace_all_text, colors[COLOR_TEXT]);
+		button_render(ted, button_replace, replace_text, color_text);
+		button_render(ted, button_replace_find, replace_find_text, color_text);
+		button_render(ted, button_replace_all, replace_all_text, color_text);
 	}
 	
 	{
@@ -436,16 +436,16 @@ void find_menu_frame(Ted *ted, Rect menu_bounds) {
 			strbuf_printf(str, "%" PRIu32 " of %" PRIu32, match_idx + 1, arr_len(ted->find_results));
 		}
 		text_get_size(font, str, &w, &h);
-		text_utf8(font, str, x2 - w, rect_ymid(find_buffer_bounds) - h * 0.5f, colors[COLOR_TEXT]);
+		text_utf8(font, str, x2 - w, rect_ymid(find_buffer_bounds) - h * 0.5f, color_text);
 		x2 -= w;
 		find_buffer_bounds.size.x -= w;
 	}
 
-	text_utf8(font_bold, find_text, x1, y1, colors[COLOR_TEXT]);
+	text_utf8(font_bold, find_text, x1, y1, color_text);
 	y1 += line_buffer_height + padding;
 	
 	if (replace) {
-		text_utf8(font_bold, replace_with_text, x1, y1, colors[COLOR_TEXT]);
+		text_utf8(font_bold, replace_with_text, x1, y1, color_text);
 		y1 += line_buffer_height + padding;
 	}
 	
@@ -462,9 +462,9 @@ void find_menu_frame(Ted *ted, Rect menu_bounds) {
 	String32 term = buffer_get_line(find_buffer, 0);
 	
 	if (ted->find_invalid_pattern)
-		gl_geometry_rect(find_buffer_bounds, colors[COLOR_NO] & 0xFFFFFF3F); // invalid regex
+		gl_geometry_rect(find_buffer_bounds, settings_color(settings, COLOR_NO) & 0xFFFFFF3F); // invalid regex
 	else if (term.len && !ted->find_results)
-		gl_geometry_rect(find_buffer_bounds, colors[COLOR_CANCEL] & 0xFFFFFF3F); // no matches
+		gl_geometry_rect(find_buffer_bounds, settings_color(settings, COLOR_CANCEL) & 0xFFFFFF3F); // no matches
 	gl_geometry_draw();
 
 }
