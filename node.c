@@ -93,27 +93,12 @@ bool node_add_tab(Ted *ted, Node *node, TextBuffer *buffer) {
 	return true;
 }
 
-static void node_switch_to_tab(Ted *ted, Node *node, u16 new_tab_index) {
-	if (new_tab_index >= arr_len(node->tabs))
-		return;
-	if (new_tab_index == node->active_tab)
-		return;
-	
-	node->active_tab = new_tab_index;
-	if (node == ted->active_node) {
-		// switch active buffer
-		assert(node->tabs);
-		TextBuffer *buffer = node->tabs[new_tab_index];
-		ted_switch_to_buffer(ted, buffer);
-	}
-}
-
 // move n tabs to the right
 void node_tab_next(Ted *ted, Node *node, i32 n) {
-	u16 ntabs = (u16)arr_len(node->tabs);
+	u32 ntabs = arr_len(node->tabs);
 	if (!ntabs) return;
-	u16 tab_idx = (u16)mod_i64((i64)node->active_tab + n, ntabs);
-	node_switch_to_tab(ted, node, tab_idx);
+	u32 tab_idx = (u32)mod_i64((i64)node->active_tab + n, ntabs);
+	node_tab_switch(ted, node, tab_idx);
 }
 
 void node_tab_prev(Ted *ted, Node *node, i32 n) {
@@ -122,8 +107,15 @@ void node_tab_prev(Ted *ted, Node *node, i32 n) {
 
 void node_tab_switch(Ted *ted, Node *node, u32 tab) {
 	assert(node->tabs);
-	if (tab >= 0 && tab < node_tab_count(node)) {
-		node_switch_to_tab(ted, node, (u16)tab);
+	if (tab >= arr_len(node->tabs))
+		return;
+	
+	node->active_tab = (u16)tab;
+	if (node == ted->active_node) {
+		// switch active buffer
+		assert(node->tabs);
+		TextBuffer *buffer = node->tabs[tab];
+		ted_switch_to_buffer(ted, buffer);
 	}
 }
 
@@ -311,7 +303,7 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 						u16 tab_index = (u16)((click->pos.x - r.pos.x) / tab_width);
 						if (tab_index < arr_len(node->tabs)) {
 							ted->active_node = node;
-							node_switch_to_tab(ted, node, tab_index);
+							node_tab_switch(ted, node, tab_index);
 							ted->dragging_tab_node = node;
 							ted->dragging_tab_idx = tab_index;
 							ted->dragging_tab_origin = click->pos;

@@ -449,6 +449,9 @@ static Node *ted_buffer_location_in_node_tree(Ted *ted, TextBuffer *buffer, u16 
 }
 
 void ted_switch_to_buffer(Ted *ted, TextBuffer *buffer) {
+	if (buffer == ted->active_buffer)
+		return;
+	
 	TextBuffer *search_buffer = find_search_buffer(ted);
 	ted->active_buffer = buffer;
 	autocomplete_close(ted);
@@ -516,6 +519,7 @@ void ted_node_switch(Ted *ted, Node *node) {
 	while (node_child1(node)) {
 		node = node_child1(node);
 	}
+	ted->active_node = node;
 	ted_switch_to_buffer(ted, node_get_tab(node, node_active_tab(node)));
 }
 
@@ -527,7 +531,7 @@ static TextBuffer *ted_open_buffer(Ted *ted, u16 *tab) {
 	if (!node) {
 		if (!arr_len(ted->nodes)) {
 			// no nodes open; create a root node
-			node = ted->active_node = node_new(ted);
+			node = node_new(ted);
 		} else if (ted->prev_active_buffer) {
 			// opening a file while a menu is open
 			// it may happen.... (currently happens for rename symbol)
@@ -548,6 +552,9 @@ static TextBuffer *ted_open_buffer(Ted *ted, u16 *tab) {
 	u16 active_tab = (u16)(node_tab_count(node) - 1);
 	*tab = active_tab;
 	node_tab_switch(ted, node, active_tab);
+	ted->active_node = node;
+	ted->active_buffer = new_buffer;
+	
 	return new_buffer;
 }
 
