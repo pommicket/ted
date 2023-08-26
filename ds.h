@@ -247,7 +247,7 @@ static void *arr_insert_multiple_(void *arr, size_t member_size, size_t index, s
 	ArrHeader *hdr = arr_hdr_(arr);
 	memmove((char *)arr + (index + count) * member_size,
 		(char *)arr + index * member_size,
-		arr_len(arr) * member_size);
+		(arr_len(arr) - index) * member_size);
 	memset((char *)arr + index * member_size, 0, count * member_size);
 	hdr->len += (u32)count;
 	return arr;
