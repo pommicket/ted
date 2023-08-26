@@ -210,7 +210,10 @@ static int parse_nonnegative_integer(char32_t **str, char32_t *end) {
 	char32_t *s = *str;
 	int number_len;
 	int n = 0;
-	for (number_len = 0; s != end && s[number_len] >= '0' && s[number_len] <= '9'; ++number_len) {
+	for (number_len = 0;
+		&s[number_len] < end
+		&& s[number_len] >= '0' && s[number_len] <= '9';
+		++number_len) {
 		n *= 10;
 		n += (int)s[number_len] - '0';
 	}

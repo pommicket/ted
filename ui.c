@@ -193,14 +193,7 @@ void selector_sort_entries_by_name(Selector *s) {
 	qsort(s->entries, arr_len(s->entries), sizeof *s->entries, selectory_entry_cmp_name);
 }
 
-static void selector_entry_rect_clip(Ted *ted, Selector *s, Rect *r) {
-	Rect entry_bounds = s->bounds;
-	entry_bounds.pos.y = selector_entries_start_y(ted, s);
-	entry_bounds.size.y -= entry_bounds.pos.y - s->bounds.pos.y;
-	rect_clip_to_rect(r, entry_bounds);
-}
-
-static Rect selector_entry_rect(Ted *ted, Selector *s, u32 i_display) {
+static Rect selector_entry_rect_unclipped(Ted *ted, Selector *s, u32 i_display) {
 	float char_height = text_font_char_height(ted->font);
 	Rect r = {
 		.pos = {
@@ -214,7 +207,15 @@ static Rect selector_entry_rect(Ted *ted, Selector *s, u32 i_display) {
 			char_height,
 		}
 	};
-	selector_entry_rect_clip(ted, s, &r);
+	return r;
+}
+
+static Rect selector_entry_rect_clipped(Ted *ted, Selector *s, u32 i_display) {
+	Rect r = selector_entry_rect_unclipped(ted, s, i_display);
+	Rect entry_bounds = s->bounds;
+	entry_bounds.pos.y = selector_entries_start_y(ted, s);
+	entry_bounds.size.y -= entry_bounds.pos.y - s->bounds.pos.y;
+	rect_clip_to_rect(&r, entry_bounds);
 	return r;
 }
 
@@ -235,7 +236,7 @@ char *selector_update(Ted *ted, Selector *s) {
 	u32 i_display = 0;
 	arr_foreach_ptr(s->entries, const SelectorEntry, e) {
 		if (!selector_show_entry(s, e)) continue;
-		Rect entry_rect = selector_entry_rect(ted, s, i_display++);
+		Rect entry_rect = selector_entry_rect_clipped(ted, s, i_display++);
 		
 		// check if this entry was clicked on
 		if (ted_clicked_in_rect(ted, entry_rect)) {
@@ -307,7 +308,7 @@ void selector_render(Ted *ted, Selector *s) {
 	TextRenderState text_state = text_render_state_default;
 	text_state.min_x = x1;
 	text_state.max_x = x2;
-	text_state.min_y = y1;
+	text_state.min_y = selector_entries_start_y(ted, s);
 	text_state.max_y = y2;
 	text_state.render = true;
 
@@ -316,14 +317,16 @@ void selector_render(Ted *ted, Selector *s) {
 	for (u32 i = 0; i < arr_len(s->entries); ++i) {
 		const SelectorEntry *entry = &s->entries[i];
 		if (!selector_show_entry(s, entry)) continue;
-		Rect r = selector_entry_rect(ted, s, i_display++);
-		if (r.size.x * r.size.y <= 0) continue;
-		float x = r.pos.x, y = r.pos.y;
+		Rect r_unclipped = selector_entry_rect_unclipped(ted, s, i_display);
+		Rect r_clipped = selector_entry_rect_clipped(ted, s, i_display);
+		++i_display;
+		if (r_clipped.size.x * r_clipped.size.y <= 0) continue;
+		float x = r_unclipped.pos.x, y = r_unclipped.pos.y;
 		text_state.x = x; text_state.y = y;
 		
-		if (rect_contains_point(r, ted->mouse_pos) || (s->enable_cursor && s->cursor == i)) {
+		if (rect_contains_point(r_clipped, ted->mouse_pos) || (s->enable_cursor && s->cursor == i)) {
 			// highlight it
-			gl_geometry_rect(r, settings_color(settings, COLOR_MENU_HL));
+			gl_geometry_rect(r_clipped, settings_color(settings, COLOR_MENU_HL));
 		}
 		
 		// draw name

@@ -5,7 +5,7 @@ Debug
 Release
 debug
 release
-scratch
+scratch*
 obj
 CMakeFiles
 CMakeCache.txt
