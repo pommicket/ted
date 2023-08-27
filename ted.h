@@ -386,8 +386,11 @@ u32 buffer_last_line_on_screen(TextBuffer *buffer);
 Rect buffer_rect(TextBuffer *buffer);
 /// is this buffer empty?
 bool buffer_empty(TextBuffer *buffer);
-/// returns the buffer's filename (not full path), or "Untitled" if this buffer is untitled.
-const char *buffer_display_filename(TextBuffer *buffer);
+/// returns the buffer's display filename (not full path) into `filename`
+///
+/// if the buffer is an untitled buffer, returns "Untitled".
+/// `filename` is guaranteed to be null-terminated after calling this.
+void buffer_display_filename(TextBuffer *buffer, char *filename, size_t filename_size);
 /// does this buffer contained a named file (i.e. not a line buffer, not the build buffer, not untitled)
 bool buffer_is_named_file(TextBuffer *buffer);
 /// does this buffer have unsaved changes?

@@ -371,7 +371,8 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 			for (u16 i = 0; i < ntabs; ++i) {
 				TextBuffer *buffer = node->tabs[i];
 				char tab_title[256];
-				const char *filename = buffer_display_filename(buffer);
+				char filename[TED_PATH_MAX];
+				buffer_display_filename(buffer, filename, sizeof filename);
 				Rect tab_rect = rect_xywh(r.pos.x + tab_width * i, r.pos.y, tab_width, tab_bar_height);
 				
 				if (i > 0) {
@@ -398,9 +399,16 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 					else
 						strbuf_printf(tab_title, "%s", filename);
 				}
+				float title_width = text_get_size_vec2(font, tab_title).x;
+				float title_xpos = tab_rect.pos.x;
+				if (title_width > tab_rect.size.x) {
+					// full tab title doesn't fit in tab -- only show the right end of it
+					title_xpos = tab_rect.pos.x + tab_rect.size.x - title_width;
+				}
+				text_state.min_x = rect_x1(tab_rect);
 				text_state.max_x = rect_x2(tab_rect);
 				settings_color_floats(settings, COLOR_TEXT, text_state.color);
-				text_state.x = tab_rect.pos.x;
+				text_state.x = title_xpos;
 				text_state.y = tab_rect.pos.y;
 				text_state_break_kerning(&text_state);
 				text_utf8_with_state(font, &text_state, tab_title);

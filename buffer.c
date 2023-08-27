@@ -6,8 +6,6 @@
 
 #include <sys/stat.h>
 
-#define BUFFER_UNTITLED "Untitled" // what to call untitled buffers
-
 /// A single line in a buffer
 typedef struct Line Line;
 
@@ -252,8 +250,56 @@ const char *buffer_get_path(TextBuffer *buffer) {
 	return buffer->path;
 }
 
-const char *buffer_display_filename(TextBuffer *buffer) {
-	return buffer->path ? path_filename(buffer->path) : BUFFER_UNTITLED;
+void buffer_display_filename(TextBuffer *buffer, char *filename, size_t filename_size) {
+	if (!buffer->path) {
+		str_cpy(filename, filename_size, "Untitled");
+		return;
+	}
+	
+	// this stuff here is to disambiguate between files, so if you have
+	// two files open called
+	//     /foo/bar/x/a.c
+	// and /abc/def/x/a.c
+	// their display names will be "bar/x/a.c" and "def/x/a.c"
+	
+	int suffix_needed = 0;
+	Ted *ted = buffer->ted;
+	int buffer_path_len = (int)strlen(buffer->path);
+	arr_foreach_ptr(ted->buffers, const TextBufferPtr, p_other) {
+		TextBuffer *other = *p_other;
+		if (!other->path) continue;
+		if (streq(other->path, buffer->path)) continue;
+		
+		int other_path_len = (int)strlen(other->path);
+		if (str_has_suffix(buffer->path, other->path)) {
+			// special case
+			suffix_needed = other_path_len + 1;
+			continue;
+		}
+		
+		// find longest common suffix of buffer->path, other->path
+		for (int i = 1; i <= buffer_path_len && i <= other_path_len; ++i) {
+			if (i > suffix_needed)
+				suffix_needed = i;
+			if (buffer->path[buffer_path_len - i] != other->path[other_path_len - i]) {
+				break;
+			}
+		}
+	}
+	
+	// go to last path separator
+	while (suffix_needed < buffer_path_len &&
+		buffer->path[buffer_path_len - suffix_needed] != PATH_SEPARATOR) {
+		++suffix_needed;
+	}
+	
+	// don't actually include the path separator
+	if (suffix_needed > 0)
+		--suffix_needed;
+	
+	assert(suffix_needed > 0 && suffix_needed <= buffer_path_len);
+	
+	str_cpy(filename, filename_size, &buffer->path[buffer_path_len - suffix_needed]);
 }
 
 // add this edit to the undo history

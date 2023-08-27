@@ -818,7 +818,7 @@ int main(int argc, char **argv) {
 				if (buffer_settings(active_buffer)->auto_reload)
 					buffer_reload(active_buffer);
 				else {
-					strbuf_cpy(ted->ask_reload, buffer_display_filename(active_buffer));
+					buffer_display_filename(active_buffer, ted->ask_reload, sizeof ted->ask_reload);
 					menu_open(ted, MENU_ASK_RELOAD);
 				}
 			}

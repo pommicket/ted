@@ -452,8 +452,9 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 			arr_foreach_ptr(ted->buffers, TextBufferPtr, pbuffer) {
 				buffer = *pbuffer;
 				if (buffer_unsaved_changes(buffer)) {
-					const char *path = buffer_display_filename(buffer);
-					strbuf_catf(ted->warn_unsaved_names, "%s%s", first ? "" : ", ", path);
+					char name[TED_PATH_MAX];
+					buffer_display_filename(buffer, name, sizeof name);
+					strbuf_catf(ted->warn_unsaved_names, "%s%s", first ? "" : ", ", name);
 					first = false;
 				}
 			}
@@ -579,7 +580,7 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 			if (argument != 2 && buffer_unsaved_changes(buffer)) {
 				// there are unsaved changes!
 				ted->warn_unsaved = CMD_TAB_CLOSE;
-				strbuf_printf(ted->warn_unsaved_names, "%s", buffer_display_filename(buffer));
+				buffer_display_filename(buffer, ted->warn_unsaved_names, sizeof ted->warn_unsaved_names);
 				menu_open(ted, MENU_WARN_UNSAVED);
 			} else {
 				node_tab_close(ted, node, tab_idx);
