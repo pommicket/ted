@@ -495,7 +495,7 @@ void write_request(LSP *lsp, LSPRequest *request) {
 				write_key_file_uri(o, "uri", open->document);
 				write_key_string(o, "languageId", lsp_language_id(open->language));
 				write_key_number(o, "version", 0);
-				write_key_string(o, "text", open->file_contents);
+				write_key_string(o, "text", lsp_request_string(request, open->file_contents));
 			write_obj_end(o);
 		write_obj_end(o);
 	} break;
@@ -525,7 +525,7 @@ void write_request(LSP *lsp, LSPRequest *request) {
 					write_arr_elem(o);
 					write_obj_start(o);
 						write_key_range(o, "range", event->range);
-						write_key_string(o, "text", event->text ? event->text : "");
+						write_key_string(o, "text", lsp_request_string(request, event->text));
 					write_obj_end(o);
 				}
 			write_arr_end(o);
@@ -598,13 +598,13 @@ void write_request(LSP *lsp, LSPRequest *request) {
 		const LSPRequestRename *rename = &request->data.rename;
 		write_key_obj_start(o, "params");
 			write_document_position(o, rename->position);
-			write_key_string(o, "newName", rename->new_name);
+			write_key_string(o, "newName", lsp_request_string(request, rename->new_name));
 		write_obj_end(o);
 	} break;
 	case LSP_REQUEST_WORKSPACE_SYMBOLS: {
 		const LSPRequestWorkspaceSymbols *syms = &request->data.workspace_symbols;
 		write_key_obj_start(o, "params");
-			write_key_string(o, "query", syms->query);
+			write_key_string(o, "query", lsp_request_string(request, syms->query));
 		write_obj_end(o);
 	} break;
 	case LSP_REQUEST_DID_CHANGE_WORKSPACE_FOLDERS: {
@@ -630,7 +630,7 @@ void write_request(LSP *lsp, LSPRequest *request) {
 		const LSPRequestConfiguration *config = &request->data.configuration;
 		write_key_obj_start(o, "params");
 			write_key(o, "settings");
-			str_builder_append(&o->builder, config->settings);
+			str_builder_append(&o->builder, lsp_request_string(request, config->settings));
 		write_obj_end(o);
 		} break;
 	}
@@ -657,8 +657,9 @@ static void write_response(LSP *lsp, LSPResponse *response) {
 	LSPRequest *request = &response->request;
 	
 	write_obj_start(o);
-		if (request->id_string)
-			write_key_string(o, "id", request->id_string);
+		const char *id_string = lsp_request_string(request, request->id_string);
+		if (*id_string)
+			write_key_string(o, "id", id_string);
 		else
 			write_key_number(o, "id", request->id);
 		write_key_string(o, "jsonrpc", "2.0");
@@ -686,10 +687,10 @@ static void write_response(LSP *lsp, LSPResponse *response) {
 void write_message(LSP *lsp, LSPMessage *message) {
 	switch (message->type) {
 	case LSP_REQUEST:
-		write_request(lsp, &message->u.request);
+		write_request(lsp, &message->request);
 		break;
 	case LSP_RESPONSE:
-		write_response(lsp, &message->u.response);
+		write_response(lsp, &message->response);
 		break;
 	}
 }

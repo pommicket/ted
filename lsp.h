@@ -9,6 +9,7 @@
 #include "base.h"
 #include "ds.h"
 #include "os.h"
+#include "util.h"
 
 /// an ID specific to a path. a document's ID is never 0 (thanks to lsp_create).
 typedef u32 LSPDocumentID;
@@ -116,8 +117,7 @@ typedef struct {
 typedef struct {
 	u64 language;
 	LSPDocumentID document;
-	// freed by \ref lsp_request_free
-	char *file_contents;
+	LSPString file_contents;
 } LSPRequestDidOpen;
 
 typedef struct {
@@ -127,8 +127,8 @@ typedef struct {
 // see TextDocumentContentChangeEvent in the LSP spec
 typedef struct {
 	LSPRange range;
-	/// new text. will be freed. you can use NULL for the empty string.
-	char *text;
+	/// new text.
+	LSPString text;
 } LSPDocumentChangeEvent;
 
 typedef struct {
@@ -145,8 +145,7 @@ typedef enum {
 
 typedef struct {
 	LSPWindowMessageType type;
-	// freed by \ref lsp_request_free
-	char *message;
+	LSPString message;
 } LSPRequestMessage;
 
 
@@ -197,12 +196,12 @@ typedef struct {
 
 typedef struct {
 	// string to filter the symbols by
-	char *query;
+	LSPString query;
 } LSPRequestWorkspaceSymbols;
 
 typedef struct {
 	LSPDocumentPosition position;
-	char *new_name;
+	LSPString new_name;
 } LSPRequestRename;
 
 typedef struct {
@@ -211,14 +210,23 @@ typedef struct {
 } LSPRequestDidChangeWorkspaceFolders;
 
 typedef struct {
-	// this string should be valid JSON. will be freed.
-	char *settings;
+	// this string should be valid JSON.
+	LSPString settings;
 } LSPRequestConfiguration;
 
 typedef struct {
+	LSPMessageType type;
+	/// LSP requests/responses tend to have a lot of strings.
+	/// to avoid doing a ton of allocations+frees,
+	/// they're all stored here.
+	char *string_data;
+} LSPMessageBase;
+
+typedef struct {
+	LSPMessageBase base;
 	LSPRequestID id;
 	LSPRequestType type;
-	char *id_string; // if not NULL, this is the ID (only for server-to-client messages; we always use integer IDs)
+	LSPString id_string; // if non-empty, this is the ID (only for server-to-client messages; we always use integer IDs)
 	// one member of this union is set depending on `type`.
 	union {	
 		LSPRequestCancel cancel;
@@ -491,14 +499,11 @@ typedef struct {
 } LSPResponseDocumentLink;
 
 typedef struct {
+	LSPMessageBase base;
 	/// the request which this is a response to
 	LSPRequest request;
 	/// if not NULL, the data field will just be zeroed
-	char *error;
-	/// LSP responses tend to have a lot of strings.
-	/// to avoid doing a ton of allocations+frees,
-	/// they're all stored here.
-	char *string_data;
+	LSPString error;
 	/// one of these is filled based on request.type
 	union {
 		LSPResponseCompletion completion;
@@ -514,12 +519,13 @@ typedef struct {
 	} data;
 } LSPResponse;
 
-typedef struct {
+// *technically* using unions this way is UB,
+// but Xlib/SDL/others do it so compilers've gotta deal with it.
+typedef union {
 	LSPMessageType type;
-	union {
-		LSPRequest request;
-		LSPResponse response;
-	} u;
+	LSPMessageBase base;
+	LSPRequest request;
+	LSPResponse response;
 } LSPMessage;
 
 typedef struct {
@@ -629,8 +635,18 @@ void lsp_cancel_request(LSP *lsp, LSPRequestID id);
 // don't free the contents of this response! let me handle it!
 void lsp_send_response(LSP *lsp, LSPResponse *response);
 const char *lsp_response_string(const LSPResponse *response, LSPString string);
-// Start up an LSP server.
-// configuration and log can be NULL.
+const char *lsp_request_string(const LSPRequest *request, LSPString string);
+/// low-level API for allocating message strings.
+///
+/// sets `*string` to the LSPString, and returns a pointer which you can write the string to.
+/// the returned pointer will be zeroed up to and including [len].
+char *lsp_message_alloc_string(LSPMessageBase *message, size_t len, LSPString *string);
+LSPString lsp_request_add_string(LSPRequest *request, const char *string);
+LSPString lsp_response_add_string(LSPResponse *response, const char *string);
+bool lsp_string_is_empty(LSPString string);
+/// Start up an LSP server.
+///
+/// configuration and log can be NULL.
 LSP *lsp_create(const char *root_dir, const char *command, const char *configuration, FILE *log);
 // try to add a new "workspace folder" to the lsp.
 // IMPORTANT: only call this if lsp->initialized is true
@@ -640,7 +656,7 @@ LSP *lsp_create(const char *root_dir, const char *command, const char *configura
 // with root directory `new_root_dir`.
 bool lsp_try_add_root_dir(LSP *lsp, const char *new_root_dir);
 // report that this document has changed
-void lsp_document_changed(LSP *lsp, const char *document, LSPDocumentChangeEvent change);
+void lsp_document_changed(LSP *lsp, const char *document, LSPRange range, String32 new_text);
 // is this path in the LSP's workspace folders?
 bool lsp_covers_path(LSP *lsp, const char *path);
 // get next message from server
@@ -775,6 +791,8 @@ char *json_string_get_alloc(const JSON *json, JSONString string);
 void json_debug_print(const JSON *json);
 size_t json_escape_to(char *out, size_t out_sz, const char *in);
 char *json_escape(const char *str);
+LSPString lsp_response_add_json_string(LSPResponse *response, const JSON *json, JSONString string);
+LSPString lsp_request_add_json_string(LSPRequest *request, const JSON *json, JSONString string);
 /// free resources used by lsp-write.c
 void lsp_write_quit(void);
 

@@ -497,15 +497,12 @@ static void buffer_send_lsp_did_close(TextBuffer *buffer, LSP *lsp, const char *
 	buffer->lsp_opened_in = 0;
 }
 
-// buffer_contents must either be NULL or allocated with malloc or similar
-//   - don't free it after calling this function.
-// if buffer_contents = NULL, fetches the current buffer contents.
-static void buffer_send_lsp_did_open(TextBuffer *buffer, LSP *lsp, char *buffer_contents) {
-	if (!buffer_contents)
-		buffer_contents = buffer_contents_utf8_alloc(buffer);
+static void buffer_send_lsp_did_open(TextBuffer *buffer, LSP *lsp) {
+	size_t buffer_contents_len = buffer_contents_utf8(buffer, NULL);
 	LSPRequest request = {.type = LSP_REQUEST_DID_OPEN};
 	LSPRequestDidOpen *open = &request.data.open;
-	open->file_contents = buffer_contents;
+	char *contents = lsp_message_alloc_string(&request.base, buffer_contents_len, &open->file_contents);
+	buffer_contents_utf8(buffer, contents);
 	open->document = lsp_document_id(lsp, buffer->path);
 	open->language = buffer_language(buffer);
 	lsp_send_request(lsp, &request);
@@ -529,7 +526,7 @@ LSP *buffer_lsp(TextBuffer *buffer) {
 		if (curr_lsp)
 			buffer_send_lsp_did_close(buffer, curr_lsp, NULL);
 		if (true_lsp)
-			buffer_send_lsp_did_open(buffer, true_lsp, NULL);
+			buffer_send_lsp_did_open(buffer, true_lsp);
 	}
 	buffer->last_lsp_check = buffer->ted->frame_time;
 	return true_lsp;
@@ -1798,13 +1795,11 @@ static void buffer_send_lsp_did_change(LSP *lsp, TextBuffer *buffer, BufferPos p
 	u32 nchars_deleted, String32 new_text) {
 	if (!buffer_is_named_file(buffer))
 		return; // this isn't a named buffer so we can't send a didChange request.
-	LSPDocumentChangeEvent event = {0};
-	if (new_text.len > 0)
-		event.text = str32_to_utf8_cstr(new_text);
-	event.range.start = buffer_pos_to_lsp_position(buffer, pos);
+	LSPRange range = {0};
+	range.start = buffer_pos_to_lsp_position(buffer, pos);
 	BufferPos pos_end = buffer_pos_advance(buffer, pos, nchars_deleted);
-	event.range.end = buffer_pos_to_lsp_position(buffer, pos_end);
-	lsp_document_changed(lsp, buffer->path, event);
+	range.end = buffer_pos_to_lsp_position(buffer, pos_end);
+	lsp_document_changed(lsp, buffer->path, range, new_text);
 }
 
 BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 str) {

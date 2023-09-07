@@ -240,9 +240,8 @@ void definitions_send_request_if_needed(Ted *ted) {
 	}
 	LSPRequest request = {.type = LSP_REQUEST_WORKSPACE_SYMBOLS};
 	LSPRequestWorkspaceSymbols *syms = &request.data.workspace_symbols;
-	syms->query = str_dup(query);
-	// cancel old request
-	definition_cancel_lookup(ted);
+	syms->query = lsp_request_add_string(&request, query);
+	definition_cancel_lookup(ted); // cancel old request
 	defs->last_request = lsp_send_request(lsp, &request);
 	defs->last_request_time = ted->frame_time;
 	free(defs->last_request_query);

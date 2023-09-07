@@ -1018,24 +1018,27 @@ String32 str32_from_utf8(const char *utf8) {
 	return string;
 }
 
-// returns a null-terminated UTF-8 string
-// the string returned should be free'd
-// this will return NULL on failure
+
+bool str32_to_utf8_cstr_in_place(String32 s, char *out) {
+	char *p = out;
+	for (size_t i = 0; i < s.len; ++i) {
+		size_t bytes = unicode_utf32_to_utf8(p, s.str[i]);
+		if (bytes == (size_t)-1) {
+			// invalid UTF-32 code point
+			*p = '\0';
+			return false;
+		} else {
+			p += bytes;
+		}
+	}
+	*p = '\0';
+	return true;
+}
+
 char *str32_to_utf8_cstr(String32 s) {
 	char *utf8 = calloc(4 * s.len + 1, 1); // each codepoint takes up at most 4 bytes in UTF-8, + we need a terminating null byte
 	if (utf8) {
-		char *p = utf8;
-		for (size_t i = 0; i < s.len; ++i) {
-			size_t bytes = unicode_utf32_to_utf8(p, s.str[i]);
-			if (bytes == (size_t)-1) {
-				// invalid UTF-32 code point
-				free(utf8);
-				return NULL;
-			} else {
-				p += bytes;
-			}
-		}
-		*p = '\0';
+		str32_to_utf8_cstr_in_place(s, utf8);
 	}
 	return utf8;
 }

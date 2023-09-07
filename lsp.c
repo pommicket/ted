@@ -29,13 +29,75 @@ bool lsp_get_error(LSP *lsp, char *error, size_t error_size, bool clear) {
 	return has_err;
 }
 
+bool lsp_string_is_empty(LSPString string) {
+	return string.offset == 0;
+}
 
-static void lsp_document_change_event_free(LSPDocumentChangeEvent *event) {
-	free(event->text);
+char *lsp_message_alloc_string(LSPMessageBase *message, size_t len, LSPString *string) {
+	u32 offset = arr_len(message->string_data);
+	if (len == 0) {
+		offset = 0;
+	} else if (offset == 0) {
+		// reserve offset 0 for empty string
+		arr_add(message->string_data, 0);
+		offset = 1;
+	}
+	arr_set_len(message->string_data, offset + len + 1);
+	string->offset = offset;
+	return message->string_data + offset;
+}
+
+static LSPString lsp_message_add_string(LSPMessageBase *message, const char *string) {
+	LSPString ret = {0};
+	size_t len = strlen(string);
+	if (len == 0) {
+		return ret;
+	}
+	char *dest = lsp_message_alloc_string(message, len, &ret);
+	memcpy(dest, string, len);
+	return ret;
+}
+static LSPString lsp_message_add_json_string(LSPMessageBase *message, const JSON *json, JSONString string) {
+	LSPString ret = {0};
+	size_t len = string.len;
+	if (len == 0) {
+		return ret;
+	}
+	char *dest = lsp_message_alloc_string(message, len, &ret);
+	json_string_get(json, string, dest, len + 1);
+	return ret;
+}
+static LSPString lsp_message_add_string32(LSPMessageBase *message, String32 string) {
+	LSPString ret = {0};
+	size_t len32 = string.len;
+	if (len32 == 0) {
+		return ret;
+	}
+	char *dest = lsp_message_alloc_string(message, len32 * 4 + 1, &ret);
+	str32_to_utf8_cstr_in_place(string, dest);
+	return ret;
+}
+
+LSPString lsp_request_add_string(LSPRequest *request, const char *string) {
+	return lsp_message_add_string(&request->base, string);
+}
+LSPString lsp_response_add_string(LSPResponse *response, const char *string) {
+	return lsp_message_add_string(&response->base, string);
+}
+LSPString lsp_response_add_json_string(LSPResponse *response, const JSON *json, JSONString string) {
+	return lsp_message_add_json_string(&response->base, json, string);
+}
+LSPString lsp_request_add_json_string(LSPRequest *request, const JSON *json, JSONString string) {
+	return lsp_message_add_json_string(&request->base, json, string);
+}
+
+
+static void lsp_message_base_free(LSPMessageBase *base) {
+	arr_free(base->string_data);
 }
 
 void lsp_request_free(LSPRequest *r) {
-	free(r->id_string);
+	lsp_message_base_free(&r->base);
 	switch (r->type) {
 	case LSP_REQUEST_NONE:
 	case LSP_REQUEST_INITIALIZE:
@@ -55,23 +117,15 @@ void lsp_request_free(LSPRequest *r) {
 	case LSP_REQUEST_DID_CLOSE:
 	case LSP_REQUEST_WORKSPACE_FOLDERS:
 	case LSP_REQUEST_DOCUMENT_LINK:
-		break;
-	case LSP_REQUEST_CONFIGURATION: {
-		LSPRequestConfiguration *config = &r->data.configuration;
-		free(config->settings);
-		} break;
-	case LSP_REQUEST_DID_OPEN: {
-		LSPRequestDidOpen *open = &r->data.open;
-		free(open->file_contents);
-		} break;
+	case LSP_REQUEST_CONFIGURATION:
+	case LSP_REQUEST_DID_OPEN:
 	case LSP_REQUEST_SHOW_MESSAGE:
 	case LSP_REQUEST_LOG_MESSAGE:
-		free(r->data.message.message);
+	case LSP_REQUEST_RENAME:
+	case LSP_REQUEST_WORKSPACE_SYMBOLS:
 		break;
 	case LSP_REQUEST_DID_CHANGE: {
 		LSPRequestDidChange *c = &r->data.change;
-		arr_foreach_ptr(c->changes, LSPDocumentChangeEvent, event)
-			lsp_document_change_event_free(event);
 		arr_free(c->changes);
 		} break;
 	case LSP_REQUEST_DID_CHANGE_WORKSPACE_FOLDERS: {
@@ -79,18 +133,12 @@ void lsp_request_free(LSPRequest *r) {
 		arr_free(w->added);
 		arr_free(w->removed);
 		} break;
-	case LSP_REQUEST_RENAME:
-		free(r->data.rename.new_name);
-		break;
-	case LSP_REQUEST_WORKSPACE_SYMBOLS:
-		free(r->data.workspace_symbols.query);
-		break;
 	}
 	memset(r, 0, sizeof *r);
 }
 
 void lsp_response_free(LSPResponse *r) {
-	arr_free(r->string_data);
+	lsp_message_base_free(&r->base);
 	switch (r->request.type) {
 	case LSP_REQUEST_COMPLETION:
 		arr_free(r->data.completion.items);
@@ -120,17 +168,16 @@ void lsp_response_free(LSPResponse *r) {
 		break;
 	}
 	lsp_request_free(&r->request);
-	free(r->error);
 	memset(r, 0, sizeof *r);
 }
 
 void lsp_message_free(LSPMessage *message) {
 	switch (message->type) {
 	case LSP_REQUEST:
-		lsp_request_free(&message->u.request);
+		lsp_request_free(&message->request);
 		break;
 	case LSP_RESPONSE:
-		lsp_response_free(&message->u.response);
+		lsp_response_free(&message->response);
 		break;
 	}
 	memset(message, 0, sizeof *message);
@@ -254,8 +301,9 @@ LSPServerRequestID lsp_send_request(LSP *lsp, LSPRequest *request) {
 	bool is_notification = request_type_is_notification(request->type);
 	if (!is_notification)
 		request->id = get_request_id();
-	LSPMessage message = {.type = LSP_REQUEST};
-	message.u.request = *request;
+	LSPMessage message = {0};
+	request->base.type = LSP_REQUEST;
+	message.request = *request;
 	lsp_send_message(lsp, &message);
 	return (LSPServerRequestID) {
 		.lsp = lsp->id,
@@ -264,14 +312,28 @@ LSPServerRequestID lsp_send_request(LSP *lsp, LSPRequest *request) {
 }
 
 void lsp_send_response(LSP *lsp, LSPResponse *response) {
-	LSPMessage message = {.type = LSP_RESPONSE};
-	message.u.response = *response;
+	LSPMessage message = {0};
+	response->base.type = LSP_RESPONSE;
+	message.response = *response;
 	lsp_send_message(lsp, &message);
 }
 
+static const char *lsp_message_string(const LSPMessageBase *message, LSPString string) {
+	// important that we have this check here, since
+	// it's possible that message->string_data is NULL (i.e. if no strings were ever added)
+	if (string.offset == 0) {
+		return "";
+	}
+	assert(string.offset < arr_len(message->string_data));
+	return &message->string_data[string.offset];
+}
+
 const char *lsp_response_string(const LSPResponse *response, LSPString string) {
-	assert(string.offset < arr_len(response->string_data));
-	return &response->string_data[string.offset];
+	return lsp_message_string(&response->base, string);
+}
+
+const char *lsp_request_string(const LSPRequest *request, LSPString string) {
+	return lsp_message_string(&request->base, string);
 }
 
 // receive responses/requests/notifications from LSP, up to max_size bytes.
@@ -652,9 +714,13 @@ void lsp_free(LSP *lsp) {
 	free(lsp);
 }
 
-void lsp_document_changed(LSP *lsp, const char *document, LSPDocumentChangeEvent change) {
+void lsp_document_changed(LSP *lsp, const char *document, LSPRange range, String32 new_text) {
 	// @TODO(optimization, eventually): batch changes (using the contentChanges array)
 	LSPRequest request = {.type = LSP_REQUEST_DID_CHANGE};
+	LSPDocumentChangeEvent change = {
+		.range = range,
+		.text = lsp_message_add_string32(&request.base, new_text),
+	};
 	LSPRequestDidChange *c = &request.data.change;
 	c->document = lsp_document_id(lsp, document);
 	arr_add(c->changes, change);
@@ -734,7 +800,7 @@ void lsp_cancel_request(LSP *lsp, LSPRequestID id) {
 		
 		for (u32 i = 0; i < arr_len(lsp->messages_client2server); ++i) {
 			LSPMessage *message = &lsp->messages_client2server[i];
-			if (message->type == LSP_REQUEST && message->u.request.id == id) {
+			if (message->type == LSP_REQUEST && message->request.id == id) {
 				// we haven't sent this request yet
 				arr_remove(lsp->messages_client2server, i);
 				break;

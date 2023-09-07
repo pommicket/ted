@@ -259,6 +259,18 @@ String32 str32(char32_t *str, size_t len);
 String32 str32_substr(String32 s, size_t from, size_t len);
 void str32_free(String32 *s);
 String32 str32_from_utf8(const char *utf8);
+/// convert UTF-32 to UTF-8.
+///
+/// returns false on invalid UTF-32 (and `out` will be truncated to just
+/// the prefix of `s` that is valid UTF-32)
+///
+/// out buffer must be long enough to fit the UTF-8 representation of `s`!
+/// (`s.len * 4 + 1` is a safe buffer size)
+bool str32_to_utf8_cstr_in_place(String32 s, char *out);
+/// returns a null-terminated UTF-8 string
+///
+/// the string returned should be free'd
+/// this will return NULL on failure
 char *str32_to_utf8_cstr(String32 s);
 int str32_cmp_ascii(String32 s, const char *ascii);
 bool str32_has_ascii_prefix(String32 s, const char *ascii);

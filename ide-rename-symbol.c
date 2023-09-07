@@ -26,7 +26,7 @@ void rename_symbol_at_cursor(Ted *ted, TextBuffer *buffer, const char *new_name)
 		LSPRequest request = {.type = LSP_REQUEST_RENAME};
 		LSPRequestRename *data = &request.data.rename;
 		data->position = buffer_cursor_pos_as_lsp_document_position(buffer);
-		data->new_name = str_dup(new_name);
+		data->new_name = lsp_request_add_string(&request, new_name);
 		rs->request_id = lsp_send_request(lsp, &request);
 	}
 	
@@ -117,12 +117,6 @@ void rename_symbol_process_lsp_response(Ted *ted, const LSPResponse *response) {
 	if (response->request.type != LSP_REQUEST_RENAME
 		|| response->request.id != rs->request_id.id) {
 		return;
-	}
-	
-	if (response->error) {
-		ted_error(ted, "%s", response->error);
-		goto cleanup;
-		
 	}
 	
 	const LSPResponseRename *data = &response->data.rename;

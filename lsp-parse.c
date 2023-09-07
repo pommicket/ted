@@ -32,19 +32,6 @@ static WarnUnusedResult bool lsp_expect_number(LSP *lsp, JSONValue value, const 
 	return lsp_expect_type(lsp, value, JSON_NUMBER, what);
 }
 
-
-static LSPString lsp_response_add_json_string(LSPResponse *response, const JSON *json, JSONString string) {
-	if (string.len == 0) {
-		return (LSPString){0};
-	}
-	u32 offset = arr_len(response->string_data);
-	arr_set_len(response->string_data, offset + string.len + 1);
-	json_string_get(json, string, response->string_data + offset, string.len + 1);
-	return (LSPString){
-		.offset = offset
-	};
-}
-
 static int completion_qsort_cmp(void *context, const void *av, const void *bv) {
 	const LSPResponse *response = context;
 	const LSPCompletionItem *a = av, *b = bv;
@@ -692,7 +679,7 @@ static WarnUnusedResult bool parse_id(const JSON *json, LSPRequest *request) {
 		}
 		} break;
 	case JSON_STRING:
-		request->id_string = json_string_get_alloc(json, id_value.val.string);
+		request->id_string = lsp_request_add_json_string(request, json, id_value.val.string);
 		return true;
 	default: break;
 	}
@@ -700,7 +687,8 @@ static WarnUnusedResult bool parse_id(const JSON *json, LSPRequest *request) {
 }
 
 // handles window/showMessage, window/logMessage, and window/showMessageRequest parameters
-static bool parse_window_message(LSP *lsp, const JSON *json, LSPRequestMessage *m) {
+static bool parse_window_message(LSP *lsp, const JSON *json, LSPRequest *request) {
+	LSPRequestMessage *m = &request->data.message;
 	JSONObject params = json_force_object(json_get(json, "params"));
 	JSONValue type = json_object_get(json, params, "type");
 	JSONValue message = json_object_get(json, params, "message");
@@ -716,7 +704,7 @@ static bool parse_window_message(LSP *lsp, const JSON *json, LSPRequestMessage *
 	}
 	
 	m->type = (LSPWindowMessageType)mtype;
-	m->message = json_string_get_alloc(json, message.val.string);
+	m->message = lsp_request_add_json_string(request, json, message.val.string);
 	return true;
 }
 
@@ -731,7 +719,7 @@ static bool parse_server2client_request(LSP *lsp, JSON *json, LSPRequest *reques
 	
 	if (streq(method, "window/showMessage")) {
 		request->type = LSP_REQUEST_SHOW_MESSAGE;
-		return parse_window_message(lsp, json, &request->data.message);
+		return parse_window_message(lsp, json, request);
 	} else if (streq(method, "window/showMessageRequest")) {
 		// we'll deal with the repsonse right here
 		LSPResponse response = {0};
@@ -744,10 +732,10 @@ static bool parse_server2client_request(LSP *lsp, JSON *json, LSPRequest *reques
 		lsp_send_response(lsp, &response);
 		
 		request->type = LSP_REQUEST_SHOW_MESSAGE;
-		return parse_window_message(lsp, json, &request->data.message);
+		return parse_window_message(lsp, json, request);
 	} else if (streq(method, "window/logMessage")) {
 		request->type = LSP_REQUEST_LOG_MESSAGE;
-		return parse_window_message(lsp, json, &request->data.message);
+		return parse_window_message(lsp, json, request);
 	} else if (streq(method, "workspace/workspaceFolders")) {
 		// we can deal with this request right here
 		LSPResponse response = {0};
@@ -988,14 +976,11 @@ void process_message(LSP *lsp, JSON *json) {
 			// now response_to is response's responsibility
 			memset(&response_to, 0, sizeof response_to);
 	
-			// make sure (LSPString){0} gets treated as an empty string
-			arr_add(response.string_data, '\0');
-			
 			if (error.type == JSON_STRING) {
-				response.error = json_string_get_alloc(json, error.val.string);
+				response.error = lsp_response_add_json_string(&response, json, error.val.string);
 			}
 			
-			if (response.error) {
+			if (!lsp_string_is_empty(response.error)) {
 				if (error_code != LSP_ERROR_REQUEST_CANCELLED)
 					add_to_messages = true;
 			} else switch (response.request.type) {
@@ -1049,7 +1034,11 @@ void process_message(LSP *lsp, JSON *json) {
 						LSPRequest configuration = {
 							.type = LSP_REQUEST_CONFIGURATION
 						};
-						configuration.data.configuration.settings = lsp->configuration_to_send;
+						configuration.data.configuration.settings = lsp_request_add_string(
+							&configuration,
+							lsp->configuration_to_send
+						);
+						free(lsp->configuration_to_send);
 						lsp->configuration_to_send = NULL;
 						lsp_send_request(lsp, &configuration);
 					}
@@ -1063,8 +1052,8 @@ void process_message(LSP *lsp, JSON *json) {
 			if (add_to_messages) {
 				SDL_LockMutex(lsp->messages_mutex);
 				LSPMessage *message = arr_addp(lsp->messages_server2client);
-				message->type = LSP_RESPONSE;
-				message->u.response = response;
+				response.base.type = LSP_RESPONSE;
+				message->response = response;
 				SDL_UnlockMutex(lsp->messages_mutex);
 			} else {
 				lsp_response_free(&response);
@@ -1076,8 +1065,8 @@ void process_message(LSP *lsp, JSON *json) {
 		if (parse_server2client_request(lsp, json, &request)) {
 			SDL_LockMutex(lsp->messages_mutex);
 			LSPMessage *message = arr_addp(lsp->messages_server2client);
-			message->type = LSP_REQUEST;
-			message->u.request = request;
+			request.base.type = LSP_REQUEST;
+			message->request = request;
 			SDL_UnlockMutex(lsp->messages_mutex);
 		} else {
 			lsp_request_free(&request);

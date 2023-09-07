@@ -874,37 +874,36 @@ int main(int argc, char **argv) {
 			while (lsp_next_message(lsp, &message)) {
 				switch (message.type) {
 				case LSP_REQUEST: {
-					LSPRequest *r = &message.u.request;
+					LSPRequest *r = &message.request;
 					switch (r->type) {
 					case LSP_REQUEST_SHOW_MESSAGE: {
 						LSPRequestMessage *m = &r->data.message;
 						MessageType type = ted_message_type_from_lsp(m->type);
-						ted_set_message(ted, type, "%s", m->message);
+						ted_set_message(ted, type, "%s", lsp_request_string(r, m->message));
 						} break;
 					case LSP_REQUEST_LOG_MESSAGE: {
 						LSPRequestMessage *m = &r->data.message;
-						ted_log(ted, "%s\n", m->message);
+						ted_log(ted, "%s\n", lsp_request_string(r, m->message));
 						} break;
 					default: break;
 					}
 					} break;
 				case LSP_RESPONSE: {
-					LSPResponse *r = &message.u.response;
-					if (r->error) {
-						// not displaying this right now
-						// idk it might be spammy
-						//ted_error(ted, "%s", r->error);
+					LSPResponse *r = &message.response;
+					if (!lsp_string_is_empty(r->error)) {
+						ted_error(ted, "LSP error: %s", lsp_response_string(r, r->error));
+					} else {
+						// it's important that we send error responses here too.
+						// we don't want to be waiting around for a response that's never coming.
+						autocomplete_process_lsp_response(ted, r);
+						signature_help_process_lsp_response(ted, r);
+						hover_process_lsp_response(ted, r);
+						definitions_process_lsp_response(ted, lsp, r);
+						highlights_process_lsp_response(ted, r);
+						usages_process_lsp_response(ted, r);
+						document_link_process_lsp_response(ted, r);
+						rename_symbol_process_lsp_response(ted, r);
 					}
-					// it's important that we send error responses here too.
-					// we don't want to be waiting around for a response that's never coming.
-					autocomplete_process_lsp_response(ted, r);
-					signature_help_process_lsp_response(ted, r);
-					hover_process_lsp_response(ted, r);
-					definitions_process_lsp_response(ted, lsp, r);
-					highlights_process_lsp_response(ted, r);
-					usages_process_lsp_response(ted, r);
-					document_link_process_lsp_response(ted, r);
-					rename_symbol_process_lsp_response(ted, r);
 					} break;
 				}
 				lsp_message_free(&message);
