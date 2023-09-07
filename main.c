@@ -885,6 +885,9 @@ int main(int argc, char **argv) {
 						LSPRequestMessage *m = &r->data.message;
 						ted_log(ted, "%s\n", lsp_request_string(r, m->message));
 						} break;
+					case LSP_REQUEST_PUBLISH_DIAGNOSTICS: {
+						ted_process_publish_diagnostics(ted, r);
+					} break;
 					default: break;
 					}
 					} break;

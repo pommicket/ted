@@ -711,5 +711,7 @@ void ted_color_settings_for_message_type(MessageType type, ColorSetting *bg_colo
 void ted_load_fonts(Ted *ted);
 /// Free all of ted's fonts.
 void ted_free_fonts(Ted *ted);
+/// process textDocument/publishDiagnostics request
+void ted_process_publish_diagnostics(Ted *ted, LSPRequest *request);
 
 #endif // TED_INTERNAL_H_

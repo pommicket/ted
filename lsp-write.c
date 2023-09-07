@@ -274,6 +274,8 @@ static const char *lsp_request_method(LSPRequest *request) {
 		return "textDocument/completion";
 	case LSP_REQUEST_SIGNATURE_HELP:
 		return "textDocument/signatureHelp";
+	case LSP_REQUEST_PUBLISH_DIAGNOSTICS:
+		return "textDocument/publishDiagnostics";
 	case LSP_REQUEST_HOVER:
 		return "textDocument/hover";
 	case LSP_REQUEST_REFERENCES:
@@ -392,6 +394,7 @@ void write_request(LSP *lsp, LSPRequest *request) {
 	case LSP_REQUEST_SHOW_MESSAGE:
 	case LSP_REQUEST_LOG_MESSAGE:
 	case LSP_REQUEST_WORKSPACE_FOLDERS:
+	case LSP_REQUEST_PUBLISH_DIAGNOSTICS:
 		assert(0);
 		break;
 	case LSP_REQUEST_SHUTDOWN:
@@ -453,6 +456,11 @@ void write_request(LSP *lsp, LSPRequest *request) {
 					// document link capabilities
 					write_key_obj_start(o, "documentLink");
 						write_key_bool(o, "tooltipSupport", true);
+					write_obj_end(o);
+					
+					// publish diagnostics capabilities
+					write_key_obj_start(o, "publishDiagnostics");
+						write_key_bool(o, "codeDescriptionSupport", true);
 					write_obj_end(o);
 				write_obj_end(o);
 				write_key_obj_start(o, "workspace");

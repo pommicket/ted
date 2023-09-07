@@ -119,6 +119,11 @@ void lsp_request_free(LSPRequest *r) {
 	case LSP_REQUEST_DOCUMENT_LINK:
 	case LSP_REQUEST_CONFIGURATION:
 	case LSP_REQUEST_DID_OPEN:
+		break;
+	case LSP_REQUEST_PUBLISH_DIAGNOSTICS: {
+		LSPRequestPublishDiagnostics *pub = &r->data.publish_diagnostics;
+		arr_free(pub->diagnostics);
+		} break;
 	case LSP_REQUEST_SHOW_MESSAGE:
 	case LSP_REQUEST_LOG_MESSAGE:
 	case LSP_REQUEST_RENAME:
@@ -209,6 +214,7 @@ static bool lsp_supports_request(LSP *lsp, const LSPRequest *request) {
 	case LSP_REQUEST_SHOW_MESSAGE:
 	case LSP_REQUEST_LOG_MESSAGE:
 	case LSP_REQUEST_WORKSPACE_FOLDERS:
+	case LSP_REQUEST_PUBLISH_DIAGNOSTICS:
 		return false;
 	case LSP_REQUEST_INITIALIZE:
 	case LSP_REQUEST_INITIALIZED:
@@ -268,6 +274,7 @@ static bool request_type_is_notification(LSPRequestType type) {
 	case LSP_REQUEST_DID_CHANGE:
 	case LSP_REQUEST_DID_CHANGE_WORKSPACE_FOLDERS:
 	case LSP_REQUEST_CONFIGURATION:
+	case LSP_REQUEST_PUBLISH_DIAGNOSTICS:
 		return true;
 	case LSP_REQUEST_INITIALIZE:
 	case LSP_REQUEST_SHUTDOWN:

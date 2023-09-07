@@ -875,3 +875,9 @@ bool ted_close_buffer_with_file(Ted *ted, const char *path) {
 	ted_close_buffer(ted, buffer);
 	return true;
 }
+
+void ted_process_publish_diagnostics(Ted *ted, LSPRequest *request) {
+	assert(request->type == LSP_REQUEST_PUBLISH_DIAGNOSTICS);
+	LSPRequestPublishDiagnostics *pub = &request->data.publish_diagnostics;
+	printf("%u diagnostics\n",arr_len(pub->diagnostics));
+}

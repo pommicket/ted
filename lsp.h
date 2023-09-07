@@ -94,6 +94,7 @@ typedef enum {
 	LSP_REQUEST_SHOW_MESSAGE, //< window/showMessage and window/showMessageRequest
 	LSP_REQUEST_LOG_MESSAGE, //< window/logMessage
 	LSP_REQUEST_WORKSPACE_FOLDERS, //< workspace/workspaceFolders - NOTE: this is handled directly in lsp-parse.c (because it only needs information from the LSP struct)
+	LSP_REQUEST_PUBLISH_DIAGNOSTICS, //< textDocument/publishDiagnostics
 } LSPRequestType;
 
 typedef enum {
@@ -147,6 +148,30 @@ typedef struct {
 	LSPWindowMessageType type;
 	LSPString message;
 } LSPRequestMessage;
+
+typedef enum {
+#define LSP_DIAGNOSTIC_SEVERITY_MIN 1
+	LSP_DIAGNOSTIC_SEVERITY_ERROR = 1,
+	LSP_DIAGNOSTIC_SEVERITY_WARNING = 2,
+	LSP_DIAGNOSTIC_SEVERITY_INFORMATION = 3,
+	LSP_DIAGNOSTIC_SEVERITY_HINT = 4,
+#define LSP_DIAGNOSTIC_SEVERITY_MAX 4
+} LSPDiagnosticSeverity;
+
+typedef struct {
+	LSPRange range;
+	LSPDiagnosticSeverity severity;
+	LSPString code;
+	LSPString message;
+	/// URI to description of code
+	/// e.g. for Rust's E0621, this would be https://doc.rust-lang.org/error_codes/E0621.html
+	LSPString code_description_uri;
+} LSPDiagnostic;
+
+typedef struct {
+	LSPDocumentID document;
+	LSPDiagnostic *diagnostics; // dynamic array
+} LSPRequestPublishDiagnostics;
 
 
 /// these triggers are used for completion context and signature help context.
@@ -247,6 +272,7 @@ typedef struct {
 		LSPRequestDidChangeWorkspaceFolders change_workspace_folders;
 		LSPRequestRename rename;
 		LSPRequestDocumentLink document_link;
+		LSPRequestPublishDiagnostics publish_diagnostics;
 	} data;
 } LSPRequest;
 

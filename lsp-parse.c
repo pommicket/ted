@@ -708,6 +708,56 @@ static bool parse_window_message(LSP *lsp, const JSON *json, LSPRequest *request
 	return true;
 }
 
+static bool parse_diagnostic(LSP *lsp, LSPRequest *request, const JSON *json, JSONObject diagnostic_in, LSPDiagnostic *diagnostic_out) {
+	if (!parse_range(lsp, json, json_object_get(json, diagnostic_in, "range"),
+		&diagnostic_out->range))
+		return false;
+	diagnostic_out->message = lsp_request_add_json_string(
+		request, json,
+		json_object_get_string(json, diagnostic_in, "request")
+	);
+	JSONValue severity_val = json_object_get(json, diagnostic_in, "severity");
+	LSPDiagnosticSeverity severity = LSP_DIAGNOSTIC_SEVERITY_INFORMATION;
+	if (severity_val.type == JSON_NUMBER) {
+		int s = (int)json_force_number(severity_val);
+		if (s >= LSP_DIAGNOSTIC_SEVERITY_MIN && s <= LSP_DIAGNOSTIC_SEVERITY_MAX) {
+			severity = (LSPDiagnosticSeverity)s;
+		}
+	}
+	diagnostic_out->severity = severity;
+	JSONValue code_val = json_object_get(json, diagnostic_in, "code");
+	if (code_val.type == JSON_NUMBER) {
+		int code = (int)code_val.val.number;
+		char string[32] = {0};
+		strbuf_printf(string, "%d", code);
+		diagnostic_out->code = lsp_request_add_string(request, string);
+	} else if (code_val.type == JSON_STRING) {
+		diagnostic_out->code = lsp_request_add_json_string(request, json, code_val.val.string);
+	}
+	JSONObject code_description = json_object_get_object(json, diagnostic_in, "codeDescription");
+	diagnostic_out->code_description_uri = lsp_request_add_json_string(
+		request, json,
+		json_object_get_string(json, code_description, "href")
+	);
+	return true;
+}
+
+static bool parse_publish_diagnostics(LSP *lsp, const JSON *json, LSPRequest *request) {
+	LSPRequestPublishDiagnostics *pub = &request->data.publish_diagnostics;
+	JSONObject params = json_force_object(json_get(json, "params"));
+	JSONValue uri_val = json_object_get(json, params, "uri");
+	if (!parse_document_uri(lsp, json, uri_val, &pub->document))
+		return false;
+	JSONArray diagnostics = json_object_get_array(json, params, "diagnostics");
+	for (u32 i = 0; i < diagnostics.len; ++i) {
+		JSONObject diagnostic_in = json_array_get_object(json, diagnostics, i);
+		LSPDiagnostic *diagnostic_out = arr_addp(pub->diagnostics);
+		if (!parse_diagnostic(lsp, request, json, diagnostic_in, diagnostic_out))
+			return false;
+	}
+	return true;
+}
+
 // returns true if `request` was actually filled with a request.
 static bool parse_server2client_request(LSP *lsp, JSON *json, LSPRequest *request) {
 	JSONValue method_value = json_get(json, "method");
@@ -750,7 +800,8 @@ static bool parse_server2client_request(LSP *lsp, JSON *json, LSPRequest *reques
 	} else if (str_has_prefix(method, "$/") || str_has_prefix(method, "telemetry/")) {
 		// we can safely ignore this
 	} else if (streq(method, "textDocument/publishDiagnostics")) {
-		// currently ignored
+		request->type = LSP_REQUEST_PUBLISH_DIAGNOSTICS;
+		return parse_publish_diagnostics(lsp, json, request);
 	} else {
 		debug_println("Unrecognized request method: %s", method);
 	}
