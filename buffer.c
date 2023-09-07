@@ -3293,7 +3293,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	Font *font = buffer_font(buffer);
 	u32 nlines = buffer->nlines;
 	Line *lines = buffer->lines;
-	float char_height = text_font_char_height(font);
+	const float char_height = text_font_char_height(font);
 
 	Ted *ted = buffer->ted;
 	const float padding = settings->padding;
@@ -3301,10 +3301,11 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	
 	u32 start_line = buffer_first_rendered_line(buffer); // line to start rendering from
 	
-	
-	u32 border_color = settings_color(settings, COLOR_BORDER); // color of border around buffer
-	// bounding box around buffer
-	gl_geometry_rect_border(rect4(x1, y1, x2, y2), border_thickness, border_color);
+	{
+		const u32 border_color = settings_color(settings, COLOR_BORDER); // color of border around buffer
+		// bounding box around buffer
+		gl_geometry_rect_border(rect4(x1, y1, x2, y2), border_thickness, border_color);
+	}
 	
 	x1 += border_thickness;
 	y1 += border_thickness;
@@ -3602,8 +3603,33 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 		gl_geometry_draw();
 	}
 	
-	//TODO(hover_diagnostic);
-
+	if (hover_diagnostic) {
+		const vec2 mouse_pos = ted_mouse_pos(ted);
+		const float diagnostic_x1 = mouse_pos.x,
+			diagnostic_y1 = mouse_pos.y;
+		const float window_width = ted_window_width(ted);
+		float diagnostic_x2 = minf(
+			diagnostic_x1 + 0.6f * window_width,
+			window_width - padding
+		);
+		TextRenderState state = text_render_state_default;
+		state.min_x = diagnostic_x1;
+		state.min_y = diagnostic_y1;
+		state.max_x = diagnostic_x2;
+		state.x = diagnostic_x1;
+		state.y = diagnostic_y1;
+		settings_color_floats(settings, COLOR_TEXT, state.color);
+		text_utf8_with_state(font, &state, hover_diagnostic->message);
+		diagnostic_x2 = minf(diagnostic_x2, (float)state.x_largest);
+		const float diagnostic_y2 = (float)state.y_largest + char_height;
+		Rect diagnostic_rect = rect4(diagnostic_x1, diagnostic_y1, diagnostic_x2, diagnostic_y2);
+		ColorSetting bg_color=0, border_color=0;
+		ted_color_settings_for_message_type(hover_diagnostic->severity, &bg_color, &border_color);
+		gl_geometry_rect(diagnostic_rect, settings_color(settings, bg_color));
+		gl_geometry_rect_border(diagnostic_rect, border_thickness, settings_color(settings, border_color));
+		gl_geometry_draw();
+		text_render(font);
+	}
 }
 
 void buffer_indent_lines(TextBuffer *buffer, u32 first_line, u32 last_line) {
