@@ -324,7 +324,7 @@ void selector_render(Ted *ted, Selector *s) {
 		float x = r_unclipped.pos.x, y = r_unclipped.pos.y;
 		text_state.x = x; text_state.y = y;
 		
-		if (rect_contains_point(r_clipped, ted->mouse_pos) || (s->enable_cursor && s->cursor == i)) {
+		if (ted_mouse_in_rect(ted, r_clipped) || (s->enable_cursor && s->cursor == i)) {
 			// highlight it
 			gl_geometry_rect(r_clipped, settings_color(settings, COLOR_MENU_HL));
 		}
@@ -661,7 +661,7 @@ vec2 button_get_size(Ted *ted, const char *text) {
 }
 
 void button_render(Ted *ted, Rect button, const char *text, u32 color) {	
-	if (rect_contains_point(button, ted->mouse_pos)) {
+	if (ted_mouse_in_rect(ted, button)) {
 		// highlight button when hovering over it
 		u32 new_color = (color & 0xffffff00) | ((color & 0xff) / 3);
 		gl_geometry_rect(button, new_color);

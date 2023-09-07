@@ -28,6 +28,14 @@ struct BufferEdit {
 	double time; // time at start of edit (i.e. the time just before the edit), in seconds since epoch
 };
 
+typedef struct {
+	MessageType severity;
+	BufferPos pos;
+	char *message;
+	// may be NULL
+	char *url;
+} Diagnostic;
+
 struct TextBuffer {
 	/// NULL if this buffer is untitled or doesn't correspond to a file (e.g. line buffers)
 	char *path;
@@ -97,6 +105,8 @@ struct TextBuffer {
 	u32 frame_earliest_line_modified;
 	/// see \ref frame_earliest_line_modified.
 	u32 frame_latest_line_modified;
+
+	Diagnostic *diagnostics;
 
 	/// lines
 	Line *lines;
@@ -974,6 +984,19 @@ static void buffer_line_free(Line *line) {
 	free(line->str);
 }
 
+static void diagnostic_free(Diagnostic *diagnostic) {
+	free(diagnostic->message);
+	free(diagnostic->url);
+	memset(diagnostic, 0, sizeof *diagnostic);
+}
+
+static void buffer_diagnostics_clear(TextBuffer *buffer) {
+	arr_foreach_ptr(buffer->diagnostics, Diagnostic, d) {
+		diagnostic_free(d);
+	}
+	arr_clear(buffer->diagnostics);
+}
+
 static void buffer_free_inner(TextBuffer *buffer) {
 	Ted *ted = buffer->ted;
 	if (!ted->quit) { // don't send didClose on quit (calling buffer_lsp would actually create a LSP if this is called after destroying all the LSPs which isnt good)
@@ -995,7 +1018,7 @@ static void buffer_free_inner(TextBuffer *buffer) {
 		buffer_edit_free(edit);
 	arr_foreach_ptr(buffer->redo_history, BufferEdit, edit)
 		buffer_edit_free(edit);
-
+	buffer_diagnostics_clear(buffer);
 	arr_free(buffer->undo_history);
 	arr_free(buffer->redo_history);
 	memset(buffer, 0, sizeof *buffer);
@@ -1384,6 +1407,24 @@ i64 buffer_pos_move_up(TextBuffer *buffer, BufferPos *pos, i64 by) {
 
 i64 buffer_pos_move_down(TextBuffer *buffer, BufferPos *pos, i64 by) {
 	return +buffer_pos_move_vertically(buffer, pos, +by);
+}
+
+bool buffer_pos_move_according_to_edit(BufferPos *pos, const EditInfo *edit) {
+	if (buffer_pos_cmp(*pos, edit->pos) <= 0)
+		return true;
+	if (edit->chars_inserted) {
+		if (edit->pos.line == pos->line) {
+			pos->index += edit->end.index - edit->pos.index;
+		}
+		pos->line += edit->end.line - edit->pos.line;
+	} else {
+		if (buffer_pos_cmp(*pos, edit->end) < 0)
+			return false;
+		if (pos->line == edit->end.line)
+			pos->index += edit->pos.index - edit->end.index;
+		pos->line -= edit->end.line - edit->pos.line;
+	}
+	return true;
 }
 
 static bool buffer_line_is_blank(Line *line) {
@@ -1947,11 +1988,14 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 	
 	const EditInfo info = {
 		.pos = pos,
+		.end = b,
 		.chars_deleted = 0,
-		.newlines_deleted = 0,
 		.chars_inserted = insertion_len,
-		.newlines_inserted = n_added_lines,
 	};
+	// move diagnostics around as needed
+	arr_foreach_ptr(buffer->diagnostics, Diagnostic, d) {
+		buffer_pos_move_according_to_edit(&d->pos, &info);
+	}
 	
 	signature_help_retrigger(buffer->ted);
 	arr_foreach_ptr(buffer->ted->edit_notifys, EditNotifyInfo, n) {
@@ -2424,8 +2468,8 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 	u32 line_idx = pos.line;
 	u32 index = pos.index;
 	Line *line = &buffer->lines[line_idx], *lines_end = &buffer->lines[buffer->nlines];
-	u32 newlines_deleted = 0;
-	
+	const BufferPos end_pos = buffer_pos_advance(buffer, pos, nchars);
+
 	if (nchars + index > line->len) {
 		// delete rest of line
 		nchars -= line->len - index + 1; // +1 for the newline that got deleted
@@ -2440,7 +2484,6 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 			// delete everything to the end of the file
 			for (u32 idx = line_idx + 1; idx < buffer->nlines; ++idx) {
 				buffer_line_free(&buffer->lines[idx]);
-				++newlines_deleted;
 			}
 			buffer_shorten(buffer, line_idx + 1);
 		} else {
@@ -2453,7 +2496,7 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 			// remove all lines between line + 1 and last_line (inclusive).
 			buffer_delete_lines(buffer, line_idx + 1, (u32)(last_line - line));
 
-			newlines_deleted = (u32)(last_line - line);
+			const u32 newlines_deleted = (u32)(last_line - line);
 			buffer_shorten(buffer, buffer->nlines - newlines_deleted);
 		}
 	} else {
@@ -2474,11 +2517,14 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 	
 	const EditInfo info = {
 		.pos = pos,
+		.end = end_pos,
 		.chars_inserted = 0,
-		.newlines_inserted = 0,
 		.chars_deleted = deletion_len,
-		.newlines_deleted = newlines_deleted,
 	};
+	// move diagnostics around as needed
+	arr_foreach_ptr(buffer->diagnostics, Diagnostic, d) {
+		buffer_pos_move_according_to_edit(&d->pos, &info);
+	}
 	arr_foreach_ptr(buffer->ted->edit_notifys, EditNotifyInfo, n) {
 		n->fn(n->context, buffer, &info);
 	}
@@ -3268,9 +3314,10 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	
 	float render_start_y = y1 - (float)(buffer->scroll_y - start_line) * char_height; // where the 1st line is rendered
 
-
+	const Diagnostic *hover_diagnostic = NULL;
 	// line numbering
 	if (!buffer->is_line_buffer && settings->line_numbers) {
+		const Diagnostic *diagnostic = arr_len(buffer->diagnostics) ? buffer->diagnostics : NULL;
 		float max_digit_width = 0;
 		for (char32_t digit = '0'; digit <= '9'; ++digit) {
 			max_digit_width = maxf(max_digit_width, text_font_char_width(font, digit));
@@ -3285,23 +3332,56 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 		text_state.max_y = y2;
 
 		float y = render_start_y;
-		u32 cursor_line = buffer->cursor_pos.line;
+		const u32 cursor_line = buffer->cursor_pos.line;
+		const float diagnostic_x2 = x1 + line_number_width + 2;
 		for (u32 line = start_line; line < nlines; ++line) {
 			char str[32] = {0};
 			strbuf_printf(str, "%" PRIu32, line + 1); // convert line number to string
-			float x = x1 + line_number_width - text_get_size_vec2(font, str).x; // right justify
+			const float x = x1 + line_number_width - text_get_size_vec2(font, str).x; // right justify
+			u32 line_number_color = settings_color(settings, line == cursor_line ? COLOR_CURSOR_LINE_NUMBER : COLOR_LINE_NUMBERS);
+			if (diagnostic) {
+				while (diagnostic->pos.line < line) {
+					++diagnostic;
+					if (diagnostic == buffer->diagnostics + arr_len(buffer->diagnostics)) {
+						diagnostic = NULL;
+						break;
+					}
+				}
+			}
+			if (diagnostic && diagnostic->pos.line == line) {
+				// show diagnostic
+				ColorSetting color_setting=0;
+				ted_color_settings_for_message_type(diagnostic->severity, NULL, &color_setting);
+				u32 color = settings_color(settings, color_setting) | 0xff;
+				u32 alt_line_number_color = line == cursor_line ? 0xffffffff : 0x000000ff;
+				if (color_contrast_ratio_u32(color, line_number_color)
+					< color_contrast_ratio_u32(color, alt_line_number_color)) {
+					// change color so that line number is still visible
+					line_number_color = alt_line_number_color;
+				}
+				const Rect rect = rect4(x1, y, diagnostic_x2, y + char_height);
+				gl_geometry_rect(
+					rect,
+					color & 0xffffff7f
+				);
+				if (ted_mouse_in_rect(ted, rect)) {
+					hover_diagnostic = diagnostic;
+					if (diagnostic->url && ted_clicked_in_rect(ted, rect))
+						open_with_default_application(diagnostic->url);
+					ted->cursor = ted->cursor_hand;
+				}
+			}
 			// set color
-			settings_color_floats(settings, line == cursor_line ? COLOR_CURSOR_LINE_NUMBER : COLOR_LINE_NUMBERS,
-				text_state.color);
+			rgba_u32_to_floats(line_number_color, text_state.color);
 			text_state.x = x; text_state.y = y;
 			text_state_break_kerning(&text_state);
 			text_utf8_with_state(font, &text_state, str);
 			y += char_height;
+			
 			if (y > y2) break;
 		}
 
-		x1 += line_number_width;
-		x1 += 2; // a little bit of padding
+		x1 = diagnostic_x2;
 		// line separating line numbers from text
 		gl_geometry_rect(rect_xywh(x1, y1, border_thickness, y2 - y1), settings_color(settings, COLOR_LINE_NUMBERS_SEPARATOR));
 		x1 += border_thickness;
@@ -3321,7 +3401,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	}
 
 	// change cursor to ibeam when it's hovering over the buffer
-	if ((!menu_is_any_open(ted) || buffer == ted->line_buffer) && rect_contains_point(rect4(x1, y1, x2, y2), ted->mouse_pos)) {
+	if ((!menu_is_any_open(ted) || buffer == ted->line_buffer) && ted_mouse_in_rect(ted, rect4(x1, y1, x2, y2))) {
 		ted->cursor = ted->cursor_ibeam;
 	}
 
@@ -3331,7 +3411,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 		buffer->center_cursor_next_frame = false;
 	}
 
-	if (rect_contains_point(rect4(x1, y1, x2, y2), ted->mouse_pos) && !menu_is_any_open(ted)) {
+	if (ted_mouse_in_rect(ted, rect4(x1, y1, x2, y2)) && !menu_is_any_open(ted)) {
 		// scroll with mouse wheel
 		double scroll_speed = 2.5;
 		buffer_scroll(buffer, ted->scroll_total_x * scroll_speed, ted->scroll_total_y * scroll_speed);
@@ -3521,6 +3601,8 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 		}
 		gl_geometry_draw();
 	}
+	
+	//TODO(hover_diagnostic);
 
 }
 
@@ -3744,4 +3826,54 @@ void buffer_highlight_lsp_range(TextBuffer *buffer, LSPRange range, ColorSetting
 		Rect r2 = rect_endpoints(a, b); buffer_clip_rect(buffer, &r2);
 		gl_geometry_rect(r2, settings_color(settings, COLOR_HOVER_HL));
 	}
+}
+
+static MessageType diagnostic_severity(const LSPDiagnostic *diagnostic) {
+	switch (diagnostic->severity) {
+	case LSP_DIAGNOSTIC_SEVERITY_ERROR:
+		return MESSAGE_ERROR;
+	case LSP_DIAGNOSTIC_SEVERITY_WARNING:
+		return MESSAGE_WARNING;
+	case LSP_DIAGNOSTIC_SEVERITY_INFORMATION:
+	case LSP_DIAGNOSTIC_SEVERITY_HINT:
+		return MESSAGE_INFO;
+	}
+	assert(0);
+	return MESSAGE_INFO;
+}
+
+static int diagnostic_cmp(const void *av, const void *bv) {
+	const Diagnostic *a = av, *b = bv;
+	// first sort by line
+	if (a->pos.line < b->pos.line) return -1;
+	if (a->pos.line > b->pos.line) return 1;
+
+	// then put higher severity diagnostics first
+	if (a->severity < b->severity) return 1;
+	if (a->severity > b->severity) return -1;
+
+	return 0;
+}
+
+void buffer_publish_diagnostics(TextBuffer *buffer, const LSPRequest *request, LSPDiagnostic *diagnostics) {
+	buffer_diagnostics_clear(buffer);
+	arr_foreach_ptr(diagnostics, const LSPDiagnostic, diagnostic) {
+		Diagnostic *d = arr_addp(buffer->diagnostics);
+		d->pos = buffer_pos_from_lsp(buffer, diagnostic->range.start);
+		d->severity = diagnostic_severity(diagnostic);
+		char message[280];
+		const char *code = lsp_request_string(request, diagnostic->code);
+		if (*code) {
+			str_printf(message, sizeof message - 4, "[%s] %s", code,
+				lsp_request_string(request, diagnostic->message));
+		} else {
+			str_cpy(message, sizeof message - 4,
+				lsp_request_string(request, diagnostic->message));
+		}
+		strcpy(&message[sizeof message - 4], "...");
+		d->message = str_dup(message);
+		const char *url = lsp_request_string(request, diagnostic->code_description_uri);
+		d->url = *url ? str_dup(url) : NULL;
+	}
+	arr_qsort(buffer->diagnostics, diagnostic_cmp);
 }

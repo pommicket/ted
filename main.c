@@ -641,7 +641,7 @@ int main(int argc, char **argv) {
 				} else if (key_modifier == 0) {
 					// scroll with mouse wheel
 					Sint32 dx = event.wheel.x, dy = -event.wheel.y;
-					if (autocomplete_box_contains_point(ted, ted->mouse_pos)) {
+					if (autocomplete_box_contains_point(ted, ted_mouse_pos(ted))) {
 						autocomplete_scroll(ted, dy);
 					} else {
 						ted->scroll_total_x += dx;
@@ -886,7 +886,7 @@ int main(int argc, char **argv) {
 						ted_log(ted, "%s\n", lsp_request_string(r, m->message));
 						} break;
 					case LSP_REQUEST_PUBLISH_DIAGNOSTICS: {
-						ted_process_publish_diagnostics(ted, r);
+						ted_process_publish_diagnostics(ted, lsp, r);
 					} break;
 					default: break;
 					}
@@ -984,7 +984,7 @@ int main(int argc, char **argv) {
 				if (ted->resizing_build_output) {
 					if (ted->mouse_state & SDL_BUTTON_LMASK) {
 						// resize it
-						ted->build_output_height = clampf((y2 - ted->mouse_pos.y) / ted->window_height, 0.05f, 0.8f);
+						ted->build_output_height = clampf((y2 - ted_mouse_pos(ted).y) / ted->window_height, 0.05f, 0.8f);
 					} else {
 						// stop resizing build output
 						ted->resizing_build_output = false;
@@ -996,7 +996,7 @@ int main(int argc, char **argv) {
 						// start resizing build output
 						ted->resizing_build_output = true;
 					}
-					if (rect_contains_point(gap, ted->mouse_pos)) {
+					if (ted_mouse_in_rect(ted, gap)) {
 						ted->cursor = ted->cursor_resize_v;
 					}
 				}

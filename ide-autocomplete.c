@@ -616,7 +616,7 @@ void autocomplete_frame(Ted *ted) {
 		ac->rect = menu_rect;
 	}
 	
-	i32 mouse_entry = scroll + (i32)((ted->mouse_pos.y - start_y) / char_height);
+	i32 mouse_entry = scroll + (i32)((ted_mouse_pos(ted).y - start_y) / char_height);
 	
 	Autocompletion *document = NULL;
 	if (ncompletions) {
@@ -629,7 +629,7 @@ void autocomplete_frame(Ted *ted) {
 		}
 	}
 	if (mouse_entry >= 0 && mouse_entry < (i32)ncompletions
-		&& rect_contains_point(ac->rect, ted->mouse_pos)) {
+		&& ted_mouse_in_rect(ted, ac->rect)) {
 		// highlight moused over entry
 		Rect r = rect_xywh(x, start_y + (float)(mouse_entry - scroll) * char_height, menu_width, char_height);
 		gl_geometry_rect(r, colors[COLOR_AUTOCOMPLETE_HL]);

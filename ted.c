@@ -745,7 +745,7 @@ bool ted_get_mouse_buffer_pos(Ted *ted, TextBuffer **pbuffer, BufferPos *ppos) {
 	arr_foreach_ptr(ted->buffers, TextBufferPtr, pbuf) {
 		TextBuffer *buffer = *pbuf;
 		BufferPos pos = {0};
-		if (buffer_pixels_to_pos(buffer, ted->mouse_pos, &pos)) {
+		if (buffer_pixels_to_pos(buffer, ted_mouse_pos(ted), &pos)) {
 			if (ppos) *ppos = pos;
 			if (pbuffer) *pbuffer = buffer;
 			return true;
@@ -826,16 +826,16 @@ MessageType ted_message_type_from_lsp(LSPWindowMessageType type) {
 void ted_color_settings_for_message_type(MessageType type, ColorSetting *bg_color, ColorSetting *border_color) {
 	switch (type) {
 	case MESSAGE_ERROR:
-		*bg_color = COLOR_ERROR_BG;
-		*border_color = COLOR_ERROR_BORDER;
+		if (bg_color) *bg_color = COLOR_ERROR_BG;
+		if (border_color) *border_color = COLOR_ERROR_BORDER;
 		break;
 	case MESSAGE_WARNING:
-		*bg_color = COLOR_WARNING_BG;
-		*border_color = COLOR_WARNING_BORDER;
+		if (bg_color) *bg_color = COLOR_WARNING_BG;
+		if (border_color) *border_color = COLOR_WARNING_BORDER;
 		break;
 	case MESSAGE_INFO:
-		*bg_color = COLOR_INFO_BG;
-		*border_color = COLOR_INFO_BORDER;
+		if (bg_color) *bg_color = COLOR_INFO_BG;
+		if (border_color) *border_color = COLOR_INFO_BORDER;
 		break;
 	}
 }
@@ -876,8 +876,21 @@ bool ted_close_buffer_with_file(Ted *ted, const char *path) {
 	return true;
 }
 
-void ted_process_publish_diagnostics(Ted *ted, LSPRequest *request) {
+void ted_process_publish_diagnostics(Ted *ted, LSP *lsp, LSPRequest *request) {
 	assert(request->type == LSP_REQUEST_PUBLISH_DIAGNOSTICS);
 	LSPRequestPublishDiagnostics *pub = &request->data.publish_diagnostics;
-	printf("%u diagnostics\n",arr_len(pub->diagnostics));
+	const char *path = lsp_document_path(lsp, pub->document);
+	TextBuffer *buffer = ted_get_buffer_with_file(ted, path);
+	if (buffer) {
+		buffer_publish_diagnostics(buffer, request, pub->diagnostics);
+	}
+}
+
+
+vec2 ted_mouse_pos(Ted *ted) {
+	return ted->mouse_pos;
+}
+
+bool ted_mouse_in_rect(Ted *ted, Rect r) {
+	return rect_contains_point(r, ted->mouse_pos);
 }

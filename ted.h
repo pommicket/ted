@@ -314,6 +314,11 @@ typedef struct {
 typedef struct {
 	/// position where the edit took place
 	BufferPos pos;
+	/// "end" position
+	///
+	/// for insertions, this is the position of one past the last character inserted,
+	/// for deletions, this is the position of the end of the deletion prior to applying the edit
+	BufferPos end;
 	/// number of characters (unicode codepoints, including newlines) deleted
 	///
 	/// if this is non-zero, \ref chars_inserted will be zero.
@@ -322,10 +327,6 @@ typedef struct {
 	///
 	/// if this is non-zero, \ref chars_deleted will be zero.
 	u32 chars_inserted;
-	/// number of newlines deleted
-	u32 newlines_deleted;
-	/// number of newlines inserted
-	u32 newlines_inserted;
 } EditInfo;
 
 /// this type of callback is called right after an edit is made to the buffer.
@@ -423,6 +424,10 @@ char32_t buffer_pos_move_to_matching_bracket(TextBuffer *buffer, BufferPos *pos)
 ///
 /// \returns `true` if cursor was to the right of a bracket.
 bool buffer_cursor_move_to_matching_bracket(TextBuffer *buffer);
+/// move `*pos` so that it stays in the same place after `edit` is applied.
+///
+/// if `pos` was deleted by `edit`, returns `false`.
+bool buffer_pos_move_according_to_edit(BufferPos *pos, const EditInfo *edit);
 /// ensures that `p` refers to a valid position, moving it if needed.
 void buffer_pos_validate(TextBuffer *buffer, BufferPos *p);
 /// is this a valid buffer position?
@@ -796,6 +801,12 @@ Status color_from_str(const char *str, u32 *color);
 u32 color_blend(u32 bg, u32 fg);
 /// multiply color's alpha value by `opacity`.
 u32 color_apply_opacity(u32 color, float opacity);
+/// get WCAG contrast ratio between colors
+float color_contrast_ratio(const float rgb1[3], const float rgb2[3]);
+/// get WCAG contrast ratio between colors.
+///
+/// the "alpha" components (i.e. lowest 8 bits) of `color1`, `color2` are ignored
+float color_contrast_ratio_u32(u32 color1, u32 color2);
 
 // === command.c ===
 /// parse command
@@ -1138,6 +1149,10 @@ void ted_close_buffer(Ted *ted, TextBuffer *buffer);
 bool ted_close_buffer_with_file(Ted *ted, const char *path);
 /// save all buffers
 bool ted_save_all(Ted *ted);
+/// get mouse position
+vec2 ted_mouse_pos(Ted *ted);
+/// test whether mouse is in rect
+bool ted_mouse_in_rect(Ted *ted, Rect r);
 /// reload all buffers from their files
 void ted_reload_all(Ted *ted);
 /// Change ted's font size.

@@ -169,3 +169,33 @@ u32 color_apply_opacity(u32 color, float opacity) {
 	opacity = clampf(opacity, 0.0f, 1.0f);
 	return (color & 0xffffff00) | (u32)((color & 0xff) * opacity);
 }
+
+
+static float color_relative_luminance(const float rgb[3]) {
+	// see https://www.w3.org/TR/2008/REC-WCAG20-20081211/#relativeluminancedef
+	float c[3];
+	for (int i = 0; i < 3; ++i) {
+		const float x = rgb[i];
+		c[i] = x <= 0.03928f ? x * (1.0f / 12.92f) : powf((x + 0.055f) * (1.0f / 1.055f), 2.4f);
+	}
+	return 0.2126f * c[0] + 0.7152f * c[1] + 0.0722f * c[2];
+}
+
+float color_contrast_ratio(const float rgb1[3], const float rgb2[3]) {
+	// see https://www.w3.org/TR/2008/REC-WCAG20-20081211/#contrast-ratiodef
+	float l1 = color_relative_luminance(rgb1);
+	float l2 = color_relative_luminance(rgb2);
+	if (l1 < l2) {
+		float temp = l1;
+		l1 = l2;
+		l2 = temp;
+	}
+	return (l1 + 0.05f) / (l2 + 0.05f);
+}
+
+float color_contrast_ratio_u32(u32 color1, u32 color2) {
+	float rgb1[4], rgb2[4];
+	rgba_u32_to_floats(color1, rgb1);
+	rgba_u32_to_floats(color2, rgb2);
+	return color_contrast_ratio(rgb1, rgb2);
+}

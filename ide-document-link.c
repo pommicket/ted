@@ -101,7 +101,7 @@ void document_link_frame(Ted *ted) {
 	
 	arr_foreach_ptr(dl->links, DocumentLink, l) {
 		Rect r = document_link_get_rect(ted, l);
-		if (rect_contains_point(r, ted->mouse_pos)) {
+		if (ted_mouse_in_rect(ted, r)) {
 			ted->cursor = ted->cursor_hand;
 		}
 	}

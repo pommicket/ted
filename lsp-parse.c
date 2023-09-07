@@ -714,7 +714,7 @@ static bool parse_diagnostic(LSP *lsp, LSPRequest *request, const JSON *json, JS
 		return false;
 	diagnostic_out->message = lsp_request_add_json_string(
 		request, json,
-		json_object_get_string(json, diagnostic_in, "request")
+		json_object_get_string(json, diagnostic_in, "message")
 	);
 	JSONValue severity_val = json_object_get(json, diagnostic_in, "severity");
 	LSPDiagnosticSeverity severity = LSP_DIAGNOSTIC_SEVERITY_INFORMATION;

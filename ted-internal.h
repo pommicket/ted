@@ -464,6 +464,7 @@ bool buffer_handle_click(Ted *ted, TextBuffer *buffer, vec2 click, u8 times);
 void buffer_center_cursor_next_frame(TextBuffer *buffer);
 /// perform a series of checks to make sure the buffer doesn't have any invalid values
 void buffer_check_valid(TextBuffer *buffer);
+void buffer_publish_diagnostics(TextBuffer *buffer, const LSPRequest *request, LSPDiagnostic *diagnostics);
 
 // === build.c ===
 void build_frame(Ted *ted, float x1, float y1, float x2, float y2);
@@ -712,6 +713,6 @@ void ted_load_fonts(Ted *ted);
 /// Free all of ted's fonts.
 void ted_free_fonts(Ted *ted);
 /// process textDocument/publishDiagnostics request
-void ted_process_publish_diagnostics(Ted *ted, LSPRequest *request);
+void ted_process_publish_diagnostics(Ted *ted, LSP *lsp, LSPRequest *request);
 
 #endif // TED_INTERNAL_H_

@@ -538,7 +538,7 @@ static void find_edit_notify(void *context, TextBuffer *buffer, const EditInfo *
 		const u32 line = info->pos.line;
 		
 		if (info->chars_inserted) {
-			const u32 newlines_inserted = info->newlines_inserted;
+			const u32 newlines_inserted = info->end.line - info->pos.line;
 			
 			if (newlines_inserted) {
 				// update line numbers for find results after insertion.
@@ -553,7 +553,7 @@ static void find_edit_notify(void *context, TextBuffer *buffer, const EditInfo *
 			find_research_lines(ted, line, line + newlines_inserted);
 			
 		} else if (info->chars_deleted) {
-			const u32 newlines_deleted = info->newlines_deleted;
+			const u32 newlines_deleted = info->end.line - info->pos.line;
 			
 			if (newlines_deleted) {
 				// update line numbers for find results after deletion.

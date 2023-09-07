@@ -383,7 +383,8 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 
 				if (node == ted->dragging_tab_node && i == ted->dragging_tab_idx) {
 					// make tab follow mouse
-					tab_rect.pos = vec2_add(tab_rect.pos, vec2_sub(ted->mouse_pos, ted->dragging_tab_origin));
+					tab_rect.pos = vec2_add(tab_rect.pos, 
+						vec2_sub(ted_mouse_pos(ted), ted->dragging_tab_origin));
 				}
 				
 				// tab border
@@ -447,7 +448,8 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 				ted->resizing_split = NULL;
 			} else {
 				// resize the split
-				float mouse_coord = node->split_vertical ? ted->mouse_pos.y : ted->mouse_pos.x;
+				const vec2 mouse_pos = ted_mouse_pos(ted);
+				float mouse_coord = node->split_vertical ? mouse_pos.y : mouse_pos.x;
 				float rect_coord1 = (node->split_vertical ? rect_y1 : rect_x1)(r);
 				float rect_coord2 = (node->split_vertical ? rect_y2 : rect_x2)(r);
 				// make sure the split doesn't make one of the sides too small
@@ -469,7 +471,7 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 			r2.size.x = r.size.x - split_pos - padding;
 			r_between = rect_xywh(r.pos.x + split_pos - padding, r.pos.y, 2 * padding, r.size.y);
 		}
-		if (rect_contains_point(r_between, ted->mouse_pos)) {
+		if (ted_mouse_in_rect(ted, r_between)) {
 			ted->cursor = resize_cursor;
 		}
 		if (ted_clicked_in_rect(ted, r_between)) 
