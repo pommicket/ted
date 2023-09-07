@@ -11,6 +11,29 @@ The big `Ted` struct has basically all of the data for ted.
 
 In general, fixed-size types such as `u32` should be preferred to `unsigned int` & co.
 
+ted makes heavy use of “dynamic arrays” (basically, `std::vector` for C,
+inspired by [stb_ds.h](https://github.com/nothings/stb/blob/master/stb_ds.h)) —
+check out the `arr_*` functions in `ds.h`. Basic usage is like:
+
+```c
+int *array = NULL;
+for (int i = 0; i < 5; i++) {
+	arr_add(array, i);
+}
+arr_foreach_ptr(array, int, p) {
+	*p *= 2;
+}
+// prints 5 6
+printf("%d %d\n", arr_len(array), array[3]);
+// prints the numbers 0, 2, 4, 6, 8
+arr_foreach_ptr(array, int, p) {
+	printf("%d\n", *p);
+}
+arr_free(array);
+```
+
+(the secret is that the length/capacity of the array is stored at `array[-8..-1]` so that
+indexing works as expected.)
 
 ## Files
 
