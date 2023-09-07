@@ -668,7 +668,7 @@ void autocomplete_frame(Ted *ted) {
 			text_state.x = doc_x + padding;
 			text_state.y = doc_y + padding;
 			text_state.wrap = true;
-			rgba_u32_to_floats(colors[COLOR_TEXT], text_state.color);
+			color_u32_to_floats(colors[COLOR_TEXT], text_state.color);
 			text_utf8_with_state(font, &text_state, document->documentation);
 		}
 	}
@@ -688,7 +688,7 @@ void autocomplete_frame(Ted *ted) {
 	float y = start_y;
 	TextRenderState state = text_render_state_default;
 	state.min_x = x + padding; state.min_y = y; state.max_x = x + menu_width - padding; state.max_y = y + menu_height;
-	rgba_u32_to_floats(colors[COLOR_TEXT], state.color);
+	color_u32_to_floats(colors[COLOR_TEXT], state.color);
 	
 	if (waiting_for_lsp && ncompletions == 0) {
 		state.x = x + padding; state.y = y;
@@ -708,7 +708,7 @@ void autocomplete_frame(Ted *ted) {
 			if (!settings->syntax_highlighting)
 				label_color = COLOR_TEXT;
 			
-			rgba_u32_to_floats(colors[label_color], state.color);
+			color_u32_to_floats(colors[label_color], state.color);
 			
 			// draw icon
 			char icon_text[2] = {symbol_kind_icon(completion->kind), 0};

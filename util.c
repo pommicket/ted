@@ -720,26 +720,6 @@ vec2 vec2_polar(float r, float theta) {
 	return (vec2){r * cosf(theta), r * sinf(theta)};
 }
 
-void rgba_u32_to_floats(u32 rgba, float floats[4]) {
-	floats[0] = (float)((rgba >> 24) & 0xFF) / 255.f;
-	floats[1] = (float)((rgba >> 16) & 0xFF) / 255.f;
-	floats[2] = (float)((rgba >>  8) & 0xFF) / 255.f;
-	floats[3] = (float)((rgba >>  0) & 0xFF) / 255.f;
-}
-
-vec4 rgba_u32_to_vec4(u32 rgba) {
-	float c[4];
-	rgba_u32_to_floats(rgba, c);
-	return (vec4){c[0], c[1], c[2], c[3]};
-}
-
-u32 rgba_vec4_to_u32(vec4 color) {
-	return (u32)(color.x * 255) << 24
-		| (u32)(color.y * 255) << 16
-		| (u32)(color.z * 255) << 8
-		| (u32)(color.w * 255);
-}
-
 bool rect_contains_point_v2(vec2 pos, vec2 size, vec2 point) {
 	float x1 = pos.x, y1 = pos.y, x2 = pos.x + size.x, y2 = pos.y + size.y,
 		x = point.x, y = point.y;
@@ -867,84 +847,6 @@ void rect_grow(Rect *r, float amount) {
 	r->size.x += 2 * amount;
 	r->size.y += 2 * amount;
 }
-
-static vec4 color_rgba_to_hsva(vec4 rgba) {
-	float R = rgba.x, G = rgba.y, B = rgba.z, A = rgba.w;
-	float M = maxf(R, maxf(G, B));
-	float m = minf(R, minf(G, B));
-	float C = M - m;
-	float H = 0;
-	if (C == 0)
-		H = 0;
-	else if (M == R)
-		H = fmodf((G - B) / C, 6);
-	else if (M == G)
-		H = (B - R) / C + 2;
-	else if (M == B)
-		H = (R - G) / C + 4;
-	H *= 60;
-	float V = M;
-	float S = V == 0 ? 0 : C / V;
-	return (vec4){H, S, V, A};
-}
-
-static vec4 color_hsva_to_rgba(vec4 hsva) {
-	float H = hsva.x, S = hsva.y, V = hsva.z, A = hsva.w;
-	H /= 60;
-	float C = S * V;
-	float X = C * (1 - fabsf(fmodf(H, 2) - 1));
-	float R, G, B;
-	if (H <= 1)
-		R=C, G=X, B=0;
-	else if (H <= 2)
-		R=X, G=C, B=0;
-	else if (H <= 3)
-		R=0, G=C, B=X;
-	else if (H <= 4)
-		R=0, G=X, B=C;
-	else if (H <= 5)
-		R=X, G=0, B=C;
-	else
-		R=C, G=0, B=X;
-	
-	float m = V-C;
-	R += m;
-	G += m;
-	B += m;
-	return (vec4){R, G, B, A};
-}
-
-u32 color_interpolate(float x, u32 color1, u32 color2) {
-	x = x * x * (3 - 2*x); // hermite interpolation
-
-	vec4 c1 = rgba_u32_to_vec4(color1), c2 = rgba_u32_to_vec4(color2);
-	// to make it interpolate more nicely, convert to hsv, interpolate in that space, then convert back
-	c1 = color_rgba_to_hsva(c1);
-	c2 = color_rgba_to_hsva(c2);
-	// v_1/2 named differently to avoid shadowing
-	float h1 = c1.x, s1 = c1.y, v_1 = c1.z, a1 = c1.w;
-	float h2 = c2.x, s2 = c2.y, v_2 = c2.z, a2 = c2.w;
-	
-	float s_out = lerpf(x, s1, s2);
-	float v_out = lerpf(x, v_1, v_2);
-	float a_out = lerpf(x, a1, a2);
-	
-	float h_out;
-	// because hue is on a circle, we need to make sure we take the shorter route around the circle
-	if (fabsf(h1 - h2) < 180) {
-		h_out = lerpf(x, h1, h2);
-	} else if (h1 > h2) {
-		h_out = lerpf(x, h1, h2 + 360);
-	} else {
-		h_out = lerpf(x, h1 + 360, h2);
-	}
-	h_out = fmodf(h_out, 360);
-	
-	vec4 c_out = (vec4){h_out, s_out, v_out, a_out};
-	c_out = color_hsva_to_rgba(c_out);
-	return rgba_vec4_to_u32(c_out);
-}
-
 
 int timespec_cmp(struct timespec a, struct timespec b) {
 	if (a.tv_sec  > b.tv_sec)  return 1;

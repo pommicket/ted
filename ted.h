@@ -807,6 +807,10 @@ float color_contrast_ratio(const float rgb1[3], const float rgb2[3]);
 ///
 /// the "alpha" components (i.e. lowest 8 bits) of `color1`, `color2` are ignored
 float color_contrast_ratio_u32(u32 color1, u32 color2);
+void color_u32_to_floats(u32 rgba, float floats[4]);
+vec4 color_u32_to_vec4(u32 rgba);
+u32 color_vec4_to_u32(vec4 color);
+u32 color_interpolate(float x, u32 color1, u32 color2);
 
 // === command.c ===
 /// parse command

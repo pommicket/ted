@@ -922,7 +922,7 @@ int main(int argc, char **argv) {
 		glViewport(0, 0, (GLsizei)window_width, (GLsizei)window_height);
 		{ // clear (background)
 			float bg_color[4];
-			rgba_u32_to_floats(ted_active_color(ted, COLOR_BG), bg_color);
+			color_u32_to_floats(ted_active_color(ted, COLOR_BG), bg_color);
 			glClearColor(bg_color[0], bg_color[1], bg_color[2], bg_color[3]);
 		}
 		glClear(GL_COLOR_BUFFER_BIT);
@@ -1090,7 +1090,7 @@ int main(int argc, char **argv) {
 				text_state.x = text_x1;
 				text_state.y = text_y1;
 				text_state.wrap = true;
-				rgba_u32_to_floats(ted_active_color(ted, COLOR_TEXT), text_state.color);
+				color_u32_to_floats(ted_active_color(ted, COLOR_TEXT), text_state.color);
 				text_utf8_with_state(font, &text_state, ted->message_shown);
 				gl_geometry_draw();
 				text_render(font);

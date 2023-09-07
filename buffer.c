@@ -3372,7 +3372,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 				}
 			}
 			// set color
-			rgba_u32_to_floats(line_number_color, text_state.color);
+			color_u32_to_floats(line_number_color, text_state.color);
 			text_state.x = x; text_state.y = y;
 			text_state_break_kerning(&text_state);
 			text_utf8_with_state(font, &text_state, str);
@@ -3532,7 +3532,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 			if (syntax_highlighting) {
 				SyntaxCharType type = char_types[i];
 				ColorSetting color = syntax_char_type_to_color_setting(type);
-				rgba_u32_to_floats(settings_color(settings, color), text_state.color);
+				color_u32_to_floats(settings_color(settings, color), text_state.color);
 			}
 			buffer_render_char(buffer, font, &text_state, c);
 		}

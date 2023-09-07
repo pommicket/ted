@@ -232,7 +232,7 @@ void gl_geometry_init(void) {
 void gl_geometry_rect(Rect r, u32 color_rgba) {
 	if (r.size.x <= 0 || r.size.y <= 0)
 		return;
-	vec4 color = rgba_u32_to_vec4(color_rgba);
+	vec4 color = color_u32_to_vec4(color_rgba);
 
 	vec2 p1 = {rect_x1(r), rect_y1(r)};
 	vec2 p2 = {rect_x1(r), rect_y2(r)};

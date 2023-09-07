@@ -216,9 +216,6 @@ vec2 vec2_normalize(vec2 v);
 float vec2_distance(vec2 a, vec2 b);
 void vec2_print(vec2 v);
 vec2 vec2_polar(float r, float theta);
-void rgba_u32_to_floats(u32 rgba, float floats[4]);
-vec4 rgba_u32_to_vec4(u32 rgba);
-u32 rgba_vec4_to_u32(vec4 color);
 bool rect_contains_point_v2(vec2 pos, vec2 size, vec2 point);
 bool centered_rect_contains_point(vec2 center, vec2 size, vec2 point);
 Rect rect(vec2 pos, vec2 size);
@@ -250,7 +247,6 @@ void rect_shrink_right(Rect *r, float amount);
 void rect_shrink_bottom(Rect *r, float amount);
 /// adds `amount` to all sides of r
 void rect_grow(Rect *r, float amount);
-u32 color_interpolate(float x, u32 color1, u32 color2);
 int timespec_cmp(struct timespec a, struct timespec b);
 bool timespec_eq(struct timespec a, struct timespec b);
 struct timespec timespec_max(struct timespec a, struct timespec b);

@@ -1310,7 +1310,7 @@ u32 settings_color(const Settings *settings, ColorSetting color) {
 }
 
 void settings_color_floats(const Settings *settings, ColorSetting color, float f[4]) {
-	rgba_u32_to_floats(settings_color(settings, color), f);
+	color_u32_to_floats(settings_color(settings, color), f);
 	
 }
 
