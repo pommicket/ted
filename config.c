@@ -122,6 +122,7 @@ static const SettingBool settings_bool[] = {
 	{"crlf-windows", &settings_zero.crlf_windows, true},
 	{"jump-to-build-error", &settings_zero.jump_to_build_error, true},
 	{"force-monospace", &settings_zero.force_monospace, true},
+	{"show-diagnostics", &settings_zero.show_diagnostics, true},
 };
 static const SettingU8 settings_u8[] = {
 	{"tab-width", &settings_zero.tab_width, 1, 100, true},

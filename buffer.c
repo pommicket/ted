@@ -3315,6 +3315,11 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	
 	float render_start_y = y1 - (float)(buffer->scroll_y - start_line) * char_height; // where the 1st line is rendered
 
+
+	if (!settings->show_diagnostics) {
+		buffer_diagnostics_clear(buffer);
+	}
+
 	const Diagnostic *hover_diagnostic = NULL;
 	// line numbering
 	if (!buffer->is_line_buffer && settings->line_numbers) {
@@ -3882,7 +3887,11 @@ static int diagnostic_cmp(const void *av, const void *bv) {
 }
 
 void buffer_publish_diagnostics(TextBuffer *buffer, const LSPRequest *request, LSPDiagnostic *diagnostics) {
+	const Settings *settings = buffer_settings(buffer);
 	buffer_diagnostics_clear(buffer);
+	if (!settings->show_diagnostics) {
+		return;
+	}
 	arr_foreach_ptr(diagnostics, const LSPDiagnostic, diagnostic) {
 		Diagnostic *d = arr_addp(buffer->diagnostics);
 		d->pos = buffer_pos_from_lsp(buffer, diagnostic->range.start);
