@@ -456,9 +456,8 @@ Socket *socket_connect_tcp(const char *address, u16 port) {
 	}
 
 	if (connect(fd, &addr, sizeof addr) < 0) {
-		strbuf_printf(s->error, "couldn't connect to %u.%u.%u.%u:%u (%s)",
-			address[0], address[1], address[2], address[3], port,
-			strerror(errno));
+		strbuf_printf(s->error, "couldn't connect to %s:%u (%s)",
+			address, port, strerror(errno));
 	}
 
 	set_nonblocking(fd);
@@ -486,4 +485,12 @@ long long socket_write(Socket *s, const char *data, size_t size) {
 		return -2;
 	}
 	return write_fd(s->fd, s->error, sizeof s->error, data, size);
+}
+
+void socket_close(Socket **psocket) {
+	Socket *s = *psocket;
+	if (!s) return;
+	if (s->fd > 0)
+		close(s->fd);
+	*psocket = NULL;
 }

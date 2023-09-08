@@ -188,6 +188,12 @@ long long socket_read(Socket *socket, char *data, size_t size);
 ///  -1 if the read end of the socket was closed\n
 /// or a non-negative number indicating the number of bytes written.
 long long socket_write(Socket *socket, const char *data, size_t size);
+/// close socket
+///
+/// if `*psocket` is `NULL`, this does nothing.
+///
+/// sets `*psocket` to `NULL`.
+void socket_close(Socket **psocket);
 
 #endif // OS_H_
 

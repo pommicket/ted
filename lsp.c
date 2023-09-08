@@ -400,10 +400,21 @@ static bool lsp_receive(LSP *lsp, size_t max_size) {
 	long long bytes_read = lsp->socket
 		? socket_read(lsp->socket, lsp->received_data + received_so_far, max_size)
 		: process_read(lsp->process, lsp->received_data + received_so_far, max_size);
-	if (bytes_read <= 0) {
+	
+	if (bytes_read == -1) {
 		// no data
 		return true;
 	}
+	if (bytes_read == 0) {
+		lsp_set_error(lsp, "LSP server closed connection unexpectedly.");
+		return false;
+	}
+	if (bytes_read < 0) {
+		if (lsp->log)
+			fprintf(lsp->log, "Error reading from server (errno = %d).\n", errno);
+		return true;
+	}
+	
 	received_so_far += (size_t)bytes_read;
 	// kind of a hack. this is needed because arr_set_len zeroes the data.
 	arr_hdr_(lsp->received_data)->len = (u32)received_so_far;
@@ -704,7 +715,7 @@ void lsp_free(LSP *lsp) {
 	SDL_DestroyMutex(lsp->error_mutex);
 	SDL_DestroySemaphore(lsp->quit_sem);
 	process_kill(&lsp->process);
-	
+	socket_close(&lsp->socket);
 	arr_free(lsp->received_data);
 	
 	str_hash_table_clear(&lsp->document_ids);

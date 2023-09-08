@@ -1,10 +1,8 @@
 /*
 TODO:
-- highlight not, super in godot (where do those appear in the godot docs?)
-- what's goin wrong with godot (test other servers over TCP)
- - check for server stops running over TCP
-- automatically restart server
+- figure out what's wrong with godot language server
 - LSP textDocument/formatting and textDocument/rangeFormatting
+- automatically restart server
 FUTURE FEATURES:
 - autodetect indentation (tabs vs spaces)
 - custom file/build command associations

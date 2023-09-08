@@ -334,10 +334,18 @@ static void message_writer_write_and_free(LSP *lsp, JSONWriter *o) {
 		fprintf(lsp->log, "LSP MESSAGE FROM CLIENT TO SERVER\n%s\n\n", content + header_size);
 	}
 	
-	if (lsp->socket)
-		socket_write(lsp->socket, content, strlen(content));
-	else
-		process_write(lsp->process, content, strlen(content));
+	long long bytes_written = lsp->socket
+		? socket_write(lsp->socket, content, strlen(content))
+		: process_write(lsp->process, content, strlen(content));
+
+	if (bytes_written == -1) {
+		// we'll handle this properly next time we do a read.
+		if (lsp->log) fprintf(lsp->log, "LSP server closed connection unexpectedly\n");
+	} else if (bytes_written < 0) {
+		if (lsp->log) fprintf(lsp->log, "Error writing to LSP server (errno = %d)\n", errno);
+	} else {
+		assert((size_t)bytes_written == strlen(content));
+	}
 
 	str_builder_free(&builder);
 }

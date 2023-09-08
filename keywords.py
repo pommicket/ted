@@ -614,7 +614,7 @@ keywords_gdscript = [
 	'if', 'elif', 'else', 'for', 'while', 'match', 'break', 'continue',
 	'pass', 'return', 'class', 'class_name', 'extends', 'is', 'in', 'as',
 	'self', 'signal', 'func', 'static', 'const', 'enum', 'var', 'breakpoint',
-	'preload', 'await', 'yield', 'assert', 'void',
+	'preload', 'await', 'yield', 'assert', 'void', 'not', 'and', 'or', 'super',
 ]
 
 builtins_gdscript = [
