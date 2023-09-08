@@ -138,6 +138,7 @@ static const SettingU16 settings_u16[] = {
 	{"max-menu-width", &settings_zero.max_menu_width, 10, U16_MAX, false},
 	{"error-display-time", &settings_zero.error_display_time, 0, U16_MAX, false},
 	{"framerate-cap", &settings_zero.framerate_cap, 3, 1000, false},
+	{"lsp-port", &settings_zero.lsp_port, 0, 65535, true},
 };
 static const SettingU32 settings_u32[] = {
 	{"max-file-size", &settings_zero.max_file_size, 100, 2000000000, false},

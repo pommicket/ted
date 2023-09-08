@@ -3374,7 +3374,8 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 					hover_diagnostic = diagnostic;
 					if (diagnostic->url && ted_clicked_in_rect(ted, rect))
 						open_with_default_application(diagnostic->url);
-					ted->cursor = ted->cursor_hand;
+					if (diagnostic->url)
+						ted->cursor = ted->cursor_hand;
 				}
 			}
 			// set color

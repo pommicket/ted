@@ -111,6 +111,7 @@ struct Settings {
 	u16 text_size;
 	u16 max_menu_width;
 	u16 error_display_time;
+	u16 lsp_port;
 	bool auto_indent;
 	bool auto_add_newline;
 	bool syntax_highlighting;

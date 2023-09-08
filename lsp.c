@@ -347,7 +347,7 @@ const char *lsp_request_string(const LSPRequest *request, LSPString string) {
 // returns false if the process exited
 static bool lsp_receive(LSP *lsp, size_t max_size) {
 
-	{
+	if (lsp->process) {
 		// read stderr. if all goes well, we shouldn't get anything over stderr.
 		char stderr_buf[1024] = {0};
 		for (size_t i = 0; i < (max_size + sizeof stderr_buf) / sizeof stderr_buf; ++i) {
@@ -365,7 +365,7 @@ static bool lsp_receive(LSP *lsp, size_t max_size) {
 		}
 	}
 	
-	{
+	if (lsp->process) {
 		// check process status
 		ProcessExitInfo info = {0};
 		int status = process_check_status(&lsp->process, &info);
@@ -397,7 +397,9 @@ static bool lsp_receive(LSP *lsp, size_t max_size) {
 
 	size_t received_so_far = arr_len(lsp->received_data);
 	arr_reserve(lsp->received_data, received_so_far + max_size + 1);
-	long long bytes_read = process_read(lsp->process, lsp->received_data + received_so_far, max_size);
+	long long bytes_read = lsp->socket
+		? socket_read(lsp->socket, lsp->received_data + received_so_far, max_size)
+		: process_read(lsp->process, lsp->received_data + received_so_far, max_size);
 	if (bytes_read <= 0) {
 		// no data
 		return true;
@@ -492,6 +494,22 @@ static bool lsp_send(LSP *lsp) {
 // This writes requests and reads (and parses) responses.
 static int lsp_communication_thread(void *data) {
 	LSP *lsp = data;
+	
+	if (lsp->port) {
+		lsp->socket = socket_connect_tcp(NULL, lsp->port);
+		const char *error = socket_get_error(lsp->socket);
+		if (*error) {
+			lsp_set_error(lsp, "%s", error);
+			return 0;
+		}
+	}
+
+	LSPRequest initialize = {
+		.type = LSP_REQUEST_INITIALIZE
+	};
+	initialize.id = get_request_id();
+	write_request(lsp, &initialize);
+	
 	while (1) {
 		bool quit = lsp_send(lsp);
 		if (quit) break;
@@ -575,7 +593,7 @@ const char *lsp_document_path(LSP *lsp, LSPDocumentID document) {
 	return path;
 }
 
-LSP *lsp_create(const char *root_dir, const char *command, const char *configuration, FILE *log) {
+LSP *lsp_create(const char *root_dir, const char *command, u16 port, const char *configuration, FILE *log) {
 	LSP *lsp = calloc(1, sizeof *lsp);
 	if (!lsp) return NULL;
 	if (!request_id_mutex)
@@ -584,10 +602,11 @@ LSP *lsp_create(const char *root_dir, const char *command, const char *configura
 	static LSPID curr_id = 1;
 	lsp->id = curr_id++;
 	lsp->log = log;
-	
+	lsp->port = port;
+
 	#if DEBUG
-		printf("Starting up LSP %p (ID %u) `%s` in %s\n",
-			(void *)lsp, (unsigned)lsp->id, command, root_dir);
+		printf("Starting up LSP %p (ID %u) `%s` (port %u) in %s\n",
+			(void *)lsp, (unsigned)lsp->id, command ? command : "(no command)", port, root_dir);
 	#endif
 	
 	str_hash_table_create(&lsp->document_ids, sizeof(u32));
@@ -606,33 +625,28 @@ LSP *lsp_create(const char *root_dir, const char *command, const char *configura
 	arr_add(lsp->workspace_folders, lsp_document_id(lsp, root_dir));
 	lsp->workspace_folders_mutex = SDL_CreateMutex();
 	
-	ProcessSettings settings = {
-		.separate_stderr = true,
-		.working_directory = root_dir,
-	};
-	lsp->process = process_run_ex(command, &settings);
-	const char *error = process_geterr(lsp->process);
-	if (error) {
-		// don't show an error box if the server is not installed
-		#if _WIN32
-			if (strstr(error, " 2)")) {
-				if (lsp->log) fprintf(lsp->log, "Couldn't start LSP server %s: file not found.", command);
-			} else
-		#endif
-			lsp_set_error(lsp, "Couldn't start LSP server: %s", error);
-		lsp->exited = true;
-		process_kill(&lsp->process);
-	} else {
-	
-		LSPRequest initialize = {
-			.type = LSP_REQUEST_INITIALIZE
+	if (command) {
+		ProcessSettings settings = {
+			.separate_stderr = true,
+			.working_directory = root_dir,
 		};
-		initialize.id = get_request_id();
-		// immediately send the request rather than queueing it.
-		// this is a small request, so it shouldn't be a problem.
-		write_request(lsp, &initialize);
-		lsp->communication_thread = SDL_CreateThread(lsp_communication_thread, "LSP communicate", lsp);
+		lsp->process = process_run_ex(command, &settings);
+		const char *error = lsp->process ? process_geterr(lsp->process) : NULL;
+		if (error) {
+			// don't show an error box if the server is not installed
+			#if _WIN32
+				if (strstr(error, " 2)")) {
+					if (lsp->log) fprintf(lsp->log, "Couldn't start LSP server %s: file not found.", command);
+				} else
+			#endif
+				lsp_set_error(lsp, "Couldn't start LSP server: %s", error);
+			lsp->exited = true;
+			process_kill(&lsp->process);
+			return lsp;
+		}
 	}
+	
+	lsp->communication_thread = SDL_CreateThread(lsp_communication_thread, "LSP communicate", lsp);
 	return lsp;
 }
 

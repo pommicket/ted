@@ -128,17 +128,17 @@ Process *process_run(const char *command);
 const char *process_geterr(Process *process);
 /// write to stdin
 ///
-/// returns -2 on error,
+/// \returns -2 on error,\n
+///  -1 if the read end of the pipe was closed,\n
 /// or a non-negative number indicating the number of bytes written.
-/// Currently, this does a blocking write.
 long long process_write(Process *process, const char *data, size_t size);
 /// read from stdout+stderr.
 ///
-/// returns:\n
+/// \returns
 /// -2 on error\n
 /// -1 if no data is available right now\n
 /// 0 on end of file\n
-/// or a positive number indicating the number of bytes read to data (at most size)\n
+/// or a positive number indicating the number of bytes read to `data` (at most `size`)\n
 /// This does a nonblocking read.
 long long process_read(Process *process, char *data, size_t size);
 /// like \ref process_read, but reads stderr.
@@ -148,7 +148,7 @@ long long process_read(Process *process, char *data, size_t size);
 long long process_read_stderr(Process *process, char *data, size_t size);
 /// Checks if the process has exited.
 ///
-/// Returns:\n
+/// \returns
 /// -1 if the process returned a non-zero exit code, or got a signal.\n
 /// 1  if the process exited successfully\n
 /// 0  if the process hasn't exited.\n
@@ -161,6 +161,33 @@ int process_check_status(Process **process, ProcessExitInfo *info);
 /// `*process` will be set to NULL.
 void process_kill(Process **process);
 
+
+typedef struct Socket Socket;
+
+/// create TCP socket with address and port.
+///
+/// currently only supports IPv4.
+/// if you pass `NULL` for `address`, `127.0.0.1` will be used.
+Socket *socket_connect_tcp(const char *address, u16 port);
+/// get last error from socket
+///
+/// returns `""` if there is no error.
+const char *socket_get_error(Socket *socket);
+/// read from socket.
+///
+/// \returns
+///  -2 on error\n
+///  -1 if no data is available right now\n
+///   0 on end of file\n
+/// or a positive number indicating the number of bytes read to `data` (at most `size`)\n
+/// This does a nonblocking read.
+long long socket_read(Socket *socket, char *data, size_t size);
+/// write to socket
+///
+/// \returns -2 on error\n
+///  -1 if the read end of the socket was closed\n
+/// or a non-negative number indicating the number of bytes written.
+long long socket_write(Socket *socket, const char *data, size_t size);
 
 #endif // OS_H_
 

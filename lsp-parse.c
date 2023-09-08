@@ -802,6 +802,10 @@ static bool parse_server2client_request(LSP *lsp, JSON *json, LSPRequest *reques
 	} else if (streq(method, "textDocument/publishDiagnostics")) {
 		request->type = LSP_REQUEST_PUBLISH_DIAGNOSTICS;
 		return parse_publish_diagnostics(lsp, json, request);
+	} else if (streq(method, "gdscript_client/changeWorkspace")) {
+		// i ignore you (this is just a notification)
+	} else if (streq(method, "gdscript/capabilities")) {
+		// i ignore you (this is just a notification)
 	} else {
 		debug_println("Unrecognized request method: %s", method);
 	}

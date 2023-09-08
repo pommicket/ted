@@ -10,6 +10,7 @@
 typedef enum {
 	COLOR_UNKNOWN,
 
+	/// main text color
 	COLOR_TEXT,
 	COLOR_TEXT_SECONDARY,
 	COLOR_BG,

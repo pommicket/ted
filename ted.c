@@ -245,7 +245,8 @@ LSP *ted_get_lsp(Ted *ted, const char *path, Language language) {
 	for (i = 0; i < TED_LSP_MAX; ++i) {
 		LSP *lsp = ted->lsps[i];
 		if (!lsp) break;
-		if (!streq(lsp->command, settings->lsp)) continue;
+		if (lsp->command && !streq(lsp->command, settings->lsp)) continue;
+		if (lsp->port != settings->lsp_port) continue;
 		
 		if (!lsp->initialized) {
 			// withhold judgement until this server initializes.
@@ -266,11 +267,12 @@ LSP *ted_get_lsp(Ted *ted, const char *path, Language language) {
 	}
 	if (i == TED_LSP_MAX)
 		return NULL; // why are there so many LSP open???
-	if (*settings->lsp) {
+	if (*settings->lsp || settings->lsp_port) {
 		// start up this LSP
 		FILE *log = settings->lsp_log ? ted->log : NULL;
 		char *root_dir = settings_get_root_dir(settings, path);
-		ted->lsps[i] = lsp_create(root_dir, settings->lsp, settings->lsp_configuration, log);
+		ted->lsps[i] = lsp_create(root_dir, *settings->lsp ? settings->lsp : NULL,
+			settings->lsp_port, settings->lsp_configuration, log);
 		free(root_dir);
 		// don't actually return it yet, since it's still initializing (see above)
 	}

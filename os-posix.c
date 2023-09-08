@@ -5,6 +5,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <sys/socket.h>
+#include <netinet/ip.h>
+#include <arpa/inet.h>
 #include <signal.h>
 #include <unistd.h>
 #include <dirent.h>
@@ -250,41 +253,31 @@ const char *process_geterr(Process *p) {
 	return *p->error ? p->error : NULL;
 }
 
-long long process_write(Process *proc, const char *data, size_t size) {
-	if (!proc) {
-		assert(0);
-		return -2;
-	}
-	if (!proc->stdin_pipe) { // check that process hasn't been killed
-		strbuf_printf(proc->error, "Process terminated");
-		return -2;
-	}
+static long long write_fd(int fd, char *error, size_t error_size, const char *data, size_t size) {
 	if (size > LLONG_MAX) {
-		strbuf_printf(proc->error, "Too much data to write.");
+		str_printf(error, error_size, "too much data to write");
 		return -2;
 	}
 	size_t so_far = 0;
 	while (so_far < size) {
-		ssize_t bytes_written = write(proc->stdin_pipe, data + so_far, size - so_far);
+		ssize_t bytes_written = write(fd, data + so_far, size - so_far);
 		if (bytes_written >= 0) {
 			so_far += (size_t)bytes_written;
-		} else if (errno == EAGAIN) {
+		} else if (errno == EAGAIN || errno == EWOULDBLOCK) {
 			return (long long)so_far;
+		} else if (errno == EPIPE) {
+			return -1;
 		} else {
-			strbuf_printf(proc->error, "%s", strerror(errno));
+			str_printf(error, error_size, "write failed: %s", strerror(errno));
 			return -2;
 		}
 	}
 	return (long long)size;
 }
 
-static long long process_read_fd(Process *proc, int fd, char *data, size_t size) {
-	if (!fd) { // check that process hasn't been killed
-		strbuf_printf(proc->error, "Process terminated");
-		return -2;
-	}
+static long long read_fd(int fd, char *error, size_t error_size, char *data, size_t size) {
 	if (size > LLONG_MAX) {
-		strbuf_printf(proc->error, "Too much data to read.");
+		str_printf(error, error_size, "Too much data to read.");
 		return -2;
 	}
 	size_t so_far = 0;
@@ -294,14 +287,36 @@ static long long process_read_fd(Process *proc, int fd, char *data, size_t size)
 			so_far += (size_t)bytes_read;
 		} else if (bytes_read == 0) {
 			return (long long)so_far;
-		} else if (errno == EAGAIN) {
+		} else if (errno == EAGAIN || errno == EWOULDBLOCK) {
 			return so_far == 0 ? -1 : (long long)so_far;
+		} else if (errno == EPIPE) {
+			return -1;
 		} else {
-			strbuf_printf(proc->error, "%s", strerror(errno));
+			str_printf(error, error_size, "read failed: %s", strerror(errno));
 			return -2;
 		}
 	}
 	return (long long)size;
+}
+
+long long process_write(Process *proc, const char *data, size_t size) {
+	if (!proc) {
+		assert(0);
+		return -2;
+	}
+	if (!proc->stdin_pipe) { // check that process hasn't been killed
+		strbuf_printf(proc->error, "Process terminated");
+		return -2;
+	}
+	return write_fd(proc->stdin_pipe, proc->error, sizeof proc->error, data, size);
+}
+
+static long long process_read_fd(Process *proc, int fd, char *data, size_t size) {
+	if (!fd) { // check that process hasn't been killed
+		strbuf_printf(proc->error, "Process terminated");
+		return -2;
+	}
+	return read_fd(fd, proc->error, sizeof proc->error, data, size);
 }
 
 long long process_read(Process *proc, char *data, size_t size) {
@@ -411,4 +426,64 @@ bool open_with_default_application(const char *path) {
 
 bool change_directory(const char *path) {
 	return chdir(path) == 0;
+}
+
+struct Socket {
+	int fd;
+	char error[256];
+};
+
+Socket *socket_connect_tcp(const char *address, u16 port) {
+	Socket *s = calloc(1, sizeof *s);
+	if (!s) return NULL;
+	
+	if (!address) address = "127.0.0.1";
+
+	int fd = socket(AF_INET, SOCK_STREAM, 0);
+	if (fd < 0) {
+		strbuf_printf(s->error, "couldn't create socket (%s)", strerror(errno));
+		return s;
+	}
+	struct sockaddr_in addr = {
+		.sin_family = AF_INET,
+		.sin_port = htons(port),
+		.sin_addr = {0},
+		.sin_zero = {0}
+	};
+	if (inet_pton(AF_INET, address, &addr.sin_addr) <= 0) {
+		strbuf_printf(s->error, "invalid address");
+		return s;
+	}
+
+	if (connect(fd, &addr, sizeof addr) < 0) {
+		strbuf_printf(s->error, "couldn't connect to %u.%u.%u.%u:%u (%s)",
+			address[0], address[1], address[2], address[3], port,
+			strerror(errno));
+	}
+
+	set_nonblocking(fd);
+
+	s->fd = fd;
+	return s;
+}
+
+const char *socket_get_error(Socket *socket) {
+	return socket->error;
+}
+
+long long socket_read(Socket *s, char *data, size_t size) {
+	if (s->fd <= 0) {
+		strbuf_printf(s->error, "socket has been closed");
+		return -2;
+	}
+	return read_fd(s->fd, s->error, sizeof s->error, data, size);
+
+}
+
+long long socket_write(Socket *s, const char *data, size_t size) {
+	if (s->fd <= 0) {
+		strbuf_printf(s->error, "socket has been closed");
+		return -2;
+	}
+	return write_fd(s->fd, s->error, sizeof s->error, data, size);
 }

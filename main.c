@@ -1,6 +1,10 @@
 /*
 TODO:
-- LSP over TCP (needed for godot)
+- highlight not, super in godot (where do those appear in the godot docs?)
+- what's goin wrong with godot (test other servers over TCP)
+ - check for server stops running over TCP
+- automatically restart server
+- LSP textDocument/formatting and textDocument/rangeFormatting
 FUTURE FEATURES:
 - autodetect indentation (tabs vs spaces)
 - custom file/build command associations

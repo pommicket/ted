@@ -590,9 +590,20 @@ typedef struct LSP {
 	// thread-safety: set once in lsp_create, then only used by communication thread
 	FILE *log;
 	
-	// The server process
+	// The server process. May be NULL if the process isn't started by ted.
+	//
 	// thread-safety: created in lsp_create, then only accessed by the communication thread
 	Process *process;
+	// Socket for communicating with server. Maybe be NULL if communication is done over stdio.
+	//
+	// thread-safety: TODO
+	// at least one of `process` and `socket` must be non-null
+	Socket *socket;
+	// port used for communication
+	//
+	// this will be zero iff communication is done over stdio
+	// thread-safety: only set once in lsp_create
+	u16 port;
 	
 	LSPMutex document_mutex;
 		// for our purposes, folders are "documents"
@@ -672,8 +683,8 @@ LSPString lsp_response_add_string(LSPResponse *response, const char *string);
 bool lsp_string_is_empty(LSPString string);
 /// Start up an LSP server.
 ///
-/// configuration and log can be NULL.
-LSP *lsp_create(const char *root_dir, const char *command, const char *configuration, FILE *log);
+/// `command`, `port`, `configuration` and `log` can be 0 as long as `port` and `command` are not both 0.
+LSP *lsp_create(const char *root_dir, const char *command, u16 port, const char *configuration, FILE *log);
 // try to add a new "workspace folder" to the lsp.
 // IMPORTANT: only call this if lsp->initialized is true
 //            (if not we don't yet know whether the server supports workspace folders)
