@@ -1,6 +1,5 @@
 /*
 TODO:
-- LSP diagnostics
 - gdscript syntax highlighting
 FUTURE FEATURES:
 - autodetect indentation (tabs vs spaces)

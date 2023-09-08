@@ -436,20 +436,20 @@ top:;
 		s0 = (min_x-x0) / (x1-x0) * (s1-s0) + s0;
 		x0 = min_x;
 	}
-	if (x1 >= max_x) {
+	if (x1 > max_x) {
 		// right side of character is clipped
-		s1 = (max_x-1-x0) / (x1-x0) * (s1-s0) + s0;
-		x1 = max_x-1;
+		s1 = (max_x-x0) / (x1-x0) * (s1-s0) + s0;
+		x1 = max_x;
 	}
 	if (y0 < min_y) {
 		// top side of character is clipped
 		t0 = (min_y-y0) / (y1-y0) * (t1-t0) + t0;
 		y0 = min_y;
 	}
-	if (y1 >= max_y) {
+	if (y1 > max_y) {
 		// bottom side of character is clipped
-		t1 = (max_y-1-y0) / (y1-y0) * (t1-t0) + t0;
-		y1 = max_y-1;
+		t1 = (max_y-y0) / (y1-y0) * (t1-t0) + t0;
+		y1 = max_y;
 	}
 	if (state->render) {
 		float r = state->color[0], g = state->color[1], b = state->color[2], a = state->color[3];
@@ -463,10 +463,8 @@ top:;
 		arr_add(font->textures[info.texture].triangles, triangle2);
 	}
 	ret:
-	if (state->x > state->x_largest)
-		state->x_largest = state->x;
-	if (state->y > state->y_largest)
-		state->y_largest = state->y;
+	state->x_largest = maxd(state->x, state->x_largest);
+	state->y_largest = maxd(state->y, state->y_largest);
 	state->prev_glyph = info.glyph_index;
 }
 

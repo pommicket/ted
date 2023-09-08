@@ -310,7 +310,6 @@ void selector_render(Ted *ted, Selector *s) {
 	text_state.max_x = x2;
 	text_state.min_y = selector_entries_start_y(ted, s);
 	text_state.max_y = y2;
-	text_state.render = true;
 
 	// render entries themselves
 	u32 i_display = 0;
@@ -336,11 +335,12 @@ void selector_render(Ted *ted, Selector *s) {
 		
 		if (entry->detail) {
 			// draw detail
-			float detail_size = text_get_size_vec2(font, entry->detail).x;
+			const float detail_size = text_get_size_vec2(font, entry->detail).x;
 			TextRenderState detail_state = text_state;
-			detail_state.x = maxd(text_state.x + 2 * padding, x2 - detail_size);
+			detail_state.x = floor(maxd(text_state.x + 2 * padding, detail_state.max_x - detail_size));
 			
 			settings_color_floats(settings, COLOR_COMMENT, detail_state.color);
+			text_state_break_kerning(&detail_state);
 			text_utf8_with_state(font, &detail_state, entry->detail);
 		}
 	}

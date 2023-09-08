@@ -404,7 +404,7 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 				float title_xpos = tab_rect.pos.x;
 				if (title_width > tab_rect.size.x) {
 					// full tab title doesn't fit in tab -- only show the right end of it
-					title_xpos = tab_rect.pos.x + tab_rect.size.x - title_width;
+					title_xpos = floorf(tab_rect.pos.x + tab_rect.size.x - title_width);
 				}
 				text_state.min_x = rect_x1(tab_rect);
 				text_state.max_x = rect_x2(tab_rect);
