@@ -43,7 +43,7 @@ libpcre2-32.a: pcre2
 	cd pcre2 && cmake -DPCRE2_BUILD_PCRE2_32=ON . && $(MAKE) -j8
 	cp pcre2/libpcre2-32.a ./
 keywords.h: keywords.py
-	./keywords.py
+	python3 keywords.py
 ted.deb: release
 	rm -rf /tmp/ted
 	mkdir -p /tmp/ted/DEBIAN

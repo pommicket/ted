@@ -1,6 +1,6 @@
 /*
 TODO:
-- gdscript syntax highlighting
+- LSP over TCP (needed for godot)
 FUTURE FEATURES:
 - autodetect indentation (tabs vs spaces)
 - custom file/build command associations

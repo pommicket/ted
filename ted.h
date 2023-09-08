@@ -67,6 +67,8 @@ enum {
 	LANG_TEXT = 17,
 	/// CSS
 	LANG_CSS = 18,
+	/// GDScript
+	LANG_GDSCRIPT = 19,
 	
 	/// all user-defined languages are greater than this.
 	LANG_USER_MIN = 100000,

@@ -30,6 +30,11 @@ enum {
 };
 
 enum {
+	SYNTAX_STATE_GDSCRIPT_STRING = 0x01u, // multiline strings (''' and """)
+	SYNTAX_STATE_GDSCRIPT_STRING_DBL_QUOTED = 0x02u, // is this a """ string, as opposed to a ''' string?
+};
+
+enum {
 	SYNTAX_STATE_TEX_DOLLAR = 0x01u, // inside math $ ... $
 	SYNTAX_STATE_TEX_DOLLARDOLLAR = 0x02u, // inside math $$ ... $$
 	SYNTAX_STATE_TEX_VERBATIM = 0x04u, // inside \begin{verbatim} ... \end{verbatim}
@@ -2016,6 +2021,154 @@ static void syntax_highlight_css(SyntaxState *state_ptr, const char32_t *line, u
 	);
 }
 
+static void syntax_highlight_gdscript(SyntaxState *state, const char32_t *line, u32 line_len, SyntaxCharType *char_types) {
+	(void)state;
+	bool in_string = (*state & SYNTAX_STATE_GDSCRIPT_STRING) != 0;
+	bool string_is_dbl_quoted = (*state & SYNTAX_STATE_GDSCRIPT_STRING_DBL_QUOTED) != 0;
+	bool string_is_multiline = true;
+	bool in_number = false;
+	u32 backslashes = 0;
+	
+	for (u32 i = 0; i < line_len; ++i) {
+		char32_t c = line[i];
+		bool dealt_with = false;
+		switch (c) {
+		case '#':
+			if (!in_string) {
+				// comment
+				if (char_types) {
+					for (u32 j = i; j < line_len; ++j)
+						char_types[j] = syntax_highlight_comment(line, j, line_len);
+					dealt_with = true;
+				}
+				i = line_len - 1;
+			}
+			break;
+		case '@':
+			if (char_types && !in_string
+				&& i+1 < line_len
+				&& is32_word(line[i+1])) {
+				// annotations (e.g. @onready)
+				char_types[i++] = SYNTAX_PREPROCESSOR;
+				while (i < line_len) {
+					if (!is32_word(line[i])) {
+						--i;
+						dealt_with = true;
+						break;
+					}
+					char_types[i++] = SYNTAX_PREPROCESSOR;
+				}
+			}
+			break;
+		case '$':
+		case '^':
+		case '&':
+		case '%':
+			if (char_types
+				&& i && i+1 < line_len
+				&& !is32_word(line[i-1])
+				&& (is32_word(line[i+1]) || line[i+1] == '/')) {
+					// unquoted StringName/node literal
+					char_types[i++] = SYNTAX_STRING;
+					while (i < line_len) {
+						if (!(is32_word(line[i]) || line[i] == '/')) {
+							--i;
+							dealt_with = true;
+							break;
+						}
+						char_types[i++] = SYNTAX_STRING;
+					}
+			}
+			break;
+		case '\'':
+		case '"': {
+			bool dbl_quoted = c == '"';
+			bool is_triple = i+2 < line_len &&
+				line[i+1] == c && line[i+2] == c;
+			if (in_string) {
+				if (!string_is_multiline || is_triple) {
+					if (string_is_dbl_quoted == dbl_quoted && backslashes % 2 == 0) {
+						// end of string
+						in_string = false;
+						if (char_types) {
+							char_types[i] = SYNTAX_STRING;
+							if (string_is_multiline) {
+								// highlight all three ending quotes
+								char_types[++i] = SYNTAX_STRING;
+								char_types[++i] = SYNTAX_STRING;
+							}
+							dealt_with = true;
+						}
+					}
+				}
+			} else {
+				// start of string
+				string_is_dbl_quoted = dbl_quoted;
+				in_string = true;
+				string_is_multiline = is_triple;
+				if (char_types && i && line[i-1] < CHAR_MAX && strchr("&^$%", (char)line[i-1])) {
+					// quoted StringName/node path literal
+					char_types[i-1] = SYNTAX_STRING;
+				}
+			}
+		} break;
+		case ANY_DIGIT:
+			if (char_types && !in_string && !in_number) {
+				in_number = true;
+				if (i) {
+					if (line[i - 1] == '.') {
+						// support .6, for example
+						char_types[i - 1] = SYNTAX_CONSTANT;
+					} else if (is32_word(line[i - 1])) {
+						// actually, this isn't a number. it's something like a*6* or u3*2*.
+						in_number = false;
+					}
+				}
+			}
+			break;
+		case '\\':
+			++backslashes;
+			break;
+		default:
+			if ((i && is32_word(line[i - 1])) || !is32_word(c))
+				break; // can't be a keyword on its own.
+			
+			if (char_types && !in_string && !in_number) {
+				u32 keyword_len = syntax_keyword_len(LANG_GDSCRIPT, line, i, line_len);
+				Keyword const *keyword = syntax_keyword_lookup(syntax_all_keywords_gdscript, &line[i], keyword_len);
+				if (keyword) {
+					SyntaxCharType type = keyword->type;
+					for (size_t j = 0; j < keyword_len; ++j) {
+						char_types[i++] = type;
+					}
+					--i; // we'll increment i from the for loop
+					dealt_with = true;
+					break;
+				}
+			}
+			break;
+		}
+		if (c != '\\') backslashes = 0;
+		if (in_number && !syntax_number_continues(LANG_GDSCRIPT, line, line_len, i))
+			in_number = false;
+		
+		if (char_types && !dealt_with) {
+			SyntaxCharType type = SYNTAX_NORMAL;
+			if (in_string)
+				type = SYNTAX_STRING;
+			else if (in_number)
+				type = SYNTAX_CONSTANT;
+			char_types[i] = type;
+		}
+	}
+	*state = 0;
+	if (in_string && string_is_multiline) {
+		*state |= (SyntaxState)(
+			SYNTAX_STATE_GDSCRIPT_STRING
+			| (SYNTAX_STATE_GDSCRIPT_STRING_DBL_QUOTED * string_is_dbl_quoted)
+		);
+	}
+}
 
 typedef struct {
 	Language lang;
@@ -2176,6 +2329,12 @@ void syntax_init(void) {
 			.name = "CSS",
 			.lsp_identifier = "css",
 			.highlighter = syntax_highlight_css
+		},
+		{
+			.id = LANG_GDSCRIPT,
+			.name = "GDScript",
+			.lsp_identifier = "gdscript",
+			.highlighter = syntax_highlight_gdscript
 		},
 		
 	};
