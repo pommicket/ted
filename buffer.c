@@ -1832,6 +1832,31 @@ LSPDocumentPosition buffer_cursor_pos_as_lsp_document_position(TextBuffer *buffe
 	return buffer_pos_to_lsp_document_position(buffer, buffer->cursor_pos);
 }
 
+LSPRange buffer_selection_as_lsp_range(TextBuffer *buffer) {
+	if (!buffer->selection)
+		return (LSPRange){0};
+	LSPPosition cursor = buffer_pos_to_lsp_position(buffer, buffer->cursor_pos);
+	LSPPosition sel = buffer_pos_to_lsp_position(buffer, buffer->selection_pos);
+	if (buffer_pos_cmp(buffer->cursor_pos, buffer->selection_pos) < 0) {
+		return (LSPRange){
+			.start = cursor,
+			.end = sel,
+		};
+	} else {
+		return (LSPRange){
+			.start = sel,
+			.end = cursor,
+		};
+	}
+}
+
+void buffer_apply_lsp_text_edit(TextBuffer *buffer, const LSPResponse *response, const LSPTextEdit *edit) {
+	BufferPos start = buffer_pos_from_lsp(buffer, edit->range.start);
+	BufferPos end = buffer_pos_from_lsp(buffer, edit->range.end);
+	buffer_delete_chars_between(buffer, start, end);
+	buffer_insert_utf8_at_pos(buffer, start, lsp_response_string(response, edit->new_text));
+}
+
 static void buffer_send_lsp_did_change(LSP *lsp, TextBuffer *buffer, BufferPos pos,
 	u32 nchars_deleted, String32 new_text) {
 	if (!buffer_is_named_file(buffer))

@@ -51,11 +51,11 @@ static void ted_vset_message(Ted *ted, MessageType type, const char *fmt, va_lis
 	}
 }
 
-TextBuffer *ted_get_active_buffer(Ted *ted) {
+TextBuffer *ted_active_buffer(Ted *ted) {
 	return ted->active_buffer;
 }
 
-TextBuffer *ted_get_active_buffer_behind_menu(Ted *ted) {
+TextBuffer *ted_active_buffer_behind_menu(Ted *ted) {
 	return ted->prev_active_buffer;
 }
 

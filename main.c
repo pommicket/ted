@@ -1,7 +1,7 @@
 /*
 TODO:
+- figure out what's wrong with format-selection with clangd
 - figure out what's wrong with godot language server
-- LSP textDocument/formatting and textDocument/rangeFormatting
 - automatically restart server
 FUTURE FEATURES:
 - autodetect indentation (tabs vs spaces)
@@ -77,6 +77,7 @@ FUTURE FEATURES:
 #include "ide-highlights.c"
 #include "ide-usages.c"
 #include "ide-document-link.c"
+#include "ide-format.c"
 #include "command.c"
 #include "macro.c"
 #include "config.c"
@@ -503,6 +504,7 @@ int main(int argc, char **argv) {
 	macros_init(ted);
 	definitions_init(ted);
 	autocomplete_init(ted);
+	format_init(ted);
 	signature_help_init(ted);
 	usages_init(ted);
 	highlights_init(ted);
@@ -900,6 +902,7 @@ int main(int argc, char **argv) {
 						// it's important that we send error responses here too.
 						// we don't want to be waiting around for a response that's never coming.
 						autocomplete_process_lsp_response(ted, r);
+						format_process_lsp_response(ted, r);
 						signature_help_process_lsp_response(ted, r);
 						hover_process_lsp_response(ted, r);
 						definitions_process_lsp_response(ted, lsp, r);
@@ -1198,6 +1201,7 @@ int main(int argc, char **argv) {
 	hover_quit(ted);
 	signature_help_quit(ted);
 	autocomplete_quit(ted);
+	format_quit(ted);
 	highlights_quit(ted);
 	usages_quit(ted);
 	session_write(ted);

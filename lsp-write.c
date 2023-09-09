@@ -302,6 +302,10 @@ static const char *lsp_request_method(LSPRequest *request) {
 		return "workspace/didChangeConfiguration";
 	case LSP_REQUEST_WORKSPACE_SYMBOLS:
 		return "workspace/symbol";
+	case LSP_REQUEST_RANGE_FORMATTING:
+		return "textDocument/rangeFormatting";
+	case LSP_REQUEST_FORMATTING:
+		return "textDocument/formatting";
 	}
 	assert(0);
 	return "$/ignore";
@@ -650,6 +654,22 @@ void write_request(LSP *lsp, LSPRequest *request) {
 		write_key_obj_start(o, "params");
 			write_key(o, "settings");
 			str_builder_append(&o->builder, lsp_request_string(request, config->settings));
+		write_obj_end(o);
+		} break;
+	case LSP_REQUEST_FORMATTING:
+	case LSP_REQUEST_RANGE_FORMATTING: {
+		const LSPRequestFormatting *formatting = &request->data.formatting;
+		write_key_obj_start(o, "params");
+			write_key_obj_start(o, "textDocument");
+				write_key_file_uri(o, "uri", formatting->document);
+			write_obj_end(o);
+			write_key_obj_start(o, "options");
+				write_key_number(o, "tabSize", formatting->tab_width);
+				write_key_bool(o, "insertSpaces", formatting->indent_with_spaces);
+			write_obj_end(o);
+			if (formatting->use_range) {
+				write_key_range(o, "range", formatting->range);
+			}
 		write_obj_end(o);
 		} break;
 	}

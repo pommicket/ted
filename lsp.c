@@ -119,6 +119,8 @@ void lsp_request_free(LSPRequest *r) {
 	case LSP_REQUEST_DOCUMENT_LINK:
 	case LSP_REQUEST_CONFIGURATION:
 	case LSP_REQUEST_DID_OPEN:
+	case LSP_REQUEST_FORMATTING:
+	case LSP_REQUEST_RANGE_FORMATTING:
 		break;
 	case LSP_REQUEST_PUBLISH_DIAGNOSTICS: {
 		LSPRequestPublishDiagnostics *pub = &r->data.publish_diagnostics;
@@ -168,6 +170,9 @@ void lsp_response_free(LSPResponse *r) {
 		break;
 	case LSP_REQUEST_DOCUMENT_LINK:
 		arr_free(r->data.document_link.links);
+		break;
+	case LSP_REQUEST_FORMATTING:
+		arr_free(r->data.formatting.edits);
 		break;
 	default:
 		break;
@@ -252,6 +257,10 @@ static bool lsp_supports_request(LSP *lsp, const LSPRequest *request) {
 		return cap->references_support;
 	case LSP_REQUEST_DOCUMENT_LINK:
 		return cap->document_link_support;
+	case LSP_REQUEST_FORMATTING:
+		return cap->formatting_support;
+	case LSP_REQUEST_RANGE_FORMATTING:
+		return cap->range_formatting_support;
 	}
 	assert(0);
 	return false;
@@ -293,6 +302,8 @@ static bool request_type_is_notification(LSPRequestType type) {
 	case LSP_REQUEST_WORKSPACE_SYMBOLS:
 	case LSP_REQUEST_WORKSPACE_FOLDERS:
 	case LSP_REQUEST_DOCUMENT_LINK:
+	case LSP_REQUEST_FORMATTING:
+	case LSP_REQUEST_RANGE_FORMATTING:
 		return false;
 	}
 	assert(0);

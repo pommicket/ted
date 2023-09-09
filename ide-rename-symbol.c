@@ -152,13 +152,7 @@ void rename_symbol_process_lsp_response(Ted *ted, const LSPResponse *response) {
 				goto done;
 			}
 			
-			
-			const LSPTextEdit *edit = &change_data->edit;
-			BufferPos start = buffer_pos_from_lsp(buffer, edit->range.start);
-			BufferPos end = buffer_pos_from_lsp(buffer, edit->range.end);
-			buffer_delete_chars_between(buffer, start, end);
-			buffer_insert_utf8_at_pos(buffer, start, lsp_response_string(response, edit->new_text));
-			
+			buffer_apply_lsp_text_edit(buffer, response, &change_data->edit);
 			}
 			break;
 		case LSP_CHANGE_RENAME: {

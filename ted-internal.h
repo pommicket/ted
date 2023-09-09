@@ -208,6 +208,9 @@ typedef struct Autocomplete Autocomplete;
 /// data needed for finding usages
 typedef struct Usages Usages;
 
+/// data needed for formatting code
+typedef struct Formatting Formatting;
+
 /// max number of signatures to display at a time.
 #define SIGNATURE_HELP_MAX 5
 
@@ -340,6 +343,7 @@ struct Ted {
 	Highlights *highlights;
 	Usages *usages;
 	RenameSymbol *rename_symbol;
+	Formatting *formatting;
 	
 	FILE *log;
 	
@@ -450,6 +454,12 @@ LSPDocumentPosition buffer_pos_to_lsp_document_position(TextBuffer *buffer, Buff
 BufferPos buffer_pos_from_lsp(TextBuffer *buffer, LSPPosition lsp_pos);
 /// Get the cursor position as an LSPPosition.
 LSPPosition buffer_cursor_pos_as_lsp_position(TextBuffer *buffer);
+/// Get the current selection as an LSPRange.
+///
+/// Returns `(LSPRange){0}` if nothing is selected.
+LSPRange buffer_selection_as_lsp_range(TextBuffer *buffer);
+/// Apply LSP TextEdit from response
+void buffer_apply_lsp_text_edit(TextBuffer *buffer, const LSPResponse *response, const LSPTextEdit *edit);
 /// Get the cursor position as an LSPDocumentPosition.
 LSPDocumentPosition buffer_cursor_pos_as_lsp_document_position(TextBuffer *buffer);
 /// highlight an \ref LSPRange in this buffer.
@@ -616,6 +626,16 @@ void document_link_init(Ted *ted);
 void document_link_quit(Ted *ted);
 void document_link_frame(Ted *ted);
 void document_link_process_lsp_response(Ted *ted, const LSPResponse *response);
+
+
+// === ide-format.c ===
+/// initialize formatting stuff
+void format_init(Ted *ted);
+void format_process_lsp_response(Ted *ted, const LSPResponse *response);
+/// cancel last formatting request
+void format_cancel_request(Ted *ted);
+/// free formatting stuff
+void format_quit(Ted *ted);
 
 // === ide-highlights.c ===
 void highlights_init(Ted *ted);

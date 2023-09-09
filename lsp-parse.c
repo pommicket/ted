@@ -234,6 +234,16 @@ static void parse_capabilities(LSP *lsp, const JSON *json, JSONObject capabiliti
 	if (workspace_symbol_value.type != JSON_UNDEFINED && workspace_symbol_value.type != JSON_FALSE) {
 		cap->workspace_symbols_support = true;
 	}
+
+	JSONValue formatting_value = json_object_get(json, capabilities, "documentFormattingProvider");
+	if (formatting_value.type == JSON_OBJECT || formatting_value.type == JSON_TRUE) {
+		cap->formatting_support = true;
+	}
+	
+	JSONValue range_formatting_value = json_object_get(json, capabilities, "documentRangeFormattingProvider");
+	if (range_formatting_value.type == JSON_OBJECT || range_formatting_value.type == JSON_TRUE) {
+		cap->range_formatting_support = true;
+	}
 	
 	JSONObject workspace = json_object_get_object(json, capabilities, "workspace");
 	// check WorkspaceFoldersServerCapabilities
@@ -993,6 +1003,22 @@ static bool parse_document_link_response(LSP *lsp, const JSON *json, LSPResponse
 	return true;
 }
 
+static bool parse_formatting_response(LSP *lsp, const JSON *json, LSPResponse *response) {
+	JSONValue edits_val = json_get(json, "result");
+	if (!(edits_val.type == JSON_ARRAY || edits_val.type == JSON_NULL)) {
+		lsp_set_error(lsp, "Expected TextEdit[] or null for formatting response; got %s",
+			json_type_to_str(edits_val.type));
+		return false;
+	}
+	JSONArray edits = json_force_array(edits_val);
+	LSPResponseFormatting *f = &response->data.formatting;
+	for (u32 i = 0; i < edits.len; ++i) {
+		if (!parse_text_edit(lsp, response, json, json_array_get(json, edits, i), arr_addp(f->edits)))
+			return false;
+	}
+	return true;
+}
+
 void process_message(LSP *lsp, JSON *json) {
 		
 	#if 0
@@ -1065,6 +1091,10 @@ void process_message(LSP *lsp, JSON *json) {
 				break;
 			case LSP_REQUEST_RENAME:
 				add_to_messages = parse_rename_response(lsp, json, &response);
+				break;
+			case LSP_REQUEST_FORMATTING:
+			case LSP_REQUEST_RANGE_FORMATTING:
+				add_to_messages = parse_formatting_response(lsp, json, &response);
 				break;
 			case LSP_REQUEST_DOCUMENT_LINK:
 				add_to_messages = parse_document_link_response(lsp, json, &response);

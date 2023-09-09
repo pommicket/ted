@@ -921,6 +921,12 @@ void definition_cancel_lookup(Ted *ted);
 /// so don't keep it around long.
 const char *document_link_at_buffer_pos(Ted *ted, BufferPos pos);
 
+// === ide-format.c ===
+/// format current selection (using LSP server)
+void format_selection(Ted *ted);
+/// format current file (using LSP server)
+void format_file(Ted *ted);
+
 // === ide-highlights.c ===
 
 // === ide-hover.c ===
@@ -1094,11 +1100,11 @@ bool tag_goto(Ted *ted, const char *tag);
 /// for fatal errors
 void die(PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRINTF(1, 2);
 /// returns the current active buffer, or `NULL` if no buffer is active.
-TextBuffer *ted_get_active_buffer(Ted *ted);
+TextBuffer *ted_active_buffer(Ted *ted);
 /// if a menu is open, returns the buffer that was open before the menu was opened.
 ///
 /// returns `NULL` if no menu is open or no buffer was open before the menu was opened.
-TextBuffer *ted_get_active_buffer_behind_menu(Ted *ted);
+TextBuffer *ted_active_buffer_behind_menu(Ted *ted);
 /// get width of ted window
 float ted_window_width(Ted *ted);
 /// get height of ted window

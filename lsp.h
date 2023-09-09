@@ -87,9 +87,10 @@ typedef enum {
 	LSP_REQUEST_REFERENCES, //< textDocument/references
 	LSP_REQUEST_RENAME, //< textDocument/rename
 	LSP_REQUEST_DOCUMENT_LINK, //< textDocument/documentLink
+	LSP_REQUEST_FORMATTING, //< textDocument/formatting
+	LSP_REQUEST_RANGE_FORMATTING, //< textDocument/rangeFormatting
 	LSP_REQUEST_WORKSPACE_SYMBOLS, //< workspace/symbol
 	LSP_REQUEST_DID_CHANGE_WORKSPACE_FOLDERS, //< workspace/didChangeWorkspaceFolders
-	
 	// server-to-client
 	LSP_REQUEST_SHOW_MESSAGE, //< window/showMessage and window/showMessageRequest
 	LSP_REQUEST_LOG_MESSAGE, //< window/logMessage
@@ -240,6 +241,17 @@ typedef struct {
 } LSPRequestConfiguration;
 
 typedef struct {
+	LSPDocumentID document;
+	u8 tab_width;
+	bool indent_with_spaces;
+	bool use_range;
+	/// range to format
+	///
+	/// only applicable if `use_range` is `true`.
+	LSPRange range;
+} LSPRequestFormatting;
+
+typedef struct {
 	LSPMessageType type;
 	/// LSP requests/responses tend to have a lot of strings.
 	/// to avoid doing a ton of allocations+frees,
@@ -247,6 +259,7 @@ typedef struct {
 	char *string_data;
 } LSPMessageBase;
 
+/// an LSP request or notification
 typedef struct {
 	LSPMessageBase base;
 	LSPRequestID id;
@@ -273,6 +286,8 @@ typedef struct {
 		LSPRequestRename rename;
 		LSPRequestDocumentLink document_link;
 		LSPRequestPublishDiagnostics publish_diagnostics;
+		// LSP_REQUEST_FORMATTING and LSP_REQUEST_RANGE_FORMATTING
+		LSPRequestFormatting formatting;
 	} data;
 } LSPRequest;
 
@@ -525,6 +540,10 @@ typedef struct {
 } LSPResponseDocumentLink;
 
 typedef struct {
+	LSPTextEdit *edits;
+} LSPResponseFormatting;
+
+typedef struct {
 	LSPMessageBase base;
 	/// the request which this is a response to
 	LSPRequest request;
@@ -535,13 +554,15 @@ typedef struct {
 		LSPResponseCompletion completion;
 		LSPResponseSignatureHelp signature_help;
 		LSPResponseHover hover;
-		// LSP_REQUEST_DEFINITION, LSP_REQUEST_DECLARATION, LSP_REQUEST_TYPE_DEFINITION, or LSP_REQUEST_IMPLEMENTATION
+		/// `LSP_REQUEST_DEFINITION`, `LSP_REQUEST_DECLARATION`, `LSP_REQUEST_TYPE_DEFINITION`, or `LSP_REQUEST_IMPLEMENTATION`
 		LSPResponseDefinition definition;
 		LSPResponseWorkspaceSymbols workspace_symbols;
 		LSPResponseRename rename;
 		LSPResponseHighlight highlight;
 		LSPResponseReferences references;
 		LSPResponseDocumentLink document_link;
+		/// `LSP_REQUEST_FORMATTING` or `LSP_REQUEST_RANGE_FORMATTING`
+		LSPResponseFormatting formatting;
 	} data;
 } LSPResponse;
 
@@ -576,6 +597,8 @@ typedef struct {
 	bool rename_support;
 	bool references_support;
 	bool document_link_support;
+	bool formatting_support;
+	bool range_formatting_support;
 } LSPCapabilities;
 
 typedef struct LSP {
@@ -596,7 +619,7 @@ typedef struct LSP {
 	Process *process;
 	// Socket for communicating with server. Maybe be NULL if communication is done over stdio.
 	//
-	// thread-safety: TODO
+	// thread-safety: only accessed in communication thread
 	// at least one of `process` and `socket` must be non-null
 	Socket *socket;
 	// port used for communication

@@ -105,6 +105,8 @@ static CommandName command_names[] = {
 	{"increment-number", CMD_INCREMENT_NUMBER},
 	{"decrement-number", CMD_DECREMENT_NUMBER},
 	{"rename-symbol", CMD_RENAME_SYMBOL},
+	{"format-file", CMD_FORMAT_FILE},
+	{"format-selection", CMD_FORMAT_SELECTION},
 };
 
 static_assert_if_possible(arr_count(command_names) == CMD_COUNT)
@@ -702,6 +704,12 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 	case CMD_RENAME_SYMBOL:
 		if (buffer && buffer_lsp(buffer))
 			menu_open(ted, MENU_RENAME_SYMBOL);
+		break;
+	case CMD_FORMAT_FILE:
+		format_file(ted);
+		break;
+	case CMD_FORMAT_SELECTION:
+		format_selection(ted);
 		break;
 	}
 }
