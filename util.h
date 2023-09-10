@@ -103,6 +103,8 @@ void str_trim_start(char *str);
 void str_trim_end(char *str);
 /// trim whitespace from both sides of a string
 void str_trim(char *str);
+/// count occurences of `c` in `s`
+size_t str_count_char(const char *s, char c);
 /// equivalent to GNU function asprintf (like sprintf, but allocates the string with malloc).
 char *a_sprintf(const char *fmt, ...);
 /// convert binary number to string. make sure `s` can hold at least 65 bytes!!

@@ -187,6 +187,22 @@ static size_t unicode_utf16_len(const char *str) {
 	return len;
 }
 
+// get the number of UTF-32 codepoints needed to encode `str`.
+///
+// returns `(size_t)-1` on bad UTF-8
+static size_t unicode_utf32_len(const char *str) {
+	size_t len = 0;
+	uint32_t c = 0;
+	while (*str) {
+		size_t n = unicode_utf8_to_utf32(&c, str, 4);
+		if (n >= (size_t)-2)
+			return (size_t)-1;
+		++len;
+		str += n;
+	}
+	return len;
+}
+
 /// returns the UTF-8 offset from `str` which corresponds to a UTF-16 offset of
 /// `utf16_offset` (rounds down if `utf16_offset` is in the middle of a codepoint).
 ///

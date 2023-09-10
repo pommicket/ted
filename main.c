@@ -1,6 +1,5 @@
 /*
 TODO:
-- figure out what's wrong with format-selection with clangd
 - figure out what's wrong with godot language server
 - automatically restart server
 FUTURE FEATURES:

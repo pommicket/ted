@@ -262,6 +262,21 @@ void str_trim(char *str) {
 	str_trim_start(str);
 }
 
+size_t str_count_char(const char *s, char c) {
+	const char *p = s;
+	size_t count = 0;
+	while (1) {
+		p = strchr(p, c);
+		if (p) {
+			++count;
+			++p;
+		} else {
+			break;
+		}
+	}
+	return count;
+}
+
 char *a_sprintf(PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRINTF(1, 2);
 char *a_sprintf(const char *fmt, ...) {
 	// idk if you can always just pass NULL to vsnprintf

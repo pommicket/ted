@@ -1850,11 +1850,55 @@ LSPRange buffer_selection_as_lsp_range(TextBuffer *buffer) {
 	}
 }
 
-void buffer_apply_lsp_text_edit(TextBuffer *buffer, const LSPResponse *response, const LSPTextEdit *edit) {
-	BufferPos start = buffer_pos_from_lsp(buffer, edit->range.start);
-	BufferPos end = buffer_pos_from_lsp(buffer, edit->range.end);
-	buffer_delete_chars_between(buffer, start, end);
-	buffer_insert_utf8_at_pos(buffer, start, lsp_response_string(response, edit->new_text));
+void buffer_apply_lsp_text_edits(TextBuffer *buffer, const LSPResponse *response, const LSPTextEdit *lsp_edits, size_t n_edits) {
+	typedef struct {
+		BufferPos pos;
+		BufferPos end;
+		const char *new_text;
+	} Edit;
+	Edit *edits = calloc(n_edits, sizeof *edits);
+	for (size_t i = 0; i < n_edits; ++i) {
+		Edit *edit = &edits[i];
+		edit->pos = buffer_pos_from_lsp(buffer, lsp_edits[i].range.start);
+		edit->end = buffer_pos_from_lsp(buffer, lsp_edits[i].range.end);
+		edit->new_text = lsp_response_string(response, lsp_edits[i].new_text);
+	}
+	for (size_t i = 0; i < n_edits; ++i) {
+		Edit *edit = &edits[i];
+		buffer_delete_chars_between(buffer, edit->pos, edit->end);
+		buffer_insert_utf8_at_pos(buffer, edit->pos, edit->new_text);
+		// a TextEdit[] is annoyingly *not* applied one edit at a time,
+		// instead all the edits happen "at once"
+		//  (see https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textEditArray)
+		// so we need to adjust the positions of subsequent edits
+		size_t inserted_newlines = str_count_char(edit->new_text, '\n');
+		i32 line_diff = (i32)inserted_newlines
+			- (i32)(edit->end.line - edit->pos.line);
+		i32 index_diff = 0;
+		const char *last_newline = strrchr(edit->new_text, '\n');
+		if (last_newline) {
+			index_diff = (i32)unicode_utf32_len(last_newline + 1) - (i32)edit->end.index;
+		} else {
+			index_diff = (i32)unicode_utf32_len(edit->new_text) + (i32)edit->pos.index - (i32)edit->end.index;
+		}
+		// see how nightmarish this is? thanks a lot, microsoft.
+		for (size_t j = i + 1; j < n_edits; ++j) {
+			Edit *edit2 = &edits[j];
+			BufferPos bounds[2] = {edit2->pos, edit2->end};
+			for (u32 k = 0; k < 2; ++k) {
+				BufferPos *pos = &bounds[k];
+				if (buffer_pos_cmp(*pos, edit->pos) < 0)
+					continue;
+				
+				if (pos->line <= edit->end.line)
+					pos->index += (u32)index_diff;
+				pos->line += (u32)line_diff;
+			}
+			edit2->pos = bounds[0];
+			edit2->end = bounds[1];
+		}
+	}
+	free(edits);
 }
 
 static void buffer_send_lsp_did_change(LSP *lsp, TextBuffer *buffer, BufferPos pos,

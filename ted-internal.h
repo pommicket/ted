@@ -458,8 +458,8 @@ LSPPosition buffer_cursor_pos_as_lsp_position(TextBuffer *buffer);
 ///
 /// Returns `(LSPRange){0}` if nothing is selected.
 LSPRange buffer_selection_as_lsp_range(TextBuffer *buffer);
-/// Apply LSP TextEdit from response
-void buffer_apply_lsp_text_edit(TextBuffer *buffer, const LSPResponse *response, const LSPTextEdit *edit);
+/// Apply LSP TextEdit[] from response
+void buffer_apply_lsp_text_edits(TextBuffer *buffer, const LSPResponse *response, const LSPTextEdit *edits, size_t n_edits);
 /// Get the cursor position as an LSPDocumentPosition.
 LSPDocumentPosition buffer_cursor_pos_as_lsp_document_position(TextBuffer *buffer);
 /// highlight an \ref LSPRange in this buffer.

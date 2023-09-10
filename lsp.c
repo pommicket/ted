@@ -159,9 +159,15 @@ void lsp_response_free(LSPResponse *r) {
 	case LSP_REQUEST_WORKSPACE_SYMBOLS:
 		arr_free(r->data.workspace_symbols.symbols);
 		break;
-	case LSP_REQUEST_RENAME:
+	case LSP_REQUEST_RENAME: {
+		LSPResponseRename *rename = &r->data.rename;
+		arr_foreach_ptr(rename->changes, LSPWorkspaceChange, c) {
+			if (c->type == LSP_CHANGE_EDITS) {
+				arr_free(c->data.edit.edits);
+			}
+		}
 		arr_free(r->data.rename.changes);
-		break;
+		} break;
 	case LSP_REQUEST_HIGHLIGHT:
 		arr_free(r->data.highlight.highlights);
 		break;

@@ -58,10 +58,11 @@ void format_process_lsp_response(Ted *ted, const LSPResponse *response) {
 	if (buffer_lsp_document_id(buffer) != request->data.formatting.document)
 		return; // switched document
 
+	buffer_deselect(buffer);
 	const LSPResponseFormatting *f = &response->data.formatting;
-	arr_foreach_ptr(f->edits, const LSPTextEdit, edit) {
-		buffer_apply_lsp_text_edit(buffer, response, edit);
-	}
+	buffer_start_edit_chain(buffer);
+	buffer_apply_lsp_text_edits(buffer, response, f->edits, arr_len(f->edits));
+	buffer_end_edit_chain(buffer);
 }
 
 void format_quit(Ted *ted) {

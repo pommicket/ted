@@ -832,12 +832,12 @@ static bool parse_workspace_edit(LSP *lsp, LSPResponse *response, const JSON *js
 			LSPDocumentID document = 0;
 			if (!parse_document_uri(lsp, json, uri, &document))
 				return false;
+			LSPWorkspaceChange *change = arr_addp(edit->changes);
+			change->type = LSP_CHANGE_EDITS;
+			change->data.edit.document = document;
 			for (u32 e = 0; e < edits.len; ++e) {
-				LSPWorkspaceChange *change = arr_addp(edit->changes);
-				change->type = LSP_CHANGE_EDIT;
-				change->data.edit.document = document;
 				JSONValue text_edit = json_array_get(json, edits, e);
-				if (!parse_text_edit(lsp, response, json, text_edit, &change->data.edit.edit))
+				if (!parse_text_edit(lsp, response, json, text_edit, arr_addp(change->data.edit.edits)))
 					return false;
 			}
 		}
@@ -854,12 +854,12 @@ static bool parse_workspace_edit(LSP *lsp, LSPResponse *response, const JSON *js
 			if (!parse_document_uri(lsp, json, json_object_get(json, text_document, "uri"), &document))
 				return false;
 			JSONArray edits = json_object_get_array(json, change, "edits");
-			for (u32 e = 0; e < edits.len; ++e) {
-				LSPWorkspaceChange *out = arr_addp(edit->changes);
-				out->type = LSP_CHANGE_EDIT;
-				out->data.edit.document = document;
-				JSONValue text_edit = json_array_get(json, edits, e);
-				if (!parse_text_edit(lsp, response, json, text_edit, &out->data.edit.edit))
+			LSPWorkspaceChange *out = arr_addp(edit->changes);
+			out->type = LSP_CHANGE_EDITS;
+			out->data.edit.document = document;
+			for (u32 i = 0; i < edits.len; ++i) {
+				JSONValue text_edit = json_array_get(json, edits, i);
+				if (!parse_text_edit(lsp, response, json, text_edit, arr_addp(out->data.edit.edits)))
 					return false;
 			}
 		} else if (kind.type == JSON_STRING) {

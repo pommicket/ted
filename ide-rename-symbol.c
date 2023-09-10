@@ -136,7 +136,7 @@ void rename_symbol_process_lsp_response(Ted *ted, const LSPResponse *response) {
 	
 	arr_foreach_ptr(data->changes, const LSPWorkspaceChange, change) {
 		switch (change->type) {
-		case LSP_CHANGE_EDIT: {
+		case LSP_CHANGE_EDITS: {
 			const LSPWorkspaceChangeEdit *change_data = &change->data.edit;
 			const char *path = lsp_document_path(lsp, change_data->document);
 			if (!ted_open_file(ted, path)) goto done;
@@ -152,7 +152,7 @@ void rename_symbol_process_lsp_response(Ted *ted, const LSPResponse *response) {
 				goto done;
 			}
 			
-			buffer_apply_lsp_text_edit(buffer, response, &change_data->edit);
+			buffer_apply_lsp_text_edits(buffer, response, change_data->edits, arr_len(change_data->edits));
 			}
 			break;
 		case LSP_CHANGE_RENAME: {

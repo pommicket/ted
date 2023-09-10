@@ -482,7 +482,14 @@ typedef struct {
 } LSPResponseWorkspaceSymbols;
 
 typedef enum {
-	LSP_CHANGE_EDIT = 1,
+	// yes, we do need to store multiple edits in a single workspace change;
+	//   doing a workspace change with TextEdit[] t1
+	//   followed by a workspace change with TextEdit[] t2
+	//   is different from a workspace change with t1+t2
+	// (see https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textEditArray,
+	//      https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocumentEdit)
+	// because microsoft is a bunch of idiots
+	LSP_CHANGE_EDITS = 1,
 	LSP_CHANGE_CREATE,
 	LSP_CHANGE_RENAME,
 	LSP_CHANGE_DELETE
@@ -490,7 +497,7 @@ typedef enum {
 
 typedef struct {
 	LSPDocumentID document;
-	LSPTextEdit edit;
+	LSPTextEdit *edits;
 } LSPWorkspaceChangeEdit;
 
 typedef struct {
@@ -859,7 +866,7 @@ void lsp_write_quit(void);
 /// print server-to-client communication
 #define LSP_SHOW_S2C 0
 /// print client-to-server communication
-#define LSP_SHOW_C2S 0
+#define LSP_SHOW_C2S 1
 
 #endif // LSP_INTERNAL
 
