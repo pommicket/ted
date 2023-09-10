@@ -1,7 +1,6 @@
 /*
 TODO:
 - figure out what's wrong with godot language server
-- automatically restart server
 FUTURE FEATURES:
 - autodetect indentation (tabs vs spaces)
 - custom file/build command associations

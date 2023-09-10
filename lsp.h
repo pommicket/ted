@@ -588,6 +588,12 @@ typedef struct {
 } LSPDocumentData;
 
 typedef struct {
+	/// send didChange?
+	bool sync_support;
+	/// can didChange notifications have partial changes?
+	bool incremental_sync_support;
+	/// send didOpen/didClose?
+	bool open_close_support;
 	bool signature_help_support;
 	bool completion_support;
 	bool hover_support;
@@ -866,7 +872,7 @@ void lsp_write_quit(void);
 /// print server-to-client communication
 #define LSP_SHOW_S2C 0
 /// print client-to-server communication
-#define LSP_SHOW_C2S 1
+#define LSP_SHOW_C2S 0
 
 #endif // LSP_INTERNAL
 

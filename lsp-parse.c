@@ -151,6 +151,35 @@ static uint32_t *parse_trigger_characters(const JSON *json, JSONArray trigger_ch
 
 static void parse_capabilities(LSP *lsp, const JSON *json, JSONObject capabilities) {
 	LSPCapabilities *cap = &lsp->capabilities;
+	{
+		// document syncing capabilities
+		JSONValue sync_value = json_object_get(json, capabilities, "textDocumentSync");
+		double change_type_double = sync_value.type == JSON_NUMBER
+			? sync_value.val.number
+			: json_object_get_number(json, json_force_object(sync_value), "change");
+		int change_type = isfinite(change_type_double)
+			&& change_type_double >= 0
+			&& change_type_double <= 2
+			? (int)change_type_double
+			: 0;
+		bool open_close = true;
+		if (sync_value.type == JSON_NUMBER) {
+			// nothing to do.
+			// i think. it's unclear whether we're supposed to send didOpen/didClose
+			// with this type (it's deprecated, so the spec isn't giving us any information)
+		} else if (sync_value.type == JSON_OBJECT) {
+			JSONObject sync = sync_value.val.object;
+			open_close = json_object_get_bool(json, sync, "openClose", false);
+			if (!open_close) {
+				// we're not even allowed to send didChange without a didOpen first,
+				// so this should always be zero? spec is really unclear here.
+				change_type = 0;
+			}
+		}
+		cap->open_close_support = open_close;
+		cap->sync_support = change_type >= 1;
+		cap->incremental_sync_support = change_type == 2;
+	}
 	
 	// check CompletionOptions
 	JSONValue completion_value = json_object_get(json, capabilities, "completionProvider");

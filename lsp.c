@@ -227,12 +227,14 @@ static bool lsp_supports_request(LSP *lsp, const LSPRequest *request) {
 	case LSP_REQUEST_WORKSPACE_FOLDERS:
 	case LSP_REQUEST_PUBLISH_DIAGNOSTICS:
 		return false;
+	case LSP_REQUEST_DID_OPEN:
+	case LSP_REQUEST_DID_CLOSE:
+		return cap->open_close_support;
+	case LSP_REQUEST_DID_CHANGE:
+		return cap->sync_support;
 	case LSP_REQUEST_INITIALIZE:
 	case LSP_REQUEST_INITIALIZED:
 	case LSP_REQUEST_CANCEL:
-	case LSP_REQUEST_DID_OPEN:
-	case LSP_REQUEST_DID_CLOSE:
-	case LSP_REQUEST_DID_CHANGE:
 	case LSP_REQUEST_CONFIGURATION:
 	case LSP_REQUEST_SHUTDOWN:
 	case LSP_REQUEST_EXIT:
@@ -436,8 +438,11 @@ static bool lsp_receive(LSP *lsp, size_t max_size) {
 	// kind of a hack. this is needed because arr_set_len zeroes the data.
 	arr_hdr_(lsp->received_data)->len = (u32)received_so_far;
 	lsp->received_data[received_so_far] = '\0';// null terminate
-	#if LSP_SHOW_S2C
-	printf("%s%s%s\n",term_italics(stdout),lsp->received_data,term_clear(stdout));
+	#if 0
+	const int limit = 1000;
+	printf("%s%.*s%s%s\n",term_italics(stdout),limit,lsp->received_data,
+		strlen(lsp->received_data) > (size_t)limit ? "..." : "",
+		term_clear(stdout));
 	#endif
 	
 	u64 response_offset=0, response_size=0;
