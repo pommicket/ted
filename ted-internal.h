@@ -104,6 +104,7 @@ struct Settings {
 	float cursor_blink_time_on, cursor_blink_time_off;
 	float hover_time;
 	float ctrl_scroll_adjust_text_size;
+	float lsp_delay;
 	u32 max_file_size;
 	u32 max_file_size_view_only;
 	u16 framerate_cap;

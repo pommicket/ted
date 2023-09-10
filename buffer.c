@@ -516,7 +516,7 @@ static void buffer_send_lsp_did_open(TextBuffer *buffer, LSP *lsp) {
 	open->document = lsp_document_id(lsp, buffer->path);
 	open->language = buffer_language(buffer);
 	lsp_send_request(lsp, &request);
-	buffer->lsp_opened_in = lsp->id;
+	buffer->lsp_opened_in = lsp_get_id(lsp);
 }
 
 LSP *buffer_lsp(TextBuffer *buffer) {
@@ -1911,7 +1911,7 @@ static void buffer_send_lsp_did_change(LSP *lsp, TextBuffer *buffer, BufferPos p
 	range.end = buffer_pos_to_lsp_position(buffer, pos_end);
 	const char *document = buffer->path;
 
-	if (lsp->capabilities.incremental_sync_support) {
+	if (lsp_has_incremental_sync_support(lsp)) {
 		LSPRequest request = {.type = LSP_REQUEST_DID_CHANGE};
 		LSPDocumentChangeEvent change = {
 			.range = range,

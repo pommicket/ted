@@ -1,9 +1,8 @@
 /*
 TODO:
-- figure out how to deal with godot language server being so slow
-  one comparatively solution is to wait x seconds before sending a batch of requests in the communication thread
-    (this gives us time to cancel the irrelevant requests before they get sent to the server,
-     and we can remove stale full-sync didChange requests)
+- on the last line of a buffer, shift+up end backspace acts weird
+- restart LSP server automatically?
+
 FUTURE FEATURES:
 - autodetect indentation (tabs vs spaces)
 - custom file/build command associations
@@ -764,7 +763,7 @@ int main(int argc, char **argv) {
 						char32_t last_char = 0;
 						unicode_utf8_to_utf32(&last_char, &text[last_code_point],
 							strlen(text) - last_code_point);
-						arr_foreach_ptr(lsp->completion_trigger_chars, char32_t, c) {
+						arr_foreach_ptr(lsp_completion_trigger_chars(lsp), const char32_t, c) {
 							if (*c == last_char) {
 								autocomplete_open(ted, last_char);
 								break;

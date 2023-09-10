@@ -6,6 +6,10 @@
 
 static LSPMutex request_id_mutex;
 
+u32 lsp_get_id(const LSP *lsp) {
+	return lsp->id;
+}
+
 // it's nice to have request IDs be totally unique, including across LSP servers.
 static LSPRequestID get_request_id(void) {
 	// it's important that this never returns 0, since that's reserved for "no ID"
@@ -479,11 +483,13 @@ static bool lsp_receive(LSP *lsp, size_t max_size) {
 	return true;
 }
 
-// send requests.
+/// send requests.
+///
+/// returns `false` if we should quit.
 static bool lsp_send(LSP *lsp) {
 	if (!lsp->initialized) {
 		// don't send anything before the server is initialized.
-		return false;
+		return true;
 	}
 	
 	LSPMessage *messages = NULL;
@@ -504,22 +510,46 @@ static bool lsp_send(LSP *lsp) {
 	
 	SDL_UnlockMutex(lsp->messages_mutex);
 
-	bool quit = false;
+	bool alive = true;
 	for (size_t i = 0; i < n_messages; ++i) {
 		LSPMessage *m = &messages[i];
-		if (quit) {
-			lsp_message_free(m);
-		} else {
+		bool send = alive;
+		if (send && m->type == LSP_REQUEST
+			&& i + 1 < n_messages
+			&& messages[i + 1].type == LSP_REQUEST) {
+			const LSPRequest *r = &m->request;
+			const LSPRequest *next = &messages[i + 1].request;
+			if (r->type == LSP_REQUEST_DID_CHANGE
+				&& next->type == LSP_REQUEST_DID_CHANGE
+				&& arr_len(r->data.change.changes) == 1
+				&& arr_len(next->data.change.changes) == 1
+				&& !r->data.change.changes[0].use_range
+				&& !next->data.change.changes[1].use_range
+				&& r->data.change.document == next->data.change.document) {
+				// we don't need to send this request, since it's made
+				// irrelevant by the next request.
+				// (specifically, they're both full-document-content
+				//  didChange notifications)
+				// this helps godot's language server a lot
+				// since it's super slow because it tries to publish diagnostics
+				// on every change.
+				send = false;
+			}
+		}
+
+		if (send) {
 			write_message(lsp, m);
+		} else {
+			lsp_message_free(m);
 		}
 		
 		if (SDL_SemTryWait(lsp->quit_sem) == 0) {
-			quit = true;
+			alive = false;
 		}
 	}
 
 	free(messages);
-	return quit;
+	return alive;
 }
 
 
@@ -543,10 +573,20 @@ static int lsp_communication_thread(void *data) {
 	initialize.id = get_request_id();
 	write_request(lsp, &initialize);
 	
+	const double send_delay = lsp->send_delay;
+	double last_send = -DBL_MAX;
 	while (1) {
-		bool quit = lsp_send(lsp);
-		if (quit) break;
-		
+		bool send = true;
+		if (send_delay > 0) {
+			double t = time_get_seconds();
+			if (t - last_send > send_delay) {
+				last_send = t;
+			} else {
+				send = false;
+			}
+		}
+		if (send && !lsp_send(lsp))
+			break;
 		if (!lsp_receive(lsp, (size_t)10<<20))
 			break;
 		if (SDL_SemWaitTimeout(lsp->quit_sem, 5) == 0)
@@ -569,13 +609,11 @@ static int lsp_communication_thread(void *data) {
 			.type = LSP_REQUEST_EXIT,
 			.data = {{0}}
 		};
+		// just spam these things
+		// we're supposed to be nice and wait for the shutdown
+		// response, but who gives a fuck
 		write_request(lsp, &shutdown);
-		// i give you ONE MILLISECOND to send your fucking shutdown response
-		time_sleep_ms(1);
 		write_request(lsp, &exit);
-		// i give you ONE MILLISECOND to terminate
-		// I WILL KILL YOU IF IT TAKES ANY LONGER
-		time_sleep_ms(1);
 		
 		#if 0
 		char buf[1024]={0};
@@ -626,16 +664,22 @@ const char *lsp_document_path(LSP *lsp, LSPDocumentID document) {
 	return path;
 }
 
-LSP *lsp_create(const char *root_dir, const char *command, u16 port, const char *configuration, FILE *log) {
+LSP *lsp_create(const LSPSetup *setup) {
 	LSP *lsp = calloc(1, sizeof *lsp);
 	if (!lsp) return NULL;
 	if (!request_id_mutex)
 		request_id_mutex = SDL_CreateMutex();
 	
+	const char *const command = setup->command;
+	const u16 port = setup->port;
+	const char *const root_dir = setup->root_dir;
+	const char *const configuration = setup->configuration;
+	
 	static LSPID curr_id = 1;
 	lsp->id = curr_id++;
-	lsp->log = log;
+	lsp->log = setup->log;
 	lsp->port = port;
+	lsp->send_delay = setup->send_delay;
 
 	#if DEBUG
 		printf("Starting up LSP %p (ID %u) `%s` (port %u) in %s\n",
@@ -811,6 +855,18 @@ LSPDocumentPosition lsp_location_end_position(LSPLocation location) {
 	};
 }
 
+const uint32_t *lsp_completion_trigger_chars(LSP *lsp) {
+	return lsp->completion_trigger_chars;
+}
+
+const uint32_t *lsp_signature_help_trigger_chars(LSP *lsp) {
+	return lsp->signature_help_trigger_chars;
+}
+
+const uint32_t *lsp_signature_help_retrigger_chars(LSP *lsp) {
+	return lsp->signature_help_retrigger_chars;
+}
+
 bool lsp_covers_path(LSP *lsp, const char *path) {
 	bool ret = false;
 	SDL_LockMutex(lsp->workspace_folders_mutex);
@@ -854,6 +910,26 @@ void lsp_cancel_request(LSP *lsp, LSPRequestID id) {
 		request.data.cancel.id = id;
 		lsp_send_request(lsp, &request);
 	}
+}
+
+bool lsp_has_exited(LSP *lsp) {
+	return lsp->exited;
+}
+
+bool lsp_is_initialized(LSP *lsp) {
+	return lsp->initialized;
+}
+
+bool lsp_has_incremental_sync_support(LSP *lsp) {
+	return lsp->capabilities.incremental_sync_support;
+}
+
+const char *lsp_get_command(LSP *lsp) {
+	return lsp->command;
+}
+
+u16 lsp_get_port(LSP *lsp) {
+	return lsp->port;
 }
 
 void lsp_quit(void) {

@@ -90,7 +90,7 @@ void hover_process_lsp_response(Ted *ted, const LSPResponse *response) {
 	
 	if (hover->text // we already have hover text
 		&& (
-		lsp->id != hover->last_request.lsp // this request is from a different LSP
+		lsp_get_id(lsp) != hover->last_request.lsp // this request is from a different LSP
 		|| !lsp_document_position_eq(response->request.data.hover.position, pos) // this request is for a different position
 		)) {
 		// this is a stale request. ignore it
@@ -141,7 +141,7 @@ void hover_frame(Ted *ted, double dt) {
 		LSPDocumentPosition pos={0};
 		LSP *lsp=0;
 		if (get_hover_position(ted, &pos, &buffer, &lsp)) {
-			if (lsp->id != hover->last_request.lsp
+			if (lsp_get_id(lsp) != hover->last_request.lsp
 				|| !lsp_document_position_eq(pos, hover->requested_position)) {
 				// refresh hover
 				hover_send_request(ted);

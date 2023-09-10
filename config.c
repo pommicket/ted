@@ -149,6 +149,7 @@ static const SettingFloat settings_float[] = {
 	{"cursor-blink-time-off", &settings_zero.cursor_blink_time_off, 0, 1000, true},
 	{"hover-time", &settings_zero.hover_time, 0, INFINITY, true},
 	{"ctrl-scroll-adjust-text-size", &settings_zero.ctrl_scroll_adjust_text_size, -10, 10, true},
+	{"lsp-delay", &settings_zero.lsp_delay, 0, 100, true},
 };
 static const SettingString settings_string[] = {
 	{"build-default-command", settings_zero.build_default_command, sizeof settings_zero.build_default_command, true},

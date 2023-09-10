@@ -96,7 +96,7 @@ When you add a source file to ted, make sure you:
 
 ## Adding settings
 
-Find the `Settings` struct in `ted.h` and add the new member.
+Find the `Settings` struct in `ted-internal.h` and add the new member.
 Then go to `config.c` and edit the `settings_<type>` array.
 
 ## Adding commands

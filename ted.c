@@ -230,8 +230,8 @@ LSP *ted_get_lsp_by_id(Ted *ted, LSPID id) {
 	if (id == 0) return NULL;
 	for (int i = 0; ted->lsps[i]; ++i) {
 		LSP *lsp = ted->lsps[i];
-		if (lsp->id == id)
-			return lsp->exited ? NULL : lsp;
+		if (lsp_get_id(lsp) == id)
+			return lsp_has_exited(lsp) ? NULL : lsp;
 	}
 	return NULL;
 }
@@ -245,16 +245,18 @@ LSP *ted_get_lsp(Ted *ted, const char *path, Language language) {
 	for (i = 0; i < TED_LSP_MAX; ++i) {
 		LSP *lsp = ted->lsps[i];
 		if (!lsp) break;
-		if (lsp->command && !streq(lsp->command, settings->lsp)) continue;
-		if (lsp->port != settings->lsp_port) continue;
+		const char *const lsp_command = lsp_get_command(lsp);
+		const u16 lsp_port = lsp_get_port(lsp);
+		if (lsp_command && !streq(lsp_command, settings->lsp)) continue;
+		if (lsp_port != settings->lsp_port) continue;
 		
-		if (!lsp->initialized) {
+		if (!lsp_is_initialized(lsp)) {
 			// withhold judgement until this server initializes.
 			// we shouldn't call lsp_try_add_root_dir yet because it doesn't know
 			// if the server supports workspaceFolders.
 			return NULL;
 		}
-		if (lsp_covers_path(lsp, path) && lsp->exited) {
+		if (lsp_covers_path(lsp, path) && lsp_has_exited(lsp)) {
 			// this server died. give up.
 			return NULL;
 		}
@@ -271,8 +273,15 @@ LSP *ted_get_lsp(Ted *ted, const char *path, Language language) {
 		// start up this LSP
 		FILE *log = settings->lsp_log ? ted->log : NULL;
 		char *root_dir = settings_get_root_dir(settings, path);
-		ted->lsps[i] = lsp_create(root_dir, *settings->lsp ? settings->lsp : NULL,
-			settings->lsp_port, settings->lsp_configuration, log);
+		LSPSetup setup = {
+			.root_dir = root_dir,
+			.command = *settings->lsp ? settings->lsp : NULL,
+			.port = settings->lsp_port,
+			.configuration = settings->lsp_configuration,
+			.log = log,
+			.send_delay = settings->lsp_delay,
+		};
+		ted->lsps[i] = lsp_create(&setup);
 		free(root_dir);
 		// don't actually return it yet, since it's still initializing (see above)
 	}

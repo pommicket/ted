@@ -616,21 +616,126 @@ typedef struct {
 	bool range_formatting_support;
 } LSPCapabilities;
 
-typedef struct LSP {
+typedef struct LSP LSP;
+
+/// arguments to \ref lsp_create, but in `struct` form because
+/// there are so many of them.
+typedef struct {
+	/// root directory
+	const char *root_dir;
+	/// command to run to start server (set to `NULL` if LSP is assumed to already be running)
+	const char *command;
+	/// port which server is listening on (set to 0 for LSP over stdio)
+	u16 port;
+	/// configuration JSON
+	const char *configuration;
+	/// log file, or `NULL` to disable logging
+	FILE *log;
+	/// see `LSP::send_delay`
+	double send_delay;
+} LSPSetup;
+
+/// Start up an LSP server.
+LSP *lsp_create(const LSPSetup *setup);
+/// get unique ID associated with this server.
+u32 lsp_get_id(const LSP *lsp);
+/// has the server been initialized?
+bool lsp_is_initialized(LSP *lsp);
+/// \returns the \ref LSPSetup::command value passed into \ref lsp_create
+const char *lsp_get_command(LSP *lsp);
+/// \returns the \ref LSPSetup::port value passed into \ref lsp_create
+u16 lsp_get_port(LSP *lsp);
+/// has the server exited?
+bool lsp_has_exited(LSP *lsp);
+/// Assiociate `id` with the LSP language identifier `lsp_identifier` (see https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#-textdocumentitem-)
+void lsp_register_language(u64 id, const char *lsp_identifier);
+// returns true if there's an error.
+// returns false and sets error to "" if there's no error.
+// if clear = true, the error will be cleared.
+// you can set error = NULL, error_size = 0, clear = true to just clear the error
+bool lsp_get_error(LSP *lsp, char *error, size_t error_size, bool clear);
+void lsp_message_free(LSPMessage *message);
+u32 lsp_document_id(LSP *lsp, const char *path);
+// returned pointer lives as long as lsp.
+const char *lsp_document_path(LSP *lsp, LSPDocumentID id);
+// returns the ID of the sent request, or (LSPServerRequestID){0} if the request is not supported by the LSP
+// don't free the contents of this request (even on failure)! let me handle it!
+LSPServerRequestID lsp_send_request(LSP *lsp, LSPRequest *request);
+// send a $/cancelRequest notification
+// if id = 0, nothing will happen.
+void lsp_cancel_request(LSP *lsp, LSPRequestID id);
+// don't free the contents of this response! let me handle it!
+void lsp_send_response(LSP *lsp, LSPResponse *response);
+const char *lsp_response_string(const LSPResponse *response, LSPString string);
+const char *lsp_request_string(const LSPRequest *request, LSPString string);
+/// low-level API for allocating message strings.
+///
+/// sets `*string` to the LSPString, and returns a pointer which you can write the string to.
+/// the returned pointer will be zeroed up to and including [len].
+char *lsp_message_alloc_string(LSPMessageBase *message, size_t len, LSPString *string);
+LSPString lsp_message_add_string32(LSPMessageBase *message, String32 string);
+LSPString lsp_request_add_string(LSPRequest *request, const char *string);
+LSPString lsp_response_add_string(LSPResponse *response, const char *string);
+bool lsp_string_is_empty(LSPString string);
+// try to add a new "workspace folder" to the lsp.
+// IMPORTANT: only call this if lsp->initialized is true
+//            (if not we don't yet know whether the server supports workspace folders)
+// returns true on success or if new_root_dir is already contained in a workspace folder for this LSP.
+// if this fails (i.e. if the LSP does not have workspace support), create a new LSP
+// with root directory `new_root_dir`.
+bool lsp_try_add_root_dir(LSP *lsp, const char *new_root_dir);
+// is this path in the LSP's workspace folders?
+bool lsp_covers_path(LSP *lsp, const char *path);
+// get next message from server
+bool lsp_next_message(LSP *lsp, LSPMessage *message);
+/// returns `-1` if `a` comes before `b`, 0 if `a` and `b` are equal, and `1` if `a` comes after `b`
+int lsp_position_cmp(LSPPosition a, LSPPosition b);
+/// returns `true` if `a` and `b` are equal
+bool lsp_position_eq(LSPPosition a, LSPPosition b);
+/// returns `true` if `a` and `b` overlap
+bool lsp_ranges_overlap(LSPRange a, LSPRange b);
+bool lsp_document_position_eq(LSPDocumentPosition a, LSPDocumentPosition b);
+/// does this server support incremental synchronization
+///
+/// see https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_synchronization
+/// for more info.
+bool lsp_has_incremental_sync_support(LSP *lsp);
+/// get dynamic array of completion trigger characters.
+const uint32_t *lsp_completion_trigger_chars(LSP *lsp);
+/// get dynamic array of signature help trigger characters.
+const uint32_t *lsp_signature_help_trigger_chars(LSP *lsp);
+/// get dynamic array of signature help retrigger characters.
+const uint32_t *lsp_signature_help_retrigger_chars(LSP *lsp);
+// get the start of location's range as a LSPDocumentPosition
+LSPDocumentPosition lsp_location_start_position(LSPLocation location);
+// get the end of location's range as a LSPDocumentPosition
+LSPDocumentPosition lsp_location_end_position(LSPLocation location);
+void lsp_free(LSP *lsp);
+// call this to free any global resources used by lsp*.c
+// not strictly necessary, but prevents valgrind errors & stuff.
+// make sure you call lsp_free on every LSP you create before calling this.
+void lsp_quit(void);
+
+#endif // LSP_H_
+
+#if defined LSP_INTERNAL && !defined LSP_INTERNAL_H_
+#define LSP_INTERNAL_H_
+
+struct LSP {
 	// thread safety is important here!
 	// every member should either be indented to indicate which mutex controls it,
 	// or have a comment explaining why it doesn't need one
 
 	// A unique ID number for this LSP.
-	// thread-safety: only set once in lsp_create.
+	// thread-safety: only set once in \ref lsp_create.
 	LSPID id;
 	
-	// thread-safety: set once in lsp_create, then only used by communication thread
+	// thread-safety: set once in \ref lsp_create, then only used by communication thread
 	FILE *log;
 	
 	// The server process. May be NULL if the process isn't started by ted.
 	//
-	// thread-safety: created in lsp_create, then only accessed by the communication thread
+	// thread-safety: created in \ref lsp_create, then only accessed by the communication thread
 	Process *process;
 	// Socket for communicating with server. Maybe be NULL if communication is done over stdio.
 	//
@@ -640,9 +745,17 @@ typedef struct LSP {
 	// port used for communication
 	//
 	// this will be zero iff communication is done over stdio
-	// thread-safety: only set once in lsp_create
+	// thread-safety: only set once in \ref lsp_create
 	u16 port;
 	
+	/// delay before sending requests.
+	///
+	/// this exists for servers which don't support `$/cancelRequest`
+	/// to avoid flooding them with requests which they can't keep up with.
+	///
+	/// thread-safety: only set once in \ref lsp_create
+	double send_delay;
+
 	LSPMutex document_mutex;
 		// for our purposes, folders are "documents"
 		// the spec kinda does this too: WorkspaceFolder has a `uri: DocumentUri` member.
@@ -688,74 +801,7 @@ typedef struct LSP {
 		LSPDocumentID *workspace_folders;
 	LSPMutex error_mutex;
 		char error[512];
-} LSP;
-
-/// Assiociate `id` with the LSP language identifier `lsp_identifier` (see https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#-textdocumentitem-)
-void lsp_register_language(u64 id, const char *lsp_identifier);
-// returns true if there's an error.
-// returns false and sets error to "" if there's no error.
-// if clear = true, the error will be cleared.
-// you can set error = NULL, error_size = 0, clear = true to just clear the error
-bool lsp_get_error(LSP *lsp, char *error, size_t error_size, bool clear);
-void lsp_message_free(LSPMessage *message);
-u32 lsp_document_id(LSP *lsp, const char *path);
-// returned pointer lives as long as lsp.
-const char *lsp_document_path(LSP *lsp, LSPDocumentID id);
-// returns the ID of the sent request, or (LSPServerRequestID){0} if the request is not supported by the LSP
-// don't free the contents of this request (even on failure)! let me handle it!
-LSPServerRequestID lsp_send_request(LSP *lsp, LSPRequest *request);
-// send a $/cancelRequest notification
-// if id = 0, nothing will happen.
-void lsp_cancel_request(LSP *lsp, LSPRequestID id);
-// don't free the contents of this response! let me handle it!
-void lsp_send_response(LSP *lsp, LSPResponse *response);
-const char *lsp_response_string(const LSPResponse *response, LSPString string);
-const char *lsp_request_string(const LSPRequest *request, LSPString string);
-/// low-level API for allocating message strings.
-///
-/// sets `*string` to the LSPString, and returns a pointer which you can write the string to.
-/// the returned pointer will be zeroed up to and including [len].
-char *lsp_message_alloc_string(LSPMessageBase *message, size_t len, LSPString *string);
-LSPString lsp_message_add_string32(LSPMessageBase *message, String32 string);
-LSPString lsp_request_add_string(LSPRequest *request, const char *string);
-LSPString lsp_response_add_string(LSPResponse *response, const char *string);
-bool lsp_string_is_empty(LSPString string);
-/// Start up an LSP server.
-///
-/// `command`, `port`, `configuration` and `log` can be 0 as long as `port` and `command` are not both 0.
-LSP *lsp_create(const char *root_dir, const char *command, u16 port, const char *configuration, FILE *log);
-// try to add a new "workspace folder" to the lsp.
-// IMPORTANT: only call this if lsp->initialized is true
-//            (if not we don't yet know whether the server supports workspace folders)
-// returns true on success or if new_root_dir is already contained in a workspace folder for this LSP.
-// if this fails (i.e. if the LSP does not have workspace support), create a new LSP
-// with root directory `new_root_dir`.
-bool lsp_try_add_root_dir(LSP *lsp, const char *new_root_dir);
-// is this path in the LSP's workspace folders?
-bool lsp_covers_path(LSP *lsp, const char *path);
-// get next message from server
-bool lsp_next_message(LSP *lsp, LSPMessage *message);
-/// returns `-1` if `a` comes before `b`, 0 if `a` and `b` are equal, and `1` if `a` comes after `b`
-int lsp_position_cmp(LSPPosition a, LSPPosition b);
-/// returns `true` if `a` and `b` are equal
-bool lsp_position_eq(LSPPosition a, LSPPosition b);
-/// returns `true` if `a` and `b` overlap
-bool lsp_ranges_overlap(LSPRange a, LSPRange b);
-bool lsp_document_position_eq(LSPDocumentPosition a, LSPDocumentPosition b);
-// get the start of location's range as a LSPDocumentPosition
-LSPDocumentPosition lsp_location_start_position(LSPLocation location);
-// get the end of location's range as a LSPDocumentPosition
-LSPDocumentPosition lsp_location_end_position(LSPLocation location);
-void lsp_free(LSP *lsp);
-// call this to free any global resources used by lsp*.c
-// not strictly necessary, but prevents valgrind errors & stuff.
-// make sure you call lsp_free on every LSP you create before calling this.
-void lsp_quit(void);
-
-#endif // LSP_H_
-
-#if defined LSP_INTERNAL && !defined LSP_INTERNAL_H_
-#define LSP_INTERNAL_H_
+};
 
 #include "sdl-inc.h"
 
@@ -871,9 +917,9 @@ LSPString lsp_request_add_json_string(LSPRequest *request, const JSON *json, JSO
 void lsp_write_quit(void);
 
 /// print server-to-client communication
-#define LSP_SHOW_S2C 0
+#define LSP_SHOW_S2C 1
 /// print client-to-server communication
-#define LSP_SHOW_C2S 0
+#define LSP_SHOW_C2S 1
 
 #endif // LSP_INTERNAL
 

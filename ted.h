@@ -134,6 +134,9 @@ typedef struct Selector Selector;
 /// a selector menu for files (e.g. the "open" menu)
 typedef struct FileSelector FileSelector;
 
+/// LSP server
+struct LSP;
+
 /// an entry in a \ref Selector
 ///
 /// only `name` needs to be filled in; everything else can be zeroed.
