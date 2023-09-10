@@ -184,13 +184,21 @@ void selector_end(Ted *ted, Selector *s) {
 	selector_scroll_to_cursor(ted, s);
 }
 
-static int selectory_entry_cmp_name(const void *av, const void *bv) {
-	SelectorEntry const *a = av, *b = bv;
-	return strcoll(a->name, b->name);
+static int selectory_entry_cmp_name(void *context, const void *av, const void *bv) {
+	const Selector *s = context;
+	const SelectorEntry *a = av, *b = bv;
+	
+	// put exact match of search term first
+	if (s->search_term && streq(a->name, s->search_term))
+		return -1;
+	if (s->search_term && streq(b->name, s->search_term))
+		return 1;
+
+	return strcmp_case_insensitive(a->name, b->name);
 }
 
 void selector_sort_entries_by_name(Selector *s) {
-	qsort(s->entries, arr_len(s->entries), sizeof *s->entries, selectory_entry_cmp_name);
+	qsort_with_context(s->entries, arr_len(s->entries), sizeof *s->entries, selectory_entry_cmp_name, s);
 }
 
 static Rect selector_entry_rect_unclipped(Ted *ted, Selector *s, u32 i_display) {
@@ -354,8 +362,16 @@ void file_selector_clear(FileSelector *fs) {
 }
 
 static int file_selector_entry_cmp(void *context, const SelectorEntry *a, const SelectorEntry *b) {
-	(void)context;
+	const Selector *s = context;
 	FsType a_type = (FsType)a->userdata, b_type = (FsType)b->userdata;
+
+
+	// put exact match of search term first
+	if (s->search_term && streq(a->name, s->search_term))
+		return -1;
+	if (s->search_term && streq(b->name, s->search_term))
+		return 1;
+
 	// put directories first
 	if (a_type == FS_DIRECTORY && b_type != FS_DIRECTORY) {
 		return -1;
@@ -602,7 +618,7 @@ char *file_selector_update(Ted *ted, FileSelector *fs) {
 			};
 			selector_add_entry(&fs->sel, &entry);
 		}
-		selector_sort_entries(&fs->sel, file_selector_entry_cmp, NULL);
+		selector_sort_entries(&fs->sel, file_selector_entry_cmp, &fs->sel);
 
 		for (u32 i = 0; files[i]; ++i)
 			free(files[i]);

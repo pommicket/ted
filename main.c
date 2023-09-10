@@ -1,6 +1,4 @@
 /*
-TODO:
-- put exact match first in selector
 FUTURE FEATURES:
 - autodetect indentation (tabs vs spaces)
 - custom file/build command associations
