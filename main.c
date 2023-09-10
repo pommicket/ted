@@ -1,6 +1,5 @@
 /*
 TODO:
-- on the last line of a buffer, shift+up end backspace acts weird
 - restart LSP server automatically?
 
 FUTURE FEATURES:

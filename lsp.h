@@ -917,9 +917,9 @@ LSPString lsp_request_add_json_string(LSPRequest *request, const JSON *json, JSO
 void lsp_write_quit(void);
 
 /// print server-to-client communication
-#define LSP_SHOW_S2C 1
+#define LSP_SHOW_S2C 0
 /// print client-to-server communication
-#define LSP_SHOW_C2S 1
+#define LSP_SHOW_C2S 0
 
 #endif // LSP_INTERNAL
 

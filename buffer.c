@@ -2605,8 +2605,14 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 
 	buffer_remove_last_edit_if_empty(buffer);
 	
+	const EditInfo info = {
+		.pos = pos,
+		.end = end_pos,
+		.chars_inserted = 0,
+		.chars_deleted = deletion_len,
+	};
 	// cursor position could have been invalidated by this edit
-	buffer_validate_cursor(buffer);
+	buffer_pos_move_according_to_edit(&buffer->cursor_pos, &info);
 
 	// we need to do this *after* making the change to the buffer
 	// because of how non-incremental syncing works.
@@ -2617,12 +2623,6 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 	buffer_lines_modified(buffer, line_idx, line_idx);
 	signature_help_retrigger(buffer->ted);
 	
-	const EditInfo info = {
-		.pos = pos,
-		.end = end_pos,
-		.chars_inserted = 0,
-		.chars_deleted = deletion_len,
-	};
 	// move diagnostics around as needed
 	arr_foreach_ptr(buffer->diagnostics, Diagnostic, d) {
 		buffer_pos_move_according_to_edit(&d->pos, &info);
