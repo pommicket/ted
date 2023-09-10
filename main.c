@@ -1,7 +1,4 @@
 /*
-TODO:
-- restart LSP server automatically?
-
 FUTURE FEATURES:
 - autodetect indentation (tabs vs spaces)
 - custom file/build command associations
@@ -14,6 +11,7 @@ FUTURE FEATURES:
        - auto-close brackets
 - with macros we can really test performance of buffer_insert_text_at_pos, etc. (which should ideally be fast)
 - manual directory
+- restart LSP server automatically?
 - LSP request timeout
 */
 
