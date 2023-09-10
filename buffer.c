@@ -3729,6 +3729,8 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 		state.max_x = diagnostic_x2;
 		state.x = diagnostic_x1;
 		state.y = diagnostic_y1;
+		state.wrap = true;
+		state.max_y = diagnostic_y1 + 5 * char_height;
 		settings_color_floats(settings, COLOR_TEXT, state.color);
 		text_utf8_with_state(font, &state, hover_diagnostic->message);
 		diagnostic_x2 = minf(diagnostic_x2, (float)state.x_largest);
