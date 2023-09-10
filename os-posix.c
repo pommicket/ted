@@ -285,10 +285,8 @@ static long long read_fd(int fd, char *error, size_t error_size, char *data, siz
 		ssize_t bytes_read = read(fd, data + so_far, size - so_far);
 		if (bytes_read > 0) {
 			so_far += (size_t)bytes_read;
-		} else if (bytes_read == 0) {
+		} else if (bytes_read == 0 || errno == EAGAIN || errno == EWOULDBLOCK) {
 			return (long long)so_far;
-		} else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-			return so_far == 0 ? -1 : (long long)so_far;
 		} else if (errno == EPIPE) {
 			return -1;
 		} else {

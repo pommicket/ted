@@ -357,10 +357,10 @@ void build_frame(Ted *ted, float x1, float y1, float x2, float y2) {
 				ted_error(ted, "Error reading command output: %s.", process_geterr(ted->build_process));
 				build_stop(ted);
 				break;
-			} else if (bytes_read == -1) {
+			} else if (bytes_read == 0) {
 				// no data right now.
 				break;
-			} else if (bytes_read == 0) {
+			} else if (bytes_read == -1) {
 				// end of file
 				break;
 			} else {

@@ -424,11 +424,11 @@ static bool lsp_receive(LSP *lsp, size_t max_size) {
 		? socket_read(lsp->socket, lsp->received_data + received_so_far, max_size)
 		: process_read(lsp->process, lsp->received_data + received_so_far, max_size);
 	
-	if (bytes_read == -1) {
+	if (bytes_read == 0) {
 		// no data
 		return true;
 	}
-	if (bytes_read == 0) {
+	if (bytes_read == -1) {
 		lsp_set_error(lsp, "LSP server closed connection unexpectedly.");
 		return false;
 	}
@@ -613,20 +613,6 @@ static int lsp_communication_thread(void *data) {
 		// response, but who gives a fuck
 		write_request(lsp, &shutdown);
 		write_request(lsp, &exit);
-		
-		#if 0
-		char buf[1024]={0};
-		long long n = process_read(&lsp->process, buf, sizeof buf);
-		if (n>0) {
-			buf[n]=0;
-			printf("%s\n",buf);
-		}
-		n = process_read_stderr(&lsp->process, buf, sizeof buf);
-		if (n>0) {
-			buf[n]=0;
-			printf("\x1b[1m%s\x1b[0m\n",buf);
-		}
-		#endif
 	}
 	return 0;
 }

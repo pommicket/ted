@@ -136,8 +136,8 @@ long long process_write(Process *process, const char *data, size_t size);
 ///
 /// \returns
 /// -2 on error\n
-/// -1 if no data is available right now\n
-/// 0 on end of file\n
+/// -1 on end of file\n
+/// 0 if no data is available right now\n
 /// or a positive number indicating the number of bytes read to `data` (at most `size`)\n
 /// This does a nonblocking read.
 long long process_read(Process *process, char *data, size_t size);
@@ -177,8 +177,8 @@ const char *socket_get_error(Socket *socket);
 ///
 /// \returns
 ///  -2 on error\n
-///  -1 if no data is available right now\n
-///   0 on end of file\n
+///  -1 on end of file\n
+///   0 if no data is available right now\n
 /// or a positive number indicating the number of bytes read to `data` (at most `size`)\n
 /// This does a nonblocking read.
 long long socket_read(Socket *socket, char *data, size_t size);

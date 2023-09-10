@@ -302,7 +302,7 @@ static long long process_read_handle(Process *process, HANDLE pipe, char *data, 
 	DWORD bytes_read = 0, bytes_avail = 0, bytes_left = 0;
 	if (PeekNamedPipe(pipe, data, (DWORD)size, &bytes_read, &bytes_avail, &bytes_left)) {
 		if (bytes_read == 0) {
-			return -1;
+			return 0;
 		} else {
 			ReadFile(pipe, data, (DWORD)size, &bytes_read, NULL); // make sure data is removed from pipe
 			return bytes_read;
@@ -490,9 +490,9 @@ long long socket_read(Socket *s, char *data, size_t size) {
 		} else {
 			int err = WSAGetLastError();
 			if (err == WSAEWOULDBLOCK) {
-				return so_far == 0 ? -1 : (long long)so_far;
+				return (long long)so_far;
 			} else if (err == WSAECONNRESET) {
-				return 0;
+				return -1;
 			} else {
 				strbuf_printf(s->error, "recv failed (error code %d)", err);
 				return -2;
