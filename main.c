@@ -1,4 +1,6 @@
 /*
+TODO:
+- what's wrong with clangd diagnostics?
 FUTURE FEATURES:
 - autodetect indentation (tabs vs spaces)
 - custom file/build command associations

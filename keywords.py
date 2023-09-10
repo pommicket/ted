@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 # creates lists of keywords for all languages
 # to make keyword lookup more efficient, the lists are split up by their first letter

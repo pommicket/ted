@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # update windows installer ProductVersion/ProductCode/PackageCode
 # this needs to be done for every release of ted
 

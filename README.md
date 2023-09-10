@@ -324,6 +324,7 @@ Then, open windows\_installer\\ted\\ted.sln, and build.
 <tr><td>2.4.3</td> <td>Some font related fixes</td> <td>2023 Aug 1</td></tr>
 <tr><td>2.5</td> <td>Rename symbol, document links, bug fixes</td> <td>2023 Aug 15</td></tr>
 <tr><td>2.5.1</td> <td>Bug fixes</td> <td>2023 Aug 26</td></tr>
+<tr><td>2.6</td> <td>LSP diagnostics, LSP over TCP, GDScript support, &amp; more</td> <td>2023 Sep 10</td></tr>
 </table>
 
 ## License
