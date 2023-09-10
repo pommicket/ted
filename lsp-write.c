@@ -547,7 +547,8 @@ void write_request(LSP *lsp, LSPRequest *request) {
 				arr_foreach_ptr(change->changes, LSPDocumentChangeEvent, event) {
 					write_arr_elem(o);
 					write_obj_start(o);
-						write_key_range(o, "range", event->range);
+						if (event->use_range)
+							write_key_range(o, "range", event->range);
 						write_key_string(o, "text", lsp_request_string(request, event->text));
 					write_obj_end(o);
 				}

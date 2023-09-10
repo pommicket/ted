@@ -129,6 +129,8 @@ typedef struct {
 // see TextDocumentContentChangeEvent in the LSP spec
 typedef struct {
 	LSPRange range;
+	/// if `false`, \ref text refers to the whole document contents after the change.
+	bool use_range;
 	/// new text.
 	LSPString text;
 } LSPDocumentChangeEvent;
@@ -714,6 +716,7 @@ const char *lsp_request_string(const LSPRequest *request, LSPString string);
 /// sets `*string` to the LSPString, and returns a pointer which you can write the string to.
 /// the returned pointer will be zeroed up to and including [len].
 char *lsp_message_alloc_string(LSPMessageBase *message, size_t len, LSPString *string);
+LSPString lsp_message_add_string32(LSPMessageBase *message, String32 string);
 LSPString lsp_request_add_string(LSPRequest *request, const char *string);
 LSPString lsp_response_add_string(LSPResponse *response, const char *string);
 bool lsp_string_is_empty(LSPString string);
@@ -728,8 +731,6 @@ LSP *lsp_create(const char *root_dir, const char *command, u16 port, const char 
 // if this fails (i.e. if the LSP does not have workspace support), create a new LSP
 // with root directory `new_root_dir`.
 bool lsp_try_add_root_dir(LSP *lsp, const char *new_root_dir);
-// report that this document has changed
-void lsp_document_changed(LSP *lsp, const char *document, LSPRange range, String32 new_text);
 // is this path in the LSP's workspace folders?
 bool lsp_covers_path(LSP *lsp, const char *path);
 // get next message from server

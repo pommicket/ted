@@ -67,7 +67,7 @@ static LSPString lsp_message_add_json_string(LSPMessageBase *message, const JSON
 	json_string_get(json, string, dest, len + 1);
 	return ret;
 }
-static LSPString lsp_message_add_string32(LSPMessageBase *message, String32 string) {
+LSPString lsp_message_add_string32(LSPMessageBase *message, String32 string) {
 	LSPString ret = {0};
 	size_t len32 = string.len;
 	if (len32 == 0) {
@@ -438,7 +438,7 @@ static bool lsp_receive(LSP *lsp, size_t max_size) {
 	// kind of a hack. this is needed because arr_set_len zeroes the data.
 	arr_hdr_(lsp->received_data)->len = (u32)received_so_far;
 	lsp->received_data[received_so_far] = '\0';// null terminate
-	#if 0
+	#if LSP_SHOW_S2C
 	const int limit = 1000;
 	printf("%s%.*s%s%s\n",term_italics(stdout),limit,lsp->received_data,
 		strlen(lsp->received_data) > (size_t)limit ? "..." : "",
@@ -766,19 +766,6 @@ void lsp_free(LSP *lsp) {
 	free(lsp->configuration_to_send);
 	memset(lsp, 0, sizeof *lsp);
 	free(lsp);
-}
-
-void lsp_document_changed(LSP *lsp, const char *document, LSPRange range, String32 new_text) {
-	// @TODO(optimization, eventually): batch changes (using the contentChanges array)
-	LSPRequest request = {.type = LSP_REQUEST_DID_CHANGE};
-	LSPDocumentChangeEvent change = {
-		.range = range,
-		.text = lsp_message_add_string32(&request.base, new_text),
-	};
-	LSPRequestDidChange *c = &request.data.change;
-	c->document = lsp_document_id(lsp, document);
-	arr_add(c->changes, change);
-	lsp_send_request(lsp, &request);
 }
 
 int lsp_position_cmp(LSPPosition a, LSPPosition b) {

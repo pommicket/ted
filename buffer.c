@@ -1909,7 +1909,38 @@ static void buffer_send_lsp_did_change(LSP *lsp, TextBuffer *buffer, BufferPos p
 	range.start = buffer_pos_to_lsp_position(buffer, pos);
 	BufferPos pos_end = buffer_pos_advance(buffer, pos, nchars_deleted);
 	range.end = buffer_pos_to_lsp_position(buffer, pos_end);
-	lsp_document_changed(lsp, buffer->path, range, new_text);
+	const char *document = buffer->path;
+
+	if (lsp->capabilities.incremental_sync_support) {
+		LSPRequest request = {.type = LSP_REQUEST_DID_CHANGE};
+		LSPDocumentChangeEvent change = {
+			.range = range,
+			.use_range = true,
+			.text = lsp_message_add_string32(&request.base, new_text),
+		};
+		LSPRequestDidChange *c = &request.data.change;
+		c->document = lsp_document_id(lsp, document);
+		arr_add(c->changes, change);
+		lsp_send_request(lsp, &request);
+	} else {
+		// re-send the whole document
+		// needed for servers which don't have incremental sync support,
+		// such as godot (at time of writing)
+		// this isn't great performance-wise,
+		// but we can't just send it each frame because then some
+		// requests might have messed up buffer positions from the server's point of view.
+		LSPRequest request = {.type = LSP_REQUEST_DID_CHANGE};
+		size_t len = buffer_contents_utf8(buffer, NULL);
+		LSPDocumentChangeEvent change = {
+			.use_range = false
+		};
+		char *text = lsp_message_alloc_string(&request.base, len, &change.text);
+		buffer_contents_utf8(buffer, text);
+		LSPRequestDidChange *c = &request.data.change;
+		c->document = lsp_document_id(lsp, document);
+		arr_add(c->changes, change);
+		lsp_send_request(lsp, &request);
+	}
 }
 
 BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 str) {
@@ -1932,9 +1963,7 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 		// no text to insert
 		return pos;
 	}
-	
-	const u32 insertion_len = (u32)str.len;
-	
+
 	// create a copy of str. we need to do this to remove carriage returns and newlines in the case of line buffers
 	char32_t str_copy[256];
 	char32_t *str_alloc = NULL;
@@ -1968,10 +1997,7 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 			autocomplete_close(buffer->ted);
 	}
 
-
-	LSP *lsp = buffer_lsp(buffer);
-	if (lsp)
-		buffer_send_lsp_did_change(lsp, buffer, pos, 0, str);
+	const String32 str_start = str; // keep this around for later
 
 	if (buffer->store_undo_events) {
 		BufferEdit *last_edit = arr_lastp(buffer->undo_history);
@@ -2054,12 +2080,18 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 
 	BufferPos b = {.line = line_idx, .index = index};
 	free(str_alloc);
+
+	// we need to do this *after* making the change to the buffer
+	// because of how non-incremental syncing works.
+	LSP *lsp = buffer_lsp(buffer);
+	if (lsp)
+		buffer_send_lsp_did_change(lsp, buffer, pos, 0, str_start);
 	
 	const EditInfo info = {
 		.pos = pos,
 		.end = b,
 		.chars_deleted = 0,
-		.chars_inserted = insertion_len,
+		.chars_inserted = (u32)str_start.len,
 	};
 	// move diagnostics around as needed
 	arr_foreach_ptr(buffer->diagnostics, Diagnostic, d) {
@@ -2465,11 +2497,6 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 			autocomplete_close(buffer->ted);
 	}
 
-
-	LSP *lsp = buffer_lsp(buffer);
-	if (lsp)
-		buffer_send_lsp_did_change(lsp, buffer, pos, nchars, (String32){0});
-
 	if (buffer->store_undo_events) {
 		// we need to make sure the undo history keeps track of the edit.
 		// we will either combine it with the previous BufferEdit, or create a new
@@ -2580,6 +2607,12 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 	
 	// cursor position could have been invalidated by this edit
 	buffer_validate_cursor(buffer);
+
+	// we need to do this *after* making the change to the buffer
+	// because of how non-incremental syncing works.
+	LSP *lsp = buffer_lsp(buffer);
+	if (lsp)
+		buffer_send_lsp_did_change(lsp, buffer, pos, deletion_len, (String32){0});
 
 	buffer_lines_modified(buffer, line_idx, line_idx);
 	signature_help_retrigger(buffer->ted);

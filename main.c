@@ -1,6 +1,9 @@
 /*
 TODO:
-- figure out what's wrong with godot language server
+- figure out how to deal with godot language server being so slow
+  one comparatively solution is to wait x seconds before sending a batch of requests in the communication thread
+    (this gives us time to cancel the irrelevant requests before they get sent to the server,
+     and we can remove stale full-sync didChange requests)
 FUTURE FEATURES:
 - autodetect indentation (tabs vs spaces)
 - custom file/build command associations
