@@ -22,6 +22,9 @@
 #endif
 
 #if _WIN32
+// windows is stupid — we have to include winsock2.h first
+#include <winsock2.h>
+#include <ws2tcpip.h>
 #include <windows.h>
 #include <shlobj.h>
 #include <dbghelp.h>

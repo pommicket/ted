@@ -121,7 +121,7 @@ void build_start(Ted *ted) {
 		
 		Assoc associations[] = {
 		#if _WIN32
-			{"make.bat", "make.bat"},
+			{"make.bat", "cmd /c make.bat"},
 		#endif
 			{"Cargo.toml", "cargo build"},
 			{"Makefile", "make -j16"},

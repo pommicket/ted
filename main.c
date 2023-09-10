@@ -31,6 +31,7 @@ FUTURE FEATURES:
 #pragma comment(lib, "ole32.lib")
 #pragma comment(lib, "opengl32.lib")
 #pragma comment(lib, "shell32.lib")
+#pragma comment(lib, "ws2_32.lib")
 #endif
 
 
@@ -262,6 +263,10 @@ INT WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 		WideCharToMultiByte(CP_UTF8, 0, wide_arg, len, argv[i], bufsz - 1, NULL, NULL);
 	}
 	LocalFree(wide_argv);
+	{
+	    WSADATA wsaData = {0};
+	    WSAStartup(MAKEWORD(2, 2), &wsaData);
+	}
 	SetProcessDPIAware();
 	
 #else

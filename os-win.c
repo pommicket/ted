@@ -431,3 +431,107 @@ bool open_with_default_application(const char *path) {
 bool change_directory(const char *path) {
 	return _chdir(path) == 0;
 }
+
+struct Socket {
+	SOCKET sock;
+	char error[256];
+};
+
+Socket *socket_connect_tcp(const char *address, u16 port) {
+	Socket *s = calloc(1, sizeof *s);
+	if (!s) return NULL;
+	s->sock = INVALID_SOCKET;
+	if (!address) address = "127.0.0.1";
+	
+	
+	struct sockaddr_in addr = {
+		.sin_family = AF_INET,
+		.sin_port = htons(port),
+	};
+	if (inet_pton(AF_INET, address, &addr.sin_addr) != 1) {
+		strbuf_printf(s->error, "Invalid address");
+		return s;
+	}
+	
+	SOCKET sock = socket(AF_INET, SOCK_STREAM, 0);
+	if (sock == INVALID_SOCKET) {
+		strbuf_printf(s->error, "Couldn't create socket (error code %d)",
+			WSAGetLastError());
+		return s;
+	}
+	if (connect(sock, (SOCKADDR *)&addr, sizeof addr) != 0) {
+		strbuf_printf(s->error, "Couldn't connect to %s:%u (error code %d)",
+			address, port, WSAGetLastError());
+		closesocket(sock);
+		return s;
+	}
+	
+	u_long mode = 1; // non-blocking
+	ioctlsocket(sock, FIONBIO, &mode);
+	s->sock = sock;
+	return s;
+}
+const char *socket_get_error(Socket *s) {
+	return s->error;
+}
+
+long long socket_read(Socket *s, char *data, size_t size) {
+	if (size > INT_MAX) {
+		strbuf_printf(s->error, "Too much data to read.");
+		return -2;
+	}
+	size_t so_far = 0;
+	while (so_far < size) {
+		int bytes_read = recv(s->sock, data + so_far, (int)(size - so_far), 0);
+		if (bytes_read > 0) {
+			so_far += (size_t)bytes_read;
+		} else if (bytes_read == 0) {
+			return (long long)so_far;
+		} else {
+			int err = WSAGetLastError();
+			if (err == WSAEWOULDBLOCK) {
+				return so_far == 0 ? -1 : (long long)so_far;
+			} else if (err == WSAECONNRESET) {
+				return 0;
+			} else {
+				strbuf_printf(s->error, "recv failed (error code %d)", err);
+				return -2;
+			}
+		}
+	}
+	return (long long)size;
+}
+
+long long socket_write(Socket *s, const char *data, size_t size) {
+	if (size > INT_MAX) {
+		strbuf_printf(s->error, "too much data to write");
+		return -2;
+	}
+	size_t so_far = 0;
+	while (so_far < size) {
+		int bytes_written = send(s->sock, data + so_far, (int)(size - so_far), 0);
+		if (bytes_written > 0) {
+			so_far += (size_t)bytes_written;
+		} else {
+			int err = WSAGetLastError();
+			if (err == WSAEWOULDBLOCK) {
+				return (long long)so_far;
+			} else if (err == WSAEHOSTUNREACH || err == WSAECONNRESET) {
+				return -1;
+			} else {
+				strbuf_printf(s->error, "write failed (error code %d)", err);
+				return -2;
+			}
+		}
+	}
+	return (long long)size;
+}
+
+void socket_close(Socket **psocket) {
+	Socket *s = *psocket;
+	if (!s) return;
+	if (s->sock != INVALID_SOCKET)
+		closesocket(s->sock);
+	free(s);
+	*psocket = NULL;
+}

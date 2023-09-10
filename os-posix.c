@@ -458,6 +458,8 @@ Socket *socket_connect_tcp(const char *address, u16 port) {
 	if (connect(fd, &addr, sizeof addr) < 0) {
 		strbuf_printf(s->error, "couldn't connect to %s:%u (%s)",
 			address, port, strerror(errno));
+		close(fd);
+		return s;
 	}
 
 	set_nonblocking(fd);
@@ -492,5 +494,6 @@ void socket_close(Socket **psocket) {
 	if (!s) return;
 	if (s->fd > 0)
 		close(s->fd);
+	free(s);
 	*psocket = NULL;
 }

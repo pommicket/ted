@@ -18,7 +18,7 @@ static bool get_tags_dir(Ted *ted, bool error_if_does_not_exist) {
 		strbuf_cpy(ted->tags_dir, path);
 	}
 	if (error_if_does_not_exist)
-		ted_error(ted, "No tags file. Try running ctags.");
+		ted_flash_error_cursor(ted);
 	return false;
 }
 

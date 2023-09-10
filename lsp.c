@@ -395,7 +395,7 @@ static bool lsp_receive(LSP *lsp, size_t max_size) {
 		if (status != 0) {
 			bool not_found =
 			#if _WIN32
-				false // @TODO
+				false
 			#else
 				info.exit_code == 127
 			#endif
@@ -444,7 +444,7 @@ static bool lsp_receive(LSP *lsp, size_t max_size) {
 	lsp->received_data[received_so_far] = '\0';// null terminate
 	#if LSP_SHOW_S2C
 	const int limit = 1000;
-	printf("%s%.*s%s%s\n",term_italics(stdout),limit,lsp->received_data,
+	debug_println("%s%.*s%s%s",term_italics(stdout),limit,lsp->received_data,
 		strlen(lsp->received_data) > (size_t)limit ? "..." : "",
 		term_clear(stdout));
 	#endif
@@ -594,7 +594,6 @@ static int lsp_communication_thread(void *data) {
 	}
 	
 	lsp->exited = true;
-	
 	if (!lsp->process) {
 		// process already exited
 		return 0;
@@ -681,10 +680,8 @@ LSP *lsp_create(const LSPSetup *setup) {
 	lsp->port = port;
 	lsp->send_delay = setup->send_delay;
 
-	#if DEBUG
-		printf("Starting up LSP %p (ID %u) `%s` (port %u) in %s\n",
+	debug_println("Starting up LSP %p (ID %u) `%s` (port %u) in %s",
 			(void *)lsp, (unsigned)lsp->id, command ? command : "(no command)", port, root_dir);
-	#endif
 	
 	str_hash_table_create(&lsp->document_ids, sizeof(u32));
 	lsp->command = str_dup(command);
@@ -714,6 +711,7 @@ LSP *lsp_create(const LSPSetup *setup) {
 			#if _WIN32
 				if (strstr(error, " 2)")) {
 					if (lsp->log) fprintf(lsp->log, "Couldn't start LSP server %s: file not found.", command);
+					debug_println("error: %s", error);
 				} else
 			#endif
 				lsp_set_error(lsp, "Couldn't start LSP server: %s", error);
