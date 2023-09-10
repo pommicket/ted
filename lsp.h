@@ -922,4 +922,3 @@ void lsp_write_quit(void);
 #define LSP_SHOW_C2S 0
 
 #endif // LSP_INTERNAL
-

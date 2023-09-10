@@ -330,13 +330,6 @@ static void message_writer_write_and_free(LSP *lsp, JSONWriter *o) {
 	size_t header_size = strlen(header_str);
 	char *content = &builder.str[max_header_size - header_size];
 	memcpy(content, header_str, header_size);
-	
-	#if LSP_SHOW_C2S
-	const int limit = 1000;
-	debug_println("%s%.*s%s%s",term_italics(stdout),limit,content,
-		strlen(content) > (size_t)limit ? "..." : "",
-		term_clear(stdout));
-	#endif
 
 	if (lsp->log) {
 		fprintf(lsp->log, "LSP MESSAGE FROM CLIENT TO SERVER\n%s\n\n", content + header_size);
@@ -356,6 +349,13 @@ static void message_writer_write_and_free(LSP *lsp, JSONWriter *o) {
 	}
 
 	str_builder_free(&builder);
+	
+	#if LSP_SHOW_C2S
+	const int limit = 1000;
+	debug_println("%s%.*s%s%s",term_bold(stdout),limit,content,
+		strlen(content) > (size_t)limit ? "..." : "",
+		term_clear(stdout));
+	#endif
 }
 
 static void write_symbol_tag_support(JSONWriter *o) {

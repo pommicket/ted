@@ -1901,14 +1901,13 @@ void buffer_apply_lsp_text_edits(TextBuffer *buffer, const LSPResponse *response
 	free(edits);
 }
 
-static void buffer_send_lsp_did_change(LSP *lsp, TextBuffer *buffer, BufferPos pos,
-	u32 nchars_deleted, String32 new_text) {
+static void buffer_send_lsp_did_change(LSP *lsp, TextBuffer *buffer, LSPPosition pos,
+	LSPPosition end, String32 new_text) {
 	if (!buffer_is_named_file(buffer))
 		return; // this isn't a named buffer so we can't send a didChange request.
 	LSPRange range = {0};
-	range.start = buffer_pos_to_lsp_position(buffer, pos);
-	BufferPos pos_end = buffer_pos_advance(buffer, pos, nchars_deleted);
-	range.end = buffer_pos_to_lsp_position(buffer, pos_end);
+	range.start = pos;
+	range.end = end;
 	const char *document = buffer->path;
 
 	if (lsp_has_incremental_sync_support(lsp)) {
@@ -2084,9 +2083,10 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 	// we need to do this *after* making the change to the buffer
 	// because of how non-incremental syncing works.
 	LSP *lsp = buffer_lsp(buffer);
-	if (lsp)
-		buffer_send_lsp_did_change(lsp, buffer, pos, 0, str_start);
-	
+	if (lsp) {
+		LSPPosition lsp_pos = buffer_pos_to_lsp_position(buffer, pos);
+		buffer_send_lsp_did_change(lsp, buffer, lsp_pos, lsp_pos, str_start);
+	}
 	const EditInfo info = {
 		.pos = pos,
 		.end = b,
@@ -2565,6 +2565,7 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 	u32 index = pos.index;
 	Line *line = &buffer->lines[line_idx], *lines_end = &buffer->lines[buffer->nlines];
 	const BufferPos end_pos = buffer_pos_advance(buffer, pos, nchars);
+	const LSPPosition end_pos_lsp = buffer_pos_to_lsp_position(buffer, end_pos);
 
 	if (nchars + index > line->len) {
 		// delete rest of line
@@ -2617,9 +2618,11 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 	// we need to do this *after* making the change to the buffer
 	// because of how non-incremental syncing works.
 	LSP *lsp = buffer_lsp(buffer);
-	if (lsp)
-		buffer_send_lsp_did_change(lsp, buffer, pos, deletion_len, (String32){0});
-
+	if (lsp) {
+		LSPPosition pos_lsp = buffer_pos_to_lsp_position(buffer, pos);
+		buffer_send_lsp_did_change(lsp, buffer, pos_lsp, end_pos_lsp, (String32){0});
+	}
+	
 	buffer_lines_modified(buffer, line_idx, line_idx);
 	signature_help_retrigger(buffer->ted);
 	
