@@ -3380,7 +3380,7 @@ bool buffer_cursor_move_to_matching_bracket(TextBuffer *buffer) {
 void buffer_render(TextBuffer *buffer, Rect r) {
 	const Settings *settings = buffer_settings(buffer);
 	
-	buffer_lsp(buffer); // this will send didOpen/didClose if the buffer's LSP changed
+	LSP *lsp = buffer_lsp(buffer); // this will send didOpen/didClose if the buffer's LSP changed
 	
 	if (r.size.x < 1 || r.size.y < 1) {
 		// rectangle less than 1 pixel
@@ -3421,7 +3421,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 	float render_start_y = y1 - (float)(buffer->scroll_y - start_line) * char_height; // where the 1st line is rendered
 
 
-	if (!settings->show_diagnostics) {
+	if (!settings->show_diagnostics || !lsp) {
 		buffer_diagnostics_clear(buffer);
 	}
 
