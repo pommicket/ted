@@ -66,6 +66,8 @@ typedef uint32_t char32_t;
 #define static_assert_if_possible(cond)
 #endif
 
+#ifndef SHORT_FIXED_SIZE_TYPES
+#define SHORT_FIXED_SIZE_TYPES
 /// 8-bit unsigned integer
 typedef uint8_t  u8;
 /// 16-bit unsigned integer
@@ -74,6 +76,16 @@ typedef uint16_t u16;
 typedef uint32_t u32;
 /// 64-bit unsigned integer
 typedef uint64_t u64;
+
+/// 8-bit signed integer
+typedef int8_t  i8;
+/// 16-bit signed integer
+typedef int16_t i16;
+/// 32-bit signed integer
+typedef int32_t i32;
+/// 64-bit signed integer
+typedef int64_t i64;
+#endif // SHORT_FIXED_SIZE_TYPES
 
 /// maximum value of \ref u8
 #define U8_MAX  0xff
@@ -84,14 +96,6 @@ typedef uint64_t u64;
 /// maximum value of \ref u64
 #define U64_MAX 0xffffffffffffffff
 
-/// 8-bit signed integer
-typedef int8_t  i8;
-/// 16-bit signed integer
-typedef int16_t i16;
-/// 32-bit signed integer
-typedef int32_t i32;
-/// 64-bit signed integer
-typedef int64_t i64;
 
 /// minimum value of \ref i8
 #define I8_MIN ((i8)0x80)

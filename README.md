@@ -281,7 +281,7 @@ Then run `make.bat release`.
 
 To build the .msi file, you will need Visual Studio 2022, as well as the
 [Visual Studio Installer Projects extension](https://marketplace.visualstudio.com/items?itemName=VisualStudioClient.MicrosoftVisualStudio2022InstallerProjects).
-Then, open windows\_installer\\ted\\ted.sln, and build.
+Then, open windows\_installer\\ted.sln, and build.
 
 ## Version history
 
@@ -325,6 +325,7 @@ Then, open windows\_installer\\ted\\ted.sln, and build.
 <tr><td>2.5</td> <td>Rename symbol, document links, bug fixes</td> <td>2023 Aug 15</td></tr>
 <tr><td>2.5.1</td> <td>Bug fixes</td> <td>2023 Aug 26</td></tr>
 <tr><td>2.6</td> <td>LSP diagnostics, LSP over TCP, GDScript support, &amp; more</td> <td>2023 Sep 10</td></tr>
+<tr><td>2.6.1</td> <td>LSP-related bugfixes</td> <td>2023 Sep 14</td></tr>
 </table>
 
 ## License

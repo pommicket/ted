@@ -29,35 +29,37 @@ static const char *lsp_language_id(u64 lang) {
 
 typedef struct {
 	LSP *lsp;
-	StrBuilder builder;
+	StrBuilder *builder;
 	bool is_first;
+	size_t length_idx;
+	size_t content_start_idx;
 } JSONWriter;
 
-static JSONWriter json_writer_new(LSP *lsp) {
+static JSONWriter json_writer_new(LSP *lsp, StrBuilder *builder) {
 	return (JSONWriter){
 		.lsp = lsp,
-		.builder = str_builder_new(),
+		.builder = builder,
 		.is_first = true
 	};
 }
 
 static void write_obj_start(JSONWriter *o) {
-	str_builder_append(&o->builder, "{");
+	str_builder_append(o->builder, "{");
 	o->is_first = true;
 }
 
 static void write_obj_end(JSONWriter *o) {
-	str_builder_append(&o->builder, "}");
+	str_builder_append(o->builder, "}");
 	o->is_first = false;
 }
 
 static void write_arr_start(JSONWriter *o) {
-	str_builder_append(&o->builder, "[");
+	str_builder_append(o->builder, "[");
 	o->is_first = true;
 }
 
 static void write_arr_end(JSONWriter *o) {
-	str_builder_append(&o->builder, "]");
+	str_builder_append(o->builder, "]");
 	o->is_first = false;
 }
 
@@ -65,12 +67,12 @@ static void write_arr_elem(JSONWriter *o) {
 	if (o->is_first) {
 		o->is_first = false;
 	} else {
-		str_builder_append(&o->builder, ",");
+		str_builder_append(o->builder, ",");
 	}
 }
 
 static void write_escaped(JSONWriter *o, const char *string) {
-	StrBuilder *b = &o->builder;
+	StrBuilder *b = o->builder;
 	size_t output_index = str_builder_len(b);
 	size_t capacity = 2 * strlen(string) + 1;
 	// append a bunch of null bytes which will hold the escaped string
@@ -79,18 +81,18 @@ static void write_escaped(JSONWriter *o, const char *string) {
 	// do the escaping
 	size_t length = json_escape_to(out, capacity, string);
 	// shrink down to just the escaped text
-	str_builder_shrink(&o->builder, output_index + length);
+	str_builder_shrink(o->builder, output_index + length);
 }
 
 static void write_string(JSONWriter *o, const char *string) {
-	str_builder_append(&o->builder, "\"");
+	str_builder_append(o->builder, "\"");
 	write_escaped(o, string);
-	str_builder_append(&o->builder, "\"");
+	str_builder_append(o->builder, "\"");
 }
 
 static void write_key(JSONWriter *o, const char *key) {
 	// NOTE: no keys in the LSP spec need escaping.
-	str_builder_appendf(&o->builder, "%s\"%s\":", o->is_first ? "" : ",", key);
+	str_builder_appendf(o->builder, "%s\"%s\":", o->is_first ? "" : ",", key);
 	o->is_first = false;
 }
 
@@ -115,7 +117,7 @@ static void write_arr_elem_arr_start(JSONWriter *o) {
 }
 
 static void write_number(JSONWriter *o, double number) {
-	str_builder_appendf(&o->builder, "%g", number);
+	str_builder_appendf(o->builder, "%g", number);
 }
 
 static void write_key_number(JSONWriter *o, const char *key, double number) {
@@ -129,7 +131,7 @@ static void write_arr_elem_number(JSONWriter *o, double number) {
 }
 
 static void write_null(JSONWriter *o) {
-	str_builder_append(&o->builder, "null");
+	str_builder_append(o->builder, "null");
 }
 
 static void write_key_null(JSONWriter *o, const char *key) {
@@ -138,7 +140,7 @@ static void write_key_null(JSONWriter *o, const char *key) {
 }
 
 static void write_bool(JSONWriter *o, bool b) {
-	str_builder_append(&o->builder, b ? "true" : "false");
+	str_builder_append(o->builder, b ? "true" : "false");
 }
 
 static void write_key_bool(JSONWriter *o, const char *key, bool b) {
@@ -163,10 +165,10 @@ static void write_arr_elem_string(JSONWriter *o, const char *s) {
 
 static void write_file_uri(JSONWriter *o, LSPDocumentID document) {
 	const char *path = lsp_document_path(o->lsp, document);
-	str_builder_append(&o->builder, "\"file://");
+	str_builder_append(o->builder, "\"file://");
 	#if _WIN32
 		// why the fuck is there another slash it makes no goddamn sense
-		str_builder_append(&o->builder, "/");
+		str_builder_append(o->builder, "/");
 	#endif
 	for (const char *p = path; *p; ++p) {
 		char c = *p;
@@ -187,12 +189,12 @@ static void write_file_uri(JSONWriter *o, LSPDocumentID document) {
 			#endif
 			);
 		if (escaped) {
-			str_builder_appendf(&o->builder, "%%%02x", (uint8_t)c);
+			str_builder_appendf(o->builder, "%%%02x", (uint8_t)c);
 		} else {
-			str_builder_appendf(&o->builder, "%c", c);
+			str_builder_appendf(o->builder, "%c", c);
 		}
 	}
-	str_builder_append(&o->builder, "\"");
+	str_builder_append(o->builder, "\"");
 }
 
 static void write_key_file_uri(JSONWriter *o, const char *key, LSPDocumentID document) {
@@ -311,51 +313,33 @@ static const char *lsp_request_method(LSPRequest *request) {
 	return "$/ignore";
 }
 
-static const size_t max_header_size = 64;
-static JSONWriter message_writer_new(LSP *lsp) {
-	JSONWriter writer = json_writer_new(lsp);
-	// this is where our header will go
-	str_builder_append_null(&writer.builder, max_header_size);
+static JSONWriter message_writer_new(LSP *lsp, StrBuilder *builder) {
+	JSONWriter writer = json_writer_new(lsp, builder);
+	str_builder_append(builder, "Content-Length: ");
+	writer.length_idx = str_builder_len(builder);
+	str_builder_append(builder, "XXXXXXXXXX\r\n\r\n");
+	writer.content_start_idx = str_builder_len(builder);
 	return writer;	
 }
 
-static void message_writer_write_and_free(LSP *lsp, JSONWriter *o) {
-	StrBuilder builder = o->builder;
-	
-	// this is kind of hacky but it lets us send the whole request with one write call.
-	// probably not *actually* needed. i thought it would help fix an error but it didn't.
-	size_t content_length = str_builder_len(&builder) - max_header_size;
-	char header_str[64];
-	sprintf(header_str, "Content-Length: %zu\r\n\r\n", content_length);
-	size_t header_size = strlen(header_str);
-	char *content = &builder.str[max_header_size - header_size];
-	memcpy(content, header_str, header_size);
-
-	if (lsp->log) {
-		fprintf(lsp->log, "LSP MESSAGE FROM CLIENT TO SERVER\n%s\n\n", content + header_size);
-	}
-	
-	long long bytes_written = lsp->socket
-		? socket_write(lsp->socket, content, strlen(content))
-		: process_write(lsp->process, content, strlen(content));
-
-	if (bytes_written == -1) {
-		// we'll handle this properly next time we do a read.
-		if (lsp->log) fprintf(lsp->log, "LSP server closed connection unexpectedly\n");
-	} else if (bytes_written < 0) {
-		if (lsp->log) fprintf(lsp->log, "Error writing to LSP server (errno = %d)\n", errno);
-	} else {
-		assert((size_t)bytes_written == strlen(content));
-	}
-
-	str_builder_free(&builder);
-	
-	#if LSP_SHOW_C2S
-	const int limit = 1000;
-	debug_println("%s%.*s%s%s",term_bold(stdout),limit,content,
-		strlen(content) > (size_t)limit ? "..." : "",
-		term_clear(stdout));
-	#endif
+static void message_writer_finish(JSONWriter *o) {
+	StrBuilder *builder = o->builder;
+	char content_len_str[32] = {0};
+	size_t content_len = str_builder_len(builder) - o->content_start_idx;
+	if (content_len > 9999999999)
+		return; // fuckin what
+	strbuf_printf(content_len_str, "%zu", content_len);
+	assert(strlen(content_len_str) <= 10);
+	char *content_len_out = &builder->str[o->length_idx];
+	memcpy(content_len_out, content_len_str, strlen(content_len_str));
+	// slide everything over
+	// ideally, we would just use %10zu,
+	// but rust-analyzer rejects extra whitespace
+	// (even though its legal in HTTP)
+	memmove(content_len_out + strlen(content_len_str),
+		content_len_out + 10,
+		4 /* \r\n\r\n */ + content_len);
+	str_builder_shrink(builder, str_builder_len(builder) - (10 - strlen(content_len_str)));
 }
 
 static void write_symbol_tag_support(JSONWriter *o) {
@@ -395,8 +379,8 @@ static void write_symbol_kind_support(JSONWriter *o) {
 
 // NOTE: don't call lsp_request_free after calling this function.
 //  I will do it for you.
-void write_request(LSP *lsp, LSPRequest *request) {
-	JSONWriter writer = message_writer_new(lsp);
+void write_request(LSP *lsp, LSPRequest *request, StrBuilder *builder) {
+	JSONWriter writer = message_writer_new(lsp, builder);
 	JSONWriter *o = &writer;
 	
 	write_obj_start(o);
@@ -658,7 +642,7 @@ void write_request(LSP *lsp, LSPRequest *request) {
 		const LSPRequestConfiguration *config = &request->data.configuration;
 		write_key_obj_start(o, "params");
 			write_key(o, "settings");
-			str_builder_append(&o->builder, lsp_request_string(request, config->settings));
+			str_builder_append(o->builder, lsp_request_string(request, config->settings));
 		write_obj_end(o);
 		} break;
 	case LSP_REQUEST_FORMATTING:
@@ -681,7 +665,7 @@ void write_request(LSP *lsp, LSPRequest *request) {
 	
 	write_obj_end(o);
 	
-	message_writer_write_and_free(lsp, o);
+	message_writer_finish(o);
 	
 	if (request->id) {
 		SDL_LockMutex(lsp->messages_mutex);
@@ -694,9 +678,9 @@ void write_request(LSP *lsp, LSPRequest *request) {
 
 // NOTE: don't call lsp_response_free after calling this function.
 //  I will do it for you.
-static void write_response(LSP *lsp, LSPResponse *response) {
+static void write_response(LSP *lsp, LSPResponse *response, StrBuilder *builder) {
 	
-	JSONWriter writer = message_writer_new(lsp);
+	JSONWriter writer = message_writer_new(lsp, builder);
 	JSONWriter *o = &writer;
 	LSPRequest *request = &response->request;
 	
@@ -724,17 +708,17 @@ static void write_response(LSP *lsp, LSPResponse *response) {
 		}
 	write_obj_end(o);
 	
-	message_writer_write_and_free(lsp, o);
+	message_writer_finish(o);
 	lsp_response_free(response);
 }
 
-void write_message(LSP *lsp, LSPMessage *message) {
+void write_message(LSP *lsp, LSPMessage *message, StrBuilder *builder) {
 	switch (message->type) {
 	case LSP_REQUEST:
-		write_request(lsp, &message->request);
+		write_request(lsp, &message->request, builder);
 		break;
 	case LSP_RESPONSE:
-		write_response(lsp, &message->response);
+		write_response(lsp, &message->response, builder);
 		break;
 	}
 }

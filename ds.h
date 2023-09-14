@@ -28,9 +28,20 @@ IMPORTANT NOTE: If you are using this with structures containing `long double`s,
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
+#include <stddef.h>
 
-typedef uint32_t u32;
-typedef uint8_t u8;
+#ifndef SHORT_FIXED_SIZE_TYPES
+	typedef uint8_t  u8;
+	typedef uint16_t u16;
+	typedef uint32_t u32;
+	typedef uint64_t u64;
+	typedef int8_t  i8;
+	typedef int16_t i16;
+	typedef int32_t i32;
+	typedef int64_t i64;
+	#define SHORT_FIXED_SIZE_TYPES
+#endif
 
 typedef union {
 	long num;
@@ -407,7 +418,7 @@ static void str_builder_append_null(StrBuilder *builder, size_t n) {
 	arr_set_len(builder->str, arr_len(builder->str) + n);
 }
 
-static u32 str_builder_len(StrBuilder *builder) {
+static u32 str_builder_len(const StrBuilder *builder) {
 	assert(builder->str);
 	return arr_len(builder->str) - 1;
 }

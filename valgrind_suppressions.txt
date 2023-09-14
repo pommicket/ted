@@ -73,7 +73,7 @@
 {
    nvidia_driver
    Memcheck:Leak
-   match-leak-kinds: reachable
+   match-leak-kinds: all
    ...
    obj:/usr/lib/x86_64-linux-gnu/libnvidia-glcore.so.*
    ...
@@ -87,16 +87,8 @@
 {
    <insert_a_suppression_name_here>
    Memcheck:Leak
-   match-leak-kinds: reachable
-   fun:realloc
-   obj:/usr/lib/x86_64-linux-gnu/libdbus*
+   match-leak-kinds: all
    ...
-}
-{
-   <insert_a_suppression_name_here>
-   Memcheck:Leak
-   match-leak-kinds: reachable
-   fun:malloc
    obj:/usr/lib/x86_64-linux-gnu/libdbus*
    ...
 }
@@ -127,7 +119,7 @@
 {
    <insert_a_suppression_name_here>
    Memcheck:Leak
-   match-leak-kinds: reachable
+   match-leak-kinds: all
    ...
    fun:_dl_catch_exception
    ...
@@ -135,7 +127,7 @@
 {
    <insert_a_suppression_name_here>
    Memcheck:Leak
-   match-leak-kinds: reachable
+   match-leak-kinds: all
    ...
    fun:_dl_init
 }

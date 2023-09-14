@@ -483,6 +483,42 @@ static bool lsp_receive(LSP *lsp, size_t max_size) {
 	return true;
 }
 
+/// send string to LSP
+static void lsp_send_string(LSP *lsp, const char *str, size_t len) {
+	if (len == 0) {
+		return;
+	}
+	const long long bytes_written = lsp->socket
+		? socket_write(lsp->socket, str, len)
+		: process_write(lsp->process, str, len);
+	if (bytes_written == -1) {
+		// we'll handle this properly next time we do a read.
+		if (lsp->log) fprintf(lsp->log, "LSP server closed connection unexpectedly\n");
+	} else if (bytes_written < 0) {
+		if (lsp->log) fprintf(lsp->log, "Error writing to LSP server (errno = %d)\n", errno);
+	} else {
+		assert((size_t)bytes_written == len);
+	}
+	
+	if (lsp->log) {
+		fprintf(lsp->log, "LSP CLIENT TO SERVER\n%.*s\n\n", (int)len, str);
+	}
+	#if LSP_SHOW_C2S
+	const int limit = (int)min_u64(1000, len);
+	debug_println("%s%.*s%s%s",term_bold(stdout),limit,str,
+		len > (size_t)limit ? "..." : "",
+		term_clear(stdout));
+	#endif
+
+}
+
+void lsp_send_request_direct(LSP *lsp, LSPRequest *request) {
+	StrBuilder b = str_builder_new();
+	write_request(lsp, request, &b);
+	lsp_send_string(lsp, b.str, str_builder_len(&b));
+	str_builder_free(&b);
+}
+
 /// send requests.
 ///
 /// returns `false` if we should quit.
@@ -494,22 +530,28 @@ static bool lsp_send(LSP *lsp) {
 	
 	LSPMessage *messages = NULL;
 	SDL_LockMutex(lsp->messages_mutex);
-	size_t n_messages = arr_len(lsp->messages_client2server);
-	messages = calloc(n_messages, sizeof *messages);
-	memcpy(messages, lsp->messages_client2server, n_messages * sizeof *messages);
-	
-	#if __GNUC__ && !__clang__
-	#pragma GCC diagnostic push
-	// i don't know why GCC is giving me this. some compiler bug.
-	#pragma GCC diagnostic ignored "-Wfree-nonheap-object"
-	#endif
-	arr_clear(lsp->messages_client2server);
-	#if __GNUC__ && !__clang__
-	#pragma GCC diagnostic pop
-	#endif
-	
+		size_t n_messages = arr_len(lsp->messages_client2server);
+		if (n_messages) {
+			messages = calloc(n_messages, sizeof *messages);
+			memcpy(messages, lsp->messages_client2server, n_messages * sizeof *messages);
+		}
+		#if __GNUC__ && !__clang__
+		#pragma GCC diagnostic push
+		// i don't know why GCC is giving me this. some compiler bug.
+		#pragma GCC diagnostic ignored "-Wfree-nonheap-object"
+		#endif
+		arr_clear(lsp->messages_client2server);
+		#if __GNUC__ && !__clang__
+		#pragma GCC diagnostic pop
+		#endif
 	SDL_UnlockMutex(lsp->messages_mutex);
 
+	if (!messages) {
+		// nothing to do
+		return true;
+	}
+
+	StrBuilder builder = str_builder_new();
 	bool alive = true;
 	for (size_t i = 0; i < n_messages; ++i) {
 		LSPMessage *m = &messages[i];
@@ -538,7 +580,7 @@ static bool lsp_send(LSP *lsp) {
 		}
 
 		if (send) {
-			write_message(lsp, m);
+			write_message(lsp, m, &builder);
 		} else {
 			lsp_message_free(m);
 		}
@@ -547,7 +589,8 @@ static bool lsp_send(LSP *lsp) {
 			alive = false;
 		}
 	}
-
+	lsp_send_string(lsp, builder.str, str_builder_len(&builder));
+	str_builder_free(&builder);
 	free(messages);
 	return alive;
 }
@@ -571,25 +614,15 @@ static int lsp_communication_thread(void *data) {
 		.type = LSP_REQUEST_INITIALIZE
 	};
 	initialize.id = get_request_id();
-	write_request(lsp, &initialize);
+	lsp_send_request_direct(lsp, &initialize);
 	
-	const double send_delay = lsp->send_delay;
-	double last_send = -DBL_MAX;
+	const u32 send_delay_ms = max_u32(16, (u32)(lsp->send_delay * 1000));
 	while (1) {
-		bool send = true;
-		if (send_delay > 0) {
-			double t = time_get_seconds();
-			if (t - last_send > send_delay) {
-				last_send = t;
-			} else {
-				send = false;
-			}
-		}
-		if (send && !lsp_send(lsp))
+		if (!lsp_send(lsp))
 			break;
 		if (!lsp_receive(lsp, (size_t)10<<20))
 			break;
-		if (SDL_SemWaitTimeout(lsp->quit_sem, 5) == 0)
+		if (SDL_SemWaitTimeout(lsp->quit_sem, send_delay_ms) == 0)
 			break;	
 	}
 	
@@ -611,8 +644,13 @@ static int lsp_communication_thread(void *data) {
 		// just spam these things
 		// we're supposed to be nice and wait for the shutdown
 		// response, but who gives a fuck
-		write_request(lsp, &shutdown);
-		write_request(lsp, &exit);
+		{
+			StrBuilder b = str_builder_new();
+			write_request(lsp, &shutdown, &b);
+			write_request(lsp, &exit, &b);
+			lsp_send_string(lsp, b.str, str_builder_len(&b));
+			str_builder_free(&b);
+		}
 	}
 	return 0;
 }

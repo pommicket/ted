@@ -3471,7 +3471,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 					line_number_color = alt_line_number_color;
 				}
 				Rect rect = rect4(x1, y, diagnostic_x2, y + char_height);
-				buffer_clip_rect(buffer, &rect);
+				rect_clip_to_rect(&rect, rect4(x1, y1, x2, y2));
 				gl_geometry_rect(
 					rect,
 					color & 0xffffff7f

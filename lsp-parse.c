@@ -1141,7 +1141,7 @@ void process_message(LSP *lsp, JSON *json) {
 						.type = LSP_REQUEST_INITIALIZED,
 						.data = {{0}},
 					};
-					write_request(lsp, &initialized);
+					lsp_send_request_direct(lsp, &initialized);
 					// we can now send requests which have nothing to do with initialization
 					lsp->initialized = true;
 					if (lsp->configuration_to_send) {

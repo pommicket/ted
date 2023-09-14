@@ -399,6 +399,7 @@ void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *response) {
 			
 			// only show phantom if there is exactly 1 possible completion.
 			if (ncandidates == 1) {
+				free(ac->phantom);
 				ac->phantom = str_dup(candidate);
 			} else {
 				autocomplete_clear_phantom(ac);
@@ -429,6 +430,7 @@ void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *response) {
 	}
 	if (ac->last_request_phantom) {
 		assert(ncompletions == 1);
+		free(ac->phantom);
 		ac->phantom = str_dup(ac->completions[0].text);
 		autocomplete_clear_completions(ac);
 		return;

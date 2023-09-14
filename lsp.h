@@ -868,8 +868,11 @@ typedef struct {
 
 
 void process_message(LSP *lsp, JSON *json);
-void write_request(LSP *lsp, LSPRequest *request);
-void write_message(LSP *lsp, LSPMessage *message);
+/// write request to string builder
+void write_request(LSP *lsp, LSPRequest *request, StrBuilder *builder);
+void write_message(LSP *lsp, LSPMessage *message, StrBuilder *builder);
+/// send request without any kind of batching. don't use this often.
+void lsp_send_request_direct(LSP *lsp, LSPRequest *request);
 void lsp_request_free(LSPRequest *r);
 void lsp_response_free(LSPResponse *r);
 
