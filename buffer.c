@@ -2078,7 +2078,6 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 	buffer_lines_modified(buffer, pos.line, line_idx);
 
 	BufferPos b = {.line = line_idx, .index = index};
-	free(str_alloc);
 
 	// we need to do this *after* making the change to the buffer
 	// because of how non-incremental syncing works.
@@ -2103,6 +2102,7 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 		n->fn(n->context, buffer, &info);
 	}
 	
+	free(str_alloc);
 	return b;
 }
 
