@@ -273,15 +273,14 @@ sudo apt install clang libsdl2-dev cmake imagemagick
 Then run `make -j8 release` to build or `sudo make install -j8` to build and install.
 You can also run `make -j8 ted.deb` to build the .deb installer.
 
-On Windows (64-bit), you will need to install Microsoft Visual Studio, then find and add vcvarsall.bat to your PATH.
+On Windows, install Microsoft Visual Studio 2022, then find and add vcvarsall.bat to your PATH
+(most likely lives at `C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build`).
+Also, install the [Visual Studio Installer Projects extension](https://marketplace.visualstudio.com/items?itemName=VisualStudioClient.MicrosoftVisualStudio2022InstallerProjects)
+(needed to build the .msi installer).
 Next you will need the SDL2 VC development libraries: https://www.libsdl.org/download-2.0.php  
 Extract the zip, copy SDL2-2.x.y into the ted directory, and rename it to SDL2. Also copy SDL2\\lib\\x64\\SDL2.dll
 to the ted directory.
 Then run `make.bat release`.
-
-To build the .msi file, you will need Visual Studio 2022, as well as the
-[Visual Studio Installer Projects extension](https://marketplace.visualstudio.com/items?itemName=VisualStudioClient.MicrosoftVisualStudio2022InstallerProjects).
-Then, open windows\_installer\\ted.sln, and build.
 
 ## Version history
 

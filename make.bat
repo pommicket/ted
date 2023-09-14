@@ -21,6 +21,10 @@ if _%1 == _ (
 	copy /y ted.exe ..
 	popd
 )
-if _%1 == _release cl main.c ted.res /O2 /wd4702 %C_FLAGS% /Fe:ted
+if _%1 == _release (
+	cl main.c ted.res /O2 /wd4702 %C_FLAGS% /Fe:ted
+	devenv windows_installer\ted\ted.vdproj /build "Release|Default"
+	copy /y windows_installer\ted\Release\ted.msi
+)
 if _%1 == _release_with_debug_info cl main.c ted.res /DEBUG /Zi /O2 /wd4702 %C_FLAGS% /Fe:ted
 if _%1 == _profile cl main.c ted.res /O2 /wd4702 /DPROFILE %C_FLAGS% /Fe:ted

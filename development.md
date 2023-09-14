@@ -144,5 +144,4 @@ When releasing a new version of `ted`:
 - Run `make ted.deb` on Debian/Ubuntu.
 - Run `make.bat release` on Windows.
 - Run `python3 update-windows-installer.py`.
-- Build `ted.msi`.
 - Create a new release on GitHub with `ted.deb` and `ted.msi`.
