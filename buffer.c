@@ -3470,7 +3470,8 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 					// change color so that line number is still visible
 					line_number_color = alt_line_number_color;
 				}
-				const Rect rect = rect4(x1, y, diagnostic_x2, y + char_height);
+				Rect rect = rect4(x1, y, diagnostic_x2, y + char_height);
+				buffer_clip_rect(buffer, &rect);
 				gl_geometry_rect(
 					rect,
 					color & 0xffffff7f
