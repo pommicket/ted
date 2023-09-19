@@ -401,24 +401,6 @@ static void buffer_validate_line(TextBuffer *buffer, u32 *line) {
 		*line = buffer->nlines - 1;
 }
 
-// update *pos, given that nchars characters were deleted at del_pos.
-static void buffer_pos_handle_deleted_chars(BufferPos *pos, BufferPos del_pos, u32 nchars) {
-	if (pos->line != del_pos.line) return;
-	
-	if (pos->index >= del_pos.index + nchars) {
-		pos->index -= nchars;
-	} else if (pos->index >= del_pos.index) {
-		pos->index = del_pos.index;
-	}
-}
-static void buffer_pos_handle_inserted_chars(BufferPos *pos, BufferPos ins_pos, u32 nchars) {
-	if (pos->line != ins_pos.line) return;
-	
-	if (pos->index >= ins_pos.index) {
-		pos->index += nchars;
-	}
-}
-
 bool buffer_pos_valid(TextBuffer *buffer, BufferPos p) {
 	return p.line < buffer->nlines && p.index <= buffer->lines[p.line].len;
 }
@@ -1418,8 +1400,10 @@ bool buffer_pos_move_according_to_edit(BufferPos *pos, const EditInfo *edit) {
 		}
 		pos->line += edit->end.line - edit->pos.line;
 	} else {
-		if (buffer_pos_cmp(*pos, edit->end) < 0)
+		if (buffer_pos_cmp(*pos, edit->end) < 0) {
+			*pos = edit->pos;
 			return false;
+		}
 		if (pos->line == edit->end.line)
 			pos->index += edit->pos.index - edit->end.index;
 		pos->line -= edit->end.line - edit->pos.line;
@@ -2046,8 +2030,6 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 		u32 new_len = old_len + text_line_len;
 		if (new_len > old_len) { // handles both overflow and empty text lines
 			if (buffer_line_set_len(buffer, line, new_len)) {
-				buffer_pos_handle_inserted_chars(&buffer->cursor_pos,    (BufferPos){line_idx, index}, text_line_len);
-				buffer_pos_handle_inserted_chars(&buffer->selection_pos, (BufferPos){line_idx, index}, text_line_len);
 				// make space for text
 				memmove(line->str + index + (new_len - old_len),
 					line->str + index,
@@ -2092,6 +2074,14 @@ BufferPos buffer_insert_text_at_pos(TextBuffer *buffer, BufferPos pos, String32 
 		.chars_deleted = 0,
 		.chars_inserted = (u32)str_start.len,
 	};
+
+	// cursor pos could've been invalidated by this edit
+	buffer_pos_move_according_to_edit(&buffer->cursor_pos, &info);
+	buffer_pos_move_according_to_edit(&buffer->selection_pos, &info);
+	// just in case
+	buffer_pos_validate(buffer, &buffer->cursor_pos);
+	buffer_pos_validate(buffer, &buffer->selection_pos);
+
 	// move diagnostics around as needed
 	arr_foreach_ptr(buffer->diagnostics, Diagnostic, d) {
 		buffer_pos_move_according_to_edit(&d->pos, &info);
@@ -2598,8 +2588,6 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 		}
 	} else {
 		// just delete characters from this line
-		buffer_pos_handle_deleted_chars(&buffer->cursor_pos, pos, nchars);
-		buffer_pos_handle_deleted_chars(&buffer->selection_pos, pos, nchars);
 		memmove(line->str + index, line->str + index + nchars, (size_t)(line->len - (nchars + index)) * sizeof(char32_t));
 		line->len -= nchars;
 	}
@@ -2614,7 +2602,11 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 	};
 	// cursor position could have been invalidated by this edit
 	buffer_pos_move_according_to_edit(&buffer->cursor_pos, &info);
-
+	buffer_pos_move_according_to_edit(&buffer->selection_pos, &info);
+	// just in case
+	buffer_pos_validate(buffer, &buffer->cursor_pos);
+	buffer_pos_validate(buffer, &buffer->selection_pos);
+	
 	// we need to do this *after* making the change to the buffer
 	// because of how non-incremental syncing works.
 	LSP *lsp = buffer_lsp(buffer);

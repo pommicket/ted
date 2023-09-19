@@ -12,6 +12,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 static bool unicode_is_start_of_code_point(uint8_t byte) {
 	// see https://en.wikipedia.org/wiki/UTF-8#Encoding
@@ -228,7 +229,7 @@ static size_t unicode_utf16_to_utf8_offset(const char *str, size_t utf16_offset)
 }
 
 static bool unicode_is_valid_utf8(const char *cstr) {
-	char32_t c = 0;
+	uint32_t c = 0;
 	while (*cstr) {
 		size_t n = unicode_utf8_to_utf32(&c, cstr, 4);
 		if (n >= (size_t)-2)
