@@ -642,15 +642,13 @@ static int config_part_qsort_cmp(const void *av, const void *bv) {
 
 static char *config_read_string(Ted *ted, ConfigReader *cfg, char **ptext) {
 	char *p;
-	int backslashes = 0;
 	u32 start_line = cfg->line_number;
 	char delimiter = **ptext;
 	char *start = *ptext + 1;
 	char *str = NULL;
-	for (p = start; ; ++p) {
+	for (p = start; *p != delimiter; ++p) {
 		switch (*p) {
 		case '\\':
-			++backslashes;
 			++p;
 			switch (*p) {
 			case '\\':
@@ -686,8 +684,6 @@ static char *config_read_string(Ted *ted, ConfigReader *cfg, char **ptext) {
 			arr_clear(str);
 			return NULL;
 		}
-		if (*p == delimiter)
-			break;
 		arr_add(str, *p);
 	}
 	
