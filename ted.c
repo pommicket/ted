@@ -39,16 +39,31 @@ static void ted_vset_message(Ted *ted, MessageType type, const char *fmt, va_lis
 	vsnprintf(message, sizeof message - 1, fmt, args);
 	
 	// output error to log file
-	char tstr[256];
-	time_t t = time(NULL);
-	struct tm *tm = localtime(&t);
-	strftime(tstr, sizeof tstr, "%Y-%m-%d %H:%M:%S", tm);
-	ted_log(ted, "[ERROR %s] %s\n", tstr, message);
+	const char *type_str = "";
+	switch (type) {
+	case MESSAGE_ERROR:
+		type_str = "ERROR";
+		break;
+	case MESSAGE_WARNING:
+		type_str = "WARNING";
+		break;
+	case MESSAGE_INFO:
+		type_str = "INFO";
+		break;
+	}
+	ted_log(ted, "%s: %s\n", type_str, message);
 	
 	if (type >= ted->message_type) {
 		ted->message_type = type;
 		strbuf_cpy(ted->message, message);
 	}
+}
+
+void ted_update_time(Ted *ted) {
+	time_t t = time(NULL);
+	struct tm *tm = localtime(&t);
+	strftime(ted->frame_time_string, sizeof ted->frame_time_string, "%Y-%m-%d %H:%M:%S", tm);
+	ted->frame_time = time_get_seconds();
 }
 
 TextBuffer *ted_active_buffer(Ted *ted) {
@@ -146,8 +161,10 @@ void ted_log(Ted *ted, const char *fmt, ...) {
 	
 	va_list args;
 	va_start(args, fmt);
+	fprintf(ted->log, "[pid %d, %s] ", ted->pid, ted->frame_time_string);
 	vfprintf(ted->log, fmt, args);
 	va_end(args);
+	fflush(ted->log);
 }
 
 
@@ -796,7 +813,6 @@ static void mark_node_reachable(Ted *ted, Node *node, bool *reachable) {
 	if (i < 0) return;
 	if (reachable[i]) {
 		ted_error(ted, "Node %d reachable in 2 different ways\nThis should never happen.", i);
-		ted_log(ted, "Node %d reachable in 2 different ways\n", i);
 		node_close(ted, node);
 		return;
 	}
@@ -814,7 +830,6 @@ void ted_check_for_node_problems(Ted *ted) {
 	for (u32 i = 0; i < arr_len(ted->nodes); ++i) {
 		if (!reachable[i]) {
 			ted_error(ted, "ORPHANED NODE %u\nThis should never happen.", i);
-			ted_log(ted, "ORPHANED NODE %u\n", i);
 			node_close(ted, ted->nodes[i]);
 			--i;
 		}

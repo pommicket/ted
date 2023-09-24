@@ -265,6 +265,8 @@ struct Ted {
 	LSP *lsps[TED_LSP_MAX + 1];
 	/// current time (see time_get_seconds), as of the start of this frame
 	double frame_time;
+	/// current time as a human readable string (used for logs)
+	char frame_time_string[64];
 	
 	Macro *macros;
 	Macro *recording_macro;
@@ -345,6 +347,8 @@ struct Ted {
 	Usages *usages;
 	RenameSymbol *rename_symbol;
 	Formatting *formatting;
+	/// process ID
+	int pid;
 	
 	FILE *log;
 	
@@ -708,6 +712,8 @@ void syntax_quit(void);
 SymbolInfo *tags_get_symbols(Ted *ted);
 
 // === ted.c ===
+/// update `ted->frame_time`
+void ted_update_time(Ted *ted);
 /// set ted's active buffer to something nice
 void ted_reset_active_buffer(Ted *ted);
 /// set ted's error message to the buffer's error.

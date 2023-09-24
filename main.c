@@ -350,6 +350,8 @@ int main(int argc, char **argv) {
 		die("Not enough memory available to run ted.");
 	}
 	ted->last_save_time = -1e50;
+	ted->pid = process_get_id();
+	ted_update_time(ted);
 	
 	// make sure signal handler has access to ted.
 	error_signal_handler_ted = ted;
@@ -395,7 +397,6 @@ int main(int argc, char **argv) {
 
 	{
 		// open log file
-		FILE *log = NULL;
 		char log_filename[TED_PATH_MAX];
 		char log1_filename[TED_PATH_MAX];
 		strbuf_printf(log_filename, "%s/log.txt", ted->local_data_dir);
@@ -404,10 +405,8 @@ int main(int argc, char **argv) {
 			remove(log1_filename);
 			rename(log_filename, log1_filename);
 		}
-		log = fopen(log_filename, "a");
-		setbuf(log, NULL);
-		fprintf(log, "---- (starting ted, pid = %d) ----\n", process_get_id());
-		ted->log = log;
+		ted->log = fopen(log_filename, "a");
+		ted_log(ted, "starting ted\n");
 	}
 
 	{ // get current working directory
@@ -608,8 +607,8 @@ int main(int argc, char **argv) {
 	double scroll_wheel_text_size_change = 0.0;
 	
 	while (!ted->quit) {
-		double frame_start = time_get_seconds();
-		ted->frame_time = frame_start;
+		ted_update_time(ted);
+		double frame_start = ted->frame_time;
 
 		SDL_PumpEvents();
 		u32 key_modifier = ted_get_key_modifier(ted);		
@@ -906,7 +905,10 @@ int main(int argc, char **argv) {
 				case LSP_RESPONSE: {
 					LSPResponse *r = &message.response;
 					if (!lsp_string_is_empty(r->error)) {
-						ted_error(ted, "LSP error: %s", lsp_response_string(r, r->error));
+						ted_log(ted, "LSP error: %s\n", lsp_response_string(r, r->error));
+						// this is a bit spammy
+						// sometimes clang is just like "this request was cancelled cuz the cursor moved"
+						//ted_error(ted, "LSP error: %s", lsp_response_string(r, r->error));
 					} else {
 						// it's important that we send error responses here too.
 						// we don't want to be waiting around for a response that's never coming.
