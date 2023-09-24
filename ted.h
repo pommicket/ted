@@ -22,7 +22,7 @@ extern "C" {
 #include "command.h"
 
 /// Version number
-#define TED_VERSION "2.6.1"
+#define TED_VERSION "2.6.2"
 /// Maximum path size ted handles.
 #define TED_PATH_MAX 1024
 /// Config filename

@@ -51,6 +51,7 @@ int64_t fs_file_size(const char *path) {
 		size = large.QuadPart;
 	}
 	CloseHandle(file);
+	return size;
 }
 
 FsDirectoryEntry **fs_list_directory(const char *dirname) {
