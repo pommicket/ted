@@ -41,6 +41,14 @@ bool fs_file_exists(const char *path) {
 	return fs_path_type(path) == FS_FILE;
 }
 
+int64_t fs_file_size(const char *path) {
+	struct stat statbuf = {0};
+	if (stat(path, &statbuf) == 0)
+		return statbuf.st_size;
+	else
+		return -1;
+}
+
 FsDirectoryEntry **fs_list_directory(const char *dirname) {
 	FsDirectoryEntry **entries = NULL;
 	DIR *dir = opendir(dirname);
@@ -51,7 +59,7 @@ FsDirectoryEntry **fs_list_directory(const char *dirname) {
 		if (fd != -1) {
 			while (readdir(dir)) ++nentries;
 			rewinddir(dir);
-			entries = (FsDirectoryEntry **)calloc(nentries+1, sizeof *entries);
+			entries = (FsDirectoryEntry **)calloc(nentries+1, sizeof (FsDirectoryEntry *));
 			if (entries) {
 				size_t idx = 0;
 				while ((ent = readdir(dir))) {

@@ -397,9 +397,16 @@ int main(int argc, char **argv) {
 		// open log file
 		FILE *log = NULL;
 		char log_filename[TED_PATH_MAX];
+		char log1_filename[TED_PATH_MAX];
 		strbuf_printf(log_filename, "%s/log.txt", ted->local_data_dir);
-		log = fopen(log_filename, "w");
+		strbuf_printf(log1_filename, "%s/log.1.txt", ted->local_data_dir);
+		if (fs_file_size(log_filename) > 500000) {
+			remove(log1_filename);
+			rename(log_filename, log1_filename);
+		}
+		log = fopen(log_filename, "a");
 		setbuf(log, NULL);
+		fprintf(log, "---- (starting ted, pid = %d) ----\n", process_get_id());
 		ted->log = log;
 	}
 

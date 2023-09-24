@@ -36,6 +36,23 @@ bool fs_file_exists(const char *path) {
 	return fs_path_type(path) == FS_FILE;
 }
 
+int64_t fs_file_size(const char *path) {
+	WCHAR wide_path[4100];
+	if (MultiByteToWideChar(CP_UTF8, 0, path, -1, wide_path, arr_count(wide_path)) == 0)
+		return -1;
+	HANDLE file = CreateFileW(wide_path, GENERIC_READ,
+		FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE, NULL,
+		OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (file == INVALID_HANDLE_VALUE)
+		return -1;
+	int64_t size = -1;
+	LARGE_INTEGER large = {0};
+	if (GetFileSizeEx(file, &large)) {
+		size = large.QuadPart;
+	}
+	CloseHandle(file);
+}
+
 FsDirectoryEntry **fs_list_directory(const char *dirname) {
 	char file_pattern[4100];
 	FsDirectoryEntry **files = NULL;
