@@ -231,17 +231,11 @@ You can download it [here](https://github.com/python-lsp/python-lsp-server).
 
 ### Rust
 
-`rust-analyzer` is enabled by default. You can download it
-by following [the instructions here](https://rust-analyzer.github.io/manual.html#rust-analyzer-language-server-binary).
-On Linux you can install it with:
+`rust-analyzer` is enabled by default. You can install it with:
 
-```bash
-mkdir -p ~/.local/bin
-curl -L https://github.com/rust-lang/rust-analyzer/releases/latest/download/rust-analyzer-x86_64-unknown-linux-gnu.gz | gunzip -c - > ~/.local/bin/rust-analyzer
-chmod +x ~/.local/bin/rust-analyzer
+```sh
+rustup component add rust-analyzer
 ```
-
-(Assuming `~/.local/bin` is in your PATH.)
 
 ## Tags (lightweight LSP alternative)
 
