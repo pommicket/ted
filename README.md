@@ -7,6 +7,13 @@ A text editor.
 To download installers for ted for Windows and Debian/Ubuntu, go to
 the [releases](https://github.com/pommicket/ted/releases).
 
+On Debian/Ubuntu if you want automatic updates, you can also
+[add my repository to apt](https://s.pommicket.com/deb/), and just do
+
+```sh
+sudo apt install ted
+```
+
 ## Why?
 
 There are a lot of text editors out there. ted doesn't do anything new.
