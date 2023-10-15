@@ -104,7 +104,7 @@ void build_start_with_command(Ted *ted, const char *command) {
 
 void build_start(Ted *ted) {
 	const Settings *settings = ted_active_settings(ted);
-	const char *command = settings->build_command;
+	const char *command = rc_str(settings->build_command, "");
 	
 	{
 		char *root = ted_get_root_dir(ted);
@@ -113,7 +113,7 @@ void build_start(Ted *ted) {
 	}
 	
 	if (*command == 0) {
-		command = settings->build_default_command;
+		command = rc_str(settings->build_default_command, "");
 		typedef struct {
 			const char *filename;
 			const char *command;

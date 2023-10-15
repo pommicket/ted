@@ -420,7 +420,7 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 					// set window title to active tab's title
 					strbuf_printf(ted->window_title, "ted %s | %s", tab_title,
 						settings->indent_with_spaces ? "spaces" : "tabs");
-					if (*settings->lsp) {
+					if (*rc_str(settings->lsp, "")) {
 						LSP *lsp = buffer_lsp(buffer);
 						strbuf_catf(ted->window_title, " | LSP %s",
 							lsp && lsp_is_initialized(lsp) && !lsp_has_exited(lsp)

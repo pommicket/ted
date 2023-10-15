@@ -41,7 +41,26 @@ typedef struct {
 	size_t len;
 } String32;
 
+/// reference-counted string
+typedef struct RcStr RcStr;
 
+/// allocate new ref-counted string
+///
+/// if `len == -1`, `s` is assumed to be null-terminated. otherwise,
+/// at most `len` bytes are copied from `s`.
+RcStr *rc_str_new(const char *s, i64 len);
+/// increases the reference count of `str`.
+///
+/// does nothing if `str` is `NULL`.
+void rc_str_incref(RcStr *str);
+/// decrease reference count of `*str` and set `*str` to `NULL`.
+///
+/// this frees `*str` if the reference count hits 0.
+///
+/// does nothing if `*str` is NULL.
+void rc_str_decref(RcStr **str);
+/// get rc string with default value if `s == NULL`
+const char *rc_str(RcStr *s, const char *value_if_null);
 /// `isword` for 32-bit chars.
 bool is32_word(char32_t c);
 /// `isspace` for 32-bit chars.

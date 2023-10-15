@@ -61,8 +61,7 @@ typedef struct {
 } SettingU32;
 typedef struct {
 	const char *name;
-	const char *control;
-	size_t buf_size;
+	RcStr *const *control;
 	bool per_language;
 } SettingString;
 typedef struct {
@@ -153,15 +152,15 @@ static const SettingFloat settings_float[] = {
 	{"lsp-delay", &settings_zero.lsp_delay, 0, 100, true},
 };
 static const SettingString settings_string[] = {
-	{"build-default-command", settings_zero.build_default_command, sizeof settings_zero.build_default_command, true},
-	{"build-command", settings_zero.build_command, sizeof settings_zero.build_command, true},
-	{"root-identifiers", settings_zero.root_identifiers, sizeof settings_zero.root_identifiers, true},
-	{"lsp", settings_zero.lsp, sizeof settings_zero.lsp, true},
-	{"lsp-configuration", settings_zero.lsp_configuration, sizeof settings_zero.lsp_configuration, true},
-	{"comment-start", settings_zero.comment_start, sizeof settings_zero.comment_start, true},
-	{"comment-end", settings_zero.comment_end, sizeof settings_zero.comment_end, true},
-	{"font", settings_zero.font, sizeof settings_zero.font, false},
-	{"font-bold", settings_zero.font_bold, sizeof settings_zero.font_bold, false},
+	{"build-default-command", &settings_zero.build_default_command, true},
+	{"build-command", &settings_zero.build_command, true},
+	{"root-identifiers", &settings_zero.root_identifiers, true},
+	{"lsp", &settings_zero.lsp, true},
+	{"lsp-configuration", &settings_zero.lsp_configuration, true},
+	{"comment-start", &settings_zero.comment_start, true},
+	{"comment-end", &settings_zero.comment_end, true},
+	{"font", &settings_zero.font, false},
+	{"font-bold", &settings_zero.font_bold, false},
 };
 static const SettingKeyCombo settings_key_combo[] = {
 	{"hover-key", &settings_zero.hover_key, true},
@@ -189,8 +188,9 @@ static void setting_float_set(Settings *settings, const SettingFloat *set, float
 		*(float *)((char *)settings + ((char*)set->control - (char*)&settings_zero)) = value;
 }
 static void setting_string_set(Settings *settings, const SettingString *set, const char *value) {
-	char *control = (char *)settings + (set->control - (char*)&settings_zero);
-	str_cpy(control, set->buf_size, value);
+	RcStr **control = (RcStr **)((char *)settings + ((char *)set->control - (char*)&settings_zero));
+	if (*control) rc_str_decref(control);
+	*control = rc_str_new(value, -1);
 }
 static void setting_key_combo_set(Settings *settings, const SettingKeyCombo *set, KeyCombo value) {
 	KeyCombo *control = (KeyCombo *)((char *)settings + ((char*)set->control - (char*)&settings_zero));
@@ -272,7 +272,11 @@ static void settings_copy(Settings *dest, const Settings *src) {
 	
 	gl_rc_sab_incref(dest->bg_shader);
 	gl_rc_texture_incref(dest->bg_texture);
-	
+	for (size_t i = 0; i < arr_count(settings_string); i++) {
+		const SettingString *s = &settings_string[i];
+		RcStr *rc = *(RcStr **)((char *)dest + ((char *)s->control - (char *)&settings_zero));
+		rc_str_incref(rc);
+	}
 	context_copy(&dest->context, &src->context);
 	dest->language_extensions = arr_copy(src->language_extensions);
 	dest->key_actions = arr_copy(src->key_actions);
@@ -1061,11 +1065,7 @@ static void config_parse_line(ConfigReader *cfg, Settings **applicable_settings,
 			} break;
 			case SETTING_STRING: {
 				const SettingString *setting = &setting_any->u._string;
-				if (strlen(value) >= setting->buf_size) {
-					config_err(cfg, "%s is too long (length: %zu, maximum length: %zu).", key, strlen(value), setting->buf_size - 1);
-				} else {
-					setting_string_set(settings, setting, value);
-				}
+				setting_string_set(settings, setting, value);
 			} break;
 			case SETTING_KEY_COMBO: {
 				const SettingKeyCombo *setting = &setting_any->u._key;
@@ -1217,13 +1217,22 @@ static void gluint_eliminate_duplicates(GLuint **arr) {
 	arr_set_len(*arr, count);
 }
 
+static void settings_free(Settings *settings) {
+	context_free(&settings->context);
+	arr_free(settings->language_extensions);
+	gl_rc_sab_decref(&settings->bg_shader);
+	gl_rc_texture_decref(&settings->bg_texture);
+	arr_free(settings->key_actions);
+	for (size_t i = 0; i < arr_count(settings_string); i++) {
+		const SettingString *s = &settings_string[i];
+		RcStr **rc = (RcStr **)((char *)settings + ((char *)s->control - (char *)&settings_zero));
+		rc_str_decref(rc);
+	}
+}
+
 void config_free(Ted *ted) {
 	arr_foreach_ptr(ted->all_settings, Settings, settings) {
-		context_free(&settings->context);
-		arr_free(settings->language_extensions);
-		gl_rc_sab_decref(&settings->bg_shader);
-		gl_rc_texture_decref(&settings->bg_texture);
-		arr_free(settings->key_actions);
+		settings_free(settings);
 	}
 	
 	
@@ -1257,13 +1266,14 @@ char *settings_get_root_dir(const Settings *settings, const char *path) {
 		if (entries) { // note: this may actually be NULL on the first iteration if `path` is a file
 			for (int e = 0; entries[e]; ++e) {
 				const char *entry_name = entries[e]->name;
-				const char *ident_name = settings->root_identifiers;
+				const char *root_identifiers = rc_str(settings->root_identifiers, "");
+				const char *ident_name = root_identifiers;
 				while (*ident_name) {
 					const char *separators = ", \t\n\r\v";
 					size_t ident_len = strcspn(ident_name, separators);
 					if (strlen(entry_name) == ident_len && strncmp(entry_name, ident_name, ident_len) == 0) {
 						// we found an identifier!
-						u32 score = U32_MAX - (u32)(ident_name - settings->root_identifiers);
+						u32 score = U32_MAX - (u32)(ident_name - root_identifiers);
 						if (score > best_path_score) {
 							best_path_score = score;
 							strbuf_cpy(best_path, pathbuf);

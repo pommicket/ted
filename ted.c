@@ -264,7 +264,7 @@ LSP *ted_get_lsp(Ted *ted, const char *path, Language language) {
 		if (!lsp) break;
 		const char *const lsp_command = lsp_get_command(lsp);
 		const u16 lsp_port = lsp_get_port(lsp);
-		if (lsp_command && !streq(lsp_command, settings->lsp)) continue;
+		if (lsp_command && !streq(lsp_command, rc_str(settings->lsp, ""))) continue;
 		if (lsp_port != settings->lsp_port) continue;
 		
 		if (!lsp_is_initialized(lsp)) {
@@ -286,15 +286,15 @@ LSP *ted_get_lsp(Ted *ted, const char *path, Language language) {
 	}
 	if (i == TED_LSP_MAX)
 		return NULL; // why are there so many LSP open???
-	if (*settings->lsp || settings->lsp_port) {
+	if (*rc_str(settings->lsp, "") || settings->lsp_port) {
 		// start up this LSP
 		FILE *log = settings->lsp_log ? ted->log : NULL;
 		char *root_dir = settings_get_root_dir(settings, path);
 		LSPSetup setup = {
 			.root_dir = root_dir,
-			.command = *settings->lsp ? settings->lsp : NULL,
+			.command = rc_str(settings->lsp, NULL),
 			.port = settings->lsp_port,
-			.configuration = settings->lsp_configuration,
+			.configuration = rc_str(settings->lsp_configuration, NULL),
 			.log = log,
 			.send_delay = settings->lsp_delay,
 		};
@@ -434,13 +434,13 @@ void ted_load_fonts(Ted *ted) {
 	
 	ted_free_fonts(ted);
 	const Settings *settings = ted_active_settings(ted);
-	ted->font = ted_load_multifont(ted, settings->font);
+	ted->font = ted_load_multifont(ted, rc_str(settings->font, ""));
 	if (!ted->font) {
 		ted->font = ted_load_multifont(ted, "assets/font.ttf");
 		if (!ted->font)
 			die("Couldn't load default font: %s.", ted->message);
 	}
-	ted->font_bold = ted_load_multifont(ted, settings->font_bold);
+	ted->font_bold = ted_load_multifont(ted, rc_str(settings->font_bold, ""));
 	if (!ted->font_bold) {
 		ted->font_bold = ted->font;
 	}

@@ -17,6 +17,42 @@
 // on 16-bit systems, this is 16383. on 32/64-bit systems, this is 1073741823
 // it is unusual to have a string that long.
 #define STRLEN_SAFE_MAX (UINT_MAX >> 2)
+struct RcStr {
+	u32 ref_count;
+	char str[];
+};
+
+RcStr *rc_str_new(const char *s, i64 len) {
+	if (len < 0) {
+		len = (i64)strlen(s);
+	}
+	RcStr *rc = calloc(1, sizeof(RcStr) + (size_t)len + 1);
+	assert(rc);
+	memcpy(rc->str, s, (size_t)len);
+	rc->ref_count = 1;
+	return rc;
+}
+
+void rc_str_incref(RcStr *str) {
+	if (str)
+		str->ref_count += 1;
+}
+
+void rc_str_decref(RcStr **pstr) {
+	RcStr *const str = *pstr;
+	if (!str) return;
+	str->ref_count -= 1;
+	if (str->ref_count == 0) {
+		*pstr = NULL;
+		free(str);
+	}
+}
+
+const char *rc_str(RcStr *str, const char *default_value) {
+	if (!str) return default_value;
+	assert(str->ref_count > 0);
+	return str->str;
+}
 
 bool is32_word(char32_t c) {
 	return c > WCHAR_MAX || c == '_' || iswalnum((wint_t)c);
@@ -151,6 +187,8 @@ bool str_has_path_prefix(const char *path, const char *prefix) {
 }
 
 bool streq(const char *a, const char *b) {
+	assert(a);
+	assert(b);
 	return strcmp(a, b) == 0;
 }
 

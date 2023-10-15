@@ -151,23 +151,23 @@ struct Settings {
 	GlRcSAB *bg_shader;
 	GlRcTexture *bg_texture;
 	/// string used to start comments
-	char comment_start[16];
+	RcStr *comment_start;
 	/// string used to end comments
-	char comment_end[16];
+	RcStr *comment_end;
 	/// Comma-separated list of file names which identify the project root
-	char root_identifiers[4096];
+	RcStr *root_identifiers;
 	/// LSP server command
-	char lsp[512];
+	RcStr *lsp;
 	/// LSP "configuration" JSON
-	char lsp_configuration[4096];
+	RcStr *lsp_configuration;
 	/// Build command. If non-empty, this overrides running `cargo build` if `Cargo.toml` exists, etc.
-	char build_command[1024];
+	RcStr *build_command;
 	/// Default build command for if `Cargo.toml`, `Makefile`, etc. do not exist.
-	char build_default_command[1024];
+	RcStr *build_default_command;
 	/// Comma separated list of paths to font files.
-	char font[4096];
+	RcStr *font;
 	/// Comma separated list of paths to bold font files.
-	char font_bold[4096];
+	RcStr *font_bold;
 	LanguageExtension *language_extensions;
 	/// dynamic array, sorted by KEY_COMBO(modifier, key)
 	KeyAction *key_actions;
