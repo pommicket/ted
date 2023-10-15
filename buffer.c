@@ -3139,6 +3139,7 @@ static bool buffer_write_to_file(TextBuffer *buffer, const char *path) {
 		buffer_error(buffer, "Couldn't open file %s for writing: %s.", path, strerror(errno));
 		return false;
 	}
+	buffer_start_edit_chain(buffer);
 	if (settings->auto_add_newline) {
 		Line *last_line = &buffer->lines[buffer->nlines - 1];
 		if (last_line->len) {
@@ -3148,7 +3149,24 @@ static bool buffer_write_to_file(TextBuffer *buffer, const char *path) {
 			buffer_insert_text_at_pos(buffer, buffer_pos_end_of_file(buffer), s);
 		}
 	}
-	
+	if (settings->remove_trailing_whitespace) {
+		// remove trailing whitespace
+		for (u32 l = 0; l < buffer->nlines; l++) {
+			Line *line = &buffer->lines[l];
+			u32 i = line->len;
+			while (i > 0 && is32_space(line->str[i - 1])) {
+				i -= 1;
+			}
+			if (i < line->len) {
+				BufferPos pos = {
+					.line = l,
+					.index = i,
+				};
+				buffer_delete_chars_at_pos(buffer, pos, line->len - i);
+			}
+		}
+	}
+	buffer_end_edit_chain(buffer);
 	bool success = true;
 	
 	for (u32 i = 0; i < buffer->nlines; ++i) {

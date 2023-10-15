@@ -100,6 +100,7 @@ static const Settings settings_zero = {0};
 static const SettingBool settings_bool[] = {
 	{"auto-indent", &settings_zero.auto_indent, true},
 	{"auto-add-newline", &settings_zero.auto_add_newline, true},
+	{"remove-trailing-whitespace", &settings_zero.remove_trailing_whitespace, true},
 	{"auto-reload", &settings_zero.auto_reload, true},
 	{"auto-reload-config", &settings_zero.auto_reload_config, false},
 	{"syntax-highlighting", &settings_zero.syntax_highlighting, true},

@@ -115,6 +115,7 @@ struct Settings {
 	u16 lsp_port;
 	bool auto_indent;
 	bool auto_add_newline;
+	bool remove_trailing_whitespace;
 	bool syntax_highlighting;
 	bool line_numbers;
 	bool auto_reload;
