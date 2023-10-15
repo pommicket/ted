@@ -159,9 +159,19 @@ void signature_help_frame(Ted *ted) {
 		--signature_count;
 		if (signature_count == 0) return;
 	}
-	float x = buf_rect.pos.x, y = rect_y2(buf_rect) - height;
-	gl_geometry_rect(rect_xywh(x, y - border, width, border),
-		settings_color(settings, COLOR_AUTOCOMPLETE_BORDER));
+	float x = buf_rect.pos.x, y;
+	vec2 cursor_pos = buffer_pos_to_pixels(buffer, buffer_cursor_pos(buffer));
+	if (cursor_pos.y < rect_ymid(buffer_rect(buffer))) {
+		// signature help on bottom
+		y = rect_y2(buf_rect) - height;
+		gl_geometry_rect(rect_xywh(x, y - border, width, border),
+			settings_color(settings, COLOR_AUTOCOMPLETE_BORDER));
+	} else {
+		// signature help on top
+		y = rect_y1(buf_rect);
+		gl_geometry_rect(rect_xywh(x, y + height + 1 - border, width, border),
+			settings_color(settings, COLOR_AUTOCOMPLETE_BORDER));
+	}
 	gl_geometry_rect(rect_xywh(x, y, width, height),
 		settings_color(settings, COLOR_AUTOCOMPLETE_BG));
 	
