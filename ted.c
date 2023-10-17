@@ -245,6 +245,7 @@ Settings *ted_default_settings(Ted *ted) {
 	if (!streq(ted->default_settings_cwd, ted->cwd)) {
 		// recompute default settings
 		ted_compute_settings(ted, ted->cwd, LANG_NONE, &ted->default_settings);
+		strbuf_cpy(ted->default_settings_cwd, ted->cwd);
 	}
 	return &ted->default_settings;
 }

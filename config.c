@@ -241,32 +241,29 @@ static void config_err(ConfigReader *cfg, const char *fmt, ...) {
 	ted_error(cfg->ted, "%s", error);
 }
 
-// if dest == src, this should still increment reference counts, etc.
-static void settings_copy(Settings *dest, const Settings *src) {
-	if (dest != src)
-		*dest = *src;
-	
-	gl_rc_sab_incref(dest->bg_shader);
-	gl_rc_texture_incref(dest->bg_texture);
+static void settings_free_set(Settings *settings, const bool *set) {
+	if (set[offsetof(Settings, language_extensions)])
+		arr_free(settings->language_extensions);
+	if (set[offsetof(Settings, key_actions)])
+		arr_free(settings->key_actions);
+	if (set[offsetof(Settings, bg_shader)])
+		gl_rc_sab_decref(&settings->bg_shader);
+	if (set[offsetof(Settings, bg_texture)])
+		gl_rc_texture_decref(&settings->bg_texture);
 	for (size_t i = 0; i < arr_count(settings_string); i++) {
 		const SettingString *s = &settings_string[i];
-		RcStr *rc = *(RcStr **)((char *)dest + ((char *)s->control - (char *)&settings_zero));
-		rc_str_incref(rc);
+		const ptrdiff_t offset = (char *)s->control - (char *)&settings_zero;
+		if (set[offset]) {
+			RcStr **rc = (RcStr **)((char *)settings + offset);
+			rc_str_decref(rc);
+		}
 	}
-	dest->language_extensions = arr_copy(src->language_extensions);
-	dest->key_actions = arr_copy(src->key_actions);
 }
 
 void settings_free(Settings *settings) {
-	arr_free(settings->language_extensions);
-	gl_rc_sab_decref(&settings->bg_shader);
-	gl_rc_texture_decref(&settings->bg_texture);
-	arr_free(settings->key_actions);
-	for (size_t i = 0; i < arr_count(settings_string); i++) {
-		const SettingString *s = &settings_string[i];
-		RcStr **rc = (RcStr **)((char *)settings + ((char *)s->control - (char *)&settings_zero));
-		rc_str_decref(rc);
-	}
+	static bool all_set[sizeof(Settings)];
+	memset(all_set, 1, sizeof all_set);
+	settings_free_set(settings, all_set);
 }
 
 static void config_free(Config *cfg) {
@@ -285,24 +282,32 @@ void config_merge_into(Settings *dest, const Config *src_cfg) {
 	const Settings *src = &src_cfg->settings;
 	char *destc = (char *)dest;
 	const char *srcc = (const char *)src;
-	LanguageExtension *const dest_exts = dest->language_extensions;
-	LanguageExtension *const src_exts = src->language_extensions;
-	KeyAction *const dest_keys = dest->key_actions;
-	KeyAction *const src_keys = src->key_actions;
-	// TODO: decrement reference counts, free language_extensions if needed
+	const bool *set = src_cfg->settings_set;
+	settings_free_set(dest, set);
 	for (size_t i = 0; i < sizeof(Settings); i++) {
-		if (src_cfg->settings_set[i])
+		if (set[i])
 			destc[i] = srcc[i];
 	}
-	// we don't want these to be replaced by src's
-	dest->language_extensions = dest_exts;
-	dest->key_actions = dest_keys;
-	// increment reference counts, etc.
-	settings_copy(dest, dest);
+	// increment reference counts for things we've borrowed from src
+	if (set[offsetof(Settings, bg_shader)])
+		gl_rc_sab_incref(dest->bg_shader);
+	if (set[offsetof(Settings, bg_texture)])
+		gl_rc_texture_incref(dest->bg_texture);
+	for (size_t i = 0; i < arr_count(settings_string); i++) {
+		const SettingString *s = &settings_string[i];
+		ptrdiff_t offset = (char *)s->control - (char *)&settings_zero;
+		if (!set[offset]) continue;
+		RcStr *rc = *(RcStr **)((char *)dest + offset);
+		rc_str_incref(rc);
+	}
+	// we should never copy these from src
+	assert(!set[offsetof(Settings, language_extensions)]);
+	assert(!set[offsetof(Settings, key_actions)]);
+
 	// merge language_extensions and key_actions
-	arr_foreach_ptr(src_exts, LanguageExtension, ext)
+	arr_foreach_ptr(src->language_extensions, LanguageExtension, ext)
 		arr_add(dest->language_extensions, *ext);
-	arr_foreach_ptr(src_keys, KeyAction, act)
+	arr_foreach_ptr(src->key_actions, KeyAction, act)
 		arr_add(dest->key_actions, *act);
 }
 
@@ -975,6 +980,9 @@ static void config_read_file(Ted *ted, const char *cfg_path, const char ***inclu
 			if (!cfg) {
 				// create new config
 				cfg = arr_addp(ted->all_configs);
+				cfg->path = *path ? str_dup(path) : NULL;
+				cfg->language = language;
+				printf("new config:%s(%u)\n",cfg->path,cfg->language);
 			}
 		} else if (line[0] == '%') {
 			if (str_has_prefix(line, "%include ")) {
@@ -1086,6 +1094,7 @@ char *settings_get_root_dir(const Settings *settings, const char *path) {
 
 void config_read(Ted *ted, const char *filename) {
 	const char **include_stack = NULL;
+	config_init_settings();
 	config_read_file(ted, filename, &include_stack);
 	ted_compute_settings(ted, "", LANG_NONE, &ted->default_settings);
 }

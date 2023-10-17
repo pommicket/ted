@@ -55,17 +55,7 @@ typedef struct {
 	CommandArgument argument;
 } KeyAction;
 
-/// Need to use reference counting for textures because of Settings:
-/// We copy parent settings to children
-/// e.g.
-/// ```
-/// [core]
-/// bg-texture = "blablabla.png"
-/// [Javascript.core]
-/// some random shit
-/// ```
-/// the main Settings' bg_texture will get copied to javascript's Settings,
-/// so we need to be extra careful about when we delete textures.
+/// Reference-counted texture
 typedef struct {
 	u32 ref_count;
 	GLuint texture;
