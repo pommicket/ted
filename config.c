@@ -161,7 +161,7 @@ static const SettingKeyCombo settings_key_combo[] = {
 bool config_applies_to(Config *cfg, const char *path, Language language) {
 	if (cfg->language && language != cfg->language)
 		return false;
-	if (cfg->path && !str_has_path_prefix(path, cfg->path))
+	if (cfg->path && (!path || !str_has_path_prefix(path, cfg->path)))
 		return false;
 	return true;
 }
@@ -264,6 +264,7 @@ void settings_free(Settings *settings) {
 	static bool all_set[sizeof(Settings)];
 	memset(all_set, 1, sizeof all_set);
 	settings_free_set(settings, all_set);
+	memset(settings, 0, sizeof *settings);
 }
 
 static void config_free(Config *cfg) {
@@ -984,7 +985,6 @@ static void config_read_file(Ted *ted, const char *cfg_path, const char ***inclu
 				cfg = arr_addp(ted->all_configs);
 				cfg->path = *path ? str_dup(path) : NULL;
 				cfg->language = language;
-				printf("new config:%s(%u)\n",cfg->path,cfg->language);
 			}
 		} else if (line[0] == '%') {
 			if (str_has_prefix(line, "%include ")) {

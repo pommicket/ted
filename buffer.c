@@ -534,6 +534,10 @@ Settings *buffer_settings(TextBuffer *buffer) {
 	return &buffer->settings;
 }
 
+void buffer_recompute_settings(TextBuffer *buffer) {
+	buffer->settings_computed = false;
+}
+
 u8 buffer_tab_width(TextBuffer *buffer) {
 	return buffer_settings(buffer)->tab_width;
 }

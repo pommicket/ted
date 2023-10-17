@@ -225,7 +225,6 @@ static int applicable_configs_cmp(void *context, const void *av, const void *bv)
 
 void ted_compute_settings(Ted *ted, const char *path, Language language, Settings *settings) {
 	settings_free(settings);
-	memset(settings, 0, sizeof *settings);
 	u32 *applicable_configs = NULL;
 	for (u32 i = 0; i < arr_len(ted->all_configs); i++) {
 		Config *cfg = &ted->all_configs[i];
@@ -742,8 +741,10 @@ void ted_load_configs(Ted *ted) {
 void ted_reload_configs(Ted *ted) {
 	config_free_all(ted);
 	ted_load_configs(ted);
-	// reset text size
 	ted_load_fonts(ted);
+	arr_foreach_ptr(ted->buffers, TextBufferPtr, pbuf) {
+		buffer_recompute_settings(*pbuf);
+	}
 }
 
 void ted_press_key(Ted *ted, SDL_Keycode keycode, SDL_Keymod modifier) {

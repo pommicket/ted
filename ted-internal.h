@@ -442,6 +442,8 @@ LSPPosition buffer_cursor_pos_as_lsp_position(TextBuffer *buffer);
 ///
 /// Returns `(LSPRange){0}` if nothing is selected.
 LSPRange buffer_selection_as_lsp_range(TextBuffer *buffer);
+/// indicate that config has been reloaded so we need to recompute buffer settings
+void buffer_recompute_settings(TextBuffer *buffer);
 /// Apply LSP TextEdit[] from response
 void buffer_apply_lsp_text_edits(TextBuffer *buffer, const LSPResponse *response, const LSPTextEdit *edits, size_t n_edits);
 /// Get the cursor position as an LSPDocumentPosition.

@@ -1,7 +1,7 @@
 /*
 TODO:
 - switch back to starting file after rename
-- .editorconfig? see https://editorconfig.org/
+- .editorconfig (see https://editorconfig.org/)
 FUTURE FEATURES:
 - autodetect indentation (tabs vs spaces)
 - custom file/build command associations
@@ -16,6 +16,7 @@ FUTURE FEATURES:
 - manual directory
 - restart LSP server automatically?
 - LSP request timeout
+- reflow command
 */
 
 #include "ted-internal.h"
