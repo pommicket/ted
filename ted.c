@@ -220,12 +220,14 @@ char *ted_get_root_dir(Ted *ted) {
 
 static int applicable_configs_cmp(void *context, const void *av, const void *bv) {
 	const Config *const all_configs = context;
-	const u32 *ai = av, *bi = bv;
-	const Config *ac = &all_configs[*ai], *bc = &all_configs[*bi];
+	const u32 ai = *(const u32 *)av, bi = *(const u32 *)bv;
+	const Config *ac = &all_configs[ai], *bc = &all_configs[bi];
 	const i32 a = config_priority(ac);
 	const i32 b = config_priority(bc);
 	if (a < b) return -1;
 	if (a > b) return 1;
+	if (ai < bi) return -1;
+	if (ai > bi) return 1;
 	return 0;
 }
 
