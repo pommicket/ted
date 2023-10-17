@@ -138,6 +138,12 @@ void ted_set_message(Ted *ted, MessageType type, const char *fmt, ...) {
 void ted_error(Ted *ted, const char *fmt, ...) {
 	va_list args;
 	va_start(args, fmt);
+#if DEBUG
+	va_list args2;
+	va_copy(args2, args);
+	vfprintf(stderr, fmt, args2);
+	fprintf(stderr, "\n");
+#endif
 	ted_vset_message(ted, MESSAGE_ERROR, fmt, args);
 	va_end(args);
 }

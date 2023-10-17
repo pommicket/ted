@@ -39,6 +39,7 @@
 #define TED_VERSION_FULL "ted v. " TED_VERSION
 
 typedef struct {
+	// if `string == NULL`, this is an integer argument
 	const char *string;
 	i64 number;
 } CommandArgument;
@@ -155,7 +156,6 @@ struct Settings {
 typedef struct {
 	Language language;
 	char *path;
-	char **strings;
 	Settings settings;
 	bool settings_set[sizeof (Settings)];
 } Config;

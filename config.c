@@ -223,6 +223,7 @@ static void config_set_color(Config *cfg, ColorSetting setting, u32 color) {
 typedef struct {
 	Ted *ted;
 	const char *filename;
+	FILE *fp;
 	ConfigSection section;
 	u32 line_number; // currently processing this line number
 	bool error;
@@ -244,8 +245,12 @@ static void config_err(ConfigReader *cfg, const char *fmt, ...) {
 static void settings_free_set(Settings *settings, const bool *set) {
 	if (set[offsetof(Settings, language_extensions)])
 		arr_free(settings->language_extensions);
-	if (set[offsetof(Settings, key_actions)])
+	if (set[offsetof(Settings, key_actions)]) {
+		arr_foreach_ptr(settings->key_actions, KeyAction, act) {
+			free((void *)act->argument.string);
+		}
 		arr_free(settings->key_actions);
+	}
 	if (set[offsetof(Settings, bg_shader)])
 		gl_rc_sab_decref(&settings->bg_shader);
 	if (set[offsetof(Settings, bg_texture)])
@@ -268,10 +273,6 @@ void settings_free(Settings *settings) {
 }
 
 static void config_free(Config *cfg) {
-	arr_foreach_ptr(cfg->strings, char *, pstr) {
-		free(*pstr);
-	}
-	arr_free(cfg->strings);
 	settings_free(&cfg->settings);
 	free(cfg->path);
 	memset(cfg, 0, sizeof *cfg);
@@ -281,6 +282,13 @@ static void config_free(Config *cfg) {
 i32 config_priority(const Config *cfg) {
 	size_t path_len = cfg->path ? strlen(cfg->path) : 0;
 	return (i32)path_len * 2 + (cfg->language != 0);
+}
+
+static KeyAction key_action_copy(const KeyAction *src) {
+	KeyAction cpy = *src;
+	if (cpy.argument.string)
+		cpy.argument.string = str_dup(cpy.argument.string);
+	return cpy;
 }
 
 void config_merge_into(Settings *dest, const Config *src_cfg) {
@@ -313,7 +321,54 @@ void config_merge_into(Settings *dest, const Config *src_cfg) {
 	arr_foreach_ptr(src->language_extensions, LanguageExtension, ext)
 		arr_add(dest->language_extensions, *ext);
 	arr_foreach_ptr(src->key_actions, KeyAction, act)
-		arr_add(dest->key_actions, *act);
+		arr_add(dest->key_actions, key_action_copy(act));
+}
+
+static void config_err_unexpected_eof(ConfigReader *reader) {
+	config_err(reader, "Unexpected EOF (no newline at end of file?)");
+}
+
+static char config_getc(ConfigReader *reader) {
+	int c = getc(reader->fp);
+	if (c == 0) {
+		config_err(reader, "Null byte in config file");
+	}
+	if (c == EOF) {
+		config_err_unexpected_eof(reader);
+		c = 0;
+	}
+	if (c == '\n') {
+		reader->line_number += 1;
+	}
+	return (char)c;
+}
+
+static void config_ungetc(ConfigReader *reader, char c) {
+	if (c == '\n')
+		reader->line_number -= 1;
+	if (c)
+		ungetc(c, reader->fp);
+}
+
+static void config_skip_space(ConfigReader *reader) {
+	char c;
+	while ((c = config_getc(reader))) {
+		if (!isspace(c) || c == '\n') {
+			config_ungetc(reader, c);
+			break;
+		}
+	}
+}
+
+static void config_read_to_eol(ConfigReader *reader, char *buf, size_t bufsz) {
+	assert(bufsz < INT_MAX);
+	if (!fgets(buf, (int)bufsz, reader->fp)) {
+		config_err_unexpected_eof(reader);
+		*buf = '\0';
+	}
+	if (strchr(buf, '\n'))
+		reader->line_number += 1;
+	buf[strcspn(buf, "\r\n")] = '\0';
 }
 
 static SDL_Keycode config_parse_key(ConfigReader *cfg, const char *str) {
@@ -469,19 +524,17 @@ static void get_config_path(Ted *ted, char *expanded, size_t expanded_sz, const 
 }
 
 // only reads fp for multi-line strings
-static char *config_read_string(ConfigReader *reader, Config *cfg, const char *first_line, FILE *fp) {
-	const char *p;
-	char line_buf[1024];
-	u32 start_line = reader->line_number;
-	char delimiter = *first_line;
+// return value should be freed.
+static char *config_read_string(ConfigReader *reader, char delimiter) {
 	char *str = NULL;
-	bool increment_p = true;
-	for (p = first_line + 1; *p != delimiter; p += increment_p) {
-		increment_p = true;
-		switch (*p) {
+	while (true) {
+		char c = config_getc(reader);
+		if (c == delimiter)
+			break;
+		switch (c) {
 		case '\\':
-			++p;
-			switch (*p) {
+			c = config_getc(reader);
+			switch (c) {
 			case '\\':
 			case '"':
 			case '`':
@@ -499,34 +552,18 @@ static char *config_read_string(ConfigReader *reader, Config *cfg, const char *f
 				arr_add(str, '[');
 				continue;
 			default:
-				config_err(reader, "Unrecognized escape sequence: '\\%c'.", *p);
+				config_err(reader, "Unrecognized escape sequence: '\\%c'.", c);
 				arr_clear(str);
 				return NULL;
 			}
 			break;
-		case '\0':
-			++reader->line_number;
-			arr_add(str, '\n');
-			if (!fgets(line_buf, sizeof line_buf, fp)) {
-				reader->line_number = start_line;
-				config_err(reader, "String doesn't end.");
-				arr_clear(str);
-				return NULL;
-			}
-			line_buf[strcspn(line_buf, "\r\n")] = 0;
-			p = line_buf;
-			increment_p = false;
-			continue;
-		case '\r':
-		case '\n':
-			assert(false);
+		default:
+			arr_add(str, c);
 			break;
 		}
-		arr_add(str, *p);
 	}
 	
 	char *s = strn_dup(str, arr_len(str));
-	arr_add(cfg->strings, s);
 	arr_free(str);
 	return s;
 }
@@ -595,43 +632,30 @@ static void settings_load_bg_texture(Ted *ted, Config *cfg, const char *path) {
 	cfg->settings.bg_texture = gl_rc_texture_new(texture);	
 }
 
-// NOTE: for multi-line strings, this will read from fp (otherwise it won't)
-static void config_parse_line(ConfigReader *reader, Config *cfg, char *line, FILE *fp) {
+static void config_parse_line(ConfigReader *reader, Config *cfg) {
 	Ted *ted = reader->ted;
 	if (reader->section == 0) {
 		// there was an error reading this section. don't bother with anything else.
 		return;
 	}
-	
-	switch (line[0]) {
-	case '#': // comment
-	case '\0': // blank line
+	char key[128] = {0};
+	char c;
+	for (size_t i = 0; i < sizeof key - 1; ++i) {
+		c = config_getc(reader);
+		if (!c) break;
+		if (c == '=') break;
+		if (c == '\n') break;
+		key[i] = c;
+	}
+	str_trim(key);
+	if (key[0] == 0) {
 		return;
 	}
-	
-	char *equals = strchr(line, '=');
-	if (!equals) {
-		config_err(reader, "Invalid line syntax. "
-			"Lines should either look like [section-name] or key = value");
+	if (c != '=') {
+		config_err(reader, "Unexpected end-of-line (expected key = value)");
 		return;
 	}
-
-	char *key = line;
-	*equals = '\0';
-	char *value = equals + 1;
-	while (isspace(*key)) ++key;
-	while (isspace(*value)) ++value;
-	if (equals != line) {
-		for (char *p = equals - 1; p > line; --p) {
-			// remove trailing spaces after key
-			if (isspace(*p)) *p = '\0';
-			else break;
-		}
-	}
-	if (key[0] == '\0') {
-		config_err(reader, "Empty property name. This line should look like: key = value");
-		return;
-	}
+	config_skip_space(reader);
 	
 	switch (reader->section) {
 	case SECTION_NONE:
@@ -641,6 +665,9 @@ static void config_parse_line(ConfigReader *reader, Config *cfg, char *line, FIL
 	case SECTION_COLORS: {
 		ColorSetting setting = color_setting_from_str(key);
 		if (setting != COLOR_UNKNOWN) {
+			char value[32] = {0};
+			config_read_to_eol(reader, value, sizeof value);
+			str_trim(value);
 			u32 color = 0;
 			if (color_from_str(value, &color)) {
 				config_set_color(cfg, setting, color);
@@ -664,24 +691,34 @@ static void config_parse_line(ConfigReader *reader, Config *cfg, char *line, FIL
 			.number = 1, // default argument = 1
 			.string = NULL
 		};
-		if (isdigit(*value)) {
+		c = config_getc(reader);
+		if (isdigit(c)) {
 			// read the argument
-			char *endp;
-			argument.number = strtoll(value, &endp, 10);
-			value = endp;
-		} else if (*value == '"' || *value == '`') {
+			char num[32] = {c};
+			for (size_t i = 1; i < sizeof num - 1; i++) {
+				c = config_getc(reader);
+				if (!c || c == ' ') break;
+				num[i] = c;
+			}
+			argument.number = atoll(num);
+			config_skip_space(reader);
+			c = config_getc(reader);
+		} else if (c == '"' || c == '`') {
 			// string argument
-			argument.string = config_read_string(reader, cfg, value, fp);
+			argument.string = config_read_string(reader, (char)c);
+			config_skip_space(reader);
+			c = config_getc(reader);
 		}
-		while (isspace(*value)) ++value; // skip past space following argument
-		if (*value == ':') {
+		if (c == ':') {
+			char cmd_str[64];
+			config_read_to_eol(reader, cmd_str, sizeof cmd_str);
 			// read the command
-			Command command = command_from_str(value + 1);
+			Command command = command_from_str(cmd_str);
 			if (command != CMD_UNKNOWN) {
 				action.command = command;
 				action.argument = argument;
 			} else {
-				config_err(reader, "Unrecognized command %s", value);
+				config_err(reader, "Unrecognized command %s", cmd_str);
 			}
 		} else {
 			config_err(reader, "Expected ':' for key action. This line should look something like: %s = :command.", key);
@@ -706,10 +743,11 @@ static void config_parse_line(ConfigReader *reader, Config *cfg, char *line, FIL
 		if (lang == LANG_NONE) {
 			config_err(reader, "Invalid programming language: %s.", key);
 		} else {
-			char *exts = calloc(1, strlen(value) + 1);
+			char exts[2048];
+			config_read_to_eol(reader, exts, sizeof exts);
 			char *dst = exts;
 			// get rid of whitespace in extension list
-			for (const char *src = value; *src; ++src)
+			for (const char *src = exts; *src; ++src)
 				if (!isspace(*src))
 					*dst++ = *src;
 			*dst = 0;
@@ -737,34 +775,42 @@ static void config_parse_line(ConfigReader *reader, Config *cfg, char *line, FIL
 				memcpy(ext->extension, p, len);
 				p += len;
 			}
-			free(exts);
 		}
 	} break;
 	case SECTION_CORE: {
+		char *needs_freeing = NULL;
+		char *value = NULL;
+		char line_buf[2048];
+		c = config_getc(reader);
 		const char *endptr;
-		long long const integer = strtoll(value, (char **)&endptr, 10);
-		bool const is_integer = *endptr == '\0';
-		double const floating = strtod(value, (char **)&endptr);
-		bool const is_floating = *endptr == '\0';
+		i64 integer = 0;
+		double floating = 0;
+		bool is_integer = false;
+		bool is_floating = false;
 		bool is_bool = false;
 		bool boolean = false;
-	#define BOOL_HELP "(should be yes/no/on/off/true/false)"
-		if (streq(value, "yes") || streq(value, "on") || streq(value, "true")) {
-			is_bool = true;
-			boolean = true;
-		} else if (streq(value, "no") || streq(value, "off") || streq(value, "false")) {
-			is_bool = true;
-			boolean = false;
+		if (c == '"' || c == '`') {
+			char *string = config_read_string(reader, c);
+			if (!string) break;
+			needs_freeing = string;
+			value = string;
+		} else {
+			config_ungetc(reader, c);
+			config_read_to_eol(reader, line_buf, sizeof line_buf);
+			value = line_buf;
+			integer = (i64)strtoll(value, (char **)&endptr, 10);
+			is_integer = *endptr == '\0';
+			floating = strtod(value, (char **)&endptr);
+			is_floating = *endptr == '\0';
+			if (streq(value, "yes") || streq(value, "on") || streq(value, "true")) {
+				is_bool = true;
+				boolean = true;
+			} else if (streq(value, "no") || streq(value, "off") || streq(value, "false")) {
+				is_bool = true;
+				boolean = false;
+			}
 		}
-		
-		if (value[0] == '"' || value[0] == '`') {
-			char *string = config_read_string(reader, cfg, value, fp);
-			if (string)
-				value = string;
-		}
-
-		
-		SettingAny const *setting_any = NULL;
+		const SettingAny *setting_any = NULL;
 		for (u32 i = 0; i < arr_count(settings_all); ++i) {
 			SettingAny const *s = &settings_all[i];
 			if (s->type == 0) break;
@@ -839,6 +885,7 @@ static void config_parse_line(ConfigReader *reader, Config *cfg, char *line, FIL
 			}
 		} break;
 		}
+		free(needs_freeing);
 	} break;
 	}
 }
@@ -889,29 +936,27 @@ static void config_read_file(Ted *ted, const char *cfg_path, const char ***inclu
 		.ted = ted,
 		.filename = cfg_path,
 		.line_number = 1,
+		.fp = fp,
 		.error = false
 	};
 	ConfigReader *reader = &reader_data;
 	
 	Config *cfg = NULL;
 	
-	char line[4096] = {0};
-	while (fgets(line, sizeof line, fp)) {
-		char *newline = strchr(line, '\n');
-		if (!newline && !feof(fp)) {
-			config_err(reader, "Line is too long.");
+	while (true) {
+		int ic = getc(reader->fp);
+		if (ic == EOF)
 			break;
-		}
+		char c = (char)ic;
+		if (c == '\n') ++reader->line_number;
 		
-		if (newline) *newline = '\0';
-		char *carriage_return = strchr(line, '\r');
-		if (carriage_return) *carriage_return = '\0';
-		
-		if (line[0] == '[') {
+		if (c == '[') {
 			// a new section!
 			#define SECTION_HEADER_HELP "Section headers should look like this: [(path//)(language.)section-name]"
+			char header[256];
+			config_read_to_eol(reader, header, sizeof header);
 			char path[TED_PATH_MAX]; path[0] = '\0';
-			char *closing = strchr(line, ']');
+			char *closing = strchr(header, ']');
 			Language language = 0;
 			if (!closing) {
 				config_err(reader, "Unmatched [. " SECTION_HEADER_HELP);
@@ -921,52 +966,51 @@ static void config_read_file(Ted *ted, const char *cfg_path, const char ***inclu
 				break;
 			} else {
 				*closing = '\0';
-				char *section = line + 1;
-				char *path_end = strstr(section, "//");
+				char *p = header;
+				char *path_end = strstr(p, "//");
 				if (path_end) {
-					size_t path_len = (size_t)(path_end - section);
+					size_t path_len = (size_t)(path_end - header);
 					path[0] = '\0';
 					// expand ~
-					if (section[0] == '~') {
+					if (p[0] == '~') {
 						str_cpy(path, sizeof path, ted->home);
-						++section;
+						++p;
 						--path_len;
 					}
-					strn_cat(path, sizeof path, section, path_len);
+					strn_cat(path, sizeof path, p, path_len);
 					#if _WIN32
 					// replace forward slashes with backslashes
-					for (char *p = path; *p; ++p)
+					for (p = path; *p; ++p)
 						if (*p == '/')
 							*p = '\\';
 					#endif
-					section = path_end + 2;
+					p = path_end + 2;
 				}
 				
-				char *dot = strchr(section, '.');
-				
+				char *dot = strchr(p, '.');
 				if (dot) {
 					*dot = '\0';
-					language = language_from_str(section);
+					language = language_from_str(p);
 					if (!language) {
-						config_err(reader, "Unrecognized language: %s.", section);
+						config_err(reader, "Unrecognized language: %s.", p);
 					}
-					section = dot + 1;
+					p = dot + 1;
 				}
 				
-				if (streq(section, "keyboard")) {
+				if (streq(p, "keyboard")) {
 					reader->section = SECTION_KEYBOARD;
-				} else if (streq(section, "colors")) {
+				} else if (streq(p, "colors")) {
 					reader->section = SECTION_COLORS;
-				} else if (streq(section, "core")) {
+				} else if (streq(p, "core")) {
 					reader->section = SECTION_CORE;
-				} else if (streq(section, "extensions")) {
+				} else if (streq(p, "extensions")) {
 					if (language != 0 || *path) {
 						config_err(reader, "Extensions section cannot be language- or path-specific.");
 						break;
 					}
 					reader->section = SECTION_EXTENSIONS;
 				} else {
-					config_err(reader, "Unrecognized section: [%s].", section);
+					config_err(reader, "Unrecognized section: [%s].", p);
 				}
 			}
 			Config new_cfg = {
@@ -975,9 +1019,9 @@ static void config_read_file(Ted *ted, const char *cfg_path, const char ***inclu
 			};
 			cfg = NULL;
 			// search for config with same context to update
-			arr_foreach_ptr(ted->all_configs, Config, c) {
-				if (config_has_same_context(c, &new_cfg)) {
-					cfg = c;
+			arr_foreach_ptr(ted->all_configs, Config, conf) {
+				if (config_has_same_context(conf, &new_cfg)) {
+					cfg = conf;
 				}
 			}
 			if (!cfg) {
@@ -986,28 +1030,31 @@ static void config_read_file(Ted *ted, const char *cfg_path, const char ***inclu
 				cfg->path = *path ? str_dup(path) : NULL;
 				cfg->language = language;
 			}
-		} else if (line[0] == '%') {
-			if (str_has_prefix(line, "%include ")) {
+		} else if (c == '%') {
+			char line[2048];
+			config_read_to_eol(reader, line, sizeof line);
+			if (str_has_prefix(line, "include ")) {
 				char included[TED_PATH_MAX];
 				char expanded[TED_PATH_MAX];
-				strbuf_cpy(included, line + strlen("%include "));
-				while (*included && isspace(included[strlen(included) - 1]))
-					included[strlen(included) - 1] = '\0';
+				strbuf_cpy(included, line + strlen("include "));
+				str_trim(included);
 				get_config_path(ted, expanded, sizeof expanded, included);
 				config_read_file(ted, expanded, include_stack);
-			}
-		} else if (cfg) {
-			config_parse_line(reader, cfg, line, fp);
-		} else {
-			const char *p = line;
-			while (isspace(*p)) ++p;
-			if (*p == '\0' || *p == '#') {
-				// blank line
 			} else {
-				config_err(reader, "Config has text before first section header.");
+				config_err(reader, "Unrecognized directive: %s", line);
 			}
+		} else if (isspace(c)) {
+			// whitespace
+		} else if (c == '#') {
+			// comment
+			char buf[4096];
+			config_read_to_eol(reader, buf, sizeof buf);
+		} else if (cfg) {
+			config_ungetc(reader, c);
+			config_parse_line(reader, cfg);
+		} else {
+			config_err(reader, "Config has text before first section header.");
 		}
-		++reader->line_number;
 	}
 	
 	if (ferror(fp))

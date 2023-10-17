@@ -358,7 +358,12 @@ void text_render(Font *font) {
 }
 
 void text_char_with_state(Font *font, TextRenderState *state, char32_t c) {
-top:;
+	bool wrapped = false;
+top:
+	if (wrapped) {
+		// fuck
+		return;
+	}
 	CharInfo info = {0};
 
 	if (c >= 0x40000 && c < 0xE0000){
@@ -426,6 +431,7 @@ top:;
 	if (state->wrap && x1 >= max_x) {
 		state->x = min_x;
 		state->y += char_height;
+		wrapped = true;
 		goto top;
 	}
 
