@@ -1,4 +1,8 @@
 /*
+TODO:
+- switch back to starting file after rename
+- put signature help at top if cursor is near bottom
+- .editorconfig? see https://editorconfig.org/
 FUTURE FEATURES:
 - autodetect indentation (tabs vs spaces)
 - custom file/build command associations
@@ -1261,7 +1265,7 @@ int main(int argc, char **argv) {
 	buffer_free(ted->build_buffer);
 	buffer_free(ted->argument_buffer);
 	ted_free_fonts(ted);
-	config_free(ted);
+	config_free_all(ted);
 	macros_free(ted);
 	free(ted);
 #if _WIN32

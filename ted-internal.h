@@ -99,7 +99,6 @@ typedef struct {
 /// NOTE: to add more options to ted, add fields here,
 /// and change the settings_<type> global constant near the top of config.c	
 struct Settings {
-	SettingsContext context;
 	u32 colors[COLOR_COUNT];
 	float cursor_blink_time_on, cursor_blink_time_off;
 	float hover_time;
@@ -173,9 +172,12 @@ struct Settings {
 	KeyAction *key_actions;
 };
 
-/// This structure is used temporarily when loading settings
-/// It's needed because we want more specific contexts to be dealt with last.
-typedef struct ConfigPart ConfigPart;
+typedef struct {
+	Language language;
+	char *path;
+	Settings settings;
+	bool settings_set[sizeof (Settings)];
+} Config;
 
 typedef struct EditNotifyInfo {
 	EditNotify fn;
@@ -284,8 +286,7 @@ struct Ted {
 	/// the old active buffer needs to be restored. that's what this stores.
 	TextBuffer *prev_active_buffer; 
 	Node *active_node;
-	/// dynamic array of Settings. use Settings.context to figure out which one to use.
-	Settings *all_settings;
+	Config *all_configs;
 	/// settings to use when no buffer is open
 	Settings *default_settings;
 	float window_width, window_height;
@@ -498,26 +499,8 @@ void command_init(void);
 void command_execute_ex(Ted *ted, Command c, const CommandArgument *argument, const CommandContext *context);
 
 // === config.c ===
-/// first, we read all config files, then we parse them.
-/// this is because we want less specific settings (e.g. settings applied
-/// to all languages instead of one particular language) to be applied first,
-/// then more specific settings are based off of those.
-///
-/// EXAMPLE:
-/// ```
-///   ---config file 1---
-///     [Javascript.core]
-///     syntax-highlighting = off
-///     (inherits tab-width = 4)
-///     [CSS.core]
-///     tab-width = 2 (overrides tab-width = 4)
-///   ---config file 2---
-///     [core]
-///     tab-width = 4
-/// ```
-void config_read(Ted *ted, ConfigPart **pparts, const char *filename);
-void config_parse(Ted *ted, ConfigPart **pparts);
-void config_free(Ted *ted);
+void config_read(Ted *ted, const char *filename);
+void config_free_all(Ted *ted);
 /// how well does this settings context fit the given path and language?
 /// the context with the highest score will be chosen.
 long context_score(const char *path, Language lang, const SettingsContext *context);

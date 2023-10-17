@@ -18,17 +18,6 @@ typedef enum {
 	SECTION_EXTENSIONS
 } ConfigSection;
 
-struct ConfigPart {
-	/// index in order of which part was read first.
-	int index;
-	SettingsContext context;
-	ConfigSection section;
-	char *file;
-	u32 line;
-	/// contents of this config part
-	char *text;
-};
-
 // all the "control" pointers here are relative to `settings_zero`.
 typedef struct {
 	const char *name;
@@ -168,39 +157,52 @@ static const SettingKeyCombo settings_key_combo[] = {
 };
 
 
-static void setting_bool_set(Settings *settings, const SettingBool *set, bool value) {
-	*(bool *)((char *)settings + ((char*)set->control - (char*)&settings_zero)) = value;
+static void config_set_setting(Config *cfg, ptrdiff_t offset, const void *value, size_t size) {
+	memmove((char *)&cfg->settings + offset, value, size);
+	memset(&cfg->settings_set[offset], 1, size);
 }
-static void setting_u8_set(Settings *settings, const SettingU8 *set, u8 value) {
+
+static void config_set_bool(Config *cfg, const SettingBool *set, bool value) {
+	config_set_setting(cfg, (char*)set->control - (char*)&settings_zero, &value, sizeof value);
+}
+static void config_set_u8(Config *cfg, const SettingU8 *set, u8 value) {
 	if (value >= set->min && value <= set->max)
-		*(u8 *)((char *)settings + ((char*)set->control - (char*)&settings_zero)) = value;
+		config_set_setting(cfg, (char*)set->control - (char*)&settings_zero, &value, sizeof value);
 }
-static void setting_u16_set(Settings *settings, const SettingU16 *set, u16 value) {
+static void config_set_u16(Config *cfg, const SettingU16 *set, u16 value) {
 	if (value >= set->min && value <= set->max)
-		*(u16 *)((char *)settings + ((char*)set->control - (char*)&settings_zero)) = value;
+		config_set_setting(cfg, (char*)set->control - (char*)&settings_zero, &value, sizeof value);
 }
-static void setting_u32_set(Settings *settings, const SettingU32 *set, u32 value) {
+static void config_set_u32(Config *cfg, const SettingU32 *set, u32 value) {
 	if (value >= set->min && value <= set->max)
-		*(u32 *)((char *)settings + ((char*)set->control - (char*)&settings_zero)) = value;
+		config_set_setting(cfg, (char*)set->control - (char*)&settings_zero, &value, sizeof value);
 }
-static void setting_float_set(Settings *settings, const SettingFloat *set, float value) {
+static void config_set_float(Config *cfg, const SettingFloat *set, float value) {
 	if (value >= set->min && value <= set->max)
-		*(float *)((char *)settings + ((char*)set->control - (char*)&settings_zero)) = value;
+		config_set_setting(cfg, (char*)set->control - (char*)&settings_zero, &value, sizeof value);
 }
-static void setting_string_set(Settings *settings, const SettingString *set, const char *value) {
-	RcStr **control = (RcStr **)((char *)settings + ((char *)set->control - (char*)&settings_zero));
+static void config_set_key_combo(Config *cfg, const SettingKeyCombo *set, KeyCombo value) {
+	config_set_setting(cfg, (char *)set->control - (char *)&settings_zero, &value, sizeof value);
+}
+static void config_set_string(Config *cfg, const SettingString *set, const char *value) {
+	assert(value);
+	Settings *settings = &cfg->settings;
+	const ptrdiff_t offset = ((char *)set->control - (char*)&settings_zero);
+	RcStr **control = (RcStr **)((char *)settings + offset);
 	if (*control) rc_str_decref(control);
-	*control = rc_str_new(value, -1);
+	RcStr *rc = rc_str_new(value, -1);
+	config_set_setting(cfg, offset, &rc, sizeof rc);
 }
-static void setting_key_combo_set(Settings *settings, const SettingKeyCombo *set, KeyCombo value) {
-	KeyCombo *control = (KeyCombo *)((char *)settings + ((char*)set->control - (char*)&settings_zero));
-	*control = value;
+static void config_set_color(Config *cfg, ColorSetting setting, u32 color) {
+	config_set_setting(cfg, (char *)&settings_zero.colors[setting] - (char *)&settings_zero, &color, sizeof color);
 }
+
 
 
 typedef struct {
 	Ted *ted;
 	const char *filename;
+	ConfigSection section;
 	u32 line_number; // currently processing this line number
 	bool error;
 } ConfigReader;
@@ -218,57 +220,10 @@ static void config_err(ConfigReader *cfg, const char *fmt, ...) {
 	ted_error(cfg->ted, "%s", error);
 }
 
-static void context_copy(SettingsContext *dest, const SettingsContext *src) {
-	*dest = *src;
-	if (src->path)
-		dest->path = str_dup(src->path);
-}
-
-long context_score(const char *path, Language lang, const SettingsContext *context) {
-	long score = 0;
-	
-	// currently contexts are ranked by:
-	//   1. path matching, the more specific the better
-	//   2. language
-	
-	if (context->language) {
-		if (lang == context->language) {
-			score += 1;
-		} else {
-			// dont use this. it's language-specific and for the wrong language.
-			return INT_MIN;
-		}
-	}
-	
-	if (context->path) {
-		if (path && str_has_path_prefix(path, context->path)) {
-			score += 2 * (long)strlen(context->path);
-		} else {
-			// dont use this. it's path-specific and for the wrong path.
-			return INT_MIN;
-		}
-	}
-	
-	return score;
-}
-
-/* does being in the context of `parent` imply you are in the context of `child`? */
-static bool context_is_parent(const SettingsContext *parent, const SettingsContext *child) {
-	if (child->language == 0 && parent->language != 0)
-		return false;
-	if (parent->language != 0 && child->language != 0 && parent->language != child->language)
-		return false;
-	if (parent->path) {
-		if (!child->path)
-			return false;
-		if (!str_has_prefix(child->path, parent->path))
-			return false;
-	}
-	return true;
-}
-
+// if dest == src, this should still increment reference counts, etc.
 static void settings_copy(Settings *dest, const Settings *src) {
-	*dest = *src;
+	if (dest != src)
+		*dest = *src;
 	
 	gl_rc_sab_incref(dest->bg_shader);
 	gl_rc_texture_incref(dest->bg_texture);
@@ -277,21 +232,51 @@ static void settings_copy(Settings *dest, const Settings *src) {
 		RcStr *rc = *(RcStr **)((char *)dest + ((char *)s->control - (char *)&settings_zero));
 		rc_str_incref(rc);
 	}
-	context_copy(&dest->context, &src->context);
 	dest->language_extensions = arr_copy(src->language_extensions);
 	dest->key_actions = arr_copy(src->key_actions);
 }
 
-static void context_free(SettingsContext *ctx) {
-	free(ctx->path);
-	memset(ctx, 0, sizeof *ctx);
+static void settings_free(Settings *settings) {
+	arr_free(settings->language_extensions);
+	gl_rc_sab_decref(&settings->bg_shader);
+	gl_rc_texture_decref(&settings->bg_texture);
+	arr_free(settings->key_actions);
+	for (size_t i = 0; i < arr_count(settings_string); i++) {
+		const SettingString *s = &settings_string[i];
+		RcStr **rc = (RcStr **)((char *)settings + ((char *)s->control - (char *)&settings_zero));
+		rc_str_decref(rc);
+	}
 }
 
-static void config_part_free(ConfigPart *part) {
-	context_free(&part->context);
-	arr_clear(part->text);
-	free(part->file);
-	memset(part, 0, sizeof *part);
+static void config_free(Config *cfg) {
+	settings_free(&cfg->settings);
+	free(cfg->path);
+	memset(cfg, 0, sizeof *cfg);
+}
+
+static void config_merge(Config *dest_cfg, const Config *src_cfg) {
+	Settings *dest = &dest_cfg->settings;
+	const Settings *src = &src_cfg->settings;
+	char *destc = (char *)dest;
+	const char *srcc = (const char *)src;
+	LanguageExtension *const dest_exts = dest->language_extensions;
+	LanguageExtension *const src_exts = src->language_extensions;
+	KeyAction *const dest_keys = dest->key_actions;
+	KeyAction *const src_keys = src->key_actions;
+	for (size_t i = 0; i < sizeof(Settings); i++) {
+		if (src_cfg->settings_set[i])
+			destc[i] = srcc[i];
+	}
+	// we don't want these to be replaced by src's
+	dest->language_extensions = dest_exts;
+	dest->key_actions = dest_keys;
+	// increment reference counts, etc.
+	settings_copy(dest, dest);
+	// merge language_extensions and key_actions
+	arr_foreach_ptr(src_exts, LanguageExtension, ext)
+		arr_add(dest->language_extensions, *ext);
+	arr_foreach_ptr(src_keys, KeyAction, act)
+		arr_add(dest->key_actions, *act);
 }
 
 static SDL_Keycode config_parse_key(ConfigReader *cfg, const char *str) {
@@ -370,73 +355,6 @@ static KeyCombo config_parse_key_combo(ConfigReader *cfg, const char *str) {
 }
 
 
-static void parse_section_header(ConfigReader *cfg, char *line, ConfigPart *part) {
-	#define SECTION_HEADER_HELP "Section headers should look like this: [(path//)(language.)section-name]"
-	Ted *ted = cfg->ted;
-	char *closing = strchr(line, ']');
-	if (!closing) {
-		config_err(cfg, "Unmatched [. " SECTION_HEADER_HELP);
-		return;
-	} else if (closing[1] != '\0') {
-		config_err(cfg, "Text after section. " SECTION_HEADER_HELP);
-		return;
-	} else {
-		*closing = '\0';
-		char *section = line + 1;
-		char *path_end = strstr(section, "//");
-		if (path_end) {
-			size_t path_len = (size_t)(path_end - section);
-			char path[TED_PATH_MAX];
-			path[0] = '\0';
-			
-			// expand ~
-			if (section[0] == '~') {
-				str_cpy(path, sizeof path, ted->home);
-				++section;
-				--path_len;
-			}
-			strn_cat(path, sizeof path, section, path_len);
-			#if _WIN32
-			// replace forward slashes with backslashes
-			for (char *p = path; *p; ++p)
-				if (*p == '/')
-					*p = '\\';
-			#endif
-			part->context.path = str_dup(path);
-			section = path_end + 2;
-		}
-		
-		char *dot = strchr(section, '.');
-		
-		if (dot) {
-			*dot = '\0';
-			Language language = part->context.language = language_from_str(section);
-			if (!language) {
-				config_err(cfg, "Unrecognized language: %s.", section);
-				return;
-			}
-			section = dot + 1;
-		}
-		
-		if (streq(section, "keyboard")) {
-			part->section = SECTION_KEYBOARD;
-		} else if (streq(section, "colors")) {
-			part->section = SECTION_COLORS;
-		} else if (streq(section, "core")) {
-			part->section = SECTION_CORE;
-		} else if (streq(section, "extensions")) {
-			if (part->context.language != 0 || part->context.path) {
-				config_err(cfg, "Extensions section cannot be language- or path-specific.");
-				return;
-			}
-			part->section = SECTION_EXTENSIONS;
-		} else {
-			config_err(cfg, "Unrecognized section: [%s].", section);
-			return;
-		}
-	}
-}
-
 static bool settings_initialized = false;
 static SettingAny settings_all[1000] = {0};
 
@@ -513,141 +431,9 @@ static void get_config_path(Ted *ted, char *expanded, size_t expanded_sz, const 
 	
 }
 
-static void config_read_(Ted *ted, ConfigPart **parts, const char *path, const char ***include_stack) {
-	// check for, e.g. %include ted.cfg inside ted.cfg
-	arr_foreach_ptr(*include_stack, const char *, p_include) {
-		if (streq(path, *p_include)) {
-			char text[1024];
-			strbuf_cpy(text, "%include loop in config files: ");
-			strbuf_cat(text, (*include_stack)[0]);
-			for (u32 i = 1; i < arr_len(*include_stack); ++i) {
-				if (i > 1)
-					strbuf_cat(text, ", which");
-				strbuf_catf(text, " includes %s", (*include_stack)[i]);
-			}
-			if (arr_len(*include_stack) > 1)
-				strbuf_cat(text, ", which");
-			strbuf_catf(text, " includes %s", path);
-			ted_error(ted, "%s", text);
-			return;
-		}
-	}
-	arr_add(*include_stack, path);
-	
-	FILE *fp = fopen(path, "rb");
-	if (!fp) {
-		ted_error(ted, "Couldn't open config file %s: %s.", path, strerror(errno));
-		return;
-	}
-	
-	
-	ConfigReader cfg_reader = {
-		.ted = ted,
-		.filename = path,
-		.line_number = 1,
-		.error = false
-	};
-	ConfigReader *cfg = &cfg_reader;
-	
-	ConfigPart *part = NULL;
-	
-	char line[4096] = {0};
-	while (fgets(line, sizeof line, fp)) {
-		char *newline = strchr(line, '\n');
-		if (!newline && !feof(fp)) {
-			config_err(cfg, "Line is too long.");
-			break;
-		}
-		
-		if (newline) *newline = '\0';
-		char *carriage_return = strchr(line, '\r');
-		if (carriage_return) *carriage_return = '\0';
-		
-		if (line[0] == '[') {
-			// a new part!
-			part = arr_addp(*parts);
-			part->index = (int)arr_len(*parts);
-			part->file = str_dup(path);
-			part->line = cfg->line_number + 1;
-			parse_section_header(&cfg_reader, line, part);
-		} else if (line[0] == '%') {
-			if (str_has_prefix(line, "%include ")) {
-				char included[TED_PATH_MAX];
-				char expanded[TED_PATH_MAX];
-				strbuf_cpy(included, line + strlen("%include "));
-				while (*included && isspace(included[strlen(included) - 1]))
-					included[strlen(included) - 1] = '\0';
-				get_config_path(ted, expanded, sizeof expanded, included);
-				config_read_(ted, parts, expanded, include_stack);
-			}
-		} else if (part) {
-			for (int i = 0; line[i]; ++i) {
-				arr_add(part->text, line[i]);
-			}
-			arr_add(part->text, '\n');
-		} else {
-			const char *p = line;
-			while (isspace(*p)) ++p;
-			if (*p == '\0' || *p == '#') {
-				// blank line
-			} else {
-				config_err(cfg, "Config has text before first section header.");
-			}
-		}
-		++cfg->line_number;
-	}
-	
-	if (ferror(fp))
-		ted_error(ted, "Error reading %s.", path);
-	fclose(fp);
-	arr_remove_last(*include_stack);
-}
-
-void config_read(Ted *ted, ConfigPart **parts, const char *filename) {
-	const char **include_stack = NULL;
-	config_read_(ted, parts, filename, &include_stack);
-}
-
-// IMPORTANT REQUIREMENT FOR THIS FUNCTION:
-//     - less specific contexts compare as less
-//            (i.e. if context_is_parent(a.context, b.context), then we return -1, and vice versa.)
-//     - this gives a total ordering; ties are broken by order of appearance
-static int config_part_cmp(const ConfigPart *ap, const ConfigPart *bp) {
-	const SettingsContext *a = &ap->context, *b = &bp->context;
-	if (a->language == 0 && b->language != 0)
-		return -1;
-	if (a->language != 0 && b->language == 0)
-		return +1;
-	const char *a_path = a->path ? a->path : "";
-	const char *b_path = b->path ? b->path : "";
-	size_t a_path_len = strlen(a_path), b_path_len = strlen(b_path);
-	if (a_path_len < b_path_len)
-		return -1;
-	if (a_path_len > b_path_len)
-		return 1;
-	
-	// done with specificity, now on to identicalness
-	if (a->language < b->language)
-		return -1;
-	if (a->language > b->language)
-		return +1;
-	int cmp = strcmp(a_path, b_path);
-	if (cmp != 0) return cmp;
-	if (ap->index < bp->index)
-		return -1;
-	if (ap->index > bp->index)
-		return +1;
-	return 0;
-	
-}
-
-static int config_part_qsort_cmp(const void *av, const void *bv) {
-	return config_part_cmp(av, bv);
-}
-
-static char *config_read_string(Ted *ted, ConfigReader *cfg, char **ptext) {
+static char *config_read_string(Ted *ted, ConfigReader *reader, char **ptext) {
 	char *p;
-	u32 start_line = cfg->line_number;
+	u32 start_line = reader->line_number;
 	char delimiter = **ptext;
 	char *start = *ptext + 1;
 	char *str = NULL;
@@ -672,19 +458,19 @@ static char *config_read_string(Ted *ted, ConfigReader *cfg, char **ptext) {
 			case '\0':
 				goto null;
 			default:
-				config_err(cfg, "Unrecognized escape sequence: '\\%c'.", *p);
+				config_err(reader, "Unrecognized escape sequence: '\\%c'.", *p);
 				*ptext += strlen(*ptext);
 				arr_clear(str);
 				return NULL;
 			}
 			break;
 		case '\n':
-			++cfg->line_number;
+			++reader->line_number;
 			break;
 		case '\0':
 		null:
-			cfg->line_number = start_line;
-			config_err(cfg, "String doesn't end.");
+			reader->line_number = start_line;
+			config_err(reader, "String doesn't end.");
 			*ptext += strlen(*ptext);
 			arr_clear(str);
 			return NULL;
@@ -702,7 +488,7 @@ static char *config_read_string(Ted *ted, ConfigReader *cfg, char **ptext) {
 	return s;
 }
 
-static void settings_load_bg_shader(Ted *ted, Settings **applicable_settings, const char *bg_shader_text) {
+static void settings_load_bg_shader(Ted *ted, Config *cfg, const char *bg_shader_text) {
 	char vshader[8192] ;
 	strbuf_printf(vshader, "attribute vec2 v_pos;\n\
 OUT vec2 t_pos;\n\
@@ -748,19 +534,12 @@ uniform sampler2D t_texture;\n\
 	glBufferData(GL_ARRAY_BUFFER, sizeof buffer_data, buffer_data, GL_STATIC_DRAW);
 	glVertexAttribPointer(v_pos, 2, GL_FLOAT, 0, 2 * sizeof(float), 0);
 	glEnableVertexAttribArray(v_pos);
-	
-	GlRcSAB *bg_shader = gl_rc_sab_new(shader, array, buffer);
-	bg_shader->ref_count = arr_len(applicable_settings);
-	arr_foreach_ptr(applicable_settings, Settings *, psettings) {
-		Settings *settings = *psettings;
-		// decrease refcount on previous shader
-		gl_rc_sab_decref(&settings->bg_shader);
-		settings->bg_shader = bg_shader;
-	}
+
+	cfg->settings.bg_shader = gl_rc_sab_new(shader, array, buffer);
 }
 
 
-static void settings_load_bg_texture(Ted *ted, Settings **applicable_settings, const char *path) {
+static void settings_load_bg_texture(Ted *ted, Config *cfg, const char *path) {
 	char expanded[TED_PATH_MAX];
 	get_config_path(ted, expanded, sizeof expanded, path);
 	
@@ -769,38 +548,14 @@ static void settings_load_bg_texture(Ted *ted, Settings **applicable_settings, c
 		ted_error(ted, "Couldn't load image %s", path);
 		return;
 	}
-	
-	GlRcTexture *bg_texture = gl_rc_texture_new(texture);
-	bg_texture->ref_count = arr_len(applicable_settings);
-	arr_foreach_ptr(applicable_settings, Settings *, psettings) {
-		Settings *settings = *psettings;
-		// decrease refcount on previous texture
-		gl_rc_texture_decref(&settings->bg_texture);
-		settings->bg_texture = bg_texture;
-	}
-	
+
+	cfg->settings.bg_texture = gl_rc_texture_new(texture);	
 }
 
-// reads a single "line" of the config file, but it may include a multiline string,
-// so it may read multiple lines.
-// applicable_settings is a dynamic array of all settings objects to update
-static void config_parse_line(ConfigReader *cfg, Settings **applicable_settings, const ConfigPart *part, char **pline) {
-	char *line = *pline;
-	Ted *ted = cfg->ted;
-	
-	char *newline = strchr(line, '\n');
-	if (!newline) {
-		config_err(cfg, "No newline at end of file?");
-		*pline += strlen(*pline);
-		return;
-	}
-	
-	if (newline) *newline = '\0';
-	char *carriage_return = strchr(line, '\r');
-	if (carriage_return) *carriage_return = '\0';
-	*pline = newline + 1;
-	
-	if (part->section == 0) {
+// NOTE: for multi-line strings, this will read from fp (otherwise it won't)
+static void config_parse_line(ConfigReader *reader, Config *cfg, char *line, FILE *fp) {
+	Ted *ted = reader->ted;
+	if (reader->section == 0) {
 		// there was an error reading this section. don't bother with anything else.
 		return;
 	}
@@ -813,7 +568,7 @@ static void config_parse_line(ConfigReader *cfg, Settings **applicable_settings,
 	
 	char *equals = strchr(line, '=');
 	if (!equals) {
-		config_err(cfg, "Invalid line syntax. "
+		config_err(reader, "Invalid line syntax. "
 			"Lines should either look like [section-name] or key = value");
 		return;
 	}
@@ -831,13 +586,13 @@ static void config_parse_line(ConfigReader *cfg, Settings **applicable_settings,
 		}
 	}
 	if (key[0] == '\0') {
-		config_err(cfg, "Empty property name. This line should look like: key = value");
+		config_err(reader, "Empty property name. This line should look like: key = value");
 		return;
 	}
 	
-	switch (part->section) {
+	switch (reader->section) {
 	case SECTION_NONE:
-		config_err(cfg, "Line outside of any section."
+		config_err(reader, "Line outside of any section."
 			"Try putting a section header, e.g. [keyboard] before this line?");
 		break;
 	case SECTION_COLORS: {
@@ -845,11 +600,9 @@ static void config_parse_line(ConfigReader *cfg, Settings **applicable_settings,
 		if (setting != COLOR_UNKNOWN) {
 			u32 color = 0;
 			if (color_from_str(value, &color)) {
-				arr_foreach_ptr(applicable_settings, Settings *, psettings) {
-					(*psettings)->colors[setting] = color;
-				}
+				config_set_color(cfg, setting, color);
 			} else {
-				config_err(cfg, "'%s' is not a valid color. Colors should look like #rgb, #rgba, #rrggbb, or #rrggbbaa.", value);
+				config_err(reader, "'%s' is not a valid color. Colors should look like #rgb, #rgba, #rrggbb, or #rrggbbaa.", value);
 			}
 		} else {
 			// don't actually produce this error.
@@ -861,7 +614,7 @@ static void config_parse_line(ConfigReader *cfg, Settings **applicable_settings,
 	} break;
 	case SECTION_KEYBOARD: {
 		// lines like Ctrl+Down = 10 :down
-		KeyCombo key_combo = config_parse_key_combo(cfg, key);
+		KeyCombo key_combo = config_parse_key_combo(reader, key);
 		KeyAction action = {0};
 		action.key_combo = key_combo;
 		CommandArgument argument = {
@@ -875,20 +628,7 @@ static void config_parse_line(ConfigReader *cfg, Settings **applicable_settings,
 			value = endp;
 		} else if (*value == '"' || *value == '`') {
 			// string argument
-			
-			// restore newline to handle multi-line strings
-			// a little bit hacky oh well
-			*newline = '\n';
-			argument.string = config_read_string(ted, cfg, &value);
-			
-			newline = strchr(value, '\n');
-			if (!newline) {
-				config_err(cfg, "No newline at end of file?");
-				*pline += strlen(*pline);
-				return;
-			}
-			*newline = '\0';
-			*pline = newline + 1;
+			argument.string = config_read_string(ted, reader, value, fp);
 		}
 		while (isspace(*value)) ++value; // skip past space following argument
 		if (*value == ':') {
@@ -898,32 +638,30 @@ static void config_parse_line(ConfigReader *cfg, Settings **applicable_settings,
 				action.command = command;
 				action.argument = argument;
 			} else {
-				config_err(cfg, "Unrecognized command %s", value);
+				config_err(reader, "Unrecognized command %s", value);
 			}
 		} else {
-			config_err(cfg, "Expected ':' for key action. This line should look something like: %s = :command.", key);
+			config_err(reader, "Expected ':' for key action. This line should look something like: %s = :command.", key);
 		}
 		
-		arr_foreach_ptr(applicable_settings, Settings *, psettings) {
-			Settings *settings = *psettings;
-			bool have = false;
-			// check if we already have an action for this key combo
-			arr_foreach_ptr(settings->key_actions, KeyAction, act) {
-				if (act->key_combo.value == key_combo.value) {
-					*act = action;
-					have = true;
-					break;
-				}
+		Settings *settings = &cfg->settings;
+		bool have = false;
+		// check if we already have an action for this key combo
+		arr_foreach_ptr(settings->key_actions, KeyAction, act) {
+			if (act->key_combo.value == key_combo.value) {
+				*act = action;
+				have = true;
+				break;
 			}
-			// if this is a new key combo, add an element to the key_actions array
-			if (!have)
-				arr_add(settings->key_actions, action);
 		}
+		// if this is a new key combo, add an element to the key_actions array
+		if (!have)
+			arr_add(settings->key_actions, action);
 	} break;
 	case SECTION_EXTENSIONS: {
 		Language lang = language_from_str(key);
 		if (lang == LANG_NONE) {
-			config_err(cfg, "Invalid programming language: %s.", key);
+			config_err(reader, "Invalid programming language: %s.", key);
 		} else {
 			char *exts = calloc(1, strlen(value) + 1);
 			char *dst = exts;
@@ -932,31 +670,29 @@ static void config_parse_line(ConfigReader *cfg, Settings **applicable_settings,
 				if (!isspace(*src))
 					*dst++ = *src;
 			*dst = 0;
-			arr_foreach_ptr(applicable_settings, Settings *, psettings) {
-				Settings *settings = *psettings;
-				// remove old extensions
-				u32 *indices = NULL;
-				arr_foreach_ptr(settings->language_extensions, LanguageExtension, ext) {
-					if (ext->language == lang) {
-						arr_add(indices, (u32)(ext - settings->language_extensions));
-					}
+			Settings *settings = &cfg->settings;
+			// remove old extensions
+			u32 *indices = NULL;
+			arr_foreach_ptr(settings->language_extensions, LanguageExtension, ext) {
+				if (ext->language == lang) {
+					arr_add(indices, (u32)(ext - settings->language_extensions));
 				}
-				for (u32 i = 0; i < arr_len(indices); ++i)
-					arr_remove(settings->language_extensions, indices[i] - i);
-				arr_free(indices);
-				
-				char *p = exts;
-				while (*p) {
-					while (*p == ',')
-						++p;
-					if (*p == '\0')
-						break;
-					size_t len = strcspn(p, ",");
-					LanguageExtension *ext = arr_addp(settings->language_extensions);
-					ext->language = lang;
-					memcpy(ext->extension, p, len);
-					p += len;
-				}
+			}
+			for (u32 i = 0; i < arr_len(indices); ++i)
+				arr_remove(settings->language_extensions, indices[i] - i);
+			arr_free(indices);
+			
+			char *p = exts;
+			while (*p) {
+				while (*p == ',')
+					++p;
+				if (*p == '\0')
+					break;
+				size_t len = strcspn(p, ",");
+				LanguageExtension *ext = arr_addp(settings->language_extensions);
+				ext->language = lang;
+				memcpy(ext->extension, p, len);
+				p += len;
 			}
 			free(exts);
 		}
@@ -979,20 +715,7 @@ static void config_parse_line(ConfigReader *cfg, Settings **applicable_settings,
 		}
 		
 		if (value[0] == '"' || value[0] == '`') {
-			// restore newline to handle multi-line strings
-			// a little bit hacky oh well
-			*newline = '\n';
-			
-			char *string = config_read_string(ted, cfg, &value);
-			
-			newline = strchr(value, '\n');
-			if (!newline) {
-				config_err(cfg, "No newline at end of file?");
-				*pline += strlen(*pline);
-				return;
-			}
-			*newline = '\0';
-			*pline = newline + 1;
+			char *string = config_read_string(ted, reader, value, fp);
 			if (string)
 				value = string;
 		}
@@ -1010,71 +733,68 @@ static void config_parse_line(ConfigReader *cfg, Settings **applicable_settings,
 		
 		if (!setting_any) {
 			if (streq(key, "bg-shader"))
-				settings_load_bg_shader(ted, applicable_settings, value);
+				settings_load_bg_shader(ted, cfg, value);
 			else if (streq(key, "bg-texture"))
-				settings_load_bg_texture(ted, applicable_settings, value);
+				settings_load_bg_texture(ted, cfg, value);
 			// it's probably a bad idea to error on unrecognized settings
 			// because if we ever remove a setting in the future
 			// everyone will get errors
 			break;
 		}
 		
-		arr_foreach_ptr(applicable_settings, Settings *, psettings) {
-			Settings *settings = *psettings;
-			if (part->context.language != 0 && !setting_any->per_language) {
-				config_err(cfg, "Setting %s cannot be controlled for individual languages.", key);
-				break;
+		if (cfg->language != 0 && !setting_any->per_language) {
+			config_err(reader, "Setting %s cannot be controlled for individual languages.", key);
+			break;
+		}
+		
+		switch (setting_any->type) {
+		case SETTING_BOOL: {
+			const SettingBool *setting = &setting_any->u._bool;
+			if (is_bool)
+				config_set_bool(cfg, setting, boolean);
+			else
+				config_err(reader, "Invalid %s: %s. This should be yes, no, on, or off.", setting->name, value);
+		} break;
+		case SETTING_U8: {
+			const SettingU8 *setting = &setting_any->u._u8;
+			if (is_integer && integer >= setting->min && integer <= setting->max)
+				config_set_u8(cfg, setting, (u8)integer);
+			else
+				config_err(reader, "Invalid %s: %s. This should be an integer from %u to %u.", setting->name, value, setting->min, setting->max);
+		} break;
+		case SETTING_U16: {
+			const SettingU16 *setting = &setting_any->u._u16;
+			if (is_integer && integer >= setting->min && integer <= setting->max)
+				config_set_u16(cfg, setting, (u16)integer);
+			else
+				config_err(reader, "Invalid %s: %s. This should be an integer from %u to %u.", setting->name, value, setting->min, setting->max);
+		} break;
+		case SETTING_U32: {
+			const SettingU32 *setting = &setting_any->u._u32;
+			if (is_integer && integer >= setting->min && integer <= setting->max)
+				config_set_u32(cfg, setting, (u32)integer);
+			else
+				config_err(reader, "Invalid %s: %s. This should be an integer from %" PRIu32 " to %" PRIu32 ".",
+					setting->name, value, setting->min, setting->max);
+		} break;
+		case SETTING_FLOAT: {
+			const SettingFloat *setting = &setting_any->u._float;
+			if (is_floating && floating >= setting->min && floating <= setting->max)
+				config_set_float(cfg, setting, (float)floating);
+			else
+				config_err(reader, "Invalid %s: %s. This should be a number from %g to %g.", setting->name, value, setting->min, setting->max);
+		} break;
+		case SETTING_STRING: {
+			const SettingString *setting = &setting_any->u._string;
+			config_set_string(cfg, setting, value);
+		} break;
+		case SETTING_KEY_COMBO: {
+			const SettingKeyCombo *setting = &setting_any->u._key;
+			KeyCombo combo = config_parse_key_combo(reader, value);
+			if (combo.value) {
+				config_set_key_combo(cfg, setting, combo);
 			}
-			
-			switch (setting_any->type) {
-			case SETTING_BOOL: {
-				const SettingBool *setting = &setting_any->u._bool;
-				if (is_bool)
-					setting_bool_set(settings, setting, boolean);
-				else
-					config_err(cfg, "Invalid %s: %s. This should be yes, no, on, or off.", setting->name, value);
-			} break;
-			case SETTING_U8: {
-				const SettingU8 *setting = &setting_any->u._u8;
-				if (is_integer && integer >= setting->min && integer <= setting->max)
-					setting_u8_set(settings, setting, (u8)integer);
-				else
-					config_err(cfg, "Invalid %s: %s. This should be an integer from %u to %u.", setting->name, value, setting->min, setting->max);
-			} break;
-			case SETTING_U16: {
-				const SettingU16 *setting = &setting_any->u._u16;
-				if (is_integer && integer >= setting->min && integer <= setting->max)
-					setting_u16_set(settings, setting, (u16)integer);
-				else
-					config_err(cfg, "Invalid %s: %s. This should be an integer from %u to %u.", setting->name, value, setting->min, setting->max);
-			} break;
-			case SETTING_U32: {
-				const SettingU32 *setting = &setting_any->u._u32;
-				if (is_integer && integer >= setting->min && integer <= setting->max)
-					setting_u32_set(settings, setting, (u32)integer);
-				else
-					config_err(cfg, "Invalid %s: %s. This should be an integer from %" PRIu32 " to %" PRIu32 ".",
-						setting->name, value, setting->min, setting->max);
-			} break;
-			case SETTING_FLOAT: {
-				const SettingFloat *setting = &setting_any->u._float;
-				if (is_floating && floating >= setting->min && floating <= setting->max)
-					setting_float_set(settings, setting, (float)floating);
-				else
-					config_err(cfg, "Invalid %s: %s. This should be a number from %g to %g.", setting->name, value, setting->min, setting->max);
-			} break;
-			case SETTING_STRING: {
-				const SettingString *setting = &setting_any->u._string;
-				setting_string_set(settings, setting, value);
-			} break;
-			case SETTING_KEY_COMBO: {
-				const SettingKeyCombo *setting = &setting_any->u._key;
-				KeyCombo combo = config_parse_key_combo(cfg, value);
-				if (combo.value) {
-					setting_key_combo_set(settings, setting, combo);
-				}
-			} break;
-			}
+		} break;
 		}
 		
 	} break;
@@ -1090,154 +810,153 @@ static int key_action_qsort_cmp_combo(const void *av, const void *bv) {
 	return 0;
 }
 
-void config_parse(Ted *ted, ConfigPart **pparts) {
-	config_init_settings();
+static void config_read_file(Ted *ted, const char *cfg_path, const char ***include_stack) {
+	// check for, e.g. %include ted.cfg inside ted.cfg
+	arr_foreach_ptr(*include_stack, const char *, p_include) {
+		if (streq(cfg_path, *p_include)) {
+			char text[1024];
+			strbuf_cpy(text, "%include loop in config files: ");
+			strbuf_cat(text, (*include_stack)[0]);
+			for (u32 i = 1; i < arr_len(*include_stack); ++i) {
+				if (i > 1)
+					strbuf_cat(text, ", which");
+				strbuf_catf(text, " includes %s", (*include_stack)[i]);
+			}
+			if (arr_len(*include_stack) > 1)
+				strbuf_cat(text, ", which");
+			strbuf_catf(text, " includes %s", cfg_path);
+			ted_error(ted, "%s", text);
+			return;
+		}
+	}
+	arr_add(*include_stack, cfg_path);
 	
-	ConfigReader cfg_reader = {
+	FILE *fp = fopen(cfg_path, "rb");
+	if (!fp) {
+		ted_error(ted, "Couldn't open config file %s: %s.", cfg_path, strerror(errno));
+		return;
+	}
+	
+	
+	ConfigReader reader_data = {
 		.ted = ted,
-		.filename = NULL,
+		.filename = cfg_path,
 		.line_number = 1,
 		.error = false
 	};
-	ConfigReader *cfg = &cfg_reader;
+	ConfigReader *reader = &reader_data;
 	
+	Config *cfg = NULL;
 	
-	ConfigPart *const parts = *pparts;
-	qsort(parts, arr_len(parts), sizeof *parts, config_part_qsort_cmp);
-	
-	const char **paths = NULL;
-	Language *languages = NULL;
-	arr_add(languages, 0);
-	// find all paths and languages referenced in config files
-	arr_foreach_ptr(parts, ConfigPart, part) {
-		bool already_have = false;
-		if (part->context.path) {
-			for (u32 i = 0; i < arr_len(paths); ++i) {
-				if (paths_eq(paths[i], part->context.path)) {
-					already_have = true;
-					break;
-				}
-			}
-			if (!already_have)
-				arr_add(paths, part->context.path);
-		}
-		already_have = false;
-		for (u32 i = 0; i < arr_len(languages); ++i) {
-			if (languages[i] == part->context.language) {
-				already_have = true;
-				break;
-			}
-		}
-		if (!already_have)
-			arr_add(languages, part->context.language);
-	}
-	arr_foreach_ptr(languages, Language, lang) {
-		// pathless settings
-		{
-			Settings *settings = arr_addp(ted->all_settings);
-			settings->context.language = *lang;
-		}
-		
-		arr_foreach_ptr(paths, const char *, path) {
-			Settings *settings = arr_addp(ted->all_settings);
-			settings->context.language = *lang;
-			settings->context.path = str_dup(*path);
-		}
-	}
-	arr_free(paths);
-	arr_free(languages);
-	
-	arr_foreach_ptr(parts, ConfigPart, part) {
-		cfg->filename = part->file;
-		cfg->line_number = part->line;
-		arr_add(part->text, '\0'); // null termination
-		char *line = part->text;
-		while (*line) {
-			Settings **applicable_settings = NULL;
-			arr_foreach_ptr(ted->all_settings, Settings, settings) {
-				if (context_is_parent(&part->context, &settings->context)) {
-					arr_add(applicable_settings, settings);
-				}
-			}
-			config_parse_line(cfg, applicable_settings, part, &line);
-			arr_free(applicable_settings);
-			
-			if (cfg->error) break;
-	
-			++cfg->line_number;
-		}
-		
-		
-	}
-	
-	arr_foreach_ptr(ted->all_settings, Settings, s) {
-		SettingsContext *ctx = &s->context;
-		if (ctx->language == 0 && (!ctx->path || !*ctx->path)) {
-			ted->default_settings = s;
+	char line[4096] = {0};
+	while (fgets(line, sizeof line, fp)) {
+		char *newline = strchr(line, '\n');
+		if (!newline && !feof(fp)) {
+			config_err(reader, "Line is too long.");
 			break;
 		}
+		
+		if (newline) *newline = '\0';
+		char *carriage_return = strchr(line, '\r');
+		if (carriage_return) *carriage_return = '\0';
+		
+		if (line[0] == '[') {
+			// a new section!
+			#define SECTION_HEADER_HELP "Section headers should look like this: [(path//)(language.)section-name]"
+			char path[TED_PATH_MAX]; path[0] = '\0';
+			char *closing = strchr(line, ']');
+			if (!closing) {
+				config_err(reader, "Unmatched [. " SECTION_HEADER_HELP);
+				return false;
+			} else if (closing[1] != '\0') {
+				config_err(reader, "Text after section. " SECTION_HEADER_HELP);
+				return false;
+			} else {
+				*closing = '\0';
+				char *section = line + 1;
+				char *path_end = strstr(section, "//");
+				if (path_end) {
+					size_t path_len = (size_t)(path_end - section);
+					path[0] = '\0';
+					// expand ~
+					if (section[0] == '~') {
+						str_cpy(path, sizeof path, ted->home);
+						++section;
+						--path_len;
+					}
+					strn_cat(path, sizeof path, section, path_len);
+					#if _WIN32
+					// replace forward slashes with backslashes
+					for (char *p = path; *p; ++p)
+						if (*p == '/')
+							*p = '\\';
+					#endif
+					cfg->path = str_dup(path);
+					section = path_end + 2;
+				}
+				
+				char *dot = strchr(section, '.');
+				
+				if (dot) {
+					*dot = '\0';
+					Language language = cfg->language = language_from_str(section);
+					if (!language) {
+						config_err(reader, "Unrecognized language: %s.", section);
+					}
+					section = dot + 1;
+				}
+				
+				if (streq(section, "keyboard")) {
+					reader->section = SECTION_KEYBOARD;
+				} else if (streq(section, "colors")) {
+					reader->section = SECTION_COLORS;
+				} else if (streq(section, "core")) {
+					reader->section = SECTION_CORE;
+				} else if (streq(section, "extensions")) {
+					if (cfg->language != 0 || cfg->path) {
+						config_err(reader, "Extensions section cannot be language- or path-specific.");
+						return;
+					}
+					reader->section = SECTION_EXTENSIONS;
+				} else {
+					config_err(reader, "Unrecognized section: [%s].", section);
+				}
+			}
+		} else if (line[0] == '%') {
+			if (str_has_prefix(line, "%include ")) {
+				char included[TED_PATH_MAX];
+				char expanded[TED_PATH_MAX];
+				strbuf_cpy(included, line + strlen("%include "));
+				while (*included && isspace(included[strlen(included) - 1]))
+					included[strlen(included) - 1] = '\0';
+				get_config_path(ted, expanded, sizeof expanded, included);
+				config_read_file(ted, expanded, include_stack);
+			}
+		} else if (cfg) {
+			config_parse_line(reader, cfg, line, fp);
+		} else {
+			const char *p = line;
+			while (isspace(*p)) ++p;
+			if (*p == '\0' || *p == '#') {
+				// blank line
+			} else {
+				config_err(reader, "Config has text before first section header.");
+			}
+		}
+		++reader->line_number;
 	}
 	
-	arr_foreach_ptr(parts, ConfigPart, part) {
-		config_part_free(part);
-	}
-	
-	arr_clear(*pparts);
-	
-	arr_foreach_ptr(ted->all_settings, Settings, s) {
-		// sort key_actions by key_combo.
-		arr_qsort(s->key_actions, key_action_qsort_cmp_combo);
-	}
+	if (ferror(fp))
+		ted_error(ted, "Error reading %s.", cfg_path);
+	fclose(fp);
+	arr_remove_last(*include_stack);
 }
 
-static int gluint_cmp(const void *av, const void *bv) {
-	const GLuint *ap = av, *bp = bv;
-	GLuint a = *ap, b = *bp;
-	if (a < b)
-		return -1;
-	if (a > b)
-		return 1;
-	return 0;
-}
-
-static void gluint_eliminate_duplicates(GLuint **arr) {
-	arr_qsort(*arr, gluint_cmp);
-	
-	GLuint *start = *arr;
-	GLuint *end = *arr + arr_len(*arr);
-	GLuint *out = start;
-	const GLuint *in = start;
-	
-	while (in < end) {
-		if (in == start || in[0] != in[-1])
-			*out++ = *in;
-		++in;
+void config_free_all(Ted *ted) {
+	arr_foreach_ptr(ted->all_configs, Config, cfg) {
+		config_free(cfg);
 	}
-	size_t count = (size_t)(out - *arr);
-	arr_set_len(*arr, count);
-}
-
-static void settings_free(Settings *settings) {
-	context_free(&settings->context);
-	arr_free(settings->language_extensions);
-	gl_rc_sab_decref(&settings->bg_shader);
-	gl_rc_texture_decref(&settings->bg_texture);
-	arr_free(settings->key_actions);
-	for (size_t i = 0; i < arr_count(settings_string); i++) {
-		const SettingString *s = &settings_string[i];
-		RcStr **rc = (RcStr **)((char *)settings + ((char *)s->control - (char *)&settings_zero));
-		rc_str_decref(rc);
-	}
-}
-
-void config_free(Ted *ted) {
-	arr_foreach_ptr(ted->all_settings, Settings, settings) {
-		settings_free(settings);
-	}
-	
-	
-	arr_clear(ted->all_settings);
-	
+	arr_clear(ted->all_configs);
 	for (u32 i = 0; i < ted->nstrings; ++i) {
 		free(ted->strings[i]);
 		ted->strings[i] = NULL;
