@@ -129,6 +129,7 @@ static const SettingU16 settings_u16[] = {
 	{"framerate-cap", &settings_zero.framerate_cap, 3, 1000, false},
 	{"lsp-port", &settings_zero.lsp_port, 0, 65535, true},
 };
+const SettingU16 setting_text_size_dpi_aware = {NULL, &settings_zero.text_size, 0, U16_MAX, false};
 static const SettingU32 settings_u32[] = {
 	{"max-file-size", &settings_zero.max_file_size, 100, 2000000000, false},
 	{"max-file-size-view-only", &settings_zero.max_file_size_view_only, 100, 2000000000, false},
@@ -155,6 +156,26 @@ static const SettingKeyCombo settings_key_combo[] = {
 	{"hover-key", &settings_zero.hover_key, true},
 	{"highlight-key", &settings_zero.highlight_key, true},
 };
+
+
+bool config_applies_to(Config *cfg, const char *path, Language language) {
+	if (cfg->language && language != cfg->language)
+		return false;
+	if (cfg->path && !str_has_path_prefix(path, cfg->path))
+		return false;
+	return true;
+}
+static bool config_has_same_context(const Config *a, const Config *b) {
+	if (a->language != b->language)
+		return false;
+	if (a->path && !b->path)
+		return false;
+	if (!a->path && b->path)
+		return false;
+	if (a->path && !streq(a->path, b->path))
+		return false;
+	return true;
+}
 
 
 static void config_set_setting(Config *cfg, ptrdiff_t offset, const void *value, size_t size) {
@@ -191,7 +212,7 @@ static void config_set_string(Config *cfg, const SettingString *set, const char 
 	RcStr **control = (RcStr **)((char *)settings + offset);
 	if (*control) rc_str_decref(control);
 	RcStr *rc = rc_str_new(value, -1);
-	config_set_setting(cfg, offset, &rc, sizeof rc);
+	config_set_setting(cfg, offset, &rc, sizeof (RcStr *));
 }
 static void config_set_color(Config *cfg, ColorSetting setting, u32 color) {
 	config_set_setting(cfg, (char *)&settings_zero.colors[setting] - (char *)&settings_zero, &color, sizeof color);
@@ -236,7 +257,7 @@ static void settings_copy(Settings *dest, const Settings *src) {
 	dest->key_actions = arr_copy(src->key_actions);
 }
 
-static void settings_free(Settings *settings) {
+void settings_free(Settings *settings) {
 	arr_free(settings->language_extensions);
 	gl_rc_sab_decref(&settings->bg_shader);
 	gl_rc_texture_decref(&settings->bg_texture);
@@ -254,8 +275,13 @@ static void config_free(Config *cfg) {
 	memset(cfg, 0, sizeof *cfg);
 }
 
-static void config_merge(Config *dest_cfg, const Config *src_cfg) {
-	Settings *dest = &dest_cfg->settings;
+
+i32 config_priority(const Config *cfg) {
+	size_t path_len = cfg->path ? strlen(cfg->path) : 0;
+	return (i32)path_len * 2 + (cfg->language != 0);
+}
+
+void config_merge_into(Settings *dest, const Config *src_cfg) {
 	const Settings *src = &src_cfg->settings;
 	char *destc = (char *)dest;
 	const char *srcc = (const char *)src;
@@ -263,6 +289,7 @@ static void config_merge(Config *dest_cfg, const Config *src_cfg) {
 	LanguageExtension *const src_exts = src->language_extensions;
 	KeyAction *const dest_keys = dest->key_actions;
 	KeyAction *const src_keys = src->key_actions;
+	// TODO: decrement reference counts, free language_extensions if needed
 	for (size_t i = 0; i < sizeof(Settings); i++) {
 		if (src_cfg->settings_set[i])
 			destc[i] = srcc[i];
@@ -431,13 +458,16 @@ static void get_config_path(Ted *ted, char *expanded, size_t expanded_sz, const 
 	
 }
 
-static char *config_read_string(Ted *ted, ConfigReader *reader, char **ptext) {
-	char *p;
+// only reads fp for multi-line strings
+static char *config_read_string(Ted *ted, ConfigReader *reader, const char *first_line, FILE *fp) {
+	const char *p;
+	char line_buf[1024];
 	u32 start_line = reader->line_number;
-	char delimiter = **ptext;
-	char *start = *ptext + 1;
+	char delimiter = *first_line;
 	char *str = NULL;
-	for (p = start; *p != delimiter; ++p) {
+	bool increment_p = true;
+	for (p = first_line + 1; *p != delimiter; p += increment_p) {
+		increment_p = true;
 		switch (*p) {
 		case '\\':
 			++p;
@@ -449,31 +479,38 @@ static char *config_read_string(Ted *ted, ConfigReader *reader, char **ptext) {
 			case 'n':
 				arr_add(str, '\n');
 				continue;
+			case 'r':
+				arr_add(str, '\r');
+				continue;
 			case 't':
 				arr_add(str, '\t');
 				continue;
 			case '[':
 				arr_add(str, '[');
 				continue;
-			case '\0':
-				goto null;
 			default:
 				config_err(reader, "Unrecognized escape sequence: '\\%c'.", *p);
-				*ptext += strlen(*ptext);
 				arr_clear(str);
 				return NULL;
 			}
 			break;
-		case '\n':
-			++reader->line_number;
-			break;
 		case '\0':
-		null:
-			reader->line_number = start_line;
-			config_err(reader, "String doesn't end.");
-			*ptext += strlen(*ptext);
-			arr_clear(str);
-			return NULL;
+			++reader->line_number;
+			arr_add(str, '\n');
+			if (!fgets(line_buf, sizeof line_buf, fp)) {
+				reader->line_number = start_line;
+				config_err(reader, "String doesn't end.");
+				arr_clear(str);
+				return NULL;
+			}
+			line_buf[strcspn(line_buf, "\r\n")] = 0;
+			p = line_buf;
+			increment_p = false;
+			continue;
+		case '\r':
+		case '\n':
+			assert(false);
+			break;
 		}
 		arr_add(str, *p);
 	}
@@ -484,7 +521,6 @@ static char *config_read_string(Ted *ted, ConfigReader *reader, char **ptext) {
 		ted->strings[ted->nstrings++] = s;
 	}
 	arr_clear(str);
-	*ptext = p + 1;
 	return s;
 }
 
@@ -796,6 +832,9 @@ static void config_parse_line(ConfigReader *reader, Config *cfg, char *line, FIL
 			}
 		} break;
 		}
+		if (streq(setting_any->name, "text-size")) {
+			config_set_u16(cfg, &setting_text_size_dpi_aware, (u16)roundf((float)integer * ted_get_ui_scaling(ted)));
+		}
 		
 	} break;
 	}
@@ -865,12 +904,13 @@ static void config_read_file(Ted *ted, const char *cfg_path, const char ***inclu
 			#define SECTION_HEADER_HELP "Section headers should look like this: [(path//)(language.)section-name]"
 			char path[TED_PATH_MAX]; path[0] = '\0';
 			char *closing = strchr(line, ']');
+			Language language = 0;
 			if (!closing) {
 				config_err(reader, "Unmatched [. " SECTION_HEADER_HELP);
-				return false;
+				break;
 			} else if (closing[1] != '\0') {
 				config_err(reader, "Text after section. " SECTION_HEADER_HELP);
-				return false;
+				break;
 			} else {
 				*closing = '\0';
 				char *section = line + 1;
@@ -891,7 +931,6 @@ static void config_read_file(Ted *ted, const char *cfg_path, const char ***inclu
 						if (*p == '/')
 							*p = '\\';
 					#endif
-					cfg->path = str_dup(path);
 					section = path_end + 2;
 				}
 				
@@ -899,7 +938,7 @@ static void config_read_file(Ted *ted, const char *cfg_path, const char ***inclu
 				
 				if (dot) {
 					*dot = '\0';
-					Language language = cfg->language = language_from_str(section);
+					language = language_from_str(section);
 					if (!language) {
 						config_err(reader, "Unrecognized language: %s.", section);
 					}
@@ -913,14 +952,29 @@ static void config_read_file(Ted *ted, const char *cfg_path, const char ***inclu
 				} else if (streq(section, "core")) {
 					reader->section = SECTION_CORE;
 				} else if (streq(section, "extensions")) {
-					if (cfg->language != 0 || cfg->path) {
+					if (language != 0 || *path) {
 						config_err(reader, "Extensions section cannot be language- or path-specific.");
-						return;
+						break;
 					}
 					reader->section = SECTION_EXTENSIONS;
 				} else {
 					config_err(reader, "Unrecognized section: [%s].", section);
 				}
+			}
+			Config new_cfg = {
+				.language = language,
+				.path = *path ? path : NULL,
+			};
+			cfg = NULL;
+			// search for config with same context to update
+			arr_foreach_ptr(ted->all_configs, Config, c) {
+				if (config_has_same_context(c, &new_cfg)) {
+					cfg = c;
+				}
+			}
+			if (!cfg) {
+				// create new config
+				cfg = arr_addp(ted->all_configs);
 			}
 		} else if (line[0] == '%') {
 			if (str_has_prefix(line, "%include ")) {
@@ -962,7 +1016,7 @@ void config_free_all(Ted *ted) {
 		ted->strings[i] = NULL;
 	}
 	ted->nstrings = 0;
-	ted->default_settings = NULL;
+	settings_free(&ted->default_settings);
 }
 
 
@@ -1030,6 +1084,12 @@ char *settings_get_root_dir(const Settings *settings, const char *path) {
 	}
 }
 
+void config_read(Ted *ted, const char *filename) {
+	const char **include_stack = NULL;
+	config_read_file(ted, filename, &include_stack);
+	ted_compute_settings(ted, "", LANG_NONE, &ted->default_settings);
+}
+
 u32 settings_color(const Settings *settings, ColorSetting color) {
 	if (color >= COLOR_COUNT) {
 		assert(0);
@@ -1062,3 +1122,4 @@ float settings_border_thickness(const Settings *settings) {
 float settings_padding(const Settings *settings) {
 	return settings->padding;
 }
+

@@ -1,7 +1,7 @@
 /*
 TODO:
+- get rid of ted->strings; do cfg->strings instead.
 - switch back to starting file after rename
-- put signature help at top if cursor is near bottom
 - .editorconfig? see https://editorconfig.org/
 FUTURE FEATURES:
 - autodetect indentation (tabs vs spaces)
@@ -1166,7 +1166,7 @@ int main(int argc, char **argv) {
 		{
 			// annoyingly, SDL_GL_SwapWindow seems to be a busy loop on my laptop for some reason...
 			// this is why the framerate-cap settings exists
-			const Settings *settings = ted->default_settings;
+			const Settings *settings = ted_default_settings(ted);
 			if (settings->framerate_cap) {
 				i32 ms_wait = 1000 / (i32)settings->framerate_cap - (i32)((frame_end_noswap - frame_start) * 1000);
 				ms_wait -= 1; // give swap an extra ms to make sure it's actually vsynced

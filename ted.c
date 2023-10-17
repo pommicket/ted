@@ -212,36 +212,49 @@ char *ted_get_root_dir(Ted *ted) {
 	}
 }
 
+static int applicable_configs_cmp(void *context, const void *av, const void *bv) {
+	const Config *const all_configs = context;
+	const u32 *ai = av, *bi = bv;
+	const Config *ac = &all_configs[*ai], *bc = &all_configs[*bi];
+	const i32 a = config_priority(ac);
+	const i32 b = config_priority(bc);
+	if (a < b) return -1;
+	if (a > b) return 1;
+	return 0;
+}
+
+void ted_compute_settings(Ted *ted, const char *path, Language language, Settings *settings) {
+	settings_free(settings);
+	memset(settings, 0, sizeof *settings);
+	u32 *applicable_configs = NULL;
+	for (u32 i = 0; i < arr_len(ted->all_configs); i++) {
+		Config *cfg = &ted->all_configs[i];
+		if (config_applies_to(cfg, path, language)) {
+			arr_add(applicable_configs, i);
+		}
+	}
+	qsort_with_context(applicable_configs, arr_len(applicable_configs),
+		sizeof applicable_configs[0], applicable_configs_cmp, ted->all_configs);
+	arr_foreach_ptr(applicable_configs, const u32, i) {
+		config_merge_into(settings, &ted->all_configs[*i]);
+	}
+	arr_free(applicable_configs);
+}
+
+Settings *ted_default_settings(Ted *ted) {
+	if (!streq(ted->default_settings_cwd, ted->cwd)) {
+		// recompute default settings
+		ted_compute_settings(ted, ted->cwd, LANG_NONE, &ted->default_settings);
+	}
+	return &ted->default_settings;
+}
+
 Settings *ted_active_settings(Ted *ted) {
 	if (ted->active_buffer)
 		return buffer_settings(ted->active_buffer);
-	Settings *settings = ted->default_settings;
-	int settings_score = 0;
-	arr_foreach_ptr(ted->all_settings, Settings, s) {
-		const SettingsContext *c = &s->context;
-		if (c->language != 0) continue;
-		if (!c->path || !str_has_prefix(ted->cwd, c->path)) continue;
-		int score = (int)strlen(c->path);
-		if (score > settings_score) {
-			settings = s;
-			settings_score = score;
-		}
-	}
-	return settings;
+	return ted_default_settings(ted);
 }
 
-Settings *ted_get_settings(Ted *ted, const char *path, Language language) {
-	long best_score = 0;
-	Settings *settings = ted->default_settings;
-	arr_foreach_ptr(ted->all_settings, Settings, s) {
-		long score = context_score(path, language, &s->context);
-		if (score > best_score) {
-			best_score = score;
-			settings = s;
-		}
-	}
-	return settings;
-}
 
 LSP *ted_get_lsp_by_id(Ted *ted, LSPID id) {
 	if (id == 0) return NULL;
@@ -253,8 +266,7 @@ LSP *ted_get_lsp_by_id(Ted *ted, LSPID id) {
 	return NULL;
 }
 
-LSP *ted_get_lsp(Ted *ted, const char *path, Language language) {
-	const Settings *settings = ted_get_settings(ted, path, language);
+LSP *ted_get_lsp(Ted *ted, Settings *settings, const char *path) {
 	if (!settings->lsp_enabled)
 		return NULL;
 	
@@ -405,7 +417,7 @@ static Font *ted_load_multifont(Ted *ted, const char *filenames) {
 	return first_font;
 }
 
-static float ted_get_ui_scaling(Ted *ted) {
+float ted_get_ui_scaling(Ted *ted) {
 #if _WIN32
 	SDL_SysWMinfo wm_info;
 	SDL_VERSION(&wm_info.version);
@@ -423,15 +435,6 @@ static float ted_get_ui_scaling(Ted *ted) {
 }
 
 void ted_load_fonts(Ted *ted) {
-	{
-		// compute text size
-		float scaling = ted_get_ui_scaling(ted);
-		arr_foreach_ptr(ted->all_settings, Settings, set) {
-			u16 size = (u16)roundf(scaling * (float)set->text_size_no_dpi);
-			set->text_size = clamp_u16(size, TEXT_SIZE_MIN, TEXT_SIZE_MAX);
-		}
-	}
-	
 	ted_free_fonts(ted);
 	const Settings *settings = ted_active_settings(ted);
 	ted->font = ted_load_multifont(ted, rc_str(settings->font, ""));
@@ -724,21 +727,18 @@ void ted_load_configs(Ted *ted) {
 	}
 	
 	
-	ConfigPart *parts = NULL;
-	config_read(ted, &parts, global_config_filename);
-	config_read(ted, &parts, local_config_filename);
+	config_read(ted, global_config_filename);
+	config_read(ted, local_config_filename);
 	if (ted->search_start_cwd) {
 		// read config in start_cwd
 		char start_cwd_filename[TED_PATH_MAX];
 		strbuf_printf(start_cwd_filename, "%s%c" TED_CFG, ted->start_cwd, PATH_SEPARATOR);
-		
-		config_read(ted, &parts, start_cwd_filename);
+		config_read(ted, start_cwd_filename);
 	}
-	config_parse(ted, &parts);
 }
 
 void ted_reload_configs(Ted *ted) {
-	config_free(ted);
+	config_free_all(ted);
 	ted_load_configs(ted);
 	// reset text size
 	ted_load_fonts(ted);

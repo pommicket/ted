@@ -1182,17 +1182,15 @@ char *ted_get_root_dir_of(Ted *ted, const char *path);
 ///
 /// The returned value should be freed.
 char *ted_get_root_dir(Ted *ted);
+/// settings to use when no buffer is open
+Settings *ted_default_settings(Ted *ted);
 /// the settings of the active buffer, or the default settings if there is no active buffer
 Settings *ted_active_settings(Ted *ted);
-/// Get the settings for a file at the given path in the given language.
-Settings *ted_get_settings(Ted *ted, const char *path, Language language);
-/// Get LSP server which should be used for the given path and language.
+/// Get LSP server which should be used for the given settings and path.
 ///
-/// If no running server would cover the path and language, a new one is
-/// started if possible.
-/// Returns `NULL` on failure (e.g. there is no LSP server
-/// specified for the given path and language).
-struct LSP *ted_get_lsp(Ted *ted, const char *path, Language language);
+/// The server is started if necessary.
+/// Returns `NULL` on failure (e.g. there is no LSP server configured).
+struct LSP *ted_get_lsp(Ted *ted, Settings *settings, const char *path);
 /// Get the LSP server of the active buffer or directory.
 ///
 /// Returns `NULL` if there is no such server.

@@ -85,6 +85,8 @@ struct TextBuffer {
 	/// capacity of \ref lines
 	u32 lines_capacity;
 	
+	/// if false, need to recompute settings.
+	bool settings_computed;
 	Settings settings;
 	/// which LSP this document is open in
 	LSPID lsp_opened_in;
@@ -352,7 +354,6 @@ static char *buffer_strdup(TextBuffer *buffer, const char *src) {
 static void buffer_set_up(Ted *ted, TextBuffer *buffer) {
 	buffer->store_undo_events = true;
 	buffer->ted = ted;
-	buffer->settings_idx = -1;
 }
 
 static void line_buffer_set_up(Ted *ted, TextBuffer *buffer) {
@@ -454,7 +455,7 @@ Language buffer_language(TextBuffer *buffer) {
 	
 	if (buffer->manual_language != LANG_NONE)
 		return (Language)buffer->manual_language;
-	const Settings *settings = buffer->ted->default_settings; // important we don't use buffer_settings here since that would cause infinite recursion!
+	const Settings *settings = ted_default_settings(buffer->ted); // important we don't use buffer_settings here since that would cause infinite recursion!
 	const char *filename = path_filename(buffer->path);
 
 	int match_score = 0;
@@ -510,7 +511,7 @@ LSP *buffer_lsp(TextBuffer *buffer) {
 		return ted_get_lsp_by_id(buffer->ted, buffer->lsp_opened_in);
 	}
 	
-	LSP *true_lsp = ted_get_lsp(buffer->ted, buffer->path, buffer_language(buffer));
+	LSP *true_lsp = ted_get_lsp(buffer->ted, buffer_settings(buffer), buffer->path);
 	LSP *curr_lsp = ted_get_lsp_by_id(buffer->ted, buffer->lsp_opened_in);
 	if (true_lsp != curr_lsp) {
 		if (curr_lsp)
@@ -526,13 +527,11 @@ LSP *buffer_lsp(TextBuffer *buffer) {
 
 Settings *buffer_settings(TextBuffer *buffer) {
 	Ted *ted = buffer->ted;
-	if (buffer->settings_idx >= 0 && buffer->settings_idx < (i32)arr_len(ted->all_settings))
-		return &ted->all_settings[buffer->settings_idx];
-	
-	Settings *settings = ted_get_settings(ted, buffer->path, buffer_language(buffer));
-	buffer->settings_idx = (i32)(settings - ted->all_settings);
-	assert(buffer->settings_idx >= 0 && buffer->settings_idx < (i32)arr_len(ted->all_settings));
-	return settings;
+	if (!buffer->settings_computed) {
+		ted_compute_settings(ted, buffer->path, buffer_language(buffer), &buffer->settings);
+		buffer->settings_computed = true;
+	}
+	return &buffer->settings;
 }
 
 u8 buffer_tab_width(TextBuffer *buffer) {
@@ -1001,6 +1000,7 @@ static void buffer_free_inner(TextBuffer *buffer) {
 	buffer_diagnostics_clear(buffer);
 	arr_free(buffer->undo_history);
 	arr_free(buffer->redo_history);
+	settings_free(&buffer->settings);
 	memset(buffer, 0, sizeof *buffer);
 }
 
@@ -2980,7 +2980,7 @@ Status buffer_load_file(TextBuffer *buffer, const char *path) {
 		long file_pos = ftell(fp);
 		size_t file_size = (size_t)file_pos;
 		fseek(fp, 0, SEEK_SET);
-		const Settings *default_settings = buffer->ted->default_settings;
+		const Settings *default_settings = ted_default_settings(buffer->ted);
 		u32 max_file_size_editable = default_settings->max_file_size;
 		u32 max_file_size_view_only = default_settings->max_file_size_view_only;
 		
@@ -3057,7 +3057,7 @@ Status buffer_load_file(TextBuffer *buffer, const char *path) {
 				if (success) {
 					// everything is good
 					buffer_clear(buffer);
-					buffer->settings_idx = -1;
+					buffer->settings_computed = false;
 					buffer->lines = lines;
 					buffer->nlines = nlines;
 					buffer->frame_earliest_line_modified = 0;
@@ -3255,7 +3255,7 @@ bool buffer_save_as(TextBuffer *buffer, const char *new_path) {
 	LSP *lsp = buffer_lsp(buffer);
 	char *prev_path = buffer->path;
 	buffer->path = buffer_strdup(buffer, new_path);
-	buffer->settings_idx = -1; // we might have new settings
+	buffer->settings_computed = false; // we might have new settings
 	
 	if (buffer->path && buffer_save(buffer)) {
 		buffer->view_only = false;

@@ -55,16 +55,6 @@ typedef struct {
 	CommandArgument argument;
 } KeyAction;
 
-
-/// A SettingsContext is a context where a specific set of settings are applied.
-/// this corresponds to `[PATH//LANGUAGE.(section)]` in config files.
-typedef struct {
-	/// The settings apply to this language.
-	Language language;
-	/// The settings apply to all paths which start with this string, or all paths if path=NULL
-	char *path;
-} SettingsContext;
-
 /// Need to use reference counting for textures because of Settings:
 /// We copy parent settings to children
 /// e.g.
@@ -287,8 +277,10 @@ struct Ted {
 	TextBuffer *prev_active_buffer; 
 	Node *active_node;
 	Config *all_configs;
+	/// cwd where \ref default_settings was computed
+	char default_settings_cwd[TED_PATH_MAX];
 	/// settings to use when no buffer is open
-	Settings *default_settings;
+	Settings default_settings;
 	float window_width, window_height;
 	vec2 mouse_pos;
 	u32 mouse_state;
@@ -501,9 +493,11 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *argument, co
 // === config.c ===
 void config_read(Ted *ted, const char *filename);
 void config_free_all(Ted *ted);
-/// how well does this settings context fit the given path and language?
-/// the context with the highest score will be chosen.
-long context_score(const char *path, Language lang, const SettingsContext *context);
+void config_merge_into(Settings *dest, const Config *src_cfg);
+bool config_applies_to(Config *cfg, const char *path, Language language);
+/// higher-priority configs override lower-priority ones.
+i32 config_priority(const Config *cfg);
+void settings_free(Settings *settings);
 
 // === find.c ===
 void find_init(Ted *ted);
@@ -702,6 +696,7 @@ void ted_update_time(Ted *ted);
 void ted_reset_active_buffer(Ted *ted);
 /// set ted's error message to the buffer's error.
 void ted_error_from_buffer(Ted *ted, TextBuffer *buffer);
+float ted_get_ui_scaling(Ted *ted);
 /// Get LSP by ID. Returns NULL if there is no LSP with that ID.
 LSP *ted_get_lsp_by_id(Ted *ted, LSPID id);
 /// go to this LSP document position, opening a new buffer containing the file if necessary.
@@ -715,6 +710,10 @@ MessageType ted_message_type_from_lsp(LSPWindowMessageType type);
 void ted_delete_buffer(Ted *ted, TextBuffer *buffer);
 /// Returns a new buffer, or NULL on out of memory
 TextBuffer *ted_new_buffer(Ted *ted);
+/// Compute the settings for a file at the given path in the given language.
+///
+/// NOTE: this frees the previous settings stored in `*settings`. so make sure it's either zeroed or points to valid settings.
+void ted_compute_settings(Ted *ted, const char *path, Language language, Settings *settings);
 /// check for orphaned nodes and node cycles
 void ted_check_for_node_problems(Ted *ted);
 /// load ted configuration
