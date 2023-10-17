@@ -1,6 +1,5 @@
 /*
 TODO:
-- get rid of ted->strings; do cfg->strings instead.
 - switch back to starting file after rename
 - .editorconfig? see https://editorconfig.org/
 FUTURE FEATURES:

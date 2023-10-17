@@ -128,7 +128,7 @@ void rename_symbol_process_lsp_response(Ted *ted, const LSPResponse *response) {
 	
 	arr_foreach_ptr(data->changes, const LSPWorkspaceChange, change) {
 		if (change->type == LSP_CHANGE_DELETE && change->data.delete.recursive) {
-			ted_error(ted, "refusing to perform rename because it involves a recurisve deletion\n"
+			ted_error(ted, "refusing to perform rename because it involves a recursive deletion\n"
 				"I'm too scared to go through with this");
 			goto cleanup;
 		}

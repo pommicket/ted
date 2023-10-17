@@ -267,6 +267,10 @@ void settings_free(Settings *settings) {
 }
 
 static void config_free(Config *cfg) {
+	arr_foreach_ptr(cfg->strings, char *, pstr) {
+		free(*pstr);
+	}
+	arr_free(cfg->strings);
 	settings_free(&cfg->settings);
 	free(cfg->path);
 	memset(cfg, 0, sizeof *cfg);
@@ -464,7 +468,7 @@ static void get_config_path(Ted *ted, char *expanded, size_t expanded_sz, const 
 }
 
 // only reads fp for multi-line strings
-static char *config_read_string(Ted *ted, ConfigReader *reader, const char *first_line, FILE *fp) {
+static char *config_read_string(ConfigReader *reader, Config *cfg, const char *first_line, FILE *fp) {
 	const char *p;
 	char line_buf[1024];
 	u32 start_line = reader->line_number;
@@ -520,12 +524,9 @@ static char *config_read_string(Ted *ted, ConfigReader *reader, const char *firs
 		arr_add(str, *p);
 	}
 	
-	char *s = NULL;
-	if (ted->nstrings < TED_MAX_STRINGS) {
-		s = strn_dup(str, arr_len(str));
-		ted->strings[ted->nstrings++] = s;
-	}
-	arr_clear(str);
+	char *s = strn_dup(str, arr_len(str));
+	arr_add(cfg->strings, s);
+	arr_free(str);
 	return s;
 }
 
@@ -669,7 +670,7 @@ static void config_parse_line(ConfigReader *reader, Config *cfg, char *line, FIL
 			value = endp;
 		} else if (*value == '"' || *value == '`') {
 			// string argument
-			argument.string = config_read_string(ted, reader, value, fp);
+			argument.string = config_read_string(reader, cfg, value, fp);
 		}
 		while (isspace(*value)) ++value; // skip past space following argument
 		if (*value == ':') {
@@ -756,7 +757,7 @@ static void config_parse_line(ConfigReader *reader, Config *cfg, char *line, FIL
 		}
 		
 		if (value[0] == '"' || value[0] == '`') {
-			char *string = config_read_string(ted, reader, value, fp);
+			char *string = config_read_string(reader, cfg, value, fp);
 			if (string)
 				value = string;
 		}
@@ -1020,11 +1021,6 @@ void config_free_all(Ted *ted) {
 		config_free(cfg);
 	}
 	arr_clear(ted->all_configs);
-	for (u32 i = 0; i < ted->nstrings; ++i) {
-		free(ted->strings[i]);
-		ted->strings[i] = NULL;
-	}
-	ted->nstrings = 0;
 	settings_free(&ted->default_settings);
 }
 

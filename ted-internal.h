@@ -155,6 +155,7 @@ struct Settings {
 typedef struct {
 	Language language;
 	char *path;
+	char **strings;
 	Settings settings;
 	bool settings_set[sizeof (Settings)];
 } Config;
@@ -167,8 +168,6 @@ typedef struct EditNotifyInfo {
 
 /// max tabs per node
 #define TED_MAX_TABS 100
-/// max strings in all config files
-#define TED_MAX_STRINGS 1000
 
 /// "find" menu result
 typedef struct FindResult FindResult;
@@ -400,10 +399,6 @@ struct Ted {
 	/// `nodes[0]` is always the "root node", if any buffers are open.
 	Node **nodes;
 	TextBuffer **buffers;
-	/// number of config file strings
-	u32 nstrings;
-	/// config file strings
-	char *strings[TED_MAX_STRINGS];
 	char window_title[256];
 	
 	/// little box used to display errors and info.
