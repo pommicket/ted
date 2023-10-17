@@ -837,10 +837,6 @@ static void config_parse_line(ConfigReader *reader, Config *cfg, char *line, FIL
 			}
 		} break;
 		}
-		if (streq(setting_any->name, "text-size")) {
-			config_set_u16(cfg, &setting_text_size_dpi_aware, (u16)roundf((float)integer * ted_get_ui_scaling(ted)));
-		}
-		
 	} break;
 	}
 }
@@ -852,6 +848,11 @@ static int key_action_qsort_cmp_combo(const void *av, const void *bv) {
 	if (a->key_combo.value > b->key_combo.value)
 		return 1;
 	return 0;
+}
+
+void settings_finalize(Ted *ted, Settings *settings) {
+	arr_qsort(settings->key_actions, key_action_qsort_cmp_combo);
+	settings->text_size = clamp_u16((u16)roundf((float)settings->text_size_no_dpi * ted_get_ui_scaling(ted)), TEXT_SIZE_MIN, TEXT_SIZE_MAX);
 }
 
 static void config_read_file(Ted *ted, const char *cfg_path, const char ***include_stack) {

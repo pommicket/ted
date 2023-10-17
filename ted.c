@@ -239,6 +239,7 @@ void ted_compute_settings(Ted *ted, const char *path, Language language, Setting
 		config_merge_into(settings, &ted->all_configs[*i]);
 	}
 	arr_free(applicable_configs);
+	settings_finalize(ted, settings);
 }
 
 Settings *ted_default_settings(Ted *ted) {

@@ -484,6 +484,10 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *argument, co
 void config_read(Ted *ted, const char *filename);
 void config_free_all(Ted *ted);
 void config_merge_into(Settings *dest, const Config *src_cfg);
+/// call this after all your calls to \ref config_merge_into
+///
+/// (this sorts key actions, etc.)
+void settings_finalize(Ted *ted, Settings *settings);
 bool config_applies_to(Config *cfg, const char *path, Language language);
 /// higher-priority configs override lower-priority ones.
 i32 config_priority(const Config *cfg);
