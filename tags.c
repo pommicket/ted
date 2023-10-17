@@ -324,18 +324,18 @@ top:;
 								if (end_anchored) options |= PCRE2_ENDANCHORED;
 								int error_code;
 								PCRE2_SIZE error_offset;
-								pcre2_code *code = pcre2_compile(pattern32.str, pattern32.len,
+								pcre2_code_32 *code = pcre2_compile_32(pattern32.str, pattern32.len,
 									options, &error_code, &error_offset, NULL);
 								if (code) {
-									pcre2_match_data *match_data = pcre2_match_data_create(10, NULL);
+									pcre2_match_data_32 *match_data = pcre2_match_data_create_32(10, NULL);
 									if (match_data) {
 										for (u32 line_idx = 0, line_count = buffer_line_count(buffer); line_idx < line_count; ++line_idx) {
 											String32 line = buffer_get_line(buffer, line_idx);
-											int n = pcre2_match(code, line.str, line.len, 0, PCRE2_NOTEMPTY,
+											int n = pcre2_match_32(code, line.str, line.len, 0, PCRE2_NOTEMPTY,
 												match_data, NULL);
 											if (n == 1) {
 												// found it!
-												PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);
+												PCRE2_SIZE *ovector = pcre2_get_ovector_pointer_32(match_data);
 												PCRE2_SIZE index = ovector[0];
 												BufferPos pos = {line_idx, (u32)index};
 												buffer_cursor_move_to_pos(buffer, pos);
@@ -344,9 +344,9 @@ top:;
 												break;
 											}
 										}
-										pcre2_match_data_free(match_data);
+										pcre2_match_data_free_32(match_data);
 									}
-									pcre2_code_free(code);
+									pcre2_code_free_32(code);
 								}
 								str32_free(&pattern32);
 								free(pattern);

@@ -1,7 +1,7 @@
 ALL_CFLAGS=$(CFLAGS) -Wall -Wextra -Wshadow -Wconversion -Wpedantic -pedantic -std=gnu11 \
 	-Wno-unused-function -Wno-fixed-enum-extension -Wimplicit-fallthrough -Wno-format-truncation -Wno-unknown-warning-option \
 	-Ipcre2
-LIBS=-lSDL2 -lGL -lm libpcre2-32.a
+LIBS=-lSDL2 -lGL -lm libpcre2-32.a libpcre2-8.a
 RELEASE_CFLAGS=$(ALL_CFLAGS) -O3
 PROFILE_CFLAGS=$(ALL_CFLAGS) -O3 -g -DPROFILE=1
 # if you change the directories below, ted won't work.
@@ -17,15 +17,15 @@ ted: debug/ted
 compile_commands.json: debug/ted
 	rm -f compile_commands.json
 	cp debug/compile_commands.json .
-debug/ted: *.[ch] libpcre2-32.a CMakeLists.txt
+debug/ted: *.[ch] pcre-lib CMakeLists.txt
 	mkdir -p debug
 	cd debug && cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DCMAKE_BUILD_TYPE=Debug -GNinja ..
 	ninja -C debug
-release: *.[ch] libpcre2-32.a
+release: *.[ch] pcre-lib
 	$(CC) main.c -o ted $(RELEASE_CFLAGS) $(LIBS)
-release_debug: *.[ch] libpcre2-32.a
+release_debug: *.[ch] pcre-lib
 	$(CC) main.c -g -o ted $(RELEASE_CFLAGS) $(LIBS)
-profile: *.[ch] libpcre2-32.a
+profile: *.[ch] pcre-lib
 	$(CC) main.c -o ted $(PROFILE_CFLAGS) $(LIBS)
 clean:
 	rm -f ted *.o *.a
@@ -39,9 +39,11 @@ install: release
 	cp -r themes $(GLOBAL_DATA_DIR)
 	install -m 644 ted.cfg $(GLOBAL_DATA_DIR)
 	install ted $(INSTALL_BIN_DIR)
-libpcre2-32.a: pcre2
-	cd pcre2 && cmake -DPCRE2_BUILD_PCRE2_32=ON . && $(MAKE) -j8
-	cp pcre2/libpcre2-32.a ./
+pcre-lib:
+	@if [ '(' '!' -f libpcre2-32.a ')' -o '(' '!' -f libpcre2-8.a ')' ]; then \
+		cd pcre2 && cmake -DPCRE2_BUILD_PCRE2_32=ON . && $(MAKE) -j8 && \
+		cp libpcre2-32.a libpcre2-8.a ../ ; \
+	fi
 keywords.h: keywords.py
 	python3 keywords.py
 ted.deb: release

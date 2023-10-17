@@ -31,7 +31,7 @@ TextBuffer *find_search_buffer(Ted *ted) {
 
 static void ted_error_from_pcre2_error(Ted *ted, int err) {
 	char32_t buf[256] = {0};
-	size_t len = (size_t)pcre2_get_error_message(err, buf, arr_count(buf) - 1);
+	size_t len = (size_t)pcre2_get_error_message_32(err, buf, arr_count(buf) - 1);
 	char *error_cstr = str32_to_utf8_cstr(str32(buf, len));
 	if (error_cstr) {
 		ted_error(ted, "Search error: %s.", error_cstr);
@@ -43,11 +43,11 @@ static bool find_compile_pattern(Ted *ted) {
 	TextBuffer *find_buffer = ted->find_buffer;
 	String32 term = buffer_get_line(find_buffer, 0);
 	if (term.len) {
-		pcre2_match_data *match_data = pcre2_match_data_create(FIND_MAX_GROUPS, NULL);
+		pcre2_match_data_32 *match_data = pcre2_match_data_create_32(FIND_MAX_GROUPS, NULL);
 		if (match_data) {
 			int error = 0;
 			PCRE2_SIZE error_pos = 0;
-			pcre2_code *code = pcre2_compile(term.str, term.len, find_compilation_flags(ted), &error, &error_pos, NULL);
+			pcre2_code_32 *code = pcre2_compile_32(term.str, term.len, find_compilation_flags(ted), &error, &error_pos, NULL);
 			if (code) {
 				ted->find_code = code;
 				ted->find_match_data = match_data;
@@ -56,7 +56,7 @@ static bool find_compile_pattern(Ted *ted) {
 			} else {
 				ted->find_invalid_pattern = true;
 			}
-			pcre2_match_data_free(match_data);
+			pcre2_match_data_free_32(match_data);
 		} else {
 			ted_error(ted, "Out of memory.");
 		}
@@ -68,11 +68,11 @@ static bool find_compile_pattern(Ted *ted) {
 
 static void find_free_pattern(Ted *ted) {
 	if (ted->find_code) {
-		pcre2_code_free(ted->find_code);
+		pcre2_code_free_32(ted->find_code);
 		ted->find_code = NULL;
 	}
 	if (ted->find_match_data) {
-		pcre2_match_data_free(ted->find_match_data);
+		pcre2_match_data_free_32(ted->find_match_data);
 		ted->find_match_data = NULL;
 	}
 	arr_clear(ted->find_results);
@@ -97,19 +97,19 @@ static WarnUnusedResult bool find_match(Ted *ted, BufferPos *pos, u32 *match_sta
 	TextBuffer *buffer = find_search_buffer(ted);
 	if (!buffer) return false;
 	String32 str = buffer_get_line(buffer, pos->line);
-	PCRE2_SIZE *groups = pcre2_get_ovector_pointer(ted->find_match_data);
+	PCRE2_SIZE *groups = pcre2_get_ovector_pointer_32(ted->find_match_data);
 
 	u32 match_flags = PCRE2_NOTEMPTY;
 	
 	int ret;
 	if (direction == +1)
-		ret = pcre2_match(ted->find_code, str.str, str.len, pos->index, match_flags, ted->find_match_data, NULL);
+		ret = pcre2_match_32(ted->find_code, str.str, str.len, pos->index, match_flags, ted->find_match_data, NULL);
 	else {
 		// unfortunately PCRE does not have a backwards option, so we need to do the search multiple times
 		u32 last_pos = 0;
 		ret = -1;
 		while (1) {
-			int next_ret = pcre2_match(ted->find_code, str.str, pos->index, last_pos, match_flags, ted->find_match_data, NULL);
+			int next_ret = pcre2_match_32(ted->find_code, str.str, pos->index, last_pos, match_flags, ted->find_match_data, NULL);
 			if (next_ret > 0) {
 				ret = next_ret;
 				last_pos = (u32)groups[1];
@@ -243,14 +243,14 @@ static bool find_replace_match(Ted *ted, u32 match_idx) {
 	char32_t *str = line.str + match.start.index;
 	u32 len = match.end.index - match.start.index;
 	
-	int ret = pcre2_substitute(ted->find_code, str, len, 0,
+	int ret = pcre2_substitute_32(ted->find_code, str, len, 0,
 		PCRE2_SUBSTITUTE_OVERFLOW_LENGTH|flags, ted->find_match_data, NULL, replacement.str,
 		replacement.len, NULL, &output_size);
 	char32_t *output_buffer = output_size
 		? calloc(output_size, sizeof *output_buffer)
 		: NULL;
 	if (output_buffer || !output_size) {
-		ret = pcre2_substitute(ted->find_code, str, len, 0,
+		ret = pcre2_substitute_32(ted->find_code, str, len, 0,
 			flags, ted->find_match_data, NULL, replacement.str,
 			replacement.len, output_buffer, &output_size);
 		if (ret > 0) {
