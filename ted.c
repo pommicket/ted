@@ -233,6 +233,20 @@ static int applicable_configs_cmp(void *context, const void *av, const void *bv)
 
 void ted_compute_settings(Ted *ted, const char *path, Language language, Settings *settings) {
 	settings_free(settings);
+	
+	if (path && *path) {
+		// check for .editorconfig
+		char editorconfig[2048];
+		for (size_t i = 0; path[i] && i < sizeof editorconfig - 16; i++) {
+			editorconfig[i] = path[i];
+			editorconfig[i+1] = 0;
+			if (strchr(ALL_PATH_SEPARATORS, path[i])) {
+				strbuf_cat(editorconfig, ".editorconfig");
+				config_read(ted, editorconfig, CONFIG_EDITORCONFIG);
+			}
+		}
+	}
+	
 	u32 *applicable_configs = NULL;
 	for (u32 i = 0; i < arr_len(ted->all_configs); i++) {
 		Config *cfg = &ted->all_configs[i];
@@ -736,13 +750,13 @@ void ted_load_configs(Ted *ted) {
 	}
 	
 	
-	config_read(ted, global_config_filename);
-	config_read(ted, local_config_filename);
+	config_read(ted, global_config_filename, CONFIG_TED_CFG);
+	config_read(ted, local_config_filename, CONFIG_TED_CFG);
 	if (ted->search_start_cwd) {
 		// read config in start_cwd
 		char start_cwd_filename[TED_PATH_MAX];
 		strbuf_printf(start_cwd_filename, "%s%c" TED_CFG, ted->start_cwd, PATH_SEPARATOR);
-		config_read(ted, start_cwd_filename);
+		config_read(ted, start_cwd_filename, CONFIG_TED_CFG);
 	}
 }
 

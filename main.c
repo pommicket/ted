@@ -2,6 +2,7 @@
 TODO:
 - .editorconfig (see https://editorconfig.org/)
 FUTURE FEATURES:
+- prepare rename support
 - autodetect indentation (tabs vs spaces)
 - custom file/build command associations
 - config variables

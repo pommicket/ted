@@ -286,6 +286,7 @@ static void config_free(Config *cfg) {
 	settings_free(&cfg->settings);
 	pcre2_code_free_8(cfg->path);
 	free(cfg->path_regex);
+	rc_str_decref(&cfg->source);
 	memset(cfg, 0, sizeof *cfg);
 }
 
@@ -339,19 +340,25 @@ static void config_err_unexpected_eof(ConfigReader *reader) {
 	config_err(reader, "Unexpected EOF (no newline at end of file?)");
 }
 
-static char config_getc(ConfigReader *reader) {
+static char config_getc_no_err_on_eof(ConfigReader *reader) {
 	int c = getc(reader->fp);
 	if (c == 0) {
 		config_err(reader, "Null byte in config file");
 	}
 	if (c == EOF) {
-		config_err_unexpected_eof(reader);
 		c = 0;
 	}
 	if (c == '\n') {
 		reader->line_number += 1;
 	}
 	return (char)c;
+}
+
+static char config_getc(ConfigReader *reader) {
+	char c = config_getc_no_err_on_eof(reader);
+	if (!c)
+		config_err_unexpected_eof(reader);
+	return c;
 }
 
 static void config_ungetc(ConfigReader *reader, char c) {
@@ -915,7 +922,20 @@ void settings_finalize(Ted *ted, Settings *settings) {
 	settings->text_size = clamp_u16((u16)roundf((float)settings->text_size_no_dpi * ted_get_ui_scaling(ted)), TEXT_SIZE_MIN, TEXT_SIZE_MAX);
 }
 
-static void config_read_file(Ted *ted, const char *cfg_path, const char ***include_stack) {
+static void config_compile_regex(Config *cfg, ConfigReader *reader) {
+	if (cfg->path_regex) {
+		// compile regex
+		int error_code = 0;
+		PCRE2_SIZE error_offset = 0;
+		cfg->path = pcre2_compile_8((const u8 *)cfg->path_regex, PCRE2_ZERO_TERMINATED, PCRE2_ANCHORED, &error_code, &error_offset, NULL);
+		if (!cfg->path) {
+			config_err(reader, "Bad regex (at offset %u): %s", (unsigned)error_offset, cfg->path_regex);
+			free(cfg->path_regex); cfg->path_regex = NULL;
+		}
+	}
+}
+
+static bool config_read_ted_cfg(Ted *ted, const char *cfg_path, const char ***include_stack) {
 	// check for, e.g. %include ted.cfg inside ted.cfg
 	arr_foreach_ptr(*include_stack, const char *, p_include) {
 		if (streq(cfg_path, *p_include)) {
@@ -931,18 +951,17 @@ static void config_read_file(Ted *ted, const char *cfg_path, const char ***inclu
 				strbuf_cat(text, ", which");
 			strbuf_catf(text, " includes %s", cfg_path);
 			ted_error(ted, "%s", text);
-			return;
+			return false;
 		}
 	}
 	arr_add(*include_stack, cfg_path);
 	
 	FILE *fp = fopen(cfg_path, "rb");
 	if (!fp) {
-		ted_error(ted, "Couldn't open config file %s: %s.", cfg_path, strerror(errno));
-		return;
+		return false;
 	}
 	
-	
+	RcStr *cfg_path_rc = rc_str_new(cfg_path, -1);
 	ConfigReader reader_data = {
 		.ted = ted,
 		.filename = cfg_path,
@@ -955,12 +974,8 @@ static void config_read_file(Ted *ted, const char *cfg_path, const char ***inclu
 	Config *cfg = NULL;
 	
 	while (true) {
-		int ic = getc(reader->fp);
-		if (ic == EOF)
-			break;
-		char c = (char)ic;
-		if (c == '\n') ++reader->line_number;
-		
+		char c = config_getc_no_err_on_eof(reader);
+		if (!c) break;
 		if (c == '[') {
 			// a new section!
 			#define SECTION_HEADER_HELP "Section headers should look like this: [(path//)(language.)section-name]"
@@ -1036,16 +1051,9 @@ static void config_read_file(Ted *ted, const char *cfg_path, const char ***inclu
 				cfg = arr_addp(ted->all_configs);
 				cfg->path_regex = *path ? str_dup(path) : NULL;
 				cfg->language = language;
-				if (cfg->path_regex) {
-					// compile regex
-					int error_code = 0;
-					PCRE2_SIZE error_offset = 0;
-					cfg->path = pcre2_compile_8((const u8 *)cfg->path_regex, PCRE2_ZERO_TERMINATED, PCRE2_ANCHORED, &error_code, &error_offset, NULL);
-					if (!cfg->path) {
-						config_err(reader, "Bad regex (at offset %u): %s", (unsigned)error_offset, cfg->path_regex);
-						free(cfg->path_regex); cfg->path_regex = NULL;
-					}
-				}
+				cfg->format = CONFIG_TED_CFG;
+				cfg->source = rc_str_copy(cfg_path_rc);
+				config_compile_regex(cfg, reader);
 			}
 		} else if (c == '%') {
 			char line[2048];
@@ -1056,7 +1064,7 @@ static void config_read_file(Ted *ted, const char *cfg_path, const char ***inclu
 				strbuf_cpy(included, line + strlen("include "));
 				str_trim(included);
 				get_config_path(ted, expanded, sizeof expanded, included);
-				config_read_file(ted, expanded, include_stack);
+				config_read_ted_cfg(ted, expanded, include_stack);
 			} else {
 				config_err(reader, "Unrecognized directive: %s", line);
 			}
@@ -1073,11 +1081,90 @@ static void config_read_file(Ted *ted, const char *cfg_path, const char ***inclu
 			config_err(reader, "Config has text before first section header.");
 		}
 	}
-	
+	rc_str_decref(&cfg_path_rc);
 	if (ferror(fp))
 		ted_error(ted, "Error reading %s.", cfg_path);
 	fclose(fp);
 	arr_remove_last(*include_stack);
+	return true;
+}
+
+static bool config_read_editorconfig(Ted *ted, const char *path) {
+	FILE *fp = fopen(path, "r");
+	if (!fp) return false;
+	ConfigReader reader_data = {
+		.ted = ted,
+		.filename = path,
+		.line_number = 1,
+		.fp = fp,
+	};
+	ConfigReader *const reader = &reader_data;
+	Config *cfg = NULL;
+	char line[4096];
+	bool is_root = false;
+	RcStr *path_rc = rc_str_new(path, -1);
+	while (true) {
+		char c = config_getc_no_err_on_eof(reader);
+		if (!c) break;
+		if (isspace(c)) continue;
+		switch (c) {
+		case '#':
+		case ';':
+			config_read_to_eol(reader, line, sizeof line);
+			break;
+		case '[':
+			// new section
+			config_read_to_eol(reader, line, sizeof line);
+			str_trim(line);
+			if (strlen(line) == 0 || line[strlen(line) - 1] != ']') {
+				config_err(reader, "Unmatched [");
+				break;
+			}
+			cfg = arr_addp(ted->all_configs);
+			cfg->source = rc_str_copy(path_rc);
+			cfg->is_editorconfig_root = is_root;
+			cfg->format = CONFIG_EDITORCONFIG;
+			cfg->path_regex = str_dup("TODO"); // TODO
+			config_compile_regex(cfg, reader);
+			break;
+		default: {
+			char key[64] = {c};
+			for (size_t i = 1; i < sizeof key - 1; i++) {
+				c = config_getc(reader);
+				if (!c || c == '\n') break;
+				if (c == '=') break;
+				key[i] = c;
+			}
+			if (c != '=') {
+				config_err(reader, "expected key = value but didn't find =");
+				break;
+			}
+			str_trim(key);
+			str_ascii_to_lowercase(key);
+			char value[64] = {0};
+			for (size_t i = 0; i < sizeof value - 1; i++) {
+				c = config_getc(reader);
+				if (!c || c == '\n') break;
+				value[i] = c;
+			}
+			str_trim(value);
+			if (streq(key, "root")) {
+				str_ascii_to_lowercase(value);
+				if (cfg) {
+					config_err(reader, "root cannot be set outside of preamble");
+				}
+				if (streq(value, "true"))
+					is_root = true;
+				else
+					is_root = false;
+			}
+			}
+			break;
+		}
+	}
+	rc_str_decref(&path_rc);
+	fclose(fp);
+	return true;
 }
 
 void config_free_all(Ted *ted) {
@@ -1153,11 +1240,27 @@ char *settings_get_root_dir(const Settings *settings, const char *path) {
 	}
 }
 
-void config_read(Ted *ted, const char *filename) {
+bool config_read(Ted *ted, const char *path, ConfigFormat format) {
 	const char **include_stack = NULL;
 	config_init_settings();
-	config_read_file(ted, filename, &include_stack);
-	ted_compute_settings(ted, "", LANG_NONE, &ted->default_settings);
+	// check if we've already read this
+	arr_foreach_ptr(ted->all_configs, Config, c) {
+		if (streq(rc_str(c->source, ""), path))
+			return true;
+	}
+	switch (format) {
+	case CONFIG_TED_CFG:
+		if (config_read_ted_cfg(ted, path, &include_stack)) {
+			// recompute default settings
+			ted_compute_settings(ted, "", LANG_NONE, &ted->default_settings);
+			return true;
+		}
+		return false;
+	case CONFIG_EDITORCONFIG:
+		return config_read_editorconfig(ted, path);
+	}
+	assert(0);
+	return false;
 }
 
 u32 settings_color(const Settings *settings, ColorSetting color) {

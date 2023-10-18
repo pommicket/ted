@@ -53,6 +53,8 @@ RcStr *rc_str_new(const char *s, i64 len);
 ///
 /// does nothing if `str` is `NULL`.
 void rc_str_incref(RcStr *str);
+/// increases reference count of `str` (if non-NULL) and returns it.
+RcStr *rc_str_copy(RcStr *str);
 /// decrease reference count of `*str` and set `*str` to `NULL`.
 ///
 /// this frees `*str` if the reference count hits 0.
@@ -122,6 +124,8 @@ void str_trim_start(char *str);
 void str_trim_end(char *str);
 /// trim whitespace from both sides of a string
 void str_trim(char *str);
+/// convert ASCII to lowercase
+void str_ascii_to_lowercase(char *str);
 /// count occurences of `c` in `s`
 size_t str_count_char(const char *s, char c);
 /// equivalent to GNU function asprintf (like sprintf, but allocates the string with malloc).

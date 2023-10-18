@@ -153,11 +153,29 @@ struct Settings {
 	KeyAction *key_actions;
 };
 
+typedef enum {
+	CONFIG_TED_CFG = 1,
+	CONFIG_EDITORCONFIG = 2,
+} ConfigFormat;
+
 typedef struct {
+	/// path to config file
+	RcStr *source;
+	/// format of config file
+	ConfigFormat format;
+	/// is this from a root .editorconfig file?
+	///
+	/// (if so, we don't want to apply editorconfigs in higher-up directories)
+	bool is_editorconfig_root;
+	/// language this config applies to
 	Language language;
+	/// path regex this config applies to
 	struct pcre2_real_code_8 *path;
+	/// path regex string
 	char *path_regex;
+	/// settings which this config specifies
 	Settings settings;
+	/// which bytes of settings are actually set
 	bool settings_set[sizeof (Settings)];
 } Config;
 
@@ -479,7 +497,12 @@ void command_init(void);
 void command_execute_ex(Ted *ted, Command c, const CommandArgument *argument, const CommandContext *context);
 
 // === config.c ===
-void config_read(Ted *ted, const char *filename);
+/// read a config file.
+///
+/// returns true on success. if the file at `path` does not exist, this returns false but doesn't show an error message.
+///
+/// if the config with this path has already been read, this does nothing.
+bool config_read(Ted *ted, const char *path, ConfigFormat format);
 void config_free_all(Ted *ted);
 void config_merge_into(Settings *dest, const Config *src_cfg);
 /// call this after all your calls to \ref config_merge_into

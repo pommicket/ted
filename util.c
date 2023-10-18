@@ -38,6 +38,12 @@ void rc_str_incref(RcStr *str) {
 		str->ref_count += 1;
 }
 
+
+RcStr *rc_str_copy(RcStr *str) {
+	rc_str_incref(str);
+	return str;
+}
+
 void rc_str_decref(RcStr **pstr) {
 	RcStr *const str = *pstr;
 	if (!str) return;
@@ -298,6 +304,13 @@ void str_trim_end(char *str) {
 void str_trim(char *str) {
 	str_trim_end(str);
 	str_trim_start(str);
+}
+
+void str_ascii_to_lowercase(char *str) {
+	for (char *p = str; *p; p++) {
+		if (*p > 0 && *p < 127)
+			*p = (char)tolower(*p);
+	}
 }
 
 size_t str_count_char(const char *s, char c) {
