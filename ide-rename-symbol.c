@@ -118,19 +118,22 @@ void rename_symbol_process_lsp_response(Ted *ted, const LSPResponse *response) {
 		|| response->request.id != rs->request_id.id) {
 		return;
 	}
-	
-	const LSPResponseRename *data = &response->data.rename;
 	LSP *lsp = ted_get_lsp_by_id(ted, rs->request_id.lsp);
+
+	if (menu_is_open(ted, MENU_RENAME_SYMBOL))
+		menu_close(ted);
+	const LSPResponseRename *data = &response->data.rename;
 	if (!lsp) {
 		// LSP crashed or something
-		goto cleanup;
+		return;
 	}
+	TextBuffer *const start_buffer = ted_active_buffer(ted);
 	
 	arr_foreach_ptr(data->changes, const LSPWorkspaceChange, change) {
 		if (change->type == LSP_CHANGE_DELETE && change->data.delete.recursive) {
 			ted_error(ted, "refusing to perform rename because it involves a recursive deletion\n"
 				"I'm too scared to go through with this");
-			goto cleanup;
+			return;
 		}
 	}
 	
@@ -202,11 +205,7 @@ void rename_symbol_process_lsp_response(Ted *ted, const LSPResponse *response) {
 		
 		ted_save_all(ted);
 	}
-	
-	cleanup:
-	rename_symbol_clear(ted);
-	if (menu_is_open(ted, MENU_RENAME_SYMBOL))
-		menu_close(ted);
+	ted_switch_to_buffer(ted, start_buffer);
 }
 
 void rename_symbol_init(Ted *ted) {

@@ -1,6 +1,5 @@
 /*
 TODO:
-- switch back to starting file after rename
 - .editorconfig (see https://editorconfig.org/)
 FUTURE FEATURES:
 - autodetect indentation (tabs vs spaces)
