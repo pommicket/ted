@@ -97,6 +97,19 @@ You can set settings for specific programming languages like this:
 tab-width = 2
 ```
 
+Or settings for specific paths like this:
+
+```
+[/foo//core]
+# set tab width in /foo to 17
+tab-width = 17
+
+# PCRE regex is supported! (the start is anchored but the end isn't)
+[~/foo/.*\.hmtgf//core]
+# set tab width for .hmtgf files in ~/foo
+tab-width = 9
+```
+
 To reset your ted configuration to the default settings, delete your ted.cfg file (`~/.local/share/ted/ted.cfg` on Linux,
 `C:\Users\<your user name>\AppData\Local\ted\ted.cfg` on Windows) or move it somewhere else.
 

@@ -155,7 +155,8 @@ struct Settings {
 
 typedef struct {
 	Language language;
-	char *path;
+	struct pcre2_real_code_8 *path;
+	char *path_regex;
 	Settings settings;
 	bool settings_set[sizeof (Settings)];
 } Config;

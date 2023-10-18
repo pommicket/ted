@@ -8,6 +8,7 @@
 // asdf = 123
 
 #include "ted-internal.h"
+#include "pcre-inc.h"
 
 /// Sections of `ted.cfg`
 typedef enum {
@@ -161,18 +162,27 @@ static const SettingKeyCombo settings_key_combo[] = {
 bool config_applies_to(Config *cfg, const char *path, Language language) {
 	if (cfg->language && language != cfg->language)
 		return false;
-	if (cfg->path && (!path || !str_has_path_prefix(path, cfg->path)))
-		return false;
+	if (cfg->path) {
+		if (!path)
+			return false;
+		pcre2_match_data_8 *match_data = pcre2_match_data_create_from_pattern_8(cfg->path, NULL);
+		bool match = pcre2_match_8(cfg->path, (const u8 *)path, PCRE2_ZERO_TERMINATED, 0, 0, match_data, NULL) > 0;
+		pcre2_match_data_free_8(match_data);
+		if (!match)
+			return false;
+	}
 	return true;
 }
-static bool config_has_same_context(const Config *a, const Config *b) {
+
+// if this returns true, `a` and `b` have the same context (`a` only applies if `b` does)
+static bool config_definitely_has_same_context(const Config *a, const Config *b) {
 	if (a->language != b->language)
 		return false;
-	if (a->path && !b->path)
+	if (a->path_regex && !b->path_regex)
 		return false;
-	if (!a->path && b->path)
+	if (!a->path_regex && b->path_regex)
 		return false;
-	if (a->path && !streq(a->path, b->path))
+	if (a->path_regex && !streq(a->path_regex, b->path_regex))
 		return false;
 	return true;
 }
@@ -274,13 +284,14 @@ void settings_free(Settings *settings) {
 
 static void config_free(Config *cfg) {
 	settings_free(&cfg->settings);
-	free(cfg->path);
+	pcre2_code_free_8(cfg->path);
+	free(cfg->path_regex);
 	memset(cfg, 0, sizeof *cfg);
 }
 
 
 i32 config_priority(const Config *cfg) {
-	size_t path_len = cfg->path ? strlen(cfg->path) : 0;
+	size_t path_len = cfg->path ? strlen(cfg->path_regex) : 0;
 	return (i32)path_len * 2 + (cfg->language != 0);
 }
 
@@ -956,16 +967,12 @@ static void config_read_file(Ted *ted, const char *cfg_path, const char ***inclu
 			char header[256];
 			config_read_to_eol(reader, header, sizeof header);
 			char path[TED_PATH_MAX]; path[0] = '\0';
-			char *closing = strchr(header, ']');
 			Language language = 0;
-			if (!closing) {
-				config_err(reader, "Unmatched [. " SECTION_HEADER_HELP);
-				break;
-			} else if (closing[1] != '\0') {
-				config_err(reader, "Text after section. " SECTION_HEADER_HELP);
+			if (strlen(header) == 0 || header[strlen(header) - 1] != ']') {
+				config_err(reader, "Section header doesn't end with ]\n" SECTION_HEADER_HELP);
 				break;
 			} else {
-				*closing = '\0';
+				header[strlen(header) - 1] = 0;
 				char *p = header;
 				char *path_end = strstr(p, "//");
 				if (path_end) {
@@ -1015,20 +1022,30 @@ static void config_read_file(Ted *ted, const char *cfg_path, const char ***inclu
 			}
 			Config new_cfg = {
 				.language = language,
-				.path = *path ? path : NULL,
+				.path_regex = *path ? path : NULL,
 			};
 			cfg = NULL;
 			// search for config with same context to update
 			arr_foreach_ptr(ted->all_configs, Config, conf) {
-				if (config_has_same_context(conf, &new_cfg)) {
+				if (config_definitely_has_same_context(conf, &new_cfg)) {
 					cfg = conf;
 				}
 			}
 			if (!cfg) {
 				// create new config
 				cfg = arr_addp(ted->all_configs);
-				cfg->path = *path ? str_dup(path) : NULL;
+				cfg->path_regex = *path ? str_dup(path) : NULL;
 				cfg->language = language;
+				if (cfg->path_regex) {
+					// compile regex
+					int error_code = 0;
+					PCRE2_SIZE error_offset = 0;
+					cfg->path = pcre2_compile_8((const u8 *)cfg->path_regex, PCRE2_ZERO_TERMINATED, PCRE2_ANCHORED, &error_code, &error_offset, NULL);
+					if (!cfg->path) {
+						config_err(reader, "Bad regex (at offset %u): %s", (unsigned)error_offset, cfg->path_regex);
+						free(cfg->path_regex); cfg->path_regex = NULL;
+					}
+				}
 			}
 		} else if (c == '%') {
 			char line[2048];
