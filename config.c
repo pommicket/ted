@@ -1459,6 +1459,7 @@ static void config_read_editorconfig(Ted *ted, RcStr *path_rc) {
 			}
 			const int value_int = atoi(value);
 			if (cfg && streq(key, "indent_style")) {
+				str_ascii_to_lowercase(value);
 				if (streq(value, "tab"))
 					config_set_bool(cfg, &setting_indent_with_spaces, false);
 				else if (streq(value, "space"))
@@ -1466,6 +1467,7 @@ static void config_read_editorconfig(Ted *ted, RcStr *path_rc) {
 			} else if (cfg && (streq(key, "indent_size") || streq(key, "tab_width")) && value_int > 0 && value_int < 255) {
 				config_set_u8(cfg, &setting_tab_width, (u8)value_int);
 			} else if (cfg && streq(key, "end_of_line")) {
+				str_ascii_to_lowercase(value);
 				if (streq(value, "lf")) {
 					config_set_bool(cfg, &setting_crlf, false);
 					config_set_bool(cfg, &setting_crlf_windows, false);
@@ -1474,12 +1476,14 @@ static void config_read_editorconfig(Ted *ted, RcStr *path_rc) {
 				}
 				// who the fuck uses CR line endings in the 21st century??
 			} else if (cfg && streq(key, "insert_final_newline")) {
+				str_ascii_to_lowercase(value);
 				if (streq(value, "true")) {
 					config_set_bool(cfg, &setting_auto_add_newline, true);
 				} else if (streq(value, "false")) {
 					config_set_bool(cfg, &setting_auto_add_newline, false);
 				}
 			} else if (cfg && streq(key, "trim_trailing_whitespace")) {
+				str_ascii_to_lowercase(value);
 				if (streq(value, "true")) {
 					config_set_bool(cfg, &setting_remove_trailing_whitespace, true);
 				} else if (streq(value, "false")) {

@@ -3239,8 +3239,10 @@ bool buffer_save(TextBuffer *buffer) {
 	buffer->last_write_time = timespec_to_seconds(time_last_modified(buffer->path));
 	if (success) {
 		buffer->undo_history_write_pos = arr_len(buffer->undo_history);
-		if (buffer->path && str_has_suffix(path_filename(buffer->path), "ted.cfg")
-			&& buffer_settings(buffer)->auto_reload_config) {
+		const char *filename = path_filename(buffer->path);
+		if (buffer->path &&
+			(str_has_suffix(filename, "ted.cfg") || streq(filename, ".editorconfig")) &&
+			buffer_settings(buffer)->auto_reload_config) {
 			ted_reload_configs(buffer->ted);
 		}
 	}

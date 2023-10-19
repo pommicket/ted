@@ -1,8 +1,5 @@
 /*
 TODO:
-- .editorconfig (see https://editorconfig.org/)
-  - handle root = true
-  - reload configs when .editorconfig is saved
 - local .ted.cfg
 FUTURE FEATURES:
 - more tests

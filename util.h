@@ -63,6 +63,8 @@ RcStr *rc_str_copy(RcStr *str);
 void rc_str_decref(RcStr **str);
 /// get rc string with default value if `s == NULL`
 const char *rc_str(RcStr *s, const char *value_if_null);
+/// length of string or 0 if `s == NULL`
+size_t rc_str_len(RcStr *s);
 /// `isword` for 32-bit chars.
 bool is32_word(char32_t c);
 /// `isspace` for 32-bit chars.

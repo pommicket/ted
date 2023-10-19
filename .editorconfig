@@ -1,0 +1,6 @@
+# https://editorconfig.org
+
+[*]
+indent_style = tab
+insert_final_newline = true
+charset = utf-8

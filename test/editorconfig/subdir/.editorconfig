@@ -1,0 +1,5 @@
+; don't apply ../.editorconfig
+root = true
+
+[*]
+indent_size = 4

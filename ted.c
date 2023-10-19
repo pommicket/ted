@@ -238,6 +238,7 @@ static int applicable_configs_cmp(void *context, const void *av, const void *bv)
 void ted_compute_settings(Ted *ted, const char *path, Language language, Settings *settings) {
 	settings_free(settings);
 	
+	u32 root_editorconfig = 0;
 	if (path && *path) {
 		// check for .editorconfig
 		char editorconfig[2048];
@@ -249,11 +250,27 @@ void ted_compute_settings(Ted *ted, const char *path, Language language, Setting
 				config_read(ted, editorconfig, CONFIG_EDITORCONFIG);
 			}
 		}
+
+		// find root editorconfig
+		for (u32 i = 0; i < arr_len(ted->all_configs); i++) {
+			Config *cfg = &ted->all_configs[i];
+			if (cfg->format != CONFIG_EDITORCONFIG) continue;
+			if (!cfg->is_editorconfig_root) continue;
+			char dirname[4096];
+			strbuf_cpy(dirname, rc_str(cfg->source, ""));
+			path_dirname(dirname);
+			if (str_has_path_prefix(path, dirname))
+				root_editorconfig = max_u32(root_editorconfig, (u32)rc_str_len(cfg->source));
+		}
 	}
 	
 	u32 *applicable_configs = NULL;
 	for (u32 i = 0; i < arr_len(ted->all_configs); i++) {
 		Config *cfg = &ted->all_configs[i];
+		if (cfg->format == CONFIG_EDITORCONFIG && rc_str_len(cfg->source) < root_editorconfig) {
+			// ignore this since there's a root .editorconfig closer to `path`.
+			continue;
+		}
 		if (config_applies_to(cfg, path, language)) {
 			arr_add(applicable_configs, i);
 		}

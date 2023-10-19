@@ -54,10 +54,14 @@ void rc_str_decref(RcStr **pstr) {
 	}
 }
 
-const char *rc_str(RcStr *str, const char *default_value) {
-	if (!str) return default_value;
-	assert(str->ref_count > 0);
-	return str->str;
+const char *rc_str(RcStr *s, const char *default_value) {
+	if (!s) return default_value;
+	assert(s->ref_count > 0);
+	return s->str;
+}
+
+size_t rc_str_len(RcStr *s) {
+	return strlen(rc_str(s, ""));
 }
 
 bool is32_word(char32_t c) {
