@@ -115,6 +115,8 @@ struct Settings {
 	bool document_links;
 	bool vsync;
 	bool save_backup;
+	bool crlf;
+	// this is automatically copied to crlf if compiling for windows
 	bool crlf_windows;
 	bool jump_to_build_error;
 	bool force_monospace;
@@ -154,6 +156,7 @@ struct Settings {
 };
 
 typedef enum {
+	CONFIG_NONE = 0,
 	CONFIG_TED_CFG = 1,
 	CONFIG_EDITORCONFIG = 2,
 } ConfigFormat;
@@ -499,10 +502,8 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *argument, co
 // === config.c ===
 /// read a config file.
 ///
-/// returns true on success. if the file at `path` does not exist, this returns false but doesn't show an error message.
-///
 /// if the config with this path has already been read, this does nothing.
-bool config_read(Ted *ted, const char *path, ConfigFormat format);
+void config_read(Ted *ted, const char *path, ConfigFormat format);
 void config_free_all(Ted *ted);
 void config_merge_into(Settings *dest, const Config *src_cfg);
 /// call this after all your calls to \ref config_merge_into

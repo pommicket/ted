@@ -88,15 +88,18 @@ typedef struct {
 static const Settings settings_zero = {0};
 static const SettingBool settings_bool[] = {
 	{"auto-indent", &settings_zero.auto_indent, true},
-	{"auto-add-newline", &settings_zero.auto_add_newline, true},
-	{"remove-trailing-whitespace", &settings_zero.remove_trailing_whitespace, true},
+#define SETTING_AUTO_ADD_NEWLINE {"auto-add-newline", &settings_zero.auto_add_newline, true}
+	SETTING_AUTO_ADD_NEWLINE,
+#define SETTING_REMOVE_TRAILING_WHITESPACE {"remove-trailing-whitespace", &settings_zero.remove_trailing_whitespace, true}
+	SETTING_REMOVE_TRAILING_WHITESPACE,
 	{"auto-reload", &settings_zero.auto_reload, true},
 	{"auto-reload-config", &settings_zero.auto_reload_config, false},
 	{"syntax-highlighting", &settings_zero.syntax_highlighting, true},
 	{"line-numbers", &settings_zero.line_numbers, true},
 	{"restore-session", &settings_zero.restore_session, false},
 	{"regenerate-tags-if-not-found", &settings_zero.regenerate_tags_if_not_found, true},
-	{"indent-with-spaces", &settings_zero.indent_with_spaces, true},
+#define SETTING_INDENT_WITH_SPACES {"indent-with-spaces", &settings_zero.indent_with_spaces, true}
+	SETTING_INDENT_WITH_SPACES,
 	{"trigger-characters", &settings_zero.trigger_characters, true},
 	{"identifier-trigger-characters", &settings_zero.identifier_trigger_characters, true},
 	{"phantom-completions", &settings_zero.phantom_completions, true},
@@ -109,13 +112,22 @@ static const SettingBool settings_bool[] = {
 	{"highlight-enabled", &settings_zero.highlight_enabled, true},
 	{"highlight-auto", &settings_zero.highlight_auto, true},
 	{"save-backup", &settings_zero.save_backup, true},
+#define SETTING_CRLF {"crlf", &settings_zero.crlf, true}
+	SETTING_CRLF,
+#define SETTING_CRLF_WINDOWS {"crlf-windows", &settings_zero.crlf_windows, true}
 	{"crlf-windows", &settings_zero.crlf_windows, true},
 	{"jump-to-build-error", &settings_zero.jump_to_build_error, true},
 	{"force-monospace", &settings_zero.force_monospace, true},
 	{"show-diagnostics", &settings_zero.show_diagnostics, true},
 };
+static const SettingBool setting_auto_add_newline = SETTING_AUTO_ADD_NEWLINE;
+static const SettingBool setting_indent_with_spaces = SETTING_INDENT_WITH_SPACES;
+static const SettingBool setting_remove_trailing_whitespace = SETTING_REMOVE_TRAILING_WHITESPACE;
+static const SettingBool setting_crlf = SETTING_CRLF;
+static const SettingBool setting_crlf_windows = SETTING_CRLF_WINDOWS;
 static const SettingU8 settings_u8[] = {
-	{"tab-width", &settings_zero.tab_width, 1, 100, true},
+#define SETTING_TAB_WIDTH {"tab-width", &settings_zero.tab_width, 1, 100, true}
+	SETTING_TAB_WIDTH,
 	{"cursor-width", &settings_zero.cursor_width, 1, 100, true},
 	{"undo-save-time", &settings_zero.undo_save_time, 1, 200, true},
 	{"border-thickness", &settings_zero.border_thickness, 1, 30, false},
@@ -123,6 +135,7 @@ static const SettingU8 settings_u8[] = {
 	{"scrolloff", &settings_zero.scrolloff, 1, 100, true},
 	{"tags-max-depth", &settings_zero.tags_max_depth, 1, 100, false},
 };
+static const SettingU8 setting_tab_width = SETTING_TAB_WIDTH;
 static const SettingU16 settings_u16[] = {
 	{"text-size", &settings_zero.text_size_no_dpi, TEXT_SIZE_MIN, TEXT_SIZE_MAX, false},
 	{"max-menu-width", &settings_zero.max_menu_width, 10, U16_MAX, false},
@@ -936,6 +949,9 @@ static int key_action_qsort_cmp_combo(const void *av, const void *bv) {
 void settings_finalize(Ted *ted, Settings *settings) {
 	arr_qsort(settings->key_actions, key_action_qsort_cmp_combo);
 	settings->text_size = clamp_u16((u16)roundf((float)settings->text_size_no_dpi * ted_get_ui_scaling(ted)), TEXT_SIZE_MIN, TEXT_SIZE_MAX);
+#if _WIN32
+	settings->crlf |= settings->crlf_windows;
+#endif
 }
 
 static void config_compile_regex(Config *cfg, ConfigReader *reader) {
@@ -951,7 +967,8 @@ static void config_compile_regex(Config *cfg, ConfigReader *reader) {
 	}
 }
 
-static bool config_read_ted_cfg(Ted *ted, const char *cfg_path, const char ***include_stack) {
+static void config_read_ted_cfg(Ted *ted, RcStr *cfg_path_rc, const char ***include_stack) {
+	const char *const cfg_path = rc_str(cfg_path_rc, "");
 	// check for, e.g. %include ted.cfg inside ted.cfg
 	arr_foreach_ptr(*include_stack, const char *, p_include) {
 		if (streq(cfg_path, *p_include)) {
@@ -967,17 +984,16 @@ static bool config_read_ted_cfg(Ted *ted, const char *cfg_path, const char ***in
 				strbuf_cat(text, ", which");
 			strbuf_catf(text, " includes %s", cfg_path);
 			ted_error(ted, "%s", text);
-			return false;
+			return;
 		}
 	}
 	arr_add(*include_stack, cfg_path);
 	
 	FILE *fp = fopen(cfg_path, "rb");
 	if (!fp) {
-		return false;
+		return;
 	}
 	
-	RcStr *cfg_path_rc = rc_str_new(cfg_path, -1);
 	ConfigReader reader_data = {
 		.ted = ted,
 		.filename = cfg_path,
@@ -1080,7 +1096,9 @@ static bool config_read_ted_cfg(Ted *ted, const char *cfg_path, const char ***in
 				strbuf_cpy(included, line + strlen("include "));
 				str_trim(included);
 				get_config_path(ted, expanded, sizeof expanded, included);
-				config_read_ted_cfg(ted, expanded, include_stack);
+				RcStr *expanded_rc = rc_str_new(expanded, -1);
+				config_read_ted_cfg(ted, expanded_rc, include_stack);
+				rc_str_decref(&expanded_rc);
 			} else {
 				config_err(reader, "Unrecognized directive: %s", line);
 			}
@@ -1097,12 +1115,10 @@ static bool config_read_ted_cfg(Ted *ted, const char *cfg_path, const char ***in
 			config_err(reader, "Config has text before first section header.");
 		}
 	}
-	rc_str_decref(&cfg_path_rc);
 	if (ferror(fp))
 		ted_error(ted, "Error reading %s.", cfg_path);
 	fclose(fp);
 	arr_remove_last(*include_stack);
-	return true;
 }
 
 static void regex_append_literal_char(StrBuilder *b, char c) {
@@ -1365,9 +1381,10 @@ error:
 	return NULL;
 }
 
-static bool config_read_editorconfig(Ted *ted, const char *path) {
+static void config_read_editorconfig(Ted *ted, RcStr *path_rc) {
+	const char *const path = rc_str(path_rc, "");
 	FILE *fp = fopen(path, "r");
-	if (!fp) return false;
+	if (!fp) return;
 	ConfigReader reader_data = {
 		.ted = ted,
 		.filename = path,
@@ -1378,7 +1395,6 @@ static bool config_read_editorconfig(Ted *ted, const char *path) {
 	Config *cfg = NULL;
 	char line[4096];
 	bool is_root = false;
-	RcStr *path_rc = rc_str_new(path, -1);
 	while (true) {
 		char c = config_getc_no_err_on_eof(reader);
 		if (!c) break;
@@ -1393,7 +1409,7 @@ static bool config_read_editorconfig(Ted *ted, const char *path) {
 			config_read_to_eol(reader, line, sizeof line);
 			str_trim(line);
 			if (strlen(line) == 0 || line[strlen(line) - 1] != ']') {
-				config_err(reader, "Unmatched [");
+				config_debug_err(reader, "Unmatched [");
 				break;
 			}
 			line[strlen(line) - 1] = 0;
@@ -1432,20 +1448,49 @@ static bool config_read_editorconfig(Ted *ted, const char *path) {
 			if (streq(key, "root")) {
 				str_ascii_to_lowercase(value);
 				if (cfg) {
-					config_err(reader, "root cannot be set outside of preamble");
+					config_debug_err(reader, "root cannot be set outside of preamble");
+					break;
 				}
 				if (streq(value, "true"))
 					is_root = true;
 				else
 					is_root = false;
+				break;
+			}
+			const int value_int = atoi(value);
+			if (cfg && streq(key, "indent_style")) {
+				if (streq(value, "tab"))
+					config_set_bool(cfg, &setting_indent_with_spaces, false);
+				else if (streq(value, "space"))
+					config_set_bool(cfg, &setting_indent_with_spaces, true);
+			} else if (cfg && (streq(key, "indent_size") || streq(key, "tab_width")) && value_int > 0 && value_int < 255) {
+				config_set_u8(cfg, &setting_tab_width, (u8)value_int);
+			} else if (cfg && streq(key, "end_of_line")) {
+				if (streq(value, "lf")) {
+					config_set_bool(cfg, &setting_crlf, false);
+					config_set_bool(cfg, &setting_crlf_windows, false);
+				} else if (streq(value, "crlf")) {
+					config_set_bool(cfg, &setting_crlf, true);
+				}
+				// who the fuck uses CR line endings in the 21st century??
+			} else if (cfg && streq(key, "insert_final_newline")) {
+				if (streq(value, "true")) {
+					config_set_bool(cfg, &setting_auto_add_newline, true);
+				} else if (streq(value, "false")) {
+					config_set_bool(cfg, &setting_auto_add_newline, false);
+				}
+			} else if (cfg && streq(key, "trim_trailing_whitespace")) {
+				if (streq(value, "true")) {
+					config_set_bool(cfg, &setting_remove_trailing_whitespace, true);
+				} else if (streq(value, "false")) {
+					config_set_bool(cfg, &setting_remove_trailing_whitespace, false);
+				}
 			}
 			}
 			break;
 		}
 	}
-	rc_str_decref(&path_rc);
 	fclose(fp);
-	return true;
 }
 
 void config_free_all(Ted *ted) {
@@ -1454,6 +1499,35 @@ void config_free_all(Ted *ted) {
 	}
 	arr_clear(ted->all_configs);
 	settings_free(&ted->default_settings);
+}
+
+void config_read(Ted *ted, const char *path, ConfigFormat format) {
+	const char **include_stack = NULL;
+	config_init_settings();
+	// check if we've already read this
+	arr_foreach_ptr(ted->all_configs, Config, c) {
+		if (streq(rc_str(c->source, ""), path))
+			return;
+	}
+	RcStr *source_rc = rc_str_new(path, -1);
+	// add dummy config so even if `path` doesn't exist we don't try to read it again
+	Config *dummy = arr_addp(ted->all_configs);
+	dummy->source = rc_str_copy(source_rc);
+	dummy->language = LANG_INVALID;
+	switch (format) {
+	case CONFIG_NONE:
+		assert(0);
+		break;
+	case CONFIG_TED_CFG:
+		config_read_ted_cfg(ted, source_rc, &include_stack);
+		// recompute default settings
+		ted_compute_settings(ted, "", LANG_NONE, &ted->default_settings);
+		break;
+	case CONFIG_EDITORCONFIG:
+		config_read_editorconfig(ted, source_rc);
+		break;
+	}
+	rc_str_decref(&source_rc);
 }
 
 
@@ -1519,29 +1593,6 @@ char *settings_get_root_dir(const Settings *settings, const char *path) {
 		*sep = '\0';
 		return str_dup(pathbuf);
 	}
-}
-
-bool config_read(Ted *ted, const char *path, ConfigFormat format) {
-	const char **include_stack = NULL;
-	config_init_settings();
-	// check if we've already read this
-	arr_foreach_ptr(ted->all_configs, Config, c) {
-		if (streq(rc_str(c->source, ""), path))
-			return true;
-	}
-	switch (format) {
-	case CONFIG_TED_CFG:
-		if (config_read_ted_cfg(ted, path, &include_stack)) {
-			// recompute default settings
-			ted_compute_settings(ted, "", LANG_NONE, &ted->default_settings);
-			return true;
-		}
-		return false;
-	case CONFIG_EDITORCONFIG:
-		return config_read_editorconfig(ted, path);
-	}
-	assert(0);
-	return false;
 }
 
 u32 settings_color(const Settings *settings, ColorSetting color) {
@@ -1669,9 +1720,11 @@ static void config_test_editorconfig_glob_to_regex(Ted *ted) {
 		{"{0..99999999}", "/balls", 0},
 		{"{0..99999999}", "/99999999999", 0},
 		{"{0..0}", "/0", 1},
-		{"{625..629}", "/627", 1},
-		{"{625..629}", "/637", 0},
+		{"x{625..629}", "/x627", 1},
+		{"x{625..629}", "/x637", 0},
 		{"{..}", "/{..}", 1},
+		{"{a\\,b}", "/{a,b}", 1},
+		{"\\{a,b}", "/{a,b}", 1},
 	};
 	for (size_t i = 0; i < arr_count(tests); i++) {
 		editorconfig_glob_test_expect(ted, tests[i].pattern, tests[i].path, tests[i].result);

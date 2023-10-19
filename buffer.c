@@ -3185,10 +3185,8 @@ static bool buffer_write_to_file(TextBuffer *buffer, const char *path) {
 		}
 
 		if (i != buffer->nlines-1) {
-		#if _WIN32
-			if (settings->crlf_windows)
+			if (settings->crlf)
 				putc('\r', out);
-		#endif
 			putc('\n', out);
 		}
 	}

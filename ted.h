@@ -70,6 +70,8 @@ enum {
 	/// GDScript
 	LANG_GDSCRIPT = 19,
 	
+	/// this will never be a valid language ID
+	LANG_INVALID = 9999,
 	/// all user-defined languages are greater than this.
 	LANG_USER_MIN = 100000,
 	/// all user-defined languages are less than this.

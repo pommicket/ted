@@ -1,7 +1,9 @@
 /*
 TODO:
 - .editorconfig (see https://editorconfig.org/)
-   - test number range
+  - handle root = true
+  - reload configs when .editorconfig is saved
+- local .ted.cfg
 FUTURE FEATURES:
 - more tests
 - prepare rename support
