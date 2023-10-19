@@ -5,7 +5,7 @@ if _%VCVARS% == _ (
 )
 if not exist pcre2-8-static.lib (
 	pushd pcre2
-	cmake -D PCRE2_BUILD_PCRE2_8=OFF -D PCRE2_BUILD_TESTS=OFF -D PCRE2_BUILD_PCRE2_32=ON -D CMAKE_BUILD_TYPE=Release -D CMAKE_GENERATOR_PLATFORM=x64 -D PCRE2_STATIC=ON .
+	cmake -D PCRE2_BUILD_PCRE2_8=ON -D PCRE2_BUILD_TESTS=OFF -D PCRE2_BUILD_PCRE2_32=ON -D CMAKE_BUILD_TYPE=Release -D CMAKE_GENERATOR_PLATFORM=x64 -D PCRE2_STATIC=ON .
 	cmake --build . --config Release
 	popd
 	copy /y pcre2\Release\pcre2-32-static.lib

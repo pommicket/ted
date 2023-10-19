@@ -961,7 +961,7 @@ static void config_compile_regex(Config *cfg, ConfigReader *reader) {
 		char fixed[8192];
 		// replace forward slashes with backslashes
 		//  (but actually double backslashes because this is a regex)
-		for (size_t in = 0, out = 0; out < sizeof fixed - 4 && regex[in]; ++in)
+		for (size_t in = 0, out = 0; out < sizeof fixed - 4 && regex[in]; ++in) {
 			if (regex[in] == '/') {
 				fixed[out++] = '\\';
 				fixed[out++] = '\\';
