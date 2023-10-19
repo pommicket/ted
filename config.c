@@ -956,12 +956,28 @@ void settings_finalize(Ted *ted, Settings *settings) {
 
 static void config_compile_regex(Config *cfg, ConfigReader *reader) {
 	if (cfg->path_regex) {
+		const char *regex = cfg->path_regex;
+		#if _WIN32
+		char fixed[8192];
+		// replace forward slashes with backslashes
+		//  (but actually double backslashes because this is a regex)
+		for (size_t in = 0, out = 0; out < sizeof fixed - 4 && regex[in]; ++in)
+			if (regex[in] == '/') {
+				fixed[out++] = '\\';
+				fixed[out++] = '\\';
+			} else {
+				fixed[out++] = regex[in];
+			}
+			fixed[out] = 0;
+		}
+		regex = fixed;
+		#endif
 		// compile regex
 		int error_code = 0;
 		PCRE2_SIZE error_offset = 0;
-		cfg->path = pcre2_compile_8((const u8 *)cfg->path_regex, PCRE2_ZERO_TERMINATED, PCRE2_ANCHORED, &error_code, &error_offset, NULL);
+		cfg->path = pcre2_compile_8((const u8 *)regex, PCRE2_ZERO_TERMINATED, PCRE2_ANCHORED, &error_code, &error_offset, NULL);
 		if (!cfg->path) {
-			config_err(reader, "Bad regex (at offset %u): %s", (unsigned)error_offset, cfg->path_regex);
+			config_err(reader, "Bad regex (at offset %u): %s", (unsigned)error_offset, regex);
 			free(cfg->path_regex); cfg->path_regex = NULL;
 		}
 	}
@@ -1059,12 +1075,6 @@ static void config_read_ted_cfg(Ted *ted, RcStr *cfg_path_rc, const char ***incl
 						--path_len;
 					}
 					strn_cat(path, sizeof path, p, path_len);
-					#if _WIN32
-					// replace forward slashes with backslashes
-					for (p = path; *p; ++p)
-						if (*p == '/')
-							*p = '\\';
-					#endif
 					p = path_end + 2;
 				}
 				
