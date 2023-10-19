@@ -476,6 +476,29 @@ bool path_is_absolute(const char *path) {
 		;
 }
 
+void path_dirname(char *path) {
+	if (!*path) {
+		assert(0); // invalid path
+		return;
+	}
+	for (size_t i = strlen(path) - 1; i > 0; --i) {
+		if (strchr(ALL_PATH_SEPARATORS, path[i])) {
+			if (strcspn(path, ALL_PATH_SEPARATORS) == i) {
+				// only one path separator
+				path[i+1] = '\0';
+				return;
+			}
+			path[i] = '\0';
+			return;
+		}
+	}
+	if (strchr(ALL_PATH_SEPARATORS, path[0])) {
+		path[1] = '\0';
+		return;
+	}
+	assert(0); // invalid path (no path separator)
+}
+
 void path_full(const char *dir, const char *relpath, char *abspath, size_t abspath_size) {
 	assert(abspath_size);
 	assert(dir[0]);

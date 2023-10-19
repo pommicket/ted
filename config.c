@@ -239,17 +239,33 @@ typedef struct {
 	bool error;
 } ConfigReader;
 
-static void config_err(ConfigReader *cfg, PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRINTF(2, 3);
-static void config_err(ConfigReader *cfg, const char *fmt, ...) {
+static void config_verr(ConfigReader *cfg, const char *fmt, va_list args) {
 	if (cfg->error) return;
 	cfg->error = true;
 	char error[1024] = {0};
 	strbuf_printf(error, "%s:%u: ", cfg->filename, cfg->line_number);
+	vsnprintf(error + strlen(error), sizeof error - strlen(error) - 1, fmt, args);
+	ted_error(cfg->ted, "%s", error);
+}
+
+static void config_err(ConfigReader *cfg, PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRINTF(2, 3);
+static void config_err(ConfigReader *cfg, const char *fmt, ...) {
 	va_list args;
 	va_start(args, fmt);
-	vsnprintf(error + strlen(error), sizeof error - strlen(error) - 1, fmt, args);
+	config_verr(cfg, fmt, args);
 	va_end(args);
-	ted_error(cfg->ted, "%s", error);
+}
+
+static void config_debug_err(ConfigReader *cfg, PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRINTF(2, 3);
+static void config_debug_err(ConfigReader *cfg, const char *fmt, ...) {
+	va_list args;
+	va_start(args, fmt);
+	#if DEBUG
+		config_verr(cfg, fmt, args);
+	#else
+		ted_vlog(cfg->ted, fmt, args);
+	#endif
+	va_end(args);
 }
 
 static void settings_free_set(Settings *settings, const bool *set) {
@@ -1089,6 +1105,266 @@ static bool config_read_ted_cfg(Ted *ted, const char *cfg_path, const char ***in
 	return true;
 }
 
+static void regex_append_literal_char(StrBuilder *b, char c) {
+	static const char pcre_metacharacters[] = "\\^.$|()[]*+?{}-";
+	if (strchr(pcre_metacharacters, c))
+		str_builder_appendf(b, "\\%c", c);
+	else
+		str_builder_appendf(b, "%c", c);
+}
+
+// handles 000-999 as 000|001|002|...|999 for example (which is why we need strings)
+static void regex_append_number_str_range(StrBuilder *b, const char *s1, const char *s2) {
+	assert(strlen(s1) == strlen(s2));
+	assert(strcmp(s1, s2) <= 0);
+	if (s1[0] == 0) return;
+	if (s1[0] == s2[0]) {
+		int common_prefix = 1;
+		while (s1[common_prefix] && s1[common_prefix] == s2[common_prefix])
+			common_prefix += 1;
+		str_builder_appendf(b, "%.*s", common_prefix, s1);
+		if (s1[common_prefix]) {
+			str_builder_append(b, "(");
+			regex_append_number_str_range(b, &s1[common_prefix], &s2[common_prefix]);
+			str_builder_append(b, ")");
+		}
+		return;
+	}
+	assert(s1[0] < s2[0]);
+	if (!s1[1]) {
+		// single digits
+		str_builder_appendf(b, "[%c-%c]", s1[0], s2[0]);
+		return;
+	}
+	bool first = true;
+	char midstart = s1[0] + 1, midend = s2[0] - 1;
+	char s[24];
+	strcpy(s, s1);
+	for (size_t i = 1; s[i]; i++) {
+		s[i] = '9';
+	}
+	if (strspn(s1 + 1, "0") == strlen(s1 + 1)) {
+		// s is 100 or something so we can just do 1[0-9]{2}
+		--midstart;
+	} else {
+		if (!first) str_builder_append(b, "|");
+		first = false;
+		regex_append_number_str_range(b, s1, s);
+	}
+	strcpy(s, s2);
+	for (size_t i = 1; s[i]; i++) {
+		s[i] = '0';
+	}
+	if (strspn(s2 + 1, "9") == strlen(s2 + 1)) {
+		++midend;
+	} else {
+		if (!first) str_builder_append(b, "|");
+		first = false;
+		regex_append_number_str_range(b, s, s2);
+	}
+	// the middle digits
+	if (midstart <= midend) {
+		unsigned nleft = (unsigned)strlen(s1) - 1;
+		if (!first) str_builder_append(b, "|");
+		first = false;
+		if (midstart == midend)
+			str_builder_appendf(b, "%c", midstart);
+		else
+			str_builder_appendf(b, "[%c-%c]", midstart, midend);
+		str_builder_append(b, "[0-9]");
+		if (nleft > 1) {
+			str_builder_appendf(b, "{%u}", nleft);
+		}
+	}
+}
+
+// absolutely crazy code to convert number range to regex
+static void regex_append_number_range(StrBuilder *b, i64 num1, i64 num2) {
+	if (num1 > num2) {
+		// switcheroo
+		regex_append_number_range(b, num2, num1);
+		return;
+	}
+	if (num1 < 0 && num2 >= 0) {
+		// split into just-positive and just-negative
+		regex_append_number_range(b, num1, -1);
+		str_builder_append(b, "|");
+		regex_append_number_range(b, 0, num2);
+		return;
+	}
+	if (num1 < 0 && num2 < 0) {
+		// all negatives
+		str_builder_append(b, "-");
+		str_builder_append(b, "(");
+		regex_append_number_range(b, -num2, -num1);
+		str_builder_append(b, ")");
+		return;
+	}
+	// hoo ray we don't need to deal with negatives anymore
+	assert(num1 >= 0 && num2 >= 0);
+	if (num2 > 999999999999999999) {
+		// bull shit forget it
+		str_builder_append(b, "//"); // will never match a valid path
+		return;
+	}
+	char s1[24], s2[24];
+	strbuf_printf(s1, "%" PRId64, num1);
+	strbuf_printf(s2, "%" PRId64, num2);
+	if (strlen(s1) != strlen(s2)) {
+		// e.g. split 45-333 into 45-99 and 100-333
+		assert(strlen(s1) < strlen(s2));
+		for (size_t i = 0; s1[i]; i++)
+			s1[i] = '9';
+		i64 n = (i64)atoll(s1);
+		regex_append_number_range(b, num1, n);
+		str_builder_append(b, "|");
+		regex_append_number_range(b, n + 1, num2);
+		return;
+	}
+	regex_append_number_str_range(b, s1, s2);
+}
+
+static char *editorconfig_glob_to_regex(ConfigReader *reader, const char *glob) {
+	StrBuilder builder = str_builder_new(), *b = &builder;
+	
+	{
+		// add base path
+		char dirname[4096];	
+		strbuf_cpy(dirname, reader->filename);
+		path_dirname(dirname);
+		if (!dirname[0]) {
+			assert(0);
+			goto error;
+		}
+		if (!strchr(ALL_PATH_SEPARATORS, dirname[strlen(dirname) - 1])) {
+			strbuf_catf(dirname, "%c", PATH_SEPARATOR);
+		}
+		for (const char *p = dirname; *p; ++p)
+			regex_append_literal_char(b, *p);
+	}
+	if (!strchr(glob, '/')) {
+		// allow any bull shit directory before the glob
+		str_builder_append(b, "(.*/)?");
+	}
+
+	int brace_level = 0;
+	for (size_t i = 0; glob[i]; i++) {
+		assert(brace_level >= 0);
+		switch (glob[i]) {
+		case '\\':
+			if (glob[i+1]) {
+				regex_append_literal_char(b, glob[i+1]);
+				i += 1;
+			} else {
+				regex_append_literal_char(b, '\\');
+			}
+			break;
+		case '*':
+			if (glob[i+1] == '*') {
+				// **
+				str_builder_append(b, ".*");
+			} else {
+				// *
+				str_builder_append(b, "[^/]*");
+			}
+			break;
+		case '?':
+			str_builder_append(b, "[^/]");
+			break;
+		case '/':
+			if (str_has_prefix(&glob[i], "/**/")) {
+				// allow just a single slash
+				// (not in spec, but editorconfig library has this)
+				str_builder_append(b, "/(.*/)?");
+			} else {
+				regex_append_literal_char(b, '/');
+			}
+			break;
+		case '[':
+			str_builder_append(b, "[");
+			i += 1;
+			if (glob[i] == '!') {
+				str_builder_append(b, "^");
+				i += 1;
+			}
+			for (; glob[i]; i++) {
+				if (glob[i] == ']') break;
+				if (glob[i] == '\\') {
+					i += 1;
+					if (!glob[i]) break;
+				}
+				regex_append_literal_char(b, glob[i]);
+			}
+			str_builder_append(b, "]");
+			if (!glob[i]) {
+				// we don't wanna show some error message if editorconfig glob spec changes
+				config_debug_err(reader, "glob has [ with no matching ]");
+				goto error;
+			}
+			break;
+		case '{': {
+			i64 num1 = 0, num2 = 0;
+			int bytes = 0;
+			if (sscanf(&glob[i], "{%" SCNd64 "..%" SCNd64 "}%n", &num1, &num2, &bytes) == 2
+				&& bytes > 0) {
+				i += (unsigned)bytes - 1;
+				str_builder_append(b, "(");
+				regex_append_number_range(b, num1, num2);
+				str_builder_append(b, ")");
+				break;
+			}
+			bool has_comma = false;
+			size_t j;
+			for (j = i; glob[j]; j++) {
+				if (glob[j] == '}') break;
+				if (glob[j] == ',')
+					has_comma = true;
+				if (glob[j] == '\\') {
+					j += 1;
+					if (!glob[j]) break;
+				}
+			}
+			if (has_comma && glob[j]) {
+				str_builder_append(b, "(");
+				brace_level += 1;
+			} else {
+				regex_append_literal_char(b, '{');
+			}
+			} break;
+		case ',':
+			if (brace_level > 0) {
+				str_builder_append(b, "|");
+			} else {
+				regex_append_literal_char(b, ',');
+			}
+			break;
+		case '}':
+			if (brace_level == 0) {
+				regex_append_literal_char(b, '}');
+			} else {
+				str_builder_append(b, ")");
+				brace_level -= 1;
+			}
+			break;
+		default:
+			regex_append_literal_char(b, glob[i]);
+			break;
+		}
+	}
+	if (brace_level) {
+		config_debug_err(reader, "glob has { with no matching }");
+		goto error;
+	}
+	// make sure end is anchored
+	str_builder_append(b, "$");
+	char *ret = str_dup(b->str);
+	str_builder_free(&builder);
+	return ret;
+error:
+	str_builder_free(&builder);
+	return NULL;
+}
+
 static bool config_read_editorconfig(Ted *ted, const char *path) {
 	FILE *fp = fopen(path, "r");
 	if (!fp) return false;
@@ -1120,11 +1396,16 @@ static bool config_read_editorconfig(Ted *ted, const char *path) {
 				config_err(reader, "Unmatched [");
 				break;
 			}
+			line[strlen(line) - 1] = 0;
 			cfg = arr_addp(ted->all_configs);
 			cfg->source = rc_str_copy(path_rc);
 			cfg->is_editorconfig_root = is_root;
 			cfg->format = CONFIG_EDITORCONFIG;
-			cfg->path_regex = str_dup("TODO"); // TODO
+			cfg->path_regex = editorconfig_glob_to_regex(reader, line);
+			if (!cfg->path_regex) {
+				// regex failed to compile
+				cfg->path_regex = str_dup("//"); // never matches a valid path
+			}
 			config_compile_regex(cfg, reader);
 			break;
 		default: {
@@ -1296,3 +1577,107 @@ float settings_padding(const Settings *settings) {
 	return settings->padding;
 }
 
+static void editorconfig_glob_test_expect(Ted *ted, const char *pattern, const char *path, bool result) {
+	// fake config reader
+	ConfigReader reader = {
+		.ted = ted,
+		.filename = "/test.editorconfig",
+		.line_number = 1,
+	}; 
+	char *regex = editorconfig_glob_to_regex(&reader, pattern);
+	int error_code = 0;
+	PCRE2_SIZE error_offset = 0;
+	pcre2_code_8 *code = pcre2_compile_8((const u8 *)regex, PCRE2_ZERO_TERMINATED, PCRE2_ANCHORED, &error_code, &error_offset, NULL);
+	if (!code) {
+		println("bad regex produced from editorconfig glob (error code %d at offset %u): %s",
+			error_code, (unsigned)error_offset, regex);
+		exit(1);
+	}
+	pcre2_match_data_8 *match_data = pcre2_match_data_create_from_pattern_8(code, NULL);
+	bool match = pcre2_match_8(code, (const u8 *)path, PCRE2_ZERO_TERMINATED, 0, 0, match_data, NULL) > 0;
+	pcre2_match_data_free_8(match_data);
+	if (!match && result) {
+		println("expected editorconfig glob \"%s\" to match \"%s\" but it didn't. regex was: %s",
+			pattern, path, regex);
+		exit(1);
+	}
+	if (match && !result) {
+		println("expected editorconfig glob \"%s\" not to match \"%s\" but it did. regex was: %s",
+			pattern, path, regex);
+		exit(1);
+	}
+		
+}
+
+static void config_test_editorconfig_glob_to_regex(Ted *ted) {
+	static const struct {
+		const char *pattern;
+		const char *path;
+		bool result;
+	} tests[] = {
+		{"foo", "/foo", 1},
+		{"foo", "/a/foo", 1},
+		{"food", "/a/foo", 0},
+		{"*.py", "/a/b/x.py", 1},
+		{"a/*.py", "/a/x.py", 1},
+		{"a/*.py", "/b/x.py", 0},
+		{"a/*.py", "/a/b/x.py", 0},
+		{"a/**.py", "/a/b/x.py", 1},
+		{"[xyz]", "/y", 1},
+		{"[xyz]", "/z", 1},
+		{"[xyz]", "/a", 0},
+		{"[!xyz]", "/y", 0},
+		{"[!xyz]", "/z", 0},
+		{"[!xyz]", "/a", 1},
+		{"{x,y,z}", "/x", 1},
+		{"{x,y,z}", "/a", 0},
+		{"{foo,bar}", "/foo", 1},
+		{"{foo,bar}", "/bar", 1},
+		{"{foo,bar,xylum,plant species}", "/barricade", 0},
+		{"{foo{,s,t}}", "/foo", 1},
+		{"{foo{,s,t}}", "/foot", 1},
+		{"{foo{,s,t}}", "/foos", 1},
+		{"{foo{,s,t}}", "/foob", 0},
+		{",", "/,", 1},
+		{",", "/\\,", 0},
+		{"\\{", "/{", 1},
+		{"\\{", "/\\{", 0},
+		{"[\\[]", "/[", 1},
+		{"[\\[]", "/]", 0},
+		{"[\\]]", "/[", 0},
+		{"[\\]]", "/]", 1},
+		{"[!\\[]", "/[", 0},
+		{"[!\\[]", "/]", 1},
+		{"[!\\]]", "/[", 1},
+		{"[!\\]]", "/]", 0},
+		{"\\[\\]", "/[]", 1},
+		{"\\[\\]", "/.gitignore", 0},
+		{"{1..100}", "/00", 0},
+		{"{1..100}", "/11", 1},
+		{"{1..100}", "/1", 1},
+		{"{1..100}", "/100", 1},
+		{"{1..100}", "/90", 1},
+		{"{1..100}", "/35", 1},
+		{"{1..100}", "/7", 1},
+		{"{1..100}", "/101", 0},
+		{"{-325..-320}", "/-323", 1},
+		{"{-325..-320}", "/-325", 1},
+		{"{-325..-320}", "/-320", 1},
+		{"{-325..-320}", "/-300", 0},
+		{"{0..99999999}", "/34345", 1},
+		{"{0..99999999}", "/0", 1},
+		{"{0..99999999}", "/balls", 0},
+		{"{0..99999999}", "/99999999999", 0},
+		{"{0..0}", "/0", 1},
+		{"{625..629}", "/627", 1},
+		{"{625..629}", "/637", 0},
+		{"{..}", "/{..}", 1},
+	};
+	for (size_t i = 0; i < arr_count(tests); i++) {
+		editorconfig_glob_test_expect(ted, tests[i].pattern, tests[i].path, tests[i].result);
+	}
+}
+
+void config_test(Ted *ted) {
+	config_test_editorconfig_glob_to_regex(ted);
+}

@@ -162,15 +162,19 @@ void ted_info(Ted *ted, const char *fmt, ...) {
 	va_end(args);
 }
 
-void ted_log(Ted *ted, const char *fmt, ...) {
+void ted_vlog(Ted *ted, const char *fmt, va_list args) {
 	if (!ted->log) return;
-	
-	va_list args;
-	va_start(args, fmt);
 	fprintf(ted->log, "[pid %d, %s] ", ted->pid, ted->frame_time_string);
 	vfprintf(ted->log, fmt, args);
-	va_end(args);
 	fflush(ted->log);
+
+}
+
+void ted_log(Ted *ted, const char *fmt, ...) {
+	va_list args;
+	va_start(args, fmt);
+	ted_vlog(ted, fmt, args);
+	va_end(args);
 }
 
 
@@ -944,4 +948,14 @@ vec2 ted_mouse_pos(Ted *ted) {
 
 bool ted_mouse_in_rect(Ted *ted, Rect r) {
 	return rect_contains_point(r, ted->mouse_pos);
+}
+
+void ted_test(Ted *ted) {
+#define run_test(func)  printf("Running " #func "\n"); \
+	func(ted); \
+	if (ted->message_type == MESSAGE_ERROR) { fprintf(stderr, "ted produced an error.\n"); exit(1); }
+	run_test(config_test);
+
+#undef run_test
+	printf("all good as far as i know :3\n");
 }

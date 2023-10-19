@@ -1138,6 +1138,8 @@ void ted_warn(Ted *ted, PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRI
 void ted_info(Ted *ted, PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRINTF(2, 3);
 /// for information that should be logged
 void ted_log(Ted *ted, PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRINTF(2, 3);
+/// for information that should be logged
+void ted_vlog(Ted *ted, const char *fmt, va_list args);
 /// set error to "out of memory" message.
 void ted_out_of_mem(Ted *ted);
 /// allocate memory, producing an error message and returning `NULL` on failure

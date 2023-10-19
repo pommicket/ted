@@ -1,7 +1,9 @@
 /*
 TODO:
 - .editorconfig (see https://editorconfig.org/)
+   - test number range
 FUTURE FEATURES:
+- more tests
 - prepare rename support
 - autodetect indentation (tabs vs spaces)
 - custom file/build command associations
@@ -315,6 +317,7 @@ int main(int argc, char **argv) {
 		}
 	}
 	
+	bool test = false;
 	const char **starting_files = NULL;
 	for (int i = 1; i < dash_dash; ++i) {
 		if (streq(argv[i], "--help")) {
@@ -327,16 +330,23 @@ int main(int argc, char **argv) {
 		} else if (streq(argv[i], "--version")) {
 			printf("%s\n", TED_VERSION_FULL);
 			exit(0);
-		} else if (argv[i][0] == '-') {
+		}
+		#if DEBUG
+		else if (streq(argv[i], "--test")) {
+			test = true;
+		}
+		#endif
+		else if (argv[i][0] == '-') {
 			fprintf(stderr, "Unrecognized option: %s\n", argv[i]);
 			exit(EXIT_FAILURE);
 		} else {
 			arr_add(starting_files, argv[i]);
 		}
 	}
-	
-	for (int i = dash_dash + 1; i < argc; ++i) {
-		arr_add(starting_files, argv[i]);
+	if (!test) {
+		for (int i = dash_dash + 1; i < argc; ++i) {
+			arr_add(starting_files, argv[i]);
+		}
 	}
 	
 	PROFILE_TIME(basic_init_end)
@@ -445,8 +455,8 @@ int main(int argc, char **argv) {
 	PROFILE_TIME(misc_end)
 	
 	PROFILE_TIME(window_start)
-	SDL_Window *window = SDL_CreateWindow("ted", SDL_WINDOWPOS_UNDEFINED, 
-		SDL_WINDOWPOS_UNDEFINED, 1280, 720, SDL_WINDOW_SHOWN|SDL_WINDOW_OPENGL|SDL_WINDOW_RESIZABLE);
+	SDL_Window *window = SDL_CreateWindow("ted", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 1280, 720,
+		(test ? SDL_WINDOW_HIDDEN : SDL_WINDOW_SHOWN)|SDL_WINDOW_OPENGL|SDL_WINDOW_RESIZABLE);
 	if (!window)
 		die("%s", SDL_GetError());
 
@@ -556,7 +566,7 @@ int main(int argc, char **argv) {
 			}
 		}
 	}
-	if (arr_len(starting_files) == 0) {
+	if (!test && arr_len(starting_files) == 0) {
 		session_read(ted);
 	}
 	
@@ -1199,7 +1209,10 @@ int main(int argc, char **argv) {
 			print("Frame: %.1f ms\n", (frame_end - frame_start) * 1000);
 		}
 	#endif
-
+		if (test) {
+			ted_test(ted);
+			break;
+		}
 	}
 	
 	

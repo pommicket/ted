@@ -150,6 +150,8 @@ int str_qsort_case_insensitive_cmp(const void *av, const void *bv);
 const char *path_filename(const char *path);
 /// is this an absolute path?
 bool path_is_absolute(const char *path);
+/// cuts `path` off at last path separator
+void path_dirname(char *path);
 /// assuming `dir` is an absolute path, returns the absolute path of `relpath`, relative to `dir`.
 void path_full(const char *dir, const char *relpath, char *abspath, size_t abspath_size);
 /// returns true if the paths are the same.

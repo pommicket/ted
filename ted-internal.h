@@ -513,6 +513,8 @@ bool config_applies_to(Config *cfg, const char *path, Language language);
 /// higher-priority configs override lower-priority ones.
 i32 config_priority(const Config *cfg);
 void settings_free(Settings *settings);
+/// test config stuff
+void config_test(Ted *ted);
 
 // === find.c ===
 void find_init(Ted *ted);
@@ -705,6 +707,8 @@ void syntax_quit(void);
 SymbolInfo *tags_get_symbols(Ted *ted);
 
 // === ted.c ===
+/// perform all ted tests
+void ted_test(Ted *ted);
 /// update `ted->frame_time`
 void ted_update_time(Ted *ted);
 /// set ted's active buffer to something nice
