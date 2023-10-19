@@ -1,4 +1,7 @@
 /*
+TODO:
+- editorconfig replace / with \ on windows
+   and fix path-specific settings (should use \\ not \ now that we're using regex)
 FUTURE FEATURES:
 - more tests
 - prepare rename support

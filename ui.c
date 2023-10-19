@@ -527,7 +527,7 @@ char *file_selector_update(Ted *ted, FileSelector *fs) {
 	u32 first_path_sep = U32_MAX, last_path_sep = U32_MAX;
 	for (u32 i = 0; i < search_term32.len; ++i) {
 		char32_t c = search_term32.str[i];
-		if (c < CHAR_MAX && strchr(ALL_PATH_SEPARATORS, (char)c)) {
+		if (c < CHAR_MAX && is_path_separator((char)c)) {
 			last_path_sep = i;
 			if (first_path_sep == U32_MAX)
 				first_path_sep = i;
@@ -541,7 +541,7 @@ char *file_selector_update(Ted *ted, FileSelector *fs) {
 		if (dir_name) {
 			// replace all members of ALL_PATH_SEPARATORS with PATH_SEPARATOR in dir_name (i.e. change / to \ on windows)
 			for (char *p = dir_name; *p; ++p)
-				if (strchr(ALL_PATH_SEPARATORS, *p))
+				if (is_path_separator(*p))
 					*p = PATH_SEPARATOR;
 
 			if (file_selector_cd(ted, fs, dir_name)) {

@@ -188,12 +188,12 @@ bool str_has_suffix(const char *str, const char *suffix) {
 bool str_has_path_prefix(const char *path, const char *prefix) {
 	size_t prefix_len = strlen(prefix);
 	for (size_t i = 0; i < prefix_len; ++i) {
-		if (strchr(ALL_PATH_SEPARATORS, path[i]) && strchr(ALL_PATH_SEPARATORS, prefix[i]))
+		if (is_path_separator(path[i]) && is_path_separator(prefix[i]))
 			continue; // treat all path separators as the same
 		if (prefix[i] != path[i])
 			return false;
 	}
-	return path[prefix_len] == '\0' || strchr(ALL_PATH_SEPARATORS, path[prefix_len]);
+	return path[prefix_len] == '\0' || is_path_separator(path[prefix_len]);
 }
 
 bool streq(const char *a, const char *b) {
@@ -469,7 +469,7 @@ bool is_path_separator(char c) {
 
 const char *path_filename(const char *path) {
 	for (int i = (int)strlen(path) - 1; i >= 0; --i) {
-		if (strchr(ALL_PATH_SEPARATORS, path[i]))
+		if (is_path_separator(path[i]))
 			return &path[i+1];
 	}
 	// (a relative path with no path separators)
@@ -477,7 +477,7 @@ const char *path_filename(const char *path) {
 }
 
 bool path_is_absolute(const char *path) {
-	return strchr(ALL_PATH_SEPARATORS, path[0]) != NULL
+	return is_path_separator(path[0])
 	#if _WIN32
 		|| path[1] == ':'
 	#endif
@@ -490,7 +490,7 @@ void path_dirname(char *path) {
 		return;
 	}
 	for (size_t i = strlen(path) - 1; i > 0; --i) {
-		if (strchr(ALL_PATH_SEPARATORS, path[i])) {
+		if (is_path_separator(path[i])) {
 			if (strcspn(path, ALL_PATH_SEPARATORS) == i) {
 				// only one path separator
 				path[i+1] = '\0';
@@ -500,7 +500,7 @@ void path_dirname(char *path) {
 			return;
 		}
 	}
-	if (strchr(ALL_PATH_SEPARATORS, path[0])) {
+	if (is_path_separator(path[0])) {
 		path[1] = '\0';
 		return;
 	}
@@ -514,7 +514,7 @@ void path_full(const char *dir, const char *relpath, char *abspath, size_t abspa
 	abspath[0] = '\0';
 	
 	if (path_is_absolute(relpath)) {
-		if (strchr(ALL_PATH_SEPARATORS, relpath[0])) {
+		if (is_path_separator(relpath[0])) {
 			// make sure that on windows, if dir's drive is C: the absolute path of \a is c:\a
 			strn_cat(abspath, abspath_size, dir, strcspn(dir, ALL_PATH_SEPARATORS));
 		} else {

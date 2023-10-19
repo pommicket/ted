@@ -247,7 +247,7 @@ void ted_compute_settings(Ted *ted, const char *path, Language language, Setting
 			editorconfig[i+1] = 0;
 			ted_cfg[i] = path[i];
 			ted_cfg[i+1] = 0;
-			if (path[i] == 0 || strchr(ALL_PATH_SEPARATORS, path[i])) {
+			if (path[i] == 0 || is_path_separator(path[i])) {
 				if (path[i] == 0) { // for the case where `path` is a directory
 					strbuf_catf(editorconfig, "%c", PATH_SEPARATOR);
 					strbuf_catf(ted_cfg, "%c", PATH_SEPARATOR);

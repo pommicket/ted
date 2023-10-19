@@ -61,7 +61,7 @@ FsDirectoryEntry **fs_list_directory(const char *dirname) {
 	HANDLE fhandle;
 	assert(*dirname);
 	sprintf_s(file_pattern, sizeof file_pattern, "%s%s*", dirname,
-		strchr(ALL_PATH_SEPARATORS, dirname[strlen(dirname) - 1]) ? "" : "\\");
+		is_path_separator(dirname[strlen(dirname) - 1]) ? "" : "\\");
 	wchar_t wide_pattern[4100] = {0};
 	if (MultiByteToWideChar(CP_UTF8, 0, file_pattern, -1, wide_pattern, arr_count(wide_pattern)) == 0)
 		return NULL;
