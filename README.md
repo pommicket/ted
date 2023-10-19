@@ -273,14 +273,14 @@ variable names for example.
 
 ## Building from source
 
-First, you will need PCRE2: https://github.com/PhilipHazel/pcre2/releases.
-Unzip it, put pcre2-10.X in the same folder as ted, and rename it to pcre2.
+Make sure you cloned `ted` with submodules (`git clone --recursive ...`).
+If you didn't, run `git submodule update --init --recursive`.
 
 To install `ted` from source on Linux, you will also need:
 
 - A C compiler
 - The SDL2 development libraries
-- cmake (for PCRE2)
+- cmake
 - imagemagick convert (for creating the .deb installer)
 
 These can be installed on Ubuntu/Debian with:
