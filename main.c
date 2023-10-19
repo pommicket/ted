@@ -1,6 +1,4 @@
 /*
-TODO:
-- local .ted.cfg
 FUTURE FEATURES:
 - more tests
 - prepare rename support

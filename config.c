@@ -967,8 +967,14 @@ static void config_compile_regex(Config *cfg, ConfigReader *reader) {
 	}
 }
 
+static bool regex_char_needs_escaping(char c) {
+	return strchr("\\^.$|()[]*+?{}-", c);
+}
+
 static void config_read_ted_cfg(Ted *ted, RcStr *cfg_path_rc, const char ***include_stack) {
 	const char *const cfg_path = rc_str(cfg_path_rc, "");
+	const bool is_local = str_has_suffix(cfg_path, ".ted.cfg")
+		&& is_path_separator(cfg_path[strlen(cfg_path) - 9]);
 	// check for, e.g. %include ted.cfg inside ted.cfg
 	arr_foreach_ptr(*include_stack, const char *, p_include) {
 		if (streq(cfg_path, *p_include)) {
@@ -1014,6 +1020,19 @@ static void config_read_ted_cfg(Ted *ted, RcStr *cfg_path_rc, const char ***incl
 			char header[256];
 			config_read_to_eol(reader, header, sizeof header);
 			char path[TED_PATH_MAX]; path[0] = '\0';
+			if (is_local) {
+				// prepend directory
+				char dirname[TED_PATH_MAX];
+				strbuf_cpy(dirname, cfg_path);
+				path_dirname(dirname);
+				for (size_t i = 0, out = 0; dirname[i] && out < sizeof path - 3; i++) {
+					if (regex_char_needs_escaping(dirname[i])) {
+						path[out++] = '\\';
+					}
+					path[out++] = dirname[i];
+					path[out] = '\0';
+				}
+			}
 			Language language = 0;
 			if (strlen(header) == 0 || header[strlen(header) - 1] != ']') {
 				config_err(reader, "Section header doesn't end with ]\n" SECTION_HEADER_HELP);
@@ -1023,6 +1042,14 @@ static void config_read_ted_cfg(Ted *ted, RcStr *cfg_path_rc, const char ***incl
 				char *p = header;
 				char *path_end = strstr(p, "//");
 				if (path_end) {
+					if (is_local) {
+						// important we do this here and not above so that
+						// if we have /foo/.ted.cfg
+						// [colors]
+						// bg = #f00
+						//  ^^ this should apply to the path "/foo" (not just "/foo/something")
+						strbuf_catf(path, "%c", PATH_SEPARATOR);
+					}
 					size_t path_len = (size_t)(path_end - header);
 					path[0] = '\0';
 					// expand ~
@@ -1122,8 +1149,7 @@ static void config_read_ted_cfg(Ted *ted, RcStr *cfg_path_rc, const char ***incl
 }
 
 static void regex_append_literal_char(StrBuilder *b, char c) {
-	static const char pcre_metacharacters[] = "\\^.$|()[]*+?{}-";
-	if (strchr(pcre_metacharacters, c))
+	if (regex_char_needs_escaping(c))
 		str_builder_appendf(b, "\\%c", c);
 	else
 		str_builder_appendf(b, "%c", c);

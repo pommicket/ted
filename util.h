@@ -146,6 +146,8 @@ int strcmp_case_insensitive(const char *a, const char *b);
 bool streq_case_insensitive(const char *a, const char *b);
 /// function to be passed into qsort for case insensitive sorting
 int str_qsort_case_insensitive_cmp(const void *av, const void *bv);
+/// is c a path separator?
+bool is_path_separator(char c);
 /// the actual file name part of the path; get rid of the containing directory.
 ///
 /// NOTE: the returned string is part of path, so you don't need to free it or anything.

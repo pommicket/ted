@@ -240,14 +240,22 @@ void ted_compute_settings(Ted *ted, const char *path, Language language, Setting
 	
 	u32 root_editorconfig = 0;
 	if (path && *path) {
-		// check for .editorconfig
-		char editorconfig[2048];
-		for (size_t i = 0; path[i] && i < sizeof editorconfig - 16; i++) {
+		// check for .editorconfig and local .ted.cfg
+		char editorconfig[2048], ted_cfg[2048];
+		for (size_t i = 0; (i == 0 || path[i - 1]) && i < sizeof editorconfig - 16; i++) {
 			editorconfig[i] = path[i];
 			editorconfig[i+1] = 0;
-			if (strchr(ALL_PATH_SEPARATORS, path[i])) {
+			ted_cfg[i] = path[i];
+			ted_cfg[i+1] = 0;
+			if (path[i] == 0 || strchr(ALL_PATH_SEPARATORS, path[i])) {
+				if (path[i] == 0) { // for the case where `path` is a directory
+					strbuf_catf(editorconfig, "%c", PATH_SEPARATOR);
+					strbuf_catf(ted_cfg, "%c", PATH_SEPARATOR);
+				}
 				strbuf_cat(editorconfig, ".editorconfig");
 				config_read(ted, editorconfig, CONFIG_EDITORCONFIG);
+				strbuf_cat(ted_cfg, ".ted.cfg");
+				config_read(ted, ted_cfg, CONFIG_TED_CFG);
 			}
 		}
 

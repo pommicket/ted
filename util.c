@@ -463,6 +463,10 @@ void qsort_with_context(void *base, size_t nmemb, size_t size,
 }
 #endif
 
+bool is_path_separator(char c) {
+	return strchr(ALL_PATH_SEPARATORS, c) != NULL;
+}
+
 const char *path_filename(const char *path) {
 	for (int i = (int)strlen(path) - 1; i >= 0; --i) {
 		if (strchr(ALL_PATH_SEPARATORS, path[i]))

@@ -78,7 +78,7 @@ You can also include files with `%include` (note: the included file must start w
 By default ted's settings will automatically update when you save the config file.
 
 The `core` section's settings should be pretty familiar (font size, etc.) or should have comments on the previous line
-explaining what they do.
+explaining what they do. `yes`, `on`, and `true` are all synonyms, as are `no`, `off`, and `false`.
 
 Keyboard shortcuts are of the form `key combo = action`, where `action` is an argument (number or string),
 followed by a command. The commands match the things in the command palette (Ctrl+Shift+p), but `:` is added to the beginning to make
@@ -109,6 +109,11 @@ tab-width = 17
 # set tab width for .hmtgf files in ~/foo
 tab-width = 9
 ```
+
+or put a file called `.ted.cfg` in any directory to have settings apply to files in that directory.
+
+ted reads [.editorconfig](https://editorconfig.org) files automatically. you can override them by putting `.ted.cfg`
+with the settings you want in the same directory.
 
 To reset your ted configuration to the default settings, delete your ted.cfg file (`~/.local/share/ted/ted.cfg` on Linux,
 `C:\Users\<your user name>\AppData\Local\ted\ted.cfg` on Windows) or move it somewhere else.
