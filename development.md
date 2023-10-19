@@ -142,6 +142,7 @@ When releasing a new version of `ted`:
 - Update `TED_VERSION` in `ted.h`.
 - Update `Version` in `control` for the `.deb` file.
 - Run `make ted.deb` on Debian/Ubuntu.
+- Run `./update-windows-installer.py`.
 - Run `make.bat release` on Windows.
-- Run `python3 update-windows-installer.py`.
 - Create a new release on GitHub with `ted.deb` and `ted.msi`.
+- Add `.deb` to repository.
