@@ -1461,7 +1461,7 @@ static void config_read_editorconfig(Ted *ted, RcStr *path_rc) {
 			config_compile_regex(cfg, reader);
 			break;
 		default: {
-			char key[64] = {c};
+			char key[128] = {c};
 			for (size_t i = 1; i < sizeof key - 1; i++) {
 				c = config_getc(reader);
 				if (!c || c == '\n') break;
@@ -1469,18 +1469,14 @@ static void config_read_editorconfig(Ted *ted, RcStr *path_rc) {
 				key[i] = c;
 			}
 			if (c != '=') {
-				config_err(reader, "expected key = value but didn't find =");
+				config_err(reader, "expected key = value but didn't find = (just have %s)", key);
 				break;
 			}
 			str_trim(key);
 			str_ascii_to_lowercase(key);
-			char value[64] = {0};
-			for (size_t i = 0; i < sizeof value - 1; i++) {
-				c = config_getc(reader);
-				if (!c || c == '\n') break;
-				value[i] = c;
-			}
-			str_trim(value);
+			config_read_to_eol(reader, line, sizeof line);
+			str_trim(line);
+			char *value = line;
 			if (streq(key, "root")) {
 				str_ascii_to_lowercase(value);
 				if (cfg) {
