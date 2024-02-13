@@ -95,6 +95,7 @@ static const SettingBool settings_bool[] = {
 	{"auto-reload", &settings_zero.auto_reload, true},
 	{"auto-reload-config", &settings_zero.auto_reload_config, false},
 	{"syntax-highlighting", &settings_zero.syntax_highlighting, true},
+	{"autodetect-indentation", &settings_zero.autodetect_indentation, true},
 	{"line-numbers", &settings_zero.line_numbers, true},
 	{"restore-session", &settings_zero.restore_session, false},
 	{"regenerate-tags-if-not-found", &settings_zero.regenerate_tags_if_not_found, true},
@@ -115,7 +116,7 @@ static const SettingBool settings_bool[] = {
 #define SETTING_CRLF {"crlf", &settings_zero.crlf, true}
 	SETTING_CRLF,
 #define SETTING_CRLF_WINDOWS {"crlf-windows", &settings_zero.crlf_windows, true}
-	{"crlf-windows", &settings_zero.crlf_windows, true},
+	SETTING_CRLF_WINDOWS,
 	{"jump-to-build-error", &settings_zero.jump_to_build_error, true},
 	{"force-monospace", &settings_zero.force_monospace, true},
 	{"show-diagnostics", &settings_zero.show_diagnostics, true},

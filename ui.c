@@ -501,9 +501,9 @@ static bool file_selector_cd(Ted *ted, FileSelector *fs, const char *path) {
 
 static ColorSetting color_setting_for_file_type(FsType type) {
 	switch (type) {
-        case FS_FILE: return COLOR_TEXT;
-        case FS_DIRECTORY: return COLOR_TEXT_FOLDER;
-        default: return COLOR_TEXT_OTHER;
+	case FS_FILE: return COLOR_TEXT;
+	case FS_DIRECTORY: return COLOR_TEXT_FOLDER;
+	default: return COLOR_TEXT_OTHER;
 	}
 }
 

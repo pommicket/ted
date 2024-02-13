@@ -540,7 +540,7 @@ void menu_init(Ted *ted) {
 	ted_add_edit_notify(ted, menu_edit_notify, ted);
 	
 	ted->command_selector = selector_new();
-        for (Command c = 0; c < CMD_COUNT; ++c) {
+	for (Command c = 0; c < CMD_COUNT; ++c) {
 		const char *name = command_to_str(c);
 		if (c != CMD_UNKNOWN && *name) {
 			SelectorEntry entry = {
@@ -548,7 +548,7 @@ void menu_init(Ted *ted) {
 			};
 			selector_add_entry(ted->command_selector, &entry);
 		}
-        }
+	}
 	
 	MenuInfo save_as_menu = {
 		.open = save_as_menu_open,

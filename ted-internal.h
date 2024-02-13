@@ -121,6 +121,7 @@ struct Settings {
 	bool jump_to_build_error;
 	bool force_monospace;
 	bool show_diagnostics;
+	bool autodetect_indentation;
 	KeyCombo hover_key;
 	KeyCombo highlight_key;
 	u8 tab_width;

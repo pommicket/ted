@@ -418,8 +418,11 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 					// highlight active tab
 					gl_geometry_rect(tab_rect, settings_color(settings, is_active ? COLOR_ACTIVE_TAB_HL : COLOR_SELECTED_TAB_HL));
 					// set window title to active tab's title
-					strbuf_printf(ted->window_title, "ted %s | %s", tab_title,
-						settings->indent_with_spaces ? "spaces" : "tabs");
+					strbuf_printf(ted->window_title, "ted %s | ", tab_title);
+					if (buffer_indent_with_spaces(buffer))
+						strbuf_catf(ted->window_title, "%u spaces", buffer_tab_width(buffer));
+					else
+						strbuf_catf(ted->window_title, "tabs");
 					if (*rc_str(settings->lsp, "")) {
 						LSP *lsp = buffer_lsp(buffer);
 						strbuf_catf(ted->window_title, " | LSP %s",

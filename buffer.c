@@ -77,6 +77,14 @@ struct TextBuffer {
 	/// If set to true, buffer will be scrolled to the cursor position next frame.
 	/// This is to fix the problem that \ref x1, \ref y1, \ref x2, \ref y2 are not updated until the buffer is rendered.
 	bool center_cursor_next_frame;
+	/// whether to indent with spaces
+	///
+	/// this is either set according to the user's settings or according to the autodetected indentation
+	bool indent_with_spaces;
+	/// tab size
+	///
+	/// this is either set according to the user's settings or according to the autodetected indentation
+	uint8_t tab_width;
 	/// x coordinate of left side of buffer
 	float x1;
 	/// y coordinate of top side of buffer
@@ -359,6 +367,10 @@ static char *buffer_strdup(TextBuffer *buffer, const char *src) {
 static void buffer_set_up(Ted *ted, TextBuffer *buffer) {
 	buffer->store_undo_events = true;
 	buffer->ted = ted;
+	// will be overwritten by buffer_new_file, buffer_load_file for file buffers
+	const Settings *settings = buffer_settings(buffer);
+	buffer->indent_with_spaces = settings->indent_with_spaces;
+	buffer->tab_width = settings->tab_width;
 }
 
 static void line_buffer_set_up(Ted *ted, TextBuffer *buffer) {
@@ -544,11 +556,11 @@ void buffer_recompute_settings(TextBuffer *buffer) {
 }
 
 u8 buffer_tab_width(TextBuffer *buffer) {
-	return buffer_settings(buffer)->tab_width;
+	return buffer->tab_width;
 }
 
 bool buffer_indent_with_spaces(TextBuffer *buffer) {
-	return buffer_settings(buffer)->indent_with_spaces;
+	return buffer->indent_with_spaces;
 }
 
 u32 buffer_line_count(TextBuffer *buffer) {
@@ -2965,6 +2977,50 @@ void buffer_paste(TextBuffer *buffer) {
 	}
 }
 
+static void buffer_detect_indentation(TextBuffer *buffer) {
+	const Settings *settings = buffer_settings(buffer);
+	if (settings->autodetect_indentation && buffer->nlines > 1) {
+		bool use_tabs = false;
+		uint32_t spcs2 = 0, spcs4 = 0, spcs8 = 0;
+		for (uint32_t i = 0; i < buffer->nlines; i++) {
+			const Line *line = &buffer->lines[i];
+			if (line->len == 0) continue;
+			if (line->str[0] == '\t') {
+				use_tabs = true;
+				break;
+			}
+			uint32_t nspc = 0;
+			for (nspc = 0; nspc < line->len; nspc++) {
+				if (line->str[nspc] != ' ') {
+					break;
+				}
+			}
+			spcs2 += nspc == 2;
+			spcs4 += nspc == 4;
+			spcs8 += nspc == 8;
+		}
+		if (use_tabs) {
+			buffer->indent_with_spaces = false;
+			buffer->tab_width = settings->tab_width;
+		} else if (spcs2 * 50 > spcs4) {
+			buffer->indent_with_spaces = true;
+			buffer->tab_width = 2;
+		} else if (spcs4 * 50 > spcs8) {
+			buffer->indent_with_spaces = true;
+			buffer->tab_width = 4;
+		} else if (spcs8) {
+			buffer->indent_with_spaces = true;
+			buffer->tab_width = 8;
+		} else {
+			buffer->indent_with_spaces = settings->indent_with_spaces;
+			buffer->tab_width = settings->tab_width;
+		}
+	} else {
+		buffer->indent_with_spaces = settings->indent_with_spaces;
+		buffer->tab_width = settings->tab_width;
+	}
+}
+
 // if an error occurs, buffer is left untouched (except for the error field) and the function returns false.
 Status buffer_load_file(TextBuffer *buffer, const char *path) {
 	if (!unicode_is_valid_utf8(path)) {
@@ -3097,6 +3153,7 @@ Status buffer_load_file(TextBuffer *buffer, const char *path) {
 		buffer_error(buffer, "Couldn't open file %s: %s.", path, strerror(errno));
 		success = false;
 	}
+	buffer_detect_indentation(buffer);
 	return success;
 }
 
@@ -3137,6 +3194,9 @@ void buffer_new_file(TextBuffer *buffer, const char *path) {
 	buffer->lines_capacity = 4;
 	buffer->lines = buffer_calloc(buffer, buffer->lines_capacity, sizeof *buffer->lines);
 	buffer->nlines = 1;
+	const Settings *settings = buffer_settings(buffer);
+	buffer->indent_with_spaces = settings->indent_with_spaces;
+	buffer->tab_width = settings->tab_width;
 }
 
 static bool buffer_write_to_file(TextBuffer *buffer, const char *path) {
@@ -3295,6 +3355,7 @@ bool buffer_save_as(TextBuffer *buffer, const char *new_path) {
 		buffer->last_lsp_check = -INFINITY;
 		// we'll send a didOpen the next time buffer_lsp is called.
 		free(prev_path);
+		buffer_detect_indentation(buffer);
 		return true;
 	} else {
 		free(buffer->path);
