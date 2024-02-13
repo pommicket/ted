@@ -6,6 +6,11 @@
 
 #include <sys/stat.h>
 
+#if __unix__
+#include <fcntl.h>
+#include <unistd.h>
+#endif
+
 /// A single line in a buffer
 typedef struct Line Line;
 
@@ -3196,6 +3201,13 @@ static bool buffer_write_to_file(TextBuffer *buffer, const char *path) {
 			buffer_error(buffer, "Couldn't write to %s.", path);
 		success = false;
 	}
+	fflush(out);
+	// make sure data is on disk before returning from this function
+	#if __unix__
+	fdatasync(fileno(out));
+	#elif _WIN32
+	_commit(_fileno(out));
+	#endif
 	if (fclose(out) != 0) {
 		if (!buffer_has_error(buffer))
 			buffer_error(buffer, "Couldn't close file %s.", path);
@@ -3221,19 +3233,30 @@ bool buffer_save(TextBuffer *buffer) {
 	*backup_path = '\0';
 	
 	if (settings->save_backup) {
-		strbuf_printf(backup_path, "%s.ted-bk", buffer->path);
-		if (strlen(backup_path) != strlen(buffer->path) + 7) {
+		strbuf_printf(backup_path, "%s~", buffer->path);
+		if (strlen(backup_path) < strlen(buffer->path) + 1) {
 			buffer_error(buffer, "File name too long.");
 			return false;
 		}
-		
+	#if __unix__
+		// create backup file with 600 permissions so we don't leak file data to other users.
+		int fd = open(backup_path, O_CREAT|O_TRUNC|O_WRONLY, 0600);
+		if (fd == -1) {
+			buffer_error(buffer, "Error creating %s: %s",
+				backup_path, strerror(errno));
+			return false;
+		}
+		close(fd);
+	#endif
 	}
 	
 	bool success = true;
+	// first save backup so if writing main file fails halfway through user's data won't be lost
 	if (*backup_path)
 		success &= buffer_write_to_file(buffer, backup_path);
 	if (success)
 		success &= buffer_write_to_file(buffer, buffer->path);
+	// now if writing the main file succeeded we can safely delete the backup
 	if (success && *backup_path)
 		remove(backup_path);
 	buffer->last_write_time = timespec_to_seconds(time_last_modified(buffer->path));
