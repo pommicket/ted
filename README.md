@@ -346,6 +346,7 @@ Then run `make.bat release`.
 <tr><td>2.6.1</td> <td>LSP-related bugfixes</td> <td>2023 Sep 14</td></tr>
 <tr><td>2.6.2</td> <td>fix cursor position issue, nicer logging, status in title bar</td> <td>2023 Sep 24</td></tr>
 <tr><td>2.7.0</td> <td>`.editorconfig` and local `.ted.cfg`</td> <td>2023 Oct 19</td></tr>
+<tr><td>2.7.1</td> <td>bug fixes, auto-detect indentation</td> <td>2024 Feb 13</td></tr>
 </table>
 
 ## License
