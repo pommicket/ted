@@ -9,6 +9,8 @@
 #if __unix__
 #include <fcntl.h>
 #include <unistd.h>
+#elif _WIN32
+#include <io.h>
 #endif
 
 /// A single line in a buffer
