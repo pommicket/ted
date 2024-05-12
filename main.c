@@ -1,4 +1,8 @@
 /*
+TODO:
+- fix opening file from build output (while there are any nodes open)
+- fix highlighting of '\u{1023}' in Rust
+
 FUTURE FEATURES:
 - more tests
 - prepare rename support
