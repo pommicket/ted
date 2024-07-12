@@ -151,6 +151,11 @@ struct Settings {
 	RcStr *font;
 	/// Comma separated list of paths to bold font files.
 	RcStr *font_bold;
+	/// How to sync data when writing a file
+	/// - none - don't sync to disk
+	/// - full - sync data and metadata to disk
+	/// - data - only sync data but not metadata (on Windows this is the same as full)
+	RcStr *sync;
 	LanguageExtension *language_extensions;
 	/// dynamic array, sorted by KEY_COMBO(modifier, key)
 	KeyAction *key_actions;

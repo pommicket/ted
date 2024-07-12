@@ -166,6 +166,7 @@ static const SettingString settings_string[] = {
 	{"comment-end", &settings_zero.comment_end, true},
 	{"font", &settings_zero.font, false},
 	{"font-bold", &settings_zero.font_bold, false},
+	{"sync", &settings_zero.sync, false},
 };
 static const SettingKeyCombo settings_key_combo[] = {
 	{"hover-key", &settings_zero.hover_key, true},

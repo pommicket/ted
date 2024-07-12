@@ -3264,12 +3264,19 @@ static bool buffer_write_to_file(TextBuffer *buffer, const char *path) {
 		success = false;
 	}
 	fflush(out);
-	// make sure data is on disk before returning from this function
-	#if __unix__
-	fdatasync(fileno(out));
-	#elif _WIN32
-	_commit(_fileno(out));
-	#endif
+	const char *sync = rc_str(settings->sync, "none");
+	if (!streq(sync, "none")) {
+		// make sure data is on disk before returning from this function
+		#if __unix__
+		if (streq(sync, "data")) {
+			fdatasync(fileno(out));
+		} else {
+			fsync(fileno(out));
+		}
+		#elif _WIN32
+		_commit(_fileno(out));
+		#endif
+	}
 	if (fclose(out) != 0) {
 		if (!buffer_has_error(buffer))
 			buffer_error(buffer, "Couldn't close file %s.", path);
