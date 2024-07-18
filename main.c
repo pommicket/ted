@@ -1,7 +1,4 @@
 /*
-TODO:
-- fix opening file from build output (while there are any nodes open)
-
 FUTURE FEATURES:
 - more tests
 - prepare rename support

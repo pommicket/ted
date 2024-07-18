@@ -620,10 +620,12 @@ static TextBuffer *ted_open_buffer(Ted *ted, u16 *tab) {
 			// it may happen.... (currently happens for rename symbol)
 			node = ted_buffer_location_in_node_tree(ted, ted->prev_active_buffer, NULL);
 		} else {
-			// idk what is going on
-			ted_error(ted, "internal error: can't figure out where to put this buffer.");
-			ted_delete_buffer(ted, new_buffer);
-			return NULL;
+			// e.g. opening a file while build output buffer is active
+			// just guess a node where the buffer should go -
+			// this situation is pretty rare.
+			node = ted->nodes[0];
+			while (node_child1(node))
+				node = node_child1(node);
 		}
 	}
 	
