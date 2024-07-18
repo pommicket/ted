@@ -596,14 +596,31 @@ static void syntax_highlight_rust(SyntaxState *state, const char32_t *line, u32 
 					if (line[char_end] == '\'' && backslashes % 2 == 0) {
 						break;
 					}
+					if (backslashes % 2 == 1 && line[char_end] == 'u'
+						&& char_end + 3 < line_len && line[char_end + 1] == '{') {
+						// unicode character literal e.g. '\u{1234}'
+						char_end += 2; // skip u{
+						while (char_end + 1 < line_len) {
+							char_end++;
+							if (line[char_end] == '}') {
+								char_end++;
+								break;
+							}
+						}
+						if (line[char_end - 1] != '}') {
+							// not a unicode character
+							char_end = line_len;
+						}
+						break;
+					}
+					if (line[char_end] < CHAR_MAX
+						&& backslashes % 2 == 0
+						&& !strchr("abcdefABCDEF0123456789", (char)line[char_end]))
+						break;
 					if (line[char_end] == '\\')
 						++backslashes;
 					else
 						backslashes = 0;
-					if (line[char_end] < CHAR_MAX
-					&& line[char_end - 1] != '\\'
-					&& !strchr("abcdefABCDEF0123456789", (char)line[char_end]))
-						break;
 				}
 				if (char_end < line_len && line[char_end] == '\'') {
 					// a character literal
