@@ -5,9 +5,9 @@
 
 import uuid
 import re
-from datetime import datetime
+import datetime
 
-timestamp = datetime.utcnow()
+timestamp = datetime.datetime.now(datetime.UTC)
 # will break in 2100. FUCK YOU PEOPEL OF THE FUTURE!!
 version_start = '%02d.%02d.%02d' % (timestamp.year % 100, timestamp.month, timestamp.day)
 product_code = str(uuid.uuid4()).upper()
