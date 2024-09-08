@@ -768,6 +768,12 @@ int buffer_pos_cmp(BufferPos p1, BufferPos p2);
 /// returns `p2 - p1`, that is, the number of characters between `p1` and `p2`,
 /// but negative if `p1` comes after `p2`.
 i64 buffer_pos_diff(TextBuffer *buffer, BufferPos p1, BufferPos p2);
+/// force buffer indentation to `n` spaces
+void buffer_set_manual_indent_with_spaces(TextBuffer *buffer);
+/// force buffer indentation to tabs
+void buffer_set_manual_indent_with_tabs(TextBuffer *buffer);
+/// force buffer tab width to `n`
+void buffer_set_manual_tab_width(TextBuffer *buffer, u8 n);
 
 // === build.c ===
 /// clear build errors and stop

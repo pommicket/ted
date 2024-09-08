@@ -107,6 +107,9 @@ static CommandName command_names[] = {
 	{"rename-symbol", CMD_RENAME_SYMBOL},
 	{"format-file", CMD_FORMAT_FILE},
 	{"format-selection", CMD_FORMAT_SELECTION},
+	{"indent-with-spaces", CMD_INDENT_WITH_SPACES},
+	{"indent-with-tabs", CMD_INDENT_WITH_TABS},
+	{"set-tab-width", CMD_SET_TAB_WIDTH},
 };
 
 static_assert_if_possible(arr_count(command_names) == CMD_COUNT)
@@ -171,8 +174,8 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 	Settings *settings = ted_active_settings(ted);
 	if (ted->recording_macro)
 		macro_add(ted, c, full_argument);
-	i64 argument = full_argument->number;
 	const char *argument_str = full_argument->string;
+	i64 argument = argument_str ? 0 : full_argument->number;
 	/*
 	it's important that when we're playing back a macro,
 	we only execute commands specifically from the macro.
@@ -711,5 +714,25 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 	case CMD_FORMAT_SELECTION:
 		format_selection(ted);
 		break;
+	case CMD_INDENT_WITH_SPACES:
+		if (buffer) {
+			buffer_set_manual_indent_with_spaces(buffer);
+		}
+		if (argument > 1 && argument < 256) {
+			buffer_set_manual_tab_width(buffer, (u8)argument);
+		}
+		break;
+	case CMD_INDENT_WITH_TABS:
+		if (buffer) {
+			buffer_set_manual_indent_with_tabs(buffer);
+		}
+		if (argument > 1 && argument < 256) {
+			buffer_set_manual_tab_width(buffer, (u8)argument);
+		}
+		break;
+	case CMD_SET_TAB_WIDTH:
+		if (argument >= 1 && argument < 256) {
+			buffer_set_manual_tab_width(buffer, (u8)argument);
+		}
 	}
 }

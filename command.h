@@ -163,6 +163,13 @@ typedef enum {
 	CMD_MACRO_STOP,
 	CMD_MACRO_EXECUTE,
 
+	/// indent active buffer with spaces; if argument > 1, it is the # of spaces
+	CMD_INDENT_WITH_SPACES,
+	/// indent active buffer with tabs; if argument > 1, it is the tab width
+	CMD_INDENT_WITH_TABS,
+	/// set tab width/number of spaces to indent with
+	CMD_SET_TAB_WIDTH,
+
 	CMD_COUNT
 } Command;
 

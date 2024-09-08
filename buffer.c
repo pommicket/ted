@@ -83,6 +83,8 @@ struct TextBuffer {
 	///
 	/// this is either set according to the user's settings or according to the autodetected indentation
 	bool indent_with_spaces;
+	/// true if user has manually specified indentation
+	bool manual_indentation;
 	/// tab size
 	///
 	/// this is either set according to the user's settings or according to the autodetected indentation
@@ -2980,6 +2982,7 @@ void buffer_paste(TextBuffer *buffer) {
 }
 
 static void buffer_detect_indentation(TextBuffer *buffer) {
+	if (buffer->manual_indentation) return;
 	const Settings *settings = buffer_settings(buffer);
 	if (settings->autodetect_indentation && buffer->nlines > 1) {
 		bool use_tabs = false;
@@ -3164,6 +3167,9 @@ void buffer_reload(TextBuffer *buffer) {
 		BufferPos cursor_pos = buffer->cursor_pos;
 		float x1 = buffer->x1, y1 = buffer->y1, x2 = buffer->x2, y2 = buffer->y2;
 		double scroll_x = buffer->scroll_x; double scroll_y = buffer->scroll_y;
+		u8 tab_width = buffer->tab_width;
+		bool indent_with_spaces = buffer->indent_with_spaces;
+		bool manual_indentation = buffer->manual_indentation;
 		char *path = str_dup(buffer->path);
 		if (buffer_load_file(buffer, path)) {
 			buffer->x1 = x1; buffer->y1 = y1; buffer->x2 = x2; buffer->y2 = y2;
@@ -3172,6 +3178,12 @@ void buffer_reload(TextBuffer *buffer) {
 			buffer->scroll_y = scroll_y;
 			buffer_validate_cursor(buffer);
 			buffer_correct_scroll(buffer);
+			if (manual_indentation) {
+				// ensure manual indentation is preserved across reload
+				buffer->manual_indentation = manual_indentation;
+				buffer->indent_with_spaces = indent_with_spaces;
+				buffer->tab_width = tab_width;
+			}
 		}
 		free(path);
 	}
@@ -4125,4 +4137,19 @@ void buffer_publish_diagnostics(TextBuffer *buffer, const LSPRequest *request, L
 		d->url = *url ? str_dup(url) : NULL;
 	}
 	arr_qsort(buffer->diagnostics, diagnostic_cmp);
+}
+
+void buffer_set_manual_indent_with_spaces(TextBuffer *buffer) {
+	buffer->indent_with_spaces = true;
+	buffer->manual_indentation = true;
+}
+
+void buffer_set_manual_indent_with_tabs(TextBuffer *buffer) {
+	buffer->indent_with_spaces = false;
+	buffer->manual_indentation = true;
+}
+
+void buffer_set_manual_tab_width(TextBuffer *buffer, u8 n) {
+	buffer->tab_width = n;
+	buffer->manual_indentation = true;
 }

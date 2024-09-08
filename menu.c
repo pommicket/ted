@@ -354,31 +354,29 @@ static void command_selector_open(Ted *ted) {
 }
 
 static void command_selector_update(Ted *ted) {
+	TextBuffer *argument_buffer = ted->argument_buffer;
 	TextBuffer *line_buffer = ted->line_buffer;
 	Selector *selector = ted->command_selector;
 	char *search_term = str32_to_utf8_cstr(buffer_get_line(line_buffer, 0));
-	char *chosen_command = selector_update(ted, selector);
-	if (chosen_command) {
-		Command c = command_from_str(chosen_command);
-		if (c != CMD_UNKNOWN) {
-			char *argument = str32_to_utf8_cstr(buffer_get_line(ted->argument_buffer, 0)), *endp = NULL;
-			long long arg = 1;
-			bool execute = true;
-			if (*argument) {
-				strtoll(argument, &endp, 0);
-				if (*endp != '\0')
-					execute = false;
+	char *chosen_command_text = selector_update(ted, selector);
+	bool execute = chosen_command_text || line_buffer_is_submitted(argument_buffer);
+	free(chosen_command_text), chosen_command_text = NULL;
+	SelectorEntry entry = {0};
+	if (execute && selector_get_cursor_entry(selector, &entry) && entry.userdata) {
+		line_buffer_clear_submitted(line_buffer);
+		Command c = (Command)entry.userdata;
+		char *argument = str32_to_utf8_cstr(buffer_get_line(ted->argument_buffer, 0)), *endp = NULL;
+		CommandArgument arg = {.number = 1};
+		if (*argument) {
+			arg.number = strtoll(argument, &endp, 0);
+			if (*endp != '\0') {
+				arg.string = argument;
 			}
-			
-			if (execute) {
-				menu_close(ted);
-				command_execute(ted, c, arg);
-			}
-
-			free(argument);
 		}
-
-		free(chosen_command);
+		menu_close(ted);
+		const CommandContext ctx = {0};
+		command_execute_ex(ted, c, &arg, &ctx);
+		free(argument);
 	}
 	free(search_term);
 }
@@ -544,7 +542,8 @@ void menu_init(Ted *ted) {
 		const char *name = command_to_str(c);
 		if (c != CMD_UNKNOWN && *name) {
 			SelectorEntry entry = {
-				.name = name
+				.name = name,
+				.userdata = c,
 			};
 			selector_add_entry(ted->command_selector, &entry);
 		}
