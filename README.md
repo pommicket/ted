@@ -356,6 +356,7 @@ Then run `make.bat release`.
 <tr><td>2.7.0</td> <td>`.editorconfig` and local `.ted.cfg`</td> <td>2023 Oct 19</td></tr>
 <tr><td>2.7.1</td> <td>bug fixes, auto-detect indentation</td> <td>2024 Feb 13</td></tr>
 <tr><td>2.7.2</td> <td>bug fixes, `sync` setting</td> <td>2024 Jul 17</td></tr>
+<tr><td>2.7.3</td> <td>configure data directories, set indentation manually</td> <td>2024 Sep 8</td></tr>
 </table>
 
 ## License
