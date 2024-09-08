@@ -1,14 +1,19 @@
+# where to put ted's files
+# GLOBAL_DATA_DIR = files shared between all users (e.g. default ted.cfg)
+# LOCAL_DATA_DIR = user-specific files
+# either one can start with ~ for home directory.
+# these are currently ignored for debug builds.
+GLOBAL_DATA_DIR?=/usr/share/ted
+LOCAL_DATA_DIR?=~/.local/share/ted
+INSTALL_BIN_DIR?=/usr/bin
+
 ALL_CFLAGS=$(CFLAGS) -Wall -Wextra -Wshadow -Wconversion -Wpedantic -pedantic -std=gnu11 \
 	-Wno-unused-function -Wno-fixed-enum-extension -Wimplicit-fallthrough -Wno-format-truncation -Wno-unknown-warning-option \
-	-Ipcre2
+	-Ipcre2 -DTED_GLOBAL_DATA_DIR='"$(GLOBAL_DATA_DIR)"' -DTED_LOCAL_DATA_DIR='"$(LOCAL_DATA_DIR)"'
 LIBS=-lSDL2 -lGL -lm libpcre2-32.a libpcre2-8.a
 RELEASE_CFLAGS=$(ALL_CFLAGS) -O3
 PROFILE_CFLAGS=$(ALL_CFLAGS) -O3 -g -DPROFILE=1
-# if you change the directories below, ted won't work.
-# we don't yet have support for using different data directories
-GLOBAL_DATA_DIR=/usr/share/ted
-LOCAL_DATA_DIR=/home/`logname`/.local/share/ted
-INSTALL_BIN_DIR=/usr/bin
+
 debug-build: ted compile_commands.json
 ted: debug/ted
 	@# note: needed so cp doesn't fail if `ted` is busy
@@ -33,8 +38,7 @@ install: release
 	@[ -w `dirname $(GLOBAL_DATA_DIR)` ] || { echo "You need permission to write to $(GLOBAL_DATA_DIR). Try running with sudo/as root." && exit 1; }
 	@[ -w `dirname $(INSTALL_BIN_DIR)` ] || { echo "You need permission to write to $(INSTALL_BIN_DIR). Try running with sudo/as root." && exit 1; }
 
-	mkdir -p $(GLOBAL_DATA_DIR) $(LOCAL_DATA_DIR)
-	chown `logname`:`logname` $(LOCAL_DATA_DIR)
+	mkdir -p $(GLOBAL_DATA_DIR)
 	cp -r assets $(GLOBAL_DATA_DIR)
 	cp -r themes $(GLOBAL_DATA_DIR)
 	install -m 644 ted.cfg $(GLOBAL_DATA_DIR)

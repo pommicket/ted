@@ -292,6 +292,14 @@ sudo apt install clang libsdl2-dev cmake imagemagick
 Then run `make -j8 release` to build or `sudo make install -j8` to build and install.
 You can also run `make -j8 ted.deb` to build the .deb installer.
 
+This installs ted for all users. If you just want to install it for yourself (or you don't have superuser access), you can do so
+with
+
+```bash
+mkdir -p ~/.local/bin ~/.local/share
+GLOBAL_DATA_DIR='~/.local/share/ted-data' LOCAL_DATA_DIR='~/.local/share/ted' INSTALL_BIN_DIR='~/.local/bin' make install -j8
+```
+
 On Windows, install Microsoft Visual Studio 2022, then find and add vcvarsall.bat to your PATH
 (most likely lives at `C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build`).
 Also, install the [Visual Studio Installer Projects extension](https://marketplace.visualstudio.com/items?itemName=VisualStudioClient.MicrosoftVisualStudio2022InstallerProjects)

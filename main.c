@@ -2,21 +2,42 @@
 FUTURE FEATURES:
 - more tests
 - prepare rename support
-- autodetect indentation (tabs vs spaces)
 - custom file/build command associations
 - config variables
 - bind key to series of commands
    - convert macro to command list
 - plugins?
-   - built-in plugins
+   - built-in plugins:
        - "remove file..." menu
        - auto-close brackets
 - with macros we can really test performance of buffer_insert_text_at_pos, etc. (which should ideally be fast)
-- manual directory
+- better manual
 - restart LSP server automatically?
 - LSP request timeout
 - reflow command
 */
+
+/*
+macros defining ted data directory locations.
+the first character can be interpreted specially if it is one of the following:
+    ~  home directory
+    ^  user's AppData\Local directory (Windows only)
+    @  directory containing ted executable
+*/
+#ifndef TED_GLOBAL_DATA_DIR
+#if _WIN32
+	#define TED_GLOBAL_DATA_DIR "@"
+#else
+	#define TED_GLOBAL_DATA_DIR "/usr/share/ted"
+#endif
+#endif
+#ifndef TED_LOCAL_DATA_DIR
+#if _WIN32
+	#define TED_LOCAL_DATA_DIR "^/ted"
+#else
+	#define TED_LOCAL_DATA_DIR "~/.local/share/ted"
+#endif
+#endif
 
 #include "ted-internal.h"
 
@@ -369,38 +390,94 @@ int main(int argc, char **argv) {
 
 	os_get_cwd(ted->start_cwd, sizeof ted->start_cwd);
 	{ // get local and global data directory
-#if _WIN32
-		wchar_t *appdata = NULL;
+	#if _WIN32
+		char *appdata = NULL;
+		wchar_t *appdata_wide = NULL;
 		KNOWNFOLDERID id = FOLDERID_LocalAppData;
-		if (SHGetKnownFolderPath(&id, 0, NULL, &appdata) == S_OK) {
-			strbuf_printf(ted->local_data_dir, "%ls%cted", appdata, PATH_SEPARATOR);
-			CoTaskMemFree(appdata);
+		if (SHGetKnownFolderPath(&id, 0, NULL, &appdata_wide) == S_OK) {
+			size_t sz = wcslen(appdata_wide) * 4 + 1;
+			appdata = malloc(sz);
+			snprintf(appdata, sz, "%ls", appdata_wide);
+			CoTaskMemFree(appdata_wide); appdata_wide = NULL;
 		}
 		id = FOLDERID_Profile;
-		wchar_t *home = NULL;
-		if (SHGetKnownFolderPath(&id, 0, NULL, &home) == S_OK) {
-			strbuf_printf(ted->home, "%ls", home);
-			CoTaskMemFree(home);
+		wchar_t *home_wide = NULL;
+		if (SHGetKnownFolderPath(&id, 0, NULL, &home_wide) == S_OK) {
+			strbuf_printf(ted->home, "%ls", home_wide);
+			CoTaskMemFree(home_wide);
 		}
-		
-		// on Windows, the global data directory is just the directory where the executable is.
 		WCHAR executable_wide_path[TED_PATH_MAX] = {0};
-		char executable_path[TED_PATH_MAX] = {0};
+		char executable_dir[TED_PATH_MAX] = {0};
 		if (GetModuleFileNameW(NULL, executable_wide_path, sizeof executable_wide_path - 1) > 0) {
-			WideCharToMultiByte(CP_UTF8, 0, executable_wide_path, -1, executable_path, sizeof executable_path, NULL, NULL);
-			char *last_backslash = strrchr(executable_path, '\\');
+			WideCharToMultiByte(CP_UTF8, 0, executable_wide_path, -1, executable_dir, sizeof executable_dir, NULL, NULL);
+			char *last_backslash = strrchr(executable_dir, '\\');
 			if (last_backslash) {
 				*last_backslash = '\0';
-				strbuf_cpy(ted->global_data_dir, executable_path);
 			}
 		}
-#else
+	#elif __unix__
 		char *home = getenv("HOME");
 		strbuf_printf(ted->home, "%s", home);
-		strbuf_printf(ted->local_data_dir, "%s/.local/share/ted", home);
-		strbuf_printf(ted->global_data_dir, "/usr/share/ted");
-#endif
-
+		char executable_dir[TED_PATH_MAX] = {0};
+		ssize_t len = readlink("/proc/self/exe", executable_dir, sizeof executable_dir - 1);
+		if (len == -1) {
+			// some posix systems don't have /proc/self/exe. oh well.
+		} else {
+			executable_dir[len] = '\0';
+			char *last_slash = strrchr(executable_dir, '/');
+			if (last_slash) {
+				*last_slash = '\0';
+				// if we started in the directory where the executable is located,
+				// we're probably debugging ted, so search the start cwd for ted.cfg, etc.
+				ted->search_start_cwd = streq(ted->start_cwd, executable_dir);
+			}
+		}
+	#else
+		#error "unrecognized OS"
+	#endif
+		// replace special characters at start of data dirs
+		typedef struct {
+			const char *src;
+			char *dest;
+			size_t size;
+		} DataDir;
+		DataDir data_dirs[] = {
+			{.src = TED_LOCAL_DATA_DIR, .dest = ted->local_data_dir, .size = sizeof ted->local_data_dir},
+			{.src = TED_GLOBAL_DATA_DIR, .dest = ted->global_data_dir, .size = sizeof ted->global_data_dir},
+		};
+		for (size_t i = 0; i < arr_count(data_dirs); i++) {
+			const char *src = data_dirs[i].src;
+			char *dest = data_dirs[i].dest;
+			size_t size = data_dirs[i].size;
+			if (!src[0] || !strchr(ALL_PATH_SEPARATORS, src[1])) goto absolute_path;
+			switch (src[0]) {
+			case '~':
+				str_printf(dest, size, "%s%s", ted->home, src + 1);
+				break;
+			#if _WIN32
+			case '^':
+				str_printf(dest, size, "%s%s", appdata, src + 1);
+				break;
+			#endif
+			case '@':
+				str_printf(dest, size, "%s%s", executable_dir, src + 1);
+				break;
+			default:
+			absolute_path:
+				if (!path_is_absolute(src)) {
+					die("Data directory %s is not an absolute path", src);
+				}
+				str_cpy(dest, size, src);
+			}
+			// ensure we always use the same path separator
+			for (int c = 0; dest[c]; c++) {
+				if (strchr(ALL_PATH_SEPARATORS, dest[c]))
+					dest[c] = PATH_SEPARATOR;
+			}
+		}
+		if (fs_path_type(ted->global_data_dir) == FS_NON_EXISTENT) {
+			die("Couldn't open ted data directory at %s", ted->global_data_dir);
+		}
 		if (fs_path_type(ted->local_data_dir) == FS_NON_EXISTENT)
 			fs_mkdir(ted->local_data_dir);
 		
@@ -424,29 +501,10 @@ int main(int argc, char **argv) {
 		os_get_cwd(ted->cwd, sizeof ted->cwd);
 	}
 
-	{ // check if this is the installed version of ted (as opposed to just running it from the directory with the source)
-	#if _WIN32
-		// never search cwd; we'll search the executable directory anyways
-	#else
-		char executable_path[TED_PATH_MAX] = {0};
-		const char *cwd = ted->cwd;
-		ssize_t len = readlink("/proc/self/exe", executable_path, sizeof executable_path - 1);
-		if (len == -1) {
-			// some posix systems don't have /proc/self/exe. oh well.
-		} else {
-			executable_path[len] = '\0';
-			char *last_slash = strrchr(executable_path, '/');
-			if (last_slash) {
-				*last_slash = '\0';
-				ted->search_start_cwd = streq(cwd, executable_path);
-			}
-		}
-	#endif
-	}
-	#if TED_FORCE_SEARCH_CWD
+	#if TED_FORCE_SEARCH_START_CWD
 	// override whether or not we are in the executable's directory
 	// (for testing on Unix systems without /proc)
-	ted->search_cwd = true;
+	ted->search_start_cwd = true;
 	#endif
 	
 	PROFILE_TIME(misc_end)
