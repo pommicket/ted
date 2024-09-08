@@ -15,6 +15,7 @@ FUTURE FEATURES:
 - restart LSP server automatically?
 - LSP request timeout
 - reflow command
+- editing files with invalid UTF-8
 */
 
 /*
@@ -480,7 +481,9 @@ int main(int argc, char **argv) {
 		}
 		if (fs_path_type(ted->local_data_dir) == FS_NON_EXISTENT)
 			fs_mkdir(ted->local_data_dir);
-		
+	#if _WIN32
+		free(appdata);
+	#endif
 	}
 
 	{
