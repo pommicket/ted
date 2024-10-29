@@ -117,7 +117,7 @@ static void write_arr_elem_arr_start(JSONWriter *o) {
 }
 
 static void write_number(JSONWriter *o, double number) {
-	str_builder_appendf(o->builder, "%g", number);
+	str_builder_appendf(o->builder, "%.17g", number);
 }
 
 static void write_key_number(JSONWriter *o, const char *key, double number) {
