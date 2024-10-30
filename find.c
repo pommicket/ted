@@ -102,9 +102,9 @@ static WarnUnusedResult bool find_match(Ted *ted, BufferPos *pos, u32 *match_sta
 	u32 match_flags = PCRE2_NOTEMPTY;
 	
 	int ret;
-	if (direction == +1)
+	if (direction == +1) {
 		ret = pcre2_match_32(ted->find_code, str.str, str.len, pos->index, match_flags, ted->find_match_data, NULL);
-	else {
+	} else {
 		// unfortunately PCRE does not have a backwards option, so we need to do the search multiple times
 		u32 last_pos = 0;
 		ret = -1;
@@ -194,10 +194,15 @@ static void find_next_in_direction(Ted *ted, int direction) {
 	if (!buffer) return;
 	
 	BufferPos cursor_pos = buffer_cursor_pos(buffer);
+	BufferPos selection_pos = {0};
 	BufferPos pos = cursor_pos;
-	if (direction == -1) {
-		// start from selection pos if there is one
-		buffer_selection_pos(buffer, &pos);
+	bool has_selection = buffer_selection_pos(buffer, &selection_pos);
+	if (has_selection) {
+		// for backwards find, start from the *minimum* of selection_pos, cursor_pos
+		// for  forwards find, start from the *maximum* of selection_pos, cursor_pos
+		if (direction == buffer_pos_cmp(selection_pos, cursor_pos)) {
+			pos = selection_pos;
+		}
 	}
 	
 	u32 nlines = buffer_line_count(buffer);
@@ -206,16 +211,12 @@ static void find_next_in_direction(Ted *ted, int direction) {
 	for (size_t nsearches = 0; nsearches < nlines + 1; ++nsearches) {
 		u32 match_start, match_end;
 		if (find_match(ted, &pos, &match_start, &match_end, direction)) {
-			if (nsearches == 0 && match_start == cursor_pos.index) {
-				// if you click "next" and your cursor is on a match, it should go to the next
-				// one, not the one you're on
-			} else {
-				BufferPos pos_start = {.line = pos.line, .index = match_start};
-				BufferPos pos_end = {.line = pos.line, .index = match_end};
-				buffer_cursor_move_to_pos(buffer, pos_start);
-				buffer_select_to_pos(buffer, pos_end);
-				break;
-			}
+			BufferPos pos_start = {.line = pos.line, .index = match_start};
+			BufferPos pos_end = {.line = pos.line, .index = match_end};
+			buffer_deselect(buffer);
+			buffer_cursor_move_to_pos(buffer, pos_start);
+			buffer_select_to_pos(buffer, pos_end);
+			break;
 		}
 	}
 }
@@ -268,6 +269,15 @@ static bool find_replace_match(Ted *ted, u32 match_idx) {
 					result->end.index = (u32)(result->end.index + diff);
 				} else break;
 			}
+			// move cursor to after the replacement text
+			buffer_cursor_move_to_pos(buffer, (BufferPos) {
+				.line = match.start.line,
+				.index = (u32)(match.start.index)
+			});
+			buffer_select_to_pos(buffer, (BufferPos) {
+				.line = match.start.line,
+				.index = (u32)(match.end.index + diff)
+			});
 			success = true;
 		} else if (ret < 0) {
 			ted_error_from_pcre2_error(ted, ret);

@@ -117,6 +117,7 @@ static void write_arr_elem_arr_start(JSONWriter *o) {
 }
 
 static void write_number(JSONWriter *o, double number) {
+	// NOTE: it's important to have this precision here, e.g. for large InitializeParams.processId
 	str_builder_appendf(o->builder, "%.17g", number);
 }
 
