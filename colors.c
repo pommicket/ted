@@ -167,7 +167,7 @@ u32 color_blend(u32 bg, u32 fg) {
 
 u32 color_apply_opacity(u32 color, float opacity) {
 	opacity = clampf(opacity, 0.0f, 1.0f);
-	return (color & 0xffffff00) | (u32)((color & 0xff) * opacity);
+	return (color & 0xffffff00) | (u32)((float)(color & 0xff) * opacity);
 }
 
 
