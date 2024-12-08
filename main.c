@@ -153,6 +153,8 @@ static void error_signal_handler(int signum, siginfo_t *info, void *context) {
 			fprintf(log, "code = %d\n", info->si_code);
 			fprintf(log, "address = 0x%llx\n", (unsigned long long)info->si_addr);
 		#if __linux__
+			int main(int, char **);
+			fprintf(log, "main address = %#llx\n", (unsigned long long)main);
 			fprintf(log, "utime = %lu\n", (unsigned long)info->si_utime);
 			fprintf(log, "stime = %lu\n", (unsigned long)info->si_stime);
 			fprintf(log, "address lsb = %d\n", info->si_addr_lsb);
