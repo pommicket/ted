@@ -667,6 +667,8 @@ void lsp_cancel_request(LSP *lsp, LSPRequestID id);
 // don't free the contents of this response! let me handle it!
 void lsp_send_response(LSP *lsp, LSPResponse *response);
 const char *lsp_response_string(const LSPResponse *response, LSPString string);
+/// returns `true` if this response is an error
+bool lsp_response_is_error(const LSPResponse *r);
 const char *lsp_request_string(const LSPRequest *request, LSPString string);
 /// low-level API for allocating message strings.
 ///

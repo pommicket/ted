@@ -54,6 +54,11 @@ void highlights_process_lsp_response(Ted *ted, const LSPResponse *response) {
 		return; // not a highlight request
 	if (response->request.id != hls->last_request.id)
 		return; // old request
+	hls->last_request.id = 0;
+	if (lsp_response_is_error(response)) {
+		highlights_close(ted);
+		return;
+	}
 	const LSPResponseHighlight *hl_response = &response->data.highlight;
 	arr_set_len(hls->highlights, arr_len(hl_response->highlights));
 	// type-safe memcpy

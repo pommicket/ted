@@ -981,7 +981,6 @@ int main(int argc, char **argv) {
 						// this is a bit spammy
 						// sometimes clang is just like "this request was cancelled cuz the cursor moved"
 						//ted_error(ted, "LSP error: %s", lsp_response_string(r, r->error));
-					} else {
 						// it's important that we send error responses here too.
 						// we don't want to be waiting around for a response that's never coming.
 						autocomplete_process_lsp_response(ted, r);

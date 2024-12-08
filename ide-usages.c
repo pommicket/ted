@@ -44,6 +44,11 @@ void usages_process_lsp_response(Ted *ted, const LSPResponse *response) {
 		return; // not for us
 	if (response->request.id != usages->last_request.id)
 		return;
+	if (lsp_response_is_error(response)) {
+		usages->last_request.id = 0;
+		ted_flash_error_cursor(ted);
+		return;
+	}
 	LSP *lsp = ted_get_lsp_by_id(ted, usages->last_request.lsp);
 	const LSPResponseReferences *refs = &response->data.references;
 	if (lsp && arr_len(refs->locations)) { 

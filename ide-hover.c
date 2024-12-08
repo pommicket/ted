@@ -78,6 +78,10 @@ void hover_process_lsp_response(Ted *ted, const LSPResponse *response) {
 	}
 	
 	hover->last_request.id = 0;
+	if (lsp_response_is_error(response)) {
+		hover_close(ted);
+		return;
+	}
 	const LSPResponseHover *hover_response = &response->data.hover;
 	
 	TextBuffer *buffer=0;

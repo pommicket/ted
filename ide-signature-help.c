@@ -96,6 +96,10 @@ void signature_help_process_lsp_response(Ted *ted, const LSPResponse *response) 
 		return;
 	}
 	help->last_request.id = 0;
+	if (lsp_response_is_error(response)) {
+		signature_help_clear(help);
+		return;
+	}
 	
 	const LSPResponseSignatureHelp *lsp_help = &response->data.signature_help;
 	u32 signature_count = arr_len(lsp_help->signatures);

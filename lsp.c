@@ -961,3 +961,7 @@ void lsp_quit(void) {
 	}
 	lsp_write_quit();
 }
+
+bool lsp_response_is_error(const LSPResponse *r) {
+	return !lsp_string_is_empty(r->error);
+}

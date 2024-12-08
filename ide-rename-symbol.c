@@ -122,6 +122,10 @@ void rename_symbol_process_lsp_response(Ted *ted, const LSPResponse *response) {
 
 	if (menu_is_open(ted, MENU_RENAME_SYMBOL))
 		menu_close(ted);
+	if (lsp_response_is_error(response)) {
+		ted_flash_error_cursor(ted);
+		return;
+	}
 	const LSPResponseRename *data = &response->data.rename;
 	if (!lsp) {
 		// LSP crashed or something

@@ -382,7 +382,7 @@ static bool parse_completion_response(LSP *lsp, const JSON *json, LSPResponse *r
 		JSONArray tags = json_object_get_array(json, item_object, "tags");
 		for (u32 i = 0; i < tags.len; ++i) {
 			double tag = json_array_get_number(json, tags, i);
-			if (tag == LSP_SYMBOL_TAG_DEPRECATED) {
+			if (tag == (double)LSP_SYMBOL_TAG_DEPRECATED) {
 				item->deprecated = true;
 			}
 		}
@@ -395,7 +395,7 @@ static bool parse_completion_response(LSP *lsp, const JSON *json, LSPResponse *r
 		
 		double edit_type = json_object_get_number(json, item_object, "insertTextFormat");
 		if (!isnan(edit_type)) {
-			if (edit_type != LSP_COMPLETION_EDIT_PLAIN && edit_type != LSP_COMPLETION_EDIT_SNIPPET) {
+			if (edit_type != (double)LSP_COMPLETION_EDIT_PLAIN && edit_type != (double)LSP_COMPLETION_EDIT_SNIPPET) {
 				// maybe in the future more edit types will be added.
 				// probably they'll have associated capabilities, but I think it's best to just ignore unrecognized types
 				debug_println("Bad InsertTextFormat: %g", edit_type);
@@ -675,7 +675,7 @@ static bool parse_symbol_information(LSP *lsp, const JSON *json, JSONValue value
 	bool deprecated = json_object_get(json, object, "deprecated").type == JSON_TRUE;
 	JSONArray tags = json_object_get_array(json, object, "tags");
 	for (size_t i = 0; i < tags.len; ++i) {
-		if (json_array_get_number(json, tags, i) == LSP_SYMBOL_TAG_DEPRECATED)
+		if (json_array_get_number(json, tags, i) == (double)LSP_SYMBOL_TAG_DEPRECATED)
 			deprecated = true;
 	}
 	info->deprecated = deprecated;
@@ -1091,7 +1091,7 @@ void process_message(LSP *lsp, JSON *json) {
 			}
 			
 			if (!lsp_string_is_empty(response.error)) {
-				if (error_code != LSP_ERROR_REQUEST_CANCELLED)
+				if (error_code != (double)LSP_ERROR_REQUEST_CANCELLED)
 					add_to_messages = true;
 			} else switch (response.request.type) {
 			case LSP_REQUEST_COMPLETION:

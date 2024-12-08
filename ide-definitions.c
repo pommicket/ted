@@ -156,6 +156,13 @@ void definitions_process_lsp_response(Ted *ted, LSP *lsp, const LSPResponse *res
 	}
 	
 	defs->last_request.id = 0;
+	if (lsp_response_is_error(response)) {
+		if (menu_is_open(ted, MENU_GOTO_DEFINITION)) {
+			menu_close(ted);
+		}
+		ted_flash_error_cursor(ted);
+		return;
+	}
 	
 	switch (response->request.type) {
 	case LSP_REQUEST_DEFINITION:

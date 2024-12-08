@@ -53,6 +53,11 @@ void format_process_lsp_response(Ted *ted, const LSPResponse *response) {
 		|| request->type == LSP_REQUEST_FORMATTING)) {
 		return;
 	}
+	formatting->last_request_id.id = 0;
+	if (lsp_response_is_error(response)) {
+		ted_flash_error_cursor(ted);
+		return;
+	}
 	TextBuffer *buffer = ted->active_buffer;
 	if (!buffer) return;
 	if (buffer_lsp_document_id(buffer) != request->data.formatting.document)

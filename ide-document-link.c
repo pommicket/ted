@@ -112,9 +112,11 @@ void document_link_process_lsp_response(Ted *ted, const LSPResponse *response) {
 	if (response->request.type != LSP_REQUEST_DOCUMENT_LINK
 		|| response->request.id != dl->last_request.id)
 		return;
-	if (!dl->last_request.id)
-		return; // request was cancelled
-	
+	dl->last_request.id = 0;
+	if (lsp_response_is_error(response)) {
+		document_link_clear(ted);
+		return;
+	}
 	bool key_down = document_link_activation_key_down(ted);
 	if (!key_down)
 		return;
