@@ -2,7 +2,6 @@
 FUTURE FEATURES:
 - more tests
 - prepare rename support
-- custom file/build command associations
 - config variables
 - bind key to series of commands
    - convert macro to command list
@@ -980,21 +979,21 @@ int main(int argc, char **argv) {
 					LSPResponse *r = &message.response;
 					if (!lsp_string_is_empty(r->error)) {
 						ted_log(ted, "LSP error: %s\n", lsp_response_string(r, r->error));
-						// this is a bit spammy
-						// sometimes clang is just like "this request was cancelled cuz the cursor moved"
-						//ted_error(ted, "LSP error: %s", lsp_response_string(r, r->error));
-						// it's important that we send error responses here too.
-						// we don't want to be waiting around for a response that's never coming.
-						autocomplete_process_lsp_response(ted, r);
-						format_process_lsp_response(ted, r);
-						signature_help_process_lsp_response(ted, r);
-						hover_process_lsp_response(ted, r);
-						definitions_process_lsp_response(ted, lsp, r);
-						highlights_process_lsp_response(ted, r);
-						usages_process_lsp_response(ted, r);
-						document_link_process_lsp_response(ted, r);
-						rename_symbol_process_lsp_response(ted, r);
 					}
+					// this is a bit spammy
+					// sometimes clang is just like "this request was cancelled cuz the cursor moved"
+					//ted_error(ted, "LSP error: %s", lsp_response_string(r, r->error));
+					// it's important that we send error responses here too.
+					// we don't want to be waiting around for a response that's never coming.
+					autocomplete_process_lsp_response(ted, r);
+					format_process_lsp_response(ted, r);
+					signature_help_process_lsp_response(ted, r);
+					hover_process_lsp_response(ted, r);
+					definitions_process_lsp_response(ted, lsp, r);
+					highlights_process_lsp_response(ted, r);
+					usages_process_lsp_response(ted, r);
+					document_link_process_lsp_response(ted, r);
+					rename_symbol_process_lsp_response(ted, r);
 					} break;
 				}
 				lsp_message_free(&message);

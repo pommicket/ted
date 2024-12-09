@@ -365,7 +365,7 @@ void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *response) {
 		assert(0);
 		return;
 	}
-	if (!lsp_response_is_error(response)) {
+	if (lsp_response_is_error(response)) {
 		autocomplete_close(ted);
 		ted_flash_error_cursor(ted);
 		return;
