@@ -1,5 +1,6 @@
 /*
 FUTURE FEATURES:
+- path-specific extensions
 - more tests
 - prepare rename support
 - config variables
