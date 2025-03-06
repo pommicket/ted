@@ -1063,6 +1063,8 @@ void node_split(Ted *ted, Node *node, bool vertical);
 void node_split_switch(Ted *ted);
 /// swap the two sides of the current split.
 void node_split_swap(Ted *ted);
+/// convert pixel position to buffer position, only considering visible buffers.
+bool node_pixels_to_buffer_pos(Node *node, vec2 wpos, TextBuffer **pbuffer, BufferPos *ppos);
 
 // === session.c ===
 /// store ted session

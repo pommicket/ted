@@ -281,6 +281,21 @@ bool node_tab_close(Ted *ted, Node *node, u32 index) {
 	}
 }
 
+bool node_pixels_to_buffer_pos(Node *node, vec2 wpos, TextBuffer **pbuffer, BufferPos *ppos) {
+	if (!node) return false;
+	if (node->tabs) {
+		TextBuffer *buffer = node->tabs[node->active_tab];
+		if (buffer_pixels_to_pos(buffer, wpos, ppos)) {
+			*pbuffer = buffer;
+			return true;
+		}
+		return false;
+	} else {
+		return node_pixels_to_buffer_pos(node->split_a, wpos, pbuffer, ppos)
+			|| node_pixels_to_buffer_pos(node->split_b, wpos, pbuffer, ppos);
+	}
+}
+
 void node_frame(Ted *ted, Node *node, Rect r) {
 	const Settings *settings = ted_active_settings(ted);
 	if (node->tabs) {

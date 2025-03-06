@@ -826,16 +826,8 @@ void ted_press_key(Ted *ted, SDL_Keycode keycode, SDL_Keymod modifier) {
 }
 
 bool ted_get_mouse_buffer_pos(Ted *ted, TextBuffer **pbuffer, BufferPos *ppos) {
-	arr_foreach_ptr(ted->buffers, TextBufferPtr, pbuf) {
-		TextBuffer *buffer = *pbuf;
-		BufferPos pos = {0};
-		if (buffer_pixels_to_pos(buffer, ted_mouse_pos(ted), &pos)) {
-			if (ppos) *ppos = pos;
-			if (pbuffer) *pbuffer = buffer;
-			return true;
-		}
-	}
-	return false;
+	if (!arr_len(ted->nodes)) return false;
+	return node_pixels_to_buffer_pos(ted->nodes[0], ted_mouse_pos(ted), pbuffer, ppos);
 }
 
 void ted_flash_error_cursor(Ted *ted) {
