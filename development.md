@@ -140,10 +140,9 @@ Then implement the `syntax_highlight_<language>` function similar to the other o
 When releasing a new version of `ted`:
 
 - Update `TED_VERSION` in `ted.h`.
-- Update `Version` in `control` for the `.deb` file.
 - Run `make ted.deb` on Debian/Ubuntu.
 - Run `./update-windows-installer.py`.
 - Run `make.bat release` on Windows.
 - Update version history in `README.md`.
 - Create a new release on GitHub with `ted.deb` and `ted.msi`.
-- Add `.deb` to repository.
+- Add `.deb` to Debian repository.
