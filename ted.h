@@ -945,6 +945,8 @@ void format_file(Ted *ted);
 void hover_reset_timer(Ted *ted);
 
 // === ide-rename-symbol.c ===
+/// Start renaming process (open rename menu when LSP is ready)
+void rename_symbol_start(Ted *ted);
 /// rename symbol at cursor of `buffer` to `new_name`
 void rename_symbol_at_cursor(Ted *ted, TextBuffer *buffer, const char *new_name);
 

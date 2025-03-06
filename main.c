@@ -2,7 +2,6 @@
 FUTURE FEATURES:
 - path-specific extensions
 - more tests
-- prepare rename support
 - config variables
 - bind key to series of commands
    - convert macro to command list

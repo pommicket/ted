@@ -2,11 +2,17 @@
 
 struct RenameSymbol {
 	LSPServerRequestID request_id;
+	bool sent_rename;
+	bool have_range;
+	BufferPos range_start;
+	BufferPos range_end;
 };
 
 static void rename_symbol_clear(Ted *ted) {
 	RenameSymbol *rs = ted->rename_symbol;
 	ted_cancel_lsp_request(ted, &rs->request_id);
+	rs->sent_rename = false;
+	rs->have_range = false;
 }
 
 void rename_symbol_quit(Ted *ted) {
@@ -15,21 +21,37 @@ void rename_symbol_quit(Ted *ted) {
 	ted->rename_symbol = NULL;
 }
 
+void rename_symbol_start(Ted *ted) {
+	RenameSymbol *rs = ted->rename_symbol;
+	TextBuffer *buffer = ted_active_buffer(ted);
+	LSP *lsp = ted_active_lsp(ted);
+	if (!buffer || !lsp) {
+		ted_flash_error_cursor(ted);
+		return;
+	}
+	if (lsp_has_prepare_rename(lsp)) {
+		LSPRequest request = {.type = LSP_REQUEST_PREPARE_RENAME};
+		LSPRequestPrepareRename *data = &request.data.prepare_rename;
+		data->position = buffer_cursor_pos_as_lsp_document_position(buffer);
+		rs->request_id = lsp_send_request(lsp, &request);
+	}
+	menu_open(ted, MENU_RENAME_SYMBOL);
+}
+
 void rename_symbol_at_cursor(Ted *ted, TextBuffer *buffer, const char *new_name) {
 	if (!buffer) return;
 	RenameSymbol *rs = ted->rename_symbol;
 	LSP *lsp = buffer_lsp(buffer);
 	if (!lsp) return;
-	
-	if (!rs->request_id.id) {
+	if (!rs->sent_rename) {
 		// send the request
 		LSPRequest request = {.type = LSP_REQUEST_RENAME};
 		LSPRequestRename *data = &request.data.rename;
 		data->position = buffer_cursor_pos_as_lsp_document_position(buffer);
 		data->new_name = lsp_request_add_string(&request, new_name);
 		rs->request_id = lsp_send_request(lsp, &request);
+		rs->sent_rename = true;
 	}
-	
 }
 
 void rename_symbol_frame(Ted *ted) {
@@ -61,7 +83,7 @@ static void rename_symbol_menu_render(Ted *ted) {
 		menu_close(ted);
 		return;
 	}
-	if (rs->request_id.id) {
+	if (rs->sent_rename) {
 		// already entered a new name
 		return;
 	}
@@ -80,6 +102,10 @@ static void rename_symbol_menu_render(Ted *ted) {
 		.line = cursor_pos.line,
 		.index = sym_end
 	};
+	if (rs->have_range) {
+		bpos0 = rs->range_start;
+		bpos1 = rs->range_end;
+	}
 	// symbol should span from pos0 to pos1
 	vec2 p0 = buffer_pos_to_pixels(buffer, bpos0);
 	vec2 p1 = buffer_pos_to_pixels(buffer, bpos1);
@@ -114,10 +140,28 @@ static bool rename_symbol_menu_close(Ted *ted) {
 
 void rename_symbol_process_lsp_response(Ted *ted, const LSPResponse *response) {
 	RenameSymbol *rs = ted->rename_symbol;
-	if (response->request.type != LSP_REQUEST_RENAME
-		|| response->request.id != rs->request_id.id) {
+	if (response->request.id != rs->request_id.id) {
 		return;
 	}
+	if (response->request.type == LSP_REQUEST_PREPARE_RENAME) {
+		if (lsp_response_is_error(response)) {
+			// prepareRename returned an error
+			menu_close(ted);
+			ted_flash_error_cursor(ted);
+			return;
+		}
+		const LSPResponsePrepareRename *prep = &response->data.prepare_rename;
+		if (prep->use_range) {
+			TextBuffer *buffer = ted_active_buffer_behind_menu(ted);
+			if (!buffer) return;
+			rs->range_start = buffer_pos_from_lsp(buffer, prep->range.start);
+			rs->range_end = buffer_pos_from_lsp(buffer, prep->range.end);
+			rs->have_range = true;
+		}
+		return;
+	}
+	if (response->request.type != LSP_REQUEST_RENAME)
+		return;
 	LSP *lsp = ted_get_lsp_by_id(ted, rs->request_id.lsp);
 
 	if (menu_is_open(ted, MENU_RENAME_SYMBOL))

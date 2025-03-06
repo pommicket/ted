@@ -249,9 +249,15 @@ static void parse_capabilities(LSP *lsp, const JSON *json, JSONObject capabiliti
 	// check for textDocument/rename support
 	JSONValue rename_value = json_object_get(json, capabilities, "renameProvider");
 	if (rename_value.type != JSON_UNDEFINED && rename_value.type != JSON_FALSE) {
+		if (rename_value.type == JSON_OBJECT) {
+			JSONValue rename_prepare_value = json_object_get(json, rename_value.val.object, "prepareProvider");
+			if (rename_prepare_value.type != JSON_UNDEFINED && rename_prepare_value.type != JSON_FALSE) {
+				cap->prepare_rename_support = true;
+			}
+		}
 		cap->rename_support = true;
 	}
-	
+
 	// check for textDocument/documentLink support
 	JSONValue document_link_value = json_object_get(json, capabilities, "documentLinkProvider");
 	if (document_link_value.type == JSON_OBJECT) {
@@ -938,6 +944,33 @@ static bool parse_rename_response(LSP *lsp, const JSON *json, LSPResponse *respo
 	return parse_workspace_edit(lsp, response, json, result, &response->data.rename);
 }
 
+static bool parse_prepare_rename_response(LSP *lsp, const JSON *json, LSPResponse *response) {
+	LSPResponsePrepareRename *prep = &response->data.prepare_rename;
+	JSONValue result_value = json_get(json, "result");
+	if (result_value.type == JSON_NULL)
+		return false; // invalid rename
+	if (result_value.type != JSON_OBJECT) {
+		lsp_set_error(lsp, "Bad result type for textDocument/prepareRename response.");
+		return false;
+	}
+	JSONObject result = result_value.val.object;
+	JSONValue range_value = json_object_get(json, result, "range");
+	if (json_object_get(json, result, "start").type != JSON_UNDEFINED) {
+		// result is a Range
+		prep->use_range = true;
+		return parse_range(lsp, json, result_value, &prep->range);
+	} else if (range_value.type != JSON_UNDEFINED) {
+		prep->use_range = true;
+		return parse_range(lsp, json, range_value, &prep->range);
+	} else if (json_object_get(json, result, "defaultBehavior").type == JSON_TRUE) {
+		prep->use_range = false;
+		return true;
+	} else {
+		lsp_set_error(lsp, "Unrecognizable response for textDocument/prepareRename.");
+		return false;
+	}
+}
+
 static bool parse_highlight_response(LSP *lsp, const JSON *json, LSPResponse *response) {
 	LSPResponseHighlight *hl = &response->data.highlight;
 	JSONArray result = json_force_array(json_get(json, "result"));
@@ -1120,6 +1153,9 @@ void process_message(LSP *lsp, JSON *json) {
 				break;
 			case LSP_REQUEST_RENAME:
 				add_to_messages = parse_rename_response(lsp, json, &response);
+				break;
+			case LSP_REQUEST_PREPARE_RENAME:
+				add_to_messages = parse_prepare_rename_response(lsp, json, &response);
 				break;
 			case LSP_REQUEST_FORMATTING:
 			case LSP_REQUEST_RANGE_FORMATTING:

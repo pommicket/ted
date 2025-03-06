@@ -705,8 +705,9 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 		macro_execute(ted, (u32)argument);
 		break;
 	case CMD_RENAME_SYMBOL:
-		if (buffer && buffer_lsp(buffer))
-			menu_open(ted, MENU_RENAME_SYMBOL);
+		if (buffer && buffer_lsp(buffer)) {
+			rename_symbol_start(ted);
+		}
 		break;
 	case CMD_FORMAT_FILE:
 		format_file(ted);

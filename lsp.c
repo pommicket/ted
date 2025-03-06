@@ -133,6 +133,7 @@ void lsp_request_free(LSPRequest *r) {
 	case LSP_REQUEST_SHOW_MESSAGE:
 	case LSP_REQUEST_LOG_MESSAGE:
 	case LSP_REQUEST_RENAME:
+	case LSP_REQUEST_PREPARE_RENAME:
 	case LSP_REQUEST_WORKSPACE_SYMBOLS:
 		break;
 	case LSP_REQUEST_DID_CHANGE: {
@@ -263,6 +264,8 @@ static bool lsp_supports_request(LSP *lsp, const LSPRequest *request) {
 		return cap->workspace_symbols_support;
 	case LSP_REQUEST_RENAME:
 		return cap->rename_support;
+	case LSP_REQUEST_PREPARE_RENAME:
+		return cap->prepare_rename_support;
 	case LSP_REQUEST_HIGHLIGHT:
 		return cap->highlight_support;
 	case LSP_REQUEST_REFERENCES:
@@ -311,6 +314,7 @@ static bool request_type_is_notification(LSPRequestType type) {
 	case LSP_REQUEST_IMPLEMENTATION:
 	case LSP_REQUEST_REFERENCES:
 	case LSP_REQUEST_RENAME:
+	case LSP_REQUEST_PREPARE_RENAME:
 	case LSP_REQUEST_WORKSPACE_SYMBOLS:
 	case LSP_REQUEST_WORKSPACE_FOLDERS:
 	case LSP_REQUEST_DOCUMENT_LINK:
@@ -944,6 +948,10 @@ bool lsp_is_initialized(LSP *lsp) {
 
 bool lsp_has_incremental_sync_support(LSP *lsp) {
 	return lsp->capabilities.incremental_sync_support;
+}
+
+bool lsp_has_prepare_rename(LSP *lsp) {
+	return lsp->capabilities.prepare_rename_support;
 }
 
 const char *lsp_get_command(LSP *lsp) {

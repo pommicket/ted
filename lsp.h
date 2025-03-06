@@ -86,6 +86,7 @@ typedef enum {
 	LSP_REQUEST_HIGHLIGHT, //< textDocument/documentHighlight
 	LSP_REQUEST_REFERENCES, //< textDocument/references
 	LSP_REQUEST_RENAME, //< textDocument/rename
+	LSP_REQUEST_PREPARE_RENAME, //< textDocument/prepareRename
 	LSP_REQUEST_DOCUMENT_LINK, //< textDocument/documentLink
 	LSP_REQUEST_FORMATTING, //< textDocument/formatting
 	LSP_REQUEST_RANGE_FORMATTING, //< textDocument/rangeFormatting
@@ -233,6 +234,10 @@ typedef struct {
 } LSPRequestRename;
 
 typedef struct {
+	LSPDocumentPosition position;
+} LSPRequestPrepareRename;
+
+typedef struct {
 	LSPDocumentID *removed; // dynamic array
 	LSPDocumentID *added; // dynamic array
 } LSPRequestDidChangeWorkspaceFolders;
@@ -286,6 +291,7 @@ typedef struct {
 		LSPRequestMessage message;
 		LSPRequestDidChangeWorkspaceFolders change_workspace_folders;
 		LSPRequestRename rename;
+		LSPRequestPrepareRename prepare_rename;
 		LSPRequestDocumentLink document_link;
 		LSPRequestPublishDiagnostics publish_diagnostics;
 		// LSP_REQUEST_FORMATTING and LSP_REQUEST_RANGE_FORMATTING
@@ -539,6 +545,13 @@ typedef struct {
 typedef LSPWorkspaceEdit LSPResponseRename;
 
 typedef struct {
+	// if false, the rename is valid but no range should be highlighted
+	bool use_range;
+	// range to highlight
+	LSPRange range;
+} LSPResponsePrepareRename;
+
+typedef struct {
 	LSPRange range;
 	LSPString target;
 	LSPString tooltip;
@@ -567,6 +580,7 @@ typedef struct {
 		LSPResponseDefinition definition;
 		LSPResponseWorkspaceSymbols workspace_symbols;
 		LSPResponseRename rename;
+		LSPResponsePrepareRename prepare_rename;
 		LSPResponseHighlight highlight;
 		LSPResponseReferences references;
 		LSPResponseDocumentLink document_link;
@@ -610,6 +624,7 @@ typedef struct {
 	// (but jdtls and gopls do)
 	bool workspace_folders_support;
 	bool rename_support;
+	bool prepare_rename_support;
 	bool references_support;
 	bool document_link_support;
 	bool formatting_support;
@@ -702,6 +717,8 @@ bool lsp_document_position_eq(LSPDocumentPosition a, LSPDocumentPosition b);
 /// see https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_synchronization
 /// for more info.
 bool lsp_has_incremental_sync_support(LSP *lsp);
+/// does this server support textDocument/prepareRename requests?
+bool lsp_has_prepare_rename(LSP *lsp);
 /// get dynamic array of completion trigger characters.
 const uint32_t *lsp_completion_trigger_chars(LSP *lsp);
 /// get dynamic array of signature help trigger characters.
