@@ -61,6 +61,6 @@ ted.deb: release
 	cp ted.desktop /tmp/ted/usr/share/applications
 	cp ted /tmp/ted$(INSTALL_BIN_DIR)/
 	cp -r assets themes ted.cfg /tmp/ted$(GLOBAL_DATA_DIR)/
-	cp control /tmp/ted/DEBIAN
+	./control.sh /tmp/ted > /tmp/ted/DEBIAN/control
 	dpkg-deb --build /tmp/ted
 	mv /tmp/ted.deb ./
