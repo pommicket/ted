@@ -297,11 +297,10 @@ bool node_pixels_to_buffer_pos(Node *node, vec2 wpos, TextBuffer **pbuffer, Buff
 }
 
 void node_frame(Ted *ted, Node *node, Rect r) {
-	const Settings *settings = ted_active_settings(ted);
 	if (node->tabs) {
 		bool is_active = node == ted->active_node;
 		Font *font = ted->font;
-		const float border_thickness = settings->border_thickness;
+		const float border_thickness = ted_active_settings(ted)->border_thickness;
 		const float char_height = text_font_char_height(font);
 		float tab_bar_height = char_height + 2 * border_thickness;
 		
@@ -402,6 +401,9 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 						vec2_sub(ted_mouse_pos(ted), ted->dragging_tab_origin));
 				}
 				
+				// IMPORTANT: don't just move this to the top of the function.
+				//              - settings may be invalidated if we close a buffer.
+				const Settings *settings = ted_active_settings(ted);
 				// tab border
 				gl_geometry_rect_border(tab_rect, border_thickness, settings_color(settings, COLOR_BORDER));
 				rect_shrink(&tab_rect, border_thickness);
@@ -462,6 +464,7 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 		buffer_rect.size.y -= tab_bar_height;
 		buffer_render(buffer, buffer_rect);
 	} else {
+		const Settings *settings = ted_active_settings(ted);
 		float padding = settings->padding;
 		// this node is a split
 		Node *a = node->split_a, *b = node->split_b;
