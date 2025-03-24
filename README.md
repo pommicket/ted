@@ -361,6 +361,7 @@ Then run `make.bat release`.
 <tr><td>2.7.5</td> <td>LSP bug fix</td> <td>2024 Dec 7</td></tr>
 <tr><td>2.7.6</td> <td>Fix new LSP bug introduced by 2.7.5</td> <td>2024 Dec 8</td></tr>
 <tr><td>2.7.7</td> <td>Add prepareRename support, fix IDE hover</td> <td>2025 Mar 5</td></tr>
+<tr><td>2.7.8</td> <td>Fix occasional crash (bad settings pointer)</td> <td>2025 Mar 23</td></tr>
 </table>
 
 ## License
