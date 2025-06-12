@@ -79,6 +79,8 @@ enum {
 	SYNTAX_STATE_CSHARP_STRING_RAW = 0x01,
 	SYNTAX_STATE_CSHARP_STRING_VERBATIM = 0x02,
 	SYNTAX_STATE_CSHARP_MULTILINE_COMMENT = 0x04,
+	SYNTAX_STATE_CSHARP_TEMPLATE_STRING = 0x08,
+	SYNTAX_STATE_CSHARP_INTERPOLATING = 0x10,
 };
 
 typedef struct {
@@ -2284,8 +2286,10 @@ static void syntax_highlight_gdscript(SyntaxState *state, const char32_t *line, 
 static void syntax_highlight_csharp(SyntaxState *state, const char32_t *line, u32 line_len, SyntaxCharType *char_types) {
 	bool string_is_raw = (*state & SYNTAX_STATE_CSHARP_STRING_RAW) != 0;
 	bool string_is_verbatim = (*state & SYNTAX_STATE_CSHARP_STRING_VERBATIM) != 0;
+	bool string_is_template = (*state & SYNTAX_STATE_CSHARP_TEMPLATE_STRING) != 0;
 	bool in_multiline_comment = (*state & SYNTAX_STATE_CSHARP_MULTILINE_COMMENT) != 0;
-	bool in_string = string_is_raw || string_is_verbatim;
+	bool interpolating = (*state & SYNTAX_STATE_CSHARP_INTERPOLATING) != 0;
+	bool in_string = (string_is_raw || string_is_verbatim) && !interpolating;
 	bool in_number = false;
 	bool in_preprocessor = false;
 	u32 backslashes = 0;
@@ -2332,7 +2336,15 @@ static void syntax_highlight_csharp(SyntaxState *state, const char32_t *line, u3
 				dealt_with = true;
 			}
 			break;
-		case '"': {
+		case '$':
+			if (line[i+1] == '"') {
+				string_is_template = true;
+				if (char_types) char_types[i] = SYNTAX_STRING;
+				dealt_with = true;
+			}
+			break;
+		case '"':
+			if (interpolating) break;
 			if (in_string && string_is_raw) {
 				if (i + 2 < line_len && line[i+1] == '"' && line[i+2] == '"') {
 					in_string = false;
@@ -2344,6 +2356,7 @@ static void syntax_highlight_csharp(SyntaxState *state, const char32_t *line, u3
 			} else if (in_string) {
 				if (backslashes % 2 == 0 || string_is_verbatim) {
 					in_string = false;
+					string_is_raw = string_is_verbatim = false;
 					if (char_types) char_types[i] = SYNTAX_STRING;
 					dealt_with = true;
 				}
@@ -2355,7 +2368,33 @@ static void syntax_highlight_csharp(SyntaxState *state, const char32_t *line, u3
 					i += 2;
 				}
 			}
-		} break;
+			break;
+		case '{':
+			if (in_string && string_is_template) {
+				u32 lbraces = 1;
+				if (char_types)
+					char_types[i] = SYNTAX_STRING;
+				for (i++; i < line_len; i++) {
+					if (line[i] != '{') break;
+					if (char_types)
+						char_types[i] = SYNTAX_STRING;
+					lbraces++;
+				}
+				i--;
+				if (lbraces == 1) {
+					// string interpolation
+					interpolating = true;
+					in_string = false;
+					dealt_with = true;
+				}
+			}
+			break;
+		case '}':
+			if (interpolating) {
+				interpolating = false;
+				in_string = true;
+			}
+			break;
 		case '\'':
 			if (!in_string) {
 				if (char_types) char_types[i] = SYNTAX_CHARACTER;
@@ -2404,7 +2443,7 @@ static void syntax_highlight_csharp(SyntaxState *state, const char32_t *line, u3
 						char_types[i] = char_types[i+1] = SYNTAX_COMMENT;
 					}
 					i++;
-					continue;
+					dealt_with = true;
 				}
 			}
 			break;
@@ -2446,9 +2485,11 @@ static void syntax_highlight_csharp(SyntaxState *state, const char32_t *line, u3
 		}
 	}
 	*state = (SyntaxState)(
-		(SYNTAX_STATE_CSHARP_STRING_RAW * (in_string && string_is_raw))
+		(SYNTAX_STATE_CSHARP_STRING_RAW * ((in_string || interpolating) && string_is_raw))
 		| (SYNTAX_STATE_CSHARP_STRING_VERBATIM * (in_string && string_is_verbatim))
 		| (SYNTAX_STATE_CSHARP_MULTILINE_COMMENT * in_multiline_comment)
+		| (SYNTAX_STATE_CSHARP_TEMPLATE_STRING * ((in_string || interpolating) && string_is_template))
+		| (SYNTAX_STATE_CSHARP_INTERPOLATING * interpolating)
 	);
 }
 
