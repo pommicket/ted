@@ -2271,6 +2271,16 @@ static void syntax_highlight_gdscript(SyntaxState *state, const char32_t *line, 
 	}
 }
 
+
+static void syntax_highlight_csharp(SyntaxState *state, const char32_t *line, u32 line_len, SyntaxCharType *char_types) {
+	(void)state;
+	(void)line;
+	(void)line_len;
+	if (char_types) {
+		memset(char_types, 0, line_len);
+	}
+}
+
 typedef struct {
 	Language lang;
 	SyntaxHighlightFunction func;
@@ -2429,15 +2439,20 @@ void syntax_init(void) {
 			.id = LANG_CSS,
 			.name = "CSS",
 			.lsp_identifier = "css",
-			.highlighter = syntax_highlight_css
+			.highlighter = syntax_highlight_css,
 		},
 		{
 			.id = LANG_GDSCRIPT,
 			.name = "GDScript",
 			.lsp_identifier = "gdscript",
-			.highlighter = syntax_highlight_gdscript
+			.highlighter = syntax_highlight_gdscript,
 		},
-		
+		{
+			.id = LANG_CSHARP,
+			.name = "CSharp",
+			.lsp_identifier = "csharp",
+			.highlighter = syntax_highlight_csharp,
+		},
 	};
 	for (size_t i = 0; i < arr_count(builtins); ++i) {
 		syntax_register_language(&builtins[i]);

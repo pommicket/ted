@@ -69,6 +69,8 @@ enum {
 	LANG_CSS = 18,
 	/// GDScript
 	LANG_GDSCRIPT = 19,
+	/// C#
+	LANG_CSHARP = 20,
 	
 	/// this will never be a valid language ID
 	LANG_INVALID = 9999,
