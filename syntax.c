@@ -28,6 +28,7 @@ enum {
 	SYNTAX_STATE_PYTHON_STRING = 0x01, // multiline strings (''' and """)
 	SYNTAX_STATE_PYTHON_STRING_DBL_QUOTED = 0x02, // is this a """ string, as opposed to a ''' string?
 	SYNTAX_STATE_PYTHON_FSTRING = 0x04, // is this a f''' or f""" string?
+	SYNTAX_STATE_PYTHON_INTERPOLATING = 0x08, // are we in an f-string interpolation?
 };
 
 enum {
@@ -52,6 +53,7 @@ enum {
 enum {
 	SYNTAX_STATE_JAVASCRIPT_TEMPLATE_STRING = 0x01,
 	SYNTAX_STATE_JAVASCRIPT_MULTILINE_COMMENT = 0x02,
+	SYNTAX_STATE_JAVASCRIPT_INTERPOLATION = 0x04, // in the middle of a template literal string interpolation
 };
 
 enum {
@@ -742,7 +744,7 @@ static void syntax_highlight_python(SyntaxState *state, const char32_t *line, u3
 	bool in_string = (*state & SYNTAX_STATE_PYTHON_STRING) != 0;
 	bool string_is_dbl_quoted = (*state & SYNTAX_STATE_PYTHON_STRING_DBL_QUOTED) != 0;
 	bool string_is_fstring = (*state & SYNTAX_STATE_PYTHON_FSTRING) != 0;
-	bool interpolating = false;
+	bool interpolating = (*state & SYNTAX_STATE_PYTHON_INTERPOLATING) != 0;
 	bool string_is_multiline = true;
 	bool in_number = false;
 	u32 backslashes = 0, lbraces = 0;
@@ -900,10 +902,10 @@ static void syntax_highlight_python(SyntaxState *state, const char32_t *line, u3
 		}
 	}
 	*state = 0;
-	in_string |= interpolating; // give up on highlighting rest of interpolation correctly
-	if (in_string && string_is_multiline) {
+	if (string_is_multiline && (in_string || interpolating)) {
 		*state |= (SyntaxState)(
-			SYNTAX_STATE_PYTHON_STRING
+			(SYNTAX_STATE_PYTHON_STRING * in_string)
+			| (SYNTAX_STATE_PYTHON_INTERPOLATING * interpolating)
 			| (SYNTAX_STATE_PYTHON_STRING_DBL_QUOTED * string_is_dbl_quoted)
 			| (SYNTAX_STATE_PYTHON_FSTRING * string_is_fstring)
 		);
@@ -1428,10 +1430,11 @@ static void syntax_highlight_javascript_like(
 	(void)state;
 	bool string_is_template = (*state & SYNTAX_STATE_JAVASCRIPT_TEMPLATE_STRING) != 0;
 	bool in_multiline_comment = (*state & SYNTAX_STATE_JAVASCRIPT_MULTILINE_COMMENT) != 0;
+	bool interpolating = (*state & SYNTAX_STATE_JAVASCRIPT_INTERPOLATION) != 0;
 	bool string_is_dbl_quoted = false;
 	bool string_is_regex = false;
 	bool in_number = false;
-	bool in_string = string_is_template;
+	bool in_string = string_is_template && !interpolating;
 	u32 backslashes = 0;
 	
 	for (u32 i = 0; i < line_len; ++i) {
@@ -1510,12 +1513,37 @@ static void syntax_highlight_javascript_like(
 				}
 			}
 			break;
+		case '$':
+			if (in_string && string_is_template && backslashes % 2 == 0
+				&& i+1 < line_len && line[i+1] == '{') {
+				if (char_types) {
+					char_types[i] = char_types[i+1] = SYNTAX_STRING;
+				}
+				i++;
+				dealt_with = true;
+				interpolating = true;
+				in_string = false;
+			}
+			break;
+		case '}':
+			if (interpolating) {
+				// end of interpolation
+				interpolating = false;
+				in_string = true;
+			}
+			break;
 		case '\'':
 		case '"':
 		case '`': {
 			if (!in_multiline_comment) {
 				bool dbl_quoted = c == '"';
 				bool template = c == '`';
+				if (interpolating) {
+					// give up on rest of interpolation
+					interpolating = false;
+					in_string = true;
+					break;
+				}
 				if (in_string) {
 					if (!string_is_regex && backslashes % 2 == 0
 						&& string_is_dbl_quoted == dbl_quoted && string_is_template == template) {
@@ -1598,8 +1626,10 @@ static void syntax_highlight_javascript_like(
 		}
 	}
 	*state = 0;
-	if (in_string && string_is_template)
+	if ((in_string || interpolating) && string_is_template)
 		*state |= SYNTAX_STATE_JAVASCRIPT_TEMPLATE_STRING;
+	if (interpolating)
+		*state |= SYNTAX_STATE_JAVASCRIPT_INTERPOLATION;
 	if (in_multiline_comment)
 		*state |= SYNTAX_STATE_JAVASCRIPT_MULTILINE_COMMENT;
 }
