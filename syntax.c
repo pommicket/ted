@@ -75,6 +75,12 @@ enum {
 	SYNTAX_STATE_CSS_IN_BRACES = 0x02,
 };
 
+enum {
+	SYNTAX_STATE_CSHARP_STRING_RAW = 0x01,
+	SYNTAX_STATE_CSHARP_STRING_VERBATIM = 0x02,
+	SYNTAX_STATE_CSHARP_MULTILINE_COMMENT = 0x04,
+};
+
 typedef struct {
 	Language lang;
 	char *name;
@@ -279,6 +285,9 @@ static bool syntax_number_continues(Language lang, const char32_t *line, u32 lin
 	case LANG_JAVASCRIPT:
 	case LANG_TYPESCRIPT:
 		digits = "0123456789.xXoObBabcdefABCDEFn_";
+		break;
+	case LANG_CSHARP:
+		digits = "0123456789.xXbBabcdefABCDEF_ulULdDmM";
 		break;
 	default:
 		digits = "0123456789.xXoObBabcdefABCDEF_";
@@ -2273,12 +2282,174 @@ static void syntax_highlight_gdscript(SyntaxState *state, const char32_t *line, 
 
 
 static void syntax_highlight_csharp(SyntaxState *state, const char32_t *line, u32 line_len, SyntaxCharType *char_types) {
-	(void)state;
-	(void)line;
-	(void)line_len;
-	if (char_types) {
-		memset(char_types, 0, line_len);
+	bool string_is_raw = (*state & SYNTAX_STATE_CSHARP_STRING_RAW) != 0;
+	bool string_is_verbatim = (*state & SYNTAX_STATE_CSHARP_STRING_VERBATIM) != 0;
+	bool in_multiline_comment = (*state & SYNTAX_STATE_CSHARP_MULTILINE_COMMENT) != 0;
+	bool in_string = string_is_raw || string_is_verbatim;
+	bool in_number = false;
+	bool in_preprocessor = false;
+	u32 backslashes = 0;
+	
+	for (u32 i = 0; i < line_len; ++i) {
+		char32_t c = line[i];
+		bool dealt_with = false;
+		if (in_multiline_comment) {
+			if (char_types) char_types[i] = SYNTAX_COMMENT;
+			if (line[i] == '*' && i + 1 < line_len && line[i + 1] == '/') {
+				if (char_types)
+					char_types[i+1] = SYNTAX_COMMENT;
+				i++;
+				in_multiline_comment = false;
+			}
+			continue;
+		}
+		switch (c) {
+		case '#':
+			if (!in_string && !in_preprocessor) {
+				in_preprocessor = true;
+				for (i64 j = (i64)i-1; j >= 0; j--) {
+					if (!is32_space(line[j])) {
+						in_preprocessor = false;
+						break;
+					}
+				}
+			}
+			break;
+		case '@':
+			if (i + 1 >= line_len || in_string || in_preprocessor) break;
+			if (char_types && (is32_alpha(line[i+1]) || line[i+1] == '_')) {
+				// "verbatim identifier"
+				char_types[i] = SYNTAX_NORMAL;
+				char_types[i+1] = SYNTAX_NORMAL;
+				for (i += 2; is32_word(line[i]); i++)
+					char_types[i] = SYNTAX_NORMAL;
+				i--; // we'll increment i at the end of the for loop
+				dealt_with = true;
+			}
+			if (line[i+1] == '"') {
+				string_is_verbatim = true;
+				if (char_types) char_types[i] = SYNTAX_STRING;
+				dealt_with = true;
+			}
+			break;
+		case '"': {
+			if (in_string && string_is_raw) {
+				if (i + 2 < line_len && line[i+1] == '"' && line[i+2] == '"') {
+					in_string = false;
+					string_is_raw = string_is_verbatim = false;
+					if (char_types) char_types[i] = char_types[i+1] = char_types[i+2] = SYNTAX_STRING;
+					i += 2;
+					dealt_with = true;
+				}
+			} else if (in_string) {
+				if (backslashes % 2 == 0 || string_is_verbatim) {
+					in_string = false;
+					if (char_types) char_types[i] = SYNTAX_STRING;
+					dealt_with = true;
+				}
+			} else {
+				in_string = true;
+				if (!in_preprocessor && i + 2 < line_len && line[i+1] == '"' && line[i+2] == '"') {
+					string_is_raw = true;
+					if (char_types) char_types[i] = char_types[i+1] = SYNTAX_STRING;
+					i += 2;
+				}
+			}
+		} break;
+		case '\'':
+			if (!in_string) {
+				if (char_types) char_types[i] = SYNTAX_CHARACTER;
+				i++;
+				backslashes = 0;
+				for (; i < line_len; i++) {
+					if (line[i] == '\'' && backslashes % 2 == 0) {
+						break;
+					}
+					if (char_types) char_types[i] = SYNTAX_CHARACTER;
+					backslashes = line[i] == '\\' ? backslashes + 1 : 0;
+				}
+				if (i >= line_len) continue; // break out of for loop
+				if (char_types) char_types[i] = SYNTAX_CHARACTER;
+				dealt_with = true;
+			}
+			break;
+		case ANY_DIGIT:
+			if (char_types && !in_string && !in_number) {
+				in_number = true;
+				if (i) {
+					if (line[i - 1] == '.') {
+						// support .6, for example
+						char_types[i - 1] = SYNTAX_CONSTANT;
+					} else if (is32_word(line[i - 1])) {
+						// actually, this isn't a number. it's something like a*6* or u3*2*.
+						in_number = false;
+					}
+				}
+			}
+			break;
+		case '/':
+			if (!in_string && i + 1 < line_len) {
+				if (line[i+1] == '/') {
+					// single-line comment
+					if (char_types) {
+						for (; i < line_len; i++)
+							char_types[i] = SYNTAX_COMMENT;
+					}
+					i = line_len;
+					continue;
+				} else if (line[i+1] == '*') {
+					// multi-line comment
+					in_multiline_comment = true;
+					if (char_types) {
+						char_types[i] = char_types[i+1] = SYNTAX_COMMENT;
+					}
+					i++;
+					continue;
+				}
+			}
+			break;
+		case '\\':
+			++backslashes;
+			break;
+		default:
+			if ((i && is32_word(line[i - 1])) || !is32_word(c))
+				break; // can't be a keyword on its own.
+			
+			if (char_types && !in_string && !in_number && !in_preprocessor) {
+				u32 keyword_len = syntax_keyword_len(LANG_CSHARP, line, i, line_len);
+				Keyword const *keyword = syntax_keyword_lookup(syntax_all_keywords_csharp, &line[i], keyword_len);
+				if (keyword) {
+					SyntaxCharType type = keyword->type;
+					for (size_t j = 0; j < keyword_len; ++j) {
+						char_types[i++] = type;
+					}
+					--i; // we'll increment i from the for loop
+					dealt_with = true;
+					break;
+				}
+			}
+			break;
+		}
+		if (c != '\\') backslashes = 0;
+		if (in_number && !syntax_number_continues(LANG_CSHARP, line, line_len, i))
+			in_number = false;
+		
+		if (char_types && !dealt_with) {
+			SyntaxCharType type = SYNTAX_NORMAL;
+			if (in_string)
+				type = SYNTAX_STRING;
+			else if (in_number)
+				type = SYNTAX_CONSTANT;
+			else if (in_preprocessor)
+				type = SYNTAX_PREPROCESSOR;
+			char_types[i] = type;
+		}
 	}
+	*state = (SyntaxState)(
+		(SYNTAX_STATE_CSHARP_STRING_RAW * (in_string && string_is_raw))
+		| (SYNTAX_STATE_CSHARP_STRING_VERBATIM * (in_string && string_is_verbatim))
+		| (SYNTAX_STATE_CSHARP_MULTILINE_COMMENT * in_multiline_comment)
+	);
 }
 
 typedef struct {
