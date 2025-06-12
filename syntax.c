@@ -9,67 +9,68 @@
 
 // these all say "CPP" but really they're C/C++
 enum {
-	SYNTAX_STATE_CPP_MULTI_LINE_COMMENT = 0x1u, // are we in a multi-line comment? (delineated by /* */)
-	SYNTAX_STATE_CPP_SINGLE_LINE_COMMENT = 0x2u, // if you add a \ to the end of a single-line comment, it is continued to the next line.
-	SYNTAX_STATE_CPP_PREPROCESSOR = 0x4u, // similar to above
-	SYNTAX_STATE_CPP_STRING = 0x8u,
-	SYNTAX_STATE_CPP_RAW_STRING = 0x10u,
+	SYNTAX_STATE_CPP_MULTI_LINE_COMMENT = 0x1, // are we in a multi-line comment? (delineated by /* */)
+	SYNTAX_STATE_CPP_SINGLE_LINE_COMMENT = 0x2, // if you add a \ to the end of a single-line comment, it is continued to the next line.
+	SYNTAX_STATE_CPP_PREPROCESSOR = 0x4, // similar to above
+	SYNTAX_STATE_CPP_STRING = 0x8,
+	SYNTAX_STATE_CPP_RAW_STRING = 0x10,
 };
 
 enum {
-	SYNTAX_STATE_RUST_COMMENT_DEPTH_MASK = 0xfu, // in rust, /* */ comments can nest.
-	SYNTAX_STATE_RUST_COMMENT_DEPTH_MUL  = 0x1u,
+	SYNTAX_STATE_RUST_COMMENT_DEPTH_MASK = 0xf, // in rust, /* */ comments can nest.
+	SYNTAX_STATE_RUST_COMMENT_DEPTH_MUL  = 0x1,
 	SYNTAX_STATE_RUST_COMMENT_DEPTH_BITS = 4, // number of bits we allocate for the comment depth.
-	SYNTAX_STATE_RUST_STRING = 0x10u,
-	SYNTAX_STATE_RUST_STRING_IS_RAW = 0x20u,
+	SYNTAX_STATE_RUST_STRING = 0x10,
+	SYNTAX_STATE_RUST_STRING_IS_RAW = 0x20,
 };
 
 enum {
-	SYNTAX_STATE_PYTHON_STRING = 0x01u, // multiline strings (''' and """)
-	SYNTAX_STATE_PYTHON_STRING_DBL_QUOTED = 0x02u, // is this a """ string, as opposed to a ''' string?
+	SYNTAX_STATE_PYTHON_STRING = 0x01, // multiline strings (''' and """)
+	SYNTAX_STATE_PYTHON_STRING_DBL_QUOTED = 0x02, // is this a """ string, as opposed to a ''' string?
+	SYNTAX_STATE_PYTHON_FSTRING = 0x04, // is this a f''' or f""" string?
 };
 
 enum {
-	SYNTAX_STATE_GDSCRIPT_STRING = 0x01u, // multiline strings (''' and """)
-	SYNTAX_STATE_GDSCRIPT_STRING_DBL_QUOTED = 0x02u, // is this a """ string, as opposed to a ''' string?
+	SYNTAX_STATE_GDSCRIPT_STRING = 0x01, // multiline strings (''' and """)
+	SYNTAX_STATE_GDSCRIPT_STRING_DBL_QUOTED = 0x02, // is this a """ string, as opposed to a ''' string?
 };
 
 enum {
-	SYNTAX_STATE_TEX_DOLLAR = 0x01u, // inside math $ ... $
-	SYNTAX_STATE_TEX_DOLLARDOLLAR = 0x02u, // inside math $$ ... $$
-	SYNTAX_STATE_TEX_VERBATIM = 0x04u, // inside \begin{verbatim} ... \end{verbatim}
+	SYNTAX_STATE_TEX_DOLLAR = 0x01, // inside math $ ... $
+	SYNTAX_STATE_TEX_DOLLARDOLLAR = 0x02, // inside math $$ ... $$
+	SYNTAX_STATE_TEX_VERBATIM = 0x04, // inside \begin{verbatim} ... \end{verbatim}
 };
 
 enum {
-	SYNTAX_STATE_MARKDOWN_CODE = 0x01u, // inside ``` ``` code section
+	SYNTAX_STATE_MARKDOWN_CODE = 0x01, // inside ``` ``` code section
 };
 
 enum {
-	SYNTAX_STATE_HTML_COMMENT = 0x01u
+	SYNTAX_STATE_HTML_COMMENT = 0x01
 };
 
 enum {
-	SYNTAX_STATE_JAVASCRIPT_TEMPLATE_STRING = 0x01u,
-	SYNTAX_STATE_JAVASCRIPT_MULTILINE_COMMENT = 0x02u,
+	SYNTAX_STATE_JAVASCRIPT_TEMPLATE_STRING = 0x01,
+	SYNTAX_STATE_JAVASCRIPT_MULTILINE_COMMENT = 0x02,
 };
 
 enum {
-	SYNTAX_STATE_JAVA_MULTILINE_COMMENT = 0x01u
+	SYNTAX_STATE_JAVA_MULTILINE_COMMENT = 0x01,
 };
 
 enum {
-	SYNTAX_STATE_GO_RAW_STRING = 0x01u, // backtick-enclosed string
-	SYNTAX_STATE_GO_MULTILINE_COMMENT = 0x02u
+	SYNTAX_STATE_GO_RAW_STRING = 0x01, // backtick-enclosed string
+	SYNTAX_STATE_GO_MULTILINE_COMMENT = 0x02,
 };
 
 enum {
-	SYNTAX_STATE_TED_CFG_STRING = 0x01u, // ` or "-delimited string
-	SYNTAX_STATE_TED_CFG_STRING_BACKTICK = 0x02u, // `-delimited string
+	SYNTAX_STATE_TED_CFG_STRING = 0x01, // ` or "-delimited string
+	SYNTAX_STATE_TED_CFG_STRING_BACKTICK = 0x02, // `-delimited string
 };
 
 enum {
-	SYNTAX_STATE_CSS_COMMENT = 0x01u,
-	SYNTAX_STATE_CSS_IN_BRACES = 0x02u,
+	SYNTAX_STATE_CSS_COMMENT = 0x01,
+	SYNTAX_STATE_CSS_IN_BRACES = 0x02,
 };
 
 typedef struct {
@@ -740,9 +741,11 @@ static void syntax_highlight_python(SyntaxState *state, const char32_t *line, u3
 	(void)state;
 	bool in_string = (*state & SYNTAX_STATE_PYTHON_STRING) != 0;
 	bool string_is_dbl_quoted = (*state & SYNTAX_STATE_PYTHON_STRING_DBL_QUOTED) != 0;
+	bool string_is_fstring = (*state & SYNTAX_STATE_PYTHON_FSTRING) != 0;
+	bool interpolating = false;
 	bool string_is_multiline = true;
 	bool in_number = false;
-	u32 backslashes = 0;
+	u32 backslashes = 0, lbraces = 0;
 	
 	for (u32 i = 0; i < line_len; ++i) {
 		char32_t c = line[i];
@@ -759,18 +762,63 @@ static void syntax_highlight_python(SyntaxState *state, const char32_t *line, u3
 				i = line_len - 1;
 			}
 			break;
-		case 'f':
-		case 'r':
-		case 'b':
-			if (char_types && i+1 < line_len && (line[i+1] == '\'' || line[i+1] == '"')) {
-				// format/raw/byte string
-				// @TODO(eventually): we don't handle raw string highlighting correctly.
-				char_types[i] = SYNTAX_STRING;
-				dealt_with = true;
+		// format/raw/byte/unicode string
+		case 'f': case 'r': case 'b': case 'u':
+		case 'F': case 'R': case 'B': case 'U':
+			if (!in_string && !interpolating) {
+				bool is_string = true;
+				u32 j;
+				bool fstring = c == 'f' || c == 'F';
+				for (j = i+1; j < line_len; j++) {
+					char32_t d = line[j];
+					if (d == '\'' || d == '"')
+						break;
+					if (d == 'r' || d == 'f' || d == 'b' || d == 'u'
+						|| d == 'R' || d == 'F' || d == 'B' || d == 'U') {
+						fstring |= d == 'f' || d == 'F';
+						continue;
+					}
+					is_string = false;
+					break;
+				}
+				is_string &= j < line_len;
+				if (is_string) {
+					if (char_types) {
+						for (; i < j; i++)
+							char_types[i] = SYNTAX_STRING;
+					}
+					i = j - 1; // NB: will increment i later due to for loop
+					string_is_fstring = fstring;
+					dealt_with = true;
+					break;
+				}
 			}
 			goto keyword_check;
+		case '{':
+			if (in_string && string_is_fstring) {
+				lbraces++;
+				if (lbraces % 2 == 1) {
+					in_string = false;
+					interpolating = true;
+					if (char_types) char_types[i] = SYNTAX_STRING;
+					dealt_with = true;
+				}
+			}
+			break;
+		case '}':
+			if (interpolating) {
+				in_string = true;
+				interpolating = false;
+			}
+			break;
 		case '\'':
 		case '"': {
+			if (interpolating) {
+				// string literal in interpolation - give up on rest of interpolation
+				in_string = true;
+				interpolating = false;
+				break;
+			}
 			bool dbl_quoted = c == '"';
 			bool is_triple = i+2 < line_len &&
 				line[i+1] == c && line[i+2] == c;
@@ -779,6 +827,9 @@ static void syntax_highlight_python(SyntaxState *state, const char32_t *line, u3
 					if (string_is_dbl_quoted == dbl_quoted && backslashes % 2 == 0) {
 						// end of string
 						in_string = false;
+						string_is_fstring =
+							string_is_dbl_quoted =
+							string_is_multiline = false;
 						if (char_types) {
 							char_types[i] = SYNTAX_STRING;
 							if (string_is_multiline) {
@@ -835,6 +886,7 @@ static void syntax_highlight_python(SyntaxState *state, const char32_t *line, u3
 			break;
 		}
 		if (c != '\\') backslashes = 0;
+		if (c != '{') lbraces = 0;
 		if (in_number && !syntax_number_continues(LANG_PYTHON, line, line_len, i))
 			in_number = false;
 		
@@ -848,10 +900,12 @@ static void syntax_highlight_python(SyntaxState *state, const char32_t *line, u3
 		}
 	}
 	*state = 0;
+	in_string |= interpolating; // give up on highlighting rest of interpolation correctly
 	if (in_string && string_is_multiline) {
 		*state |= (SyntaxState)(
 			SYNTAX_STATE_PYTHON_STRING
 			| (SYNTAX_STATE_PYTHON_STRING_DBL_QUOTED * string_is_dbl_quoted)
+			| (SYNTAX_STATE_PYTHON_FSTRING * string_is_fstring)
 		);
 	}
 }

@@ -33,7 +33,7 @@ in other editors.
 - Multiple tabs, each with a different file
 - Split screen
 - Auto-indent
-- Syntax highlighting for C, C++, CSS, Go, HTML, Java, JavaScript, LaTeX, Markdown, Python, Rust, and TypeScript.
+- Syntax highlighting for C, C++, CSS, GdScript, GLSL, Go, HTML, Java, JavaScript, LaTeX, Markdown, Python, Rust, and TypeScript.
 - Find and replace (with regular expressions!)
 - Run build command, go to errors
 - Run any shell command
