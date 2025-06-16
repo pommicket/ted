@@ -27,6 +27,7 @@ struct Line {
 // This refers to replacing prev_len characters (found in prev_text) at pos with new_len characters
 struct BufferEdit {
 	bool chain; // should this + the next edit be treated as one?
+	bool block_chaining; // stop this edit from being chained to the next one.
 	BufferPos pos;
 	u32 new_len;
 	u32 prev_len;
@@ -901,7 +902,7 @@ static bool buffer_edit_does_anything(TextBuffer *buffer, BufferEdit *edit) {
 // is_deletion should be set to true if the edit involves any deletion.
 static bool buffer_edit_split(TextBuffer *buffer, bool is_deletion) {
 	BufferEdit *last_edit = arr_lastp(buffer->undo_history);
-	if (!last_edit) return true;
+	if (!last_edit || last_edit->block_chaining) return true;
 	if (buffer->will_chain_edits) return true;
 	if (buffer->chaining_edits) return false;
 	double curr_time = buffer->ted->frame_time;
@@ -2872,6 +2873,7 @@ static Status buffer_undo_edit(TextBuffer *buffer, BufferEdit const *edit, Buffe
 
 	// create inverse edit
 	if (buffer_edit_create(buffer, inverse, edit->pos, edit->new_len, edit->prev_len)) {
+		inverse->block_chaining = edit->block_chaining;
 		buffer_delete_chars_at_pos(buffer, edit->pos, (i64)edit->new_len);
 		String32 str = {edit->prev_text, edit->prev_len};
 		buffer_insert_text_at_pos(buffer, edit->pos, str);
@@ -2954,6 +2956,8 @@ void buffer_start_edit_chain(TextBuffer *buffer) {
 
 void buffer_end_edit_chain(TextBuffer *buffer) {
 	buffer->chaining_edits = buffer->will_chain_edits = false;
+	BufferEdit *last_edit = arr_lastp(buffer->undo_history);
+	if (last_edit) last_edit->block_chaining = true;
 }
 
 static void buffer_copy_or_cut(TextBuffer *buffer, bool cut) {
