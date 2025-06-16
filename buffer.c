@@ -3293,8 +3293,8 @@ void buffer_new_file(TextBuffer *buffer, const char *path) {
 
 static bool buffer_write_to_file(TextBuffer *buffer, const char *path) {
 	const Settings *settings = buffer_settings(buffer);
-	Ted *ted = buffer->ted;
 	#if HAS_INOTIFY
+	Ted *ted = buffer->ted;
 	if (buffer->inotify_watch != -1) {
 		// temporarily stop inotify events while we're writing to the buffer
 		inotify_rm_watch(ted->inotify_fd, buffer->inotify_watch);
@@ -4247,6 +4247,7 @@ void buffer_set_manual_tab_width(TextBuffer *buffer, u8 n) {
 	buffer->manual_indentation = true;
 }
 
+#if HAS_INOTIFY
 int buffer_inotify_watch(TextBuffer *buffer) {
 	return buffer->inotify_watch;
 }
@@ -4254,3 +4255,4 @@ int buffer_inotify_watch(TextBuffer *buffer) {
 void buffer_set_inotify_modified(TextBuffer *buffer) {
 	buffer->inotify_modified = true;
 }
+#endif
