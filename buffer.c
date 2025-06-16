@@ -12,7 +12,13 @@
 #elif _WIN32
 #include <io.h>
 #endif
-
+#if __linux__
+#include <sys/inotify.h>
+#define HAS_INOTIFY 1
+#define INOTIFY_MASK (IN_ATTRIB | IN_CLOSE_WRITE | IN_DELETE_SELF | IN_MODIFY | IN_MOVE_SELF)
+#else
+#define HAS_INOTIFY 0
+#endif
 /// A single line in a buffer
 typedef struct Line Line;
 
@@ -133,6 +139,9 @@ struct TextBuffer {
 	BufferEdit *undo_history;
 	/// dynamic array of redo history
 	BufferEdit *redo_history;
+#if HAS_INOTIFY
+	int inotify_fd, inotify_watch;
+#endif
 };
 
 
@@ -375,6 +384,10 @@ static void buffer_set_up(Ted *ted, TextBuffer *buffer) {
 	const Settings *settings = buffer_settings(buffer);
 	buffer->indent_with_spaces = settings->indent_with_spaces;
 	buffer->tab_width = settings->tab_width;
+#if HAS_INOTIFY
+	buffer->inotify_fd = -1;
+	buffer->inotify_watch = -1;
+#endif
 }
 
 static void line_buffer_set_up(Ted *ted, TextBuffer *buffer) {
@@ -1026,6 +1039,13 @@ static void buffer_free_inner(TextBuffer *buffer) {
 	arr_free(buffer->undo_history);
 	arr_free(buffer->redo_history);
 	settings_free(&buffer->settings);
+	#if HAS_INOTIFY
+	if (buffer->inotify_fd != -1) {
+		close(buffer->inotify_fd);
+		buffer->inotify_fd = -1;
+		buffer->inotify_watch = -1;
+	}
+	#endif
 	memset(buffer, 0, sizeof *buffer);
 }
 
@@ -3051,8 +3071,30 @@ Status buffer_load_file(TextBuffer *buffer, const char *path) {
 	// it's important we do this first, since someone might write to the file while we're reading it,
 	// and we want to detect that in buffer_externally_changed
 	double modified_time = timespec_to_seconds(time_last_modified(path));
+#if HAS_INOTIFY
+	int inotify_fd = reload ? buffer->inotify_fd : -1,
+		inotify_watch = reload ? buffer->inotify_watch : -1;
+	if (inotify_fd == -1) {
+		inotify_fd = inotify_init1(IN_CLOEXEC | IN_NONBLOCK);
+		if (inotify_fd == -1) {
+			perror("inotify_init1");
+		}
+	} else if (inotify_watch != -1) {
+		inotify_rm_watch(inotify_fd, inotify_watch);
+	}
+	int inotify_err = 0;
+	if (inotify_fd != -1) {
+		inotify_watch = inotify_add_watch(inotify_fd, path, INOTIFY_MASK);
+		if (inotify_watch == -1) inotify_err = errno;
+	}
+#endif
 	
 	FILE *fp = fopen(path, "rb");
+#if HAS_INOTIFY
+	if (fp && inotify_err) {
+		fprintf(stderr, "inotify_add_watch(\"%s\"): error %d\n", path, inotify_err);
+	}
+#endif
 	bool success = true;
 	Line *lines = NULL;
 	u32 nlines = 0, lines_capacity = 0;
@@ -3186,6 +3228,10 @@ Status buffer_load_file(TextBuffer *buffer, const char *path) {
 		buffer->frame_earliest_line_modified = 0;
 		buffer->frame_latest_line_modified = nlines - 1;
 		buffer->undo_history_write_pos = arr_len(buffer->undo_history);
+	#if HAS_INOTIFY
+		buffer->inotify_watch = inotify_watch;
+		buffer->inotify_fd = inotify_fd;
+	#endif
 		if (!(fs_path_permission(path) & FS_PERMISSION_WRITE)) {
 			// can't write to this file; make the buffer view only.
 			buffer->view_only = true;
@@ -3197,6 +3243,12 @@ Status buffer_load_file(TextBuffer *buffer, const char *path) {
 		}
 	}
 	if (!success) {
+	#if HAS_INOTIFY
+		if (inotify_fd != -1) {
+			close(inotify_fd);
+			buffer->inotify_watch = buffer->inotify_fd = -1;
+		}
+	#endif
 		// something went wrong; we need to free all the memory we used
 		for (u32 i = 0; i < nlines; ++i)
 			buffer_line_free(&lines[i]);
@@ -3220,20 +3272,29 @@ bool buffer_externally_changed(TextBuffer *buffer) {
 	if (!buffer_is_named_file(buffer))
 		return false;
 	double last_modified = timespec_to_seconds(time_last_modified(buffer->path));
-	if (last_modified == buffer->last_write_time)
-		return false;
-
-	// block until whatever program is writing the file finishes
-	for (int i = 0; i < 10; i++) { // give up after 200ms
-		time_sleep_ms(20);
-		double new_last_modified = timespec_to_seconds(time_last_modified(buffer->path));
-		if (new_last_modified == last_modified) {
-			// probably done now
-			break;
+	bool modified = last_modified != buffer->last_write_time;
+	#if HAS_INOTIFY
+	// for whatever reason, last modified time seems to be very slightly unreliable on Linux
+	// (occasionally we read a file and its contents later change shortly thereafter
+	//   w/o the modified time changing)
+	// so we use inotify as a "backup"
+	if (buffer->inotify_watch != -1) {
+		char events[16384 * sizeof(struct inotify_event)];
+		ssize_t bytes = read(buffer->inotify_fd, events, sizeof events);
+		for (int i = 0; i + (int)sizeof(struct inotify_event) <= bytes; i += (int)sizeof(struct inotify_event)) {
+			struct inotify_event event;
+			memcpy(&event, &events[i * (int)sizeof event], sizeof event);
+			if (event.mask & INOTIFY_MASK)
+				modified = true;
+			i += (int)event.len; // should never happen in theory...
 		}
-		last_modified = new_last_modified;
+		// ideally we would sit in a loop here but then we'd hang if someone is constantly
+		// changing the file. probably no good way of dealing with that though.
+		// for what it's worth, 16384 is the default max inotify queue size, so we should always
+		// read all the events with that one read call.
 	}
-	return true;
+	#endif
+	return modified;
 }
 
 void buffer_new_file(TextBuffer *buffer, const char *path) {
@@ -3256,6 +3317,13 @@ void buffer_new_file(TextBuffer *buffer, const char *path) {
 
 static bool buffer_write_to_file(TextBuffer *buffer, const char *path) {
 	const Settings *settings = buffer_settings(buffer);
+	#if HAS_INOTIFY
+	if (buffer->inotify_watch != -1) {
+		// temporarily stop inotify events while we're writing to the buffer
+		inotify_rm_watch(buffer->inotify_fd, buffer->inotify_watch);
+		buffer->inotify_watch = -1;
+	}
+	#endif
 	FILE *out = fopen(path, "wb");
 	if (!out) {
 		buffer_error(buffer, "Couldn't open file %s for writing: %s.", path, strerror(errno));
@@ -3335,6 +3403,12 @@ static bool buffer_write_to_file(TextBuffer *buffer, const char *path) {
 			buffer_error(buffer, "Couldn't close file %s.", path);
 		success = false;
 	}
+	#if HAS_INOTIFY
+	if (buffer->inotify_fd != -1) {
+		// re-enable inotify
+		buffer->inotify_watch = inotify_add_watch(buffer->inotify_fd, path, INOTIFY_MASK);
+	}
+	#endif
 	
 	return success;
 }
