@@ -658,7 +658,11 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars);
 /// The order of `p1` and `p2` doesn't matter.
 i64 buffer_delete_chars_between(TextBuffer *buffer, BufferPos p1, BufferPos p2);
 /// Delete current selection.
+///
+/// Returns the number of characters deleted.
 i64 buffer_delete_selection(TextBuffer *buffer);
+/// Delete all of the buffer contents, while retaining undo history, etc.
+void buffer_delete_all(TextBuffer *buffer);
 /// Insert UTF-32 text at the cursor, and move the cursor to the end of it.
 void buffer_insert_text_at_cursor(TextBuffer *buffer, String32 str);
 /// Insert a single character at the cursor, and move the cursor past it.
@@ -713,7 +717,9 @@ void buffer_paste(TextBuffer *buffer);
 /// Load the file at absolute path `path`.
 bool buffer_load_file(TextBuffer *buffer, const char *path);
 /// Reloads the file loaded in the buffer.
-void buffer_reload(TextBuffer *buffer);
+///
+/// Returns false on error
+bool buffer_reload(TextBuffer *buffer);
 /// has this buffer been changed by another program since last save?
 bool buffer_externally_changed(TextBuffer *buffer);
 /// Clear `buffer`, and set its path to `path`.

@@ -2650,6 +2650,11 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 	}
 }
 
+void buffer_delete_all(TextBuffer *buffer) {
+	BufferPos start = buffer_pos_start_of_file(buffer);
+	buffer_delete_chars_at_pos(buffer, start, I64_MAX / 4);
+}
+
 // Delete characters between the given buffer positions. Returns number of characters deleted.
 i64 buffer_delete_chars_between(TextBuffer *buffer, BufferPos p1, BufferPos p2) {
 	buffer_pos_validate(buffer, &p1);
@@ -3028,15 +3033,20 @@ static void buffer_detect_indentation(TextBuffer *buffer) {
 
 // if an error occurs, buffer is left untouched (except for the error field) and the function returns false.
 Status buffer_load_file(TextBuffer *buffer, const char *path) {
-	if (!unicode_is_valid_utf8(path)) {
-		buffer_error(buffer, "Path is not valid UTF-8.");
-		return false;
+	bool reload = false;
+	if (!path) {
+		path = buffer->path;
+		reload = true;
 	}
 	if (!path || !path_is_absolute(path)) {
 		buffer_error(buffer, "Loaded path '%s' is not an absolute path.", path);
 		return false;
 	}
 	
+	if (!unicode_is_valid_utf8(path)) {
+		buffer_error(buffer, "Path is not valid UTF-8.");
+		return false;
+	}
 	// it's important we do this first, since someone might write to the file while we're reading it,
 	// and we want to detect that in buffer_externally_changed
 	double modified_time = timespec_to_seconds(time_last_modified(path));
@@ -3045,14 +3055,19 @@ Status buffer_load_file(TextBuffer *buffer, const char *path) {
 	bool success = true;
 	Line *lines = NULL;
 	u32 nlines = 0, lines_capacity = 0;
-	if (fp) {
+	if (!fp) {
+		buffer_error(buffer, "Couldn't open file %s: %s.", path, strerror(errno));
+		success = false;
+	}
+	size_t file_size = 0;
+	const Settings *default_settings = ted_default_settings(buffer->ted);
+	u32 max_file_size_editable = default_settings->max_file_size;
+	u32 max_file_size_view_only = default_settings->max_file_size_view_only;
+	if (success) {
 		fseek(fp, 0, SEEK_END);
 		long file_pos = ftell(fp);
-		size_t file_size = (size_t)file_pos;
+		file_size = (size_t)file_pos;
 		fseek(fp, 0, SEEK_SET);
-		const Settings *default_settings = ted_default_settings(buffer->ted);
-		u32 max_file_size_editable = default_settings->max_file_size;
-		u32 max_file_size_view_only = default_settings->max_file_size_view_only;
 		
 		if (file_pos == -1 || file_pos == LONG_MAX) {
 			buffer_error(buffer, "Couldn't get file position. There is something wrong with the file '%s'.", path);
@@ -3060,133 +3075,145 @@ Status buffer_load_file(TextBuffer *buffer, const char *path) {
 		} else if (file_size > max_file_size_editable && file_size > max_file_size_view_only) {
 			buffer_error(buffer, "File too big (size: %zu).", file_size);
 			success = false;
-		} else {
-			u8 *file_contents = buffer_calloc(buffer, 1, file_size + 2);
-			lines_capacity = 4;
-			lines = buffer_calloc(buffer, lines_capacity, sizeof *buffer->lines); // initial lines
-			nlines = 1;
-			size_t bytes_read = fread(file_contents, 1, file_size, fp);
-			if (bytes_read == file_size) {
-				// append a newline if there's no newline
-				if (file_contents[file_size - 1] != '\n') {
-					file_contents[file_size] = '\n';
-					++file_size;
-				}
-				
-				char32_t c = 0;
-				for (u8 *p = file_contents, *end = p + file_size; p != end; ) {
-					if (*p == '\r' && p != end-1 && p[1] == '\n') {
-						// CRLF line endings
-						p += 2;
-						c = '\n';
-					} else {
-						size_t n = unicode_utf8_to_utf32(&c, (char *)p, (size_t)(end - p));
-						if (n == 0) {
-							buffer_error(buffer, "Null character in file (position: %td).", p - file_contents);
-							success = false;
-							break;
-						} else if (n >= (size_t)(-2)) {
-							// invalid UTF-8
-							buffer_error(buffer, "Invalid UTF-8 (position: %td).", p - file_contents);
-							success = false;
-							break;
-						} else {
-							p += n;
-						}
-					}
-					
-					if (c == '\n') {
-						if (buffer_lines_set_min_capacity(buffer, &lines, &lines_capacity, nlines + 1))
-							++nlines;
-					} else {
-						u32 line_idx = nlines - 1;
-						Line *line = &lines[line_idx];
-						buffer_line_append_char(buffer, line, c);
-					}
-				}
-			} else {
-				buffer_error(buffer, "Error reading from file.");
+		}
+	}
+	u8 *file_contents = 0;
+	if (success) {
+		file_contents = buffer_calloc(buffer, 1, file_size + 2);
+		size_t bytes_read = fread(file_contents, 1, file_size, fp);
+		lines_capacity = 4;
+		lines = buffer_calloc(buffer, lines_capacity, sizeof *buffer->lines); // initial lines
+		nlines = 1;
+		if (bytes_read != file_size)  {
+			buffer_error(buffer, "Error reading from file.");
+			success = false;
+		} else if (file_contents[file_size - 1] != '\n') {
+			// append a newline if there's no newline
+			file_contents[file_size] = '\n';
+			++file_size;
+		}
+	}
+	if (success && reload) {
+		// check valid UTF-8, no null bytes
+		for (u8 *p = file_contents, *end = p + file_size; p != end; ) {
+			char32_t c = 0;
+			size_t n = unicode_utf8_to_utf32(&c, (char *)p, (size_t)(end - p));
+			if (n == 0) {
+				buffer_error(buffer, "Null character in file (position: %td).", p - file_contents);
 				success = false;
+				break;
+			} else if (n >= (size_t)(-2)) {
+				// invalid UTF-8
+				buffer_error(buffer, "Invalid UTF-8 (position: %td).", p - file_contents);
+				success = false;
+				break;
+			} else {
+				p += n;
 			}
-			if (!success) {
-				// something went wrong; we need to free all the memory we used
-				for (u32 i = 0; i < nlines; ++i)
-					buffer_line_free(&lines[i]);
-				free(lines);
-			}
-				
-			if (success) {
-				char *path_copy = buffer_strdup(buffer, path);
-				if (!path_copy) success = false;
-				#if _WIN32
-				// only use \ as a path separator
-				for (char *p = path_copy; *p; ++p)
-					if (*p == '/')
-						*p = '\\';
-				#endif
-				if (success) {
-					// everything is good
-					buffer_clear(buffer);
-					buffer->settings_computed = false;
-					buffer->lines = lines;
-					buffer->nlines = nlines;
-					buffer->frame_earliest_line_modified = 0;
-					buffer->frame_latest_line_modified = nlines - 1;
-					buffer->lines_capacity = lines_capacity;
-					buffer->path = path_copy;
-					buffer->last_write_time = modified_time;
-					if (!(fs_path_permission(path) & FS_PERMISSION_WRITE)) {
-						// can't write to this file; make the buffer view only.
-						buffer->view_only = true;
-					}
-					
-					if (file_size > max_file_size_editable) {
-						// file very large; open in view-only mode.
-						buffer->view_only = true;
-					}
-					
-					// this will send a didOpen request if needed
-					buffer_lsp(buffer);
+		}
+		file_contents[file_size] = 0;
+		if (success) {
+			bool prev_view_only = buffer->view_only;
+			buffer->view_only = false;
+			buffer_start_edit_chain(buffer);
+			buffer_delete_all(buffer);
+			BufferPos start = buffer_pos_start_of_file(buffer);
+			buffer_insert_utf8_at_pos(buffer, start, (const char *)file_contents);
+			buffer_end_edit_chain(buffer);
+			buffer_print_undo_history(buffer);
+			buffer->view_only = prev_view_only;
+		}
+	}
+	if (success && !reload) {
+		char32_t c = 0;
+		for (u8 *p = file_contents, *end = p + file_size; p != end; ) {
+			if (*p == '\r' && p != end-1 && p[1] == '\n') {
+				// CRLF line endings
+				p += 2;
+				c = '\n';
+			} else {
+				size_t n = unicode_utf8_to_utf32(&c, (char *)p, (size_t)(end - p));
+				if (n == 0) {
+					buffer_error(buffer, "Null character in file (position: %td).", p - file_contents);
+					success = false;
+					break;
+				} else if (n >= (size_t)(-2)) {
+					// invalid UTF-8
+					buffer_error(buffer, "Invalid UTF-8 (position: %td).", p - file_contents);
+					success = false;
+					break;
+				} else {
+					p += n;
 				}
-				
 			}
 			
-			free(file_contents);
+			if (c == '\n') {
+				if (buffer_lines_set_min_capacity(buffer, &lines, &lines_capacity, nlines + 1))
+					++nlines;
+			} else {
+				u32 line_idx = nlines - 1;
+				Line *line = &lines[line_idx];
+				buffer_line_append_char(buffer, line, c);
+			}
 		}
-		fclose(fp);
-	} else {
-		buffer_error(buffer, "Couldn't open file %s: %s.", path, strerror(errno));
-		success = false;
+		char *path_copy = NULL;
+		if (success) {
+			path_copy = buffer_strdup(buffer, path);
+			if (!path_copy) success = false;
+		}
+		if (success) {
+			#if _WIN32
+			// only use \ as a path separator
+			for (char *p = path_copy; *p; ++p)
+				if (*p == '/')
+					*p = '\\';
+			#endif
+			// everything is good
+			buffer_clear(buffer);
+			buffer->settings_computed = false;
+			buffer->lines = lines;
+			buffer->nlines = nlines;
+			buffer->lines_capacity = lines_capacity;
+			buffer->path = path_copy;
+			// this will send a didOpen request if needed
+			buffer_lsp(buffer);
+		}
 	}
+	// do this regardless of whether we were successful so we don't spam errors
+	// if the file is deleted, for example.
+	buffer->last_write_time = modified_time;
+	if (success) {
+		buffer->frame_earliest_line_modified = 0;
+		buffer->frame_latest_line_modified = nlines - 1;
+		buffer->undo_history_write_pos = arr_len(buffer->undo_history);
+		if (!(fs_path_permission(path) & FS_PERMISSION_WRITE)) {
+			// can't write to this file; make the buffer view only.
+			buffer->view_only = true;
+		}
+		
+		if (file_size > max_file_size_editable) {
+			// file very large; open in view-only mode.
+			buffer->view_only = true;
+		}
+	}
+	if (!success) {
+		// something went wrong; we need to free all the memory we used
+		for (u32 i = 0; i < nlines; ++i)
+			buffer_line_free(&lines[i]);
+		free(lines);
+	}
+	
+	free(file_contents);
+	if (fp) fclose(fp);
 	buffer_detect_indentation(buffer);
 	return success;
 }
 
-void buffer_reload(TextBuffer *buffer) {
+bool buffer_reload(TextBuffer *buffer) {
 	if (buffer_is_named_file(buffer)) {
-		BufferPos cursor_pos = buffer->cursor_pos;
-		float x1 = buffer->x1, y1 = buffer->y1, x2 = buffer->x2, y2 = buffer->y2;
-		double scroll_x = buffer->scroll_x; double scroll_y = buffer->scroll_y;
-		u8 tab_width = buffer->tab_width;
-		bool indent_with_spaces = buffer->indent_with_spaces;
-		bool manual_indentation = buffer->manual_indentation;
-		char *path = str_dup(buffer->path);
-		if (buffer_load_file(buffer, path)) {
-			buffer->x1 = x1; buffer->y1 = y1; buffer->x2 = x2; buffer->y2 = y2;
-			buffer->cursor_pos = cursor_pos;
-			buffer->scroll_x = scroll_x;
-			buffer->scroll_y = scroll_y;
-			buffer_validate_cursor(buffer);
-			buffer_correct_scroll(buffer);
-			if (manual_indentation) {
-				// ensure manual indentation is preserved across reload
-				buffer->manual_indentation = manual_indentation;
-				buffer->indent_with_spaces = indent_with_spaces;
-				buffer->tab_width = tab_width;
-			}
-		}
-		free(path);
+		return buffer_load_file(buffer, NULL);
 	}
+	return false;
 }
 
 bool buffer_externally_changed(TextBuffer *buffer) {
