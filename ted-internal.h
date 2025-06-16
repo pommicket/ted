@@ -491,6 +491,7 @@ void buffer_center_cursor_next_frame(TextBuffer *buffer);
 /// perform a series of checks to make sure the buffer doesn't have any invalid values
 void buffer_check_valid(TextBuffer *buffer);
 void buffer_publish_diagnostics(TextBuffer *buffer, const LSPRequest *request, LSPDiagnostic *diagnostics);
+void buffer_print_undo_history(TextBuffer *buffer);
 
 // === build.c ===
 void build_frame(Ted *ted, float x1, float y1, float x2, float y2);

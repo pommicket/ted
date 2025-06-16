@@ -110,6 +110,7 @@ static CommandName command_names[] = {
 	{"indent-with-spaces", CMD_INDENT_WITH_SPACES},
 	{"indent-with-tabs", CMD_INDENT_WITH_TABS},
 	{"set-tab-width", CMD_SET_TAB_WIDTH},
+	{"debug-print-undo-history", CMD_DEBUG_PRINT_UNDO_HISTORY},
 };
 
 static_assert_if_possible(arr_count(command_names) == CMD_COUNT)
@@ -735,5 +736,9 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 		if (argument >= 1 && argument < 256) {
 			buffer_set_manual_tab_width(buffer, (u8)argument);
 		}
+		break;
+	case CMD_DEBUG_PRINT_UNDO_HISTORY:
+		buffer_print_undo_history(buffer);
+		break;
 	}
 }

@@ -834,7 +834,7 @@ static void buffer_edit_print(BufferEdit *edit) {
 	printf(" => %" PRIu32 " chars.\n", edit->new_len);
 }
 
-static void buffer_print_undo_history(TextBuffer *buffer) {
+void buffer_print_undo_history(TextBuffer *buffer) {
 	printf("-----------------\n");
 	arr_foreach_ptr(buffer->undo_history, BufferEdit, e)
 		buffer_edit_print(e);
@@ -2652,7 +2652,8 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 
 void buffer_delete_all(TextBuffer *buffer) {
 	BufferPos start = buffer_pos_start_of_file(buffer);
-	buffer_delete_chars_at_pos(buffer, start, I64_MAX / 4);
+	BufferPos end = buffer_pos_end_of_file(buffer);
+	buffer_delete_chars_between(buffer, start, end);
 }
 
 // Delete characters between the given buffer positions. Returns number of characters deleted.
@@ -3120,7 +3121,6 @@ Status buffer_load_file(TextBuffer *buffer, const char *path) {
 			BufferPos start = buffer_pos_start_of_file(buffer);
 			buffer_insert_utf8_at_pos(buffer, start, (const char *)file_contents);
 			buffer_end_edit_chain(buffer);
-			buffer_print_undo_history(buffer);
 			buffer->view_only = prev_view_only;
 		}
 	}

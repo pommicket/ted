@@ -170,6 +170,9 @@ typedef enum {
 	/// set tab width/number of spaces to indent with
 	CMD_SET_TAB_WIDTH,
 
+	/// print undo history to stdout
+	CMD_DEBUG_PRINT_UNDO_HISTORY,
+
 	CMD_COUNT
 } Command;
 
