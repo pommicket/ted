@@ -12,13 +12,6 @@
 #elif _WIN32
 #include <io.h>
 #endif
-#if __linux__
-#include <sys/inotify.h>
-#define HAS_INOTIFY 1
-#define INOTIFY_MASK (IN_ATTRIB | IN_CLOSE_WRITE | IN_DELETE_SELF | IN_MODIFY | IN_MOVE_SELF)
-#else
-#define HAS_INOTIFY 0
-#endif
 /// A single line in a buffer
 typedef struct Line Line;
 
@@ -91,6 +84,8 @@ struct TextBuffer {
 	bool indent_with_spaces;
 	/// true if user has manually specified indentation
 	bool manual_indentation;
+	/// set to true in ted.c when buffer has been modified according to inotify
+	bool inotify_modified;
 	/// tab size
 	///
 	/// this is either set according to the user's settings or according to the autodetected indentation
@@ -140,7 +135,7 @@ struct TextBuffer {
 	/// dynamic array of redo history
 	BufferEdit *redo_history;
 #if HAS_INOTIFY
-	int inotify_fd, inotify_watch;
+	int inotify_watch;
 #endif
 };
 
@@ -242,6 +237,7 @@ double buffer_last_write_time(TextBuffer *buffer) {
 
 void buffer_ignore_changes_on_disk(TextBuffer *buffer) {
 	buffer->last_write_time = timespec_to_seconds(time_last_modified(buffer->path));
+	buffer->inotify_modified = false;
 	// no matter what, buffer_unsaved_changes should return true
 	buffer->undo_history_write_pos = U32_MAX;
 }
@@ -385,7 +381,6 @@ static void buffer_set_up(Ted *ted, TextBuffer *buffer) {
 	buffer->indent_with_spaces = settings->indent_with_spaces;
 	buffer->tab_width = settings->tab_width;
 #if HAS_INOTIFY
-	buffer->inotify_fd = -1;
 	buffer->inotify_watch = -1;
 #endif
 }
@@ -1040,9 +1035,8 @@ static void buffer_free_inner(TextBuffer *buffer) {
 	arr_free(buffer->redo_history);
 	settings_free(&buffer->settings);
 	#if HAS_INOTIFY
-	if (buffer->inotify_fd != -1) {
-		close(buffer->inotify_fd);
-		buffer->inotify_fd = -1;
+	if (buffer->inotify_watch != -1) {
+		inotify_rm_watch(ted->inotify_fd, buffer->inotify_watch);
 		buffer->inotify_watch = -1;
 	}
 	#endif
@@ -3071,20 +3065,17 @@ Status buffer_load_file(TextBuffer *buffer, const char *path) {
 	// it's important we do this first, since someone might write to the file while we're reading it,
 	// and we want to detect that in buffer_externally_changed
 	double modified_time = timespec_to_seconds(time_last_modified(path));
+	Ted *ted = buffer->ted;
 #if HAS_INOTIFY
-	int inotify_fd = reload ? buffer->inotify_fd : -1,
-		inotify_watch = reload ? buffer->inotify_watch : -1;
-	if (inotify_fd == -1) {
-		inotify_fd = inotify_init1(IN_CLOEXEC | IN_NONBLOCK);
-		if (inotify_fd == -1) {
-			perror("inotify_init1");
-		}
-	} else if (inotify_watch != -1) {
-		inotify_rm_watch(inotify_fd, inotify_watch);
+	if (buffer->inotify_watch != -1) {
+		// important we remove it and recreate it to handle edge cases like
+		// "file was renamed and new file was created with the same name"
+		inotify_rm_watch(ted->inotify_fd, buffer->inotify_watch);
+		buffer->inotify_watch = -1;
 	}
-	int inotify_err = 0;
-	if (inotify_fd != -1) {
-		inotify_watch = inotify_add_watch(inotify_fd, path, INOTIFY_MASK);
+	int inotify_err = 0, inotify_watch = -1;
+	if (ted->inotify_fd != -1) {
+		inotify_watch = inotify_add_watch(ted->inotify_fd, path, INOTIFY_MASK);
 		if (inotify_watch == -1) inotify_err = errno;
 	}
 #endif
@@ -3103,7 +3094,7 @@ Status buffer_load_file(TextBuffer *buffer, const char *path) {
 		success = false;
 	}
 	size_t file_size = 0;
-	const Settings *default_settings = ted_default_settings(buffer->ted);
+	const Settings *default_settings = ted_default_settings(ted);
 	u32 max_file_size_editable = default_settings->max_file_size;
 	u32 max_file_size_view_only = default_settings->max_file_size_view_only;
 	if (success) {
@@ -3224,13 +3215,13 @@ Status buffer_load_file(TextBuffer *buffer, const char *path) {
 	// do this regardless of whether we were successful so we don't spam errors
 	// if the file is deleted, for example.
 	buffer->last_write_time = modified_time;
+	buffer->inotify_modified = false;
 	if (success) {
 		buffer->frame_earliest_line_modified = 0;
 		buffer->frame_latest_line_modified = nlines - 1;
 		buffer->undo_history_write_pos = arr_len(buffer->undo_history);
 	#if HAS_INOTIFY
 		buffer->inotify_watch = inotify_watch;
-		buffer->inotify_fd = inotify_fd;
 	#endif
 		if (!(fs_path_permission(path) & FS_PERMISSION_WRITE)) {
 			// can't write to this file; make the buffer view only.
@@ -3244,9 +3235,8 @@ Status buffer_load_file(TextBuffer *buffer, const char *path) {
 	}
 	if (!success) {
 	#if HAS_INOTIFY
-		if (inotify_fd != -1) {
-			close(inotify_fd);
-			buffer->inotify_watch = buffer->inotify_fd = -1;
+		if (inotify_watch != -1) {
+			inotify_rm_watch(ted->inotify_fd, inotify_watch);
 		}
 	#endif
 		// something went wrong; we need to free all the memory we used
@@ -3272,29 +3262,11 @@ bool buffer_externally_changed(TextBuffer *buffer) {
 	if (!buffer_is_named_file(buffer))
 		return false;
 	double last_modified = timespec_to_seconds(time_last_modified(buffer->path));
-	bool modified = last_modified != buffer->last_write_time;
-	#if HAS_INOTIFY
 	// for whatever reason, last modified time seems to be very slightly unreliable on Linux
 	// (occasionally we read a file and its contents later change shortly thereafter
 	//   w/o the modified time changing)
 	// so we use inotify as a "backup"
-	if (buffer->inotify_watch != -1) {
-		char events[16384 * sizeof(struct inotify_event)];
-		ssize_t bytes = read(buffer->inotify_fd, events, sizeof events);
-		for (int i = 0; i + (int)sizeof(struct inotify_event) <= bytes; i += (int)sizeof(struct inotify_event)) {
-			struct inotify_event event;
-			memcpy(&event, &events[i * (int)sizeof event], sizeof event);
-			if (event.mask & INOTIFY_MASK)
-				modified = true;
-			i += (int)event.len; // should never happen in theory...
-		}
-		// ideally we would sit in a loop here but then we'd hang if someone is constantly
-		// changing the file. probably no good way of dealing with that though.
-		// for what it's worth, 16384 is the default max inotify queue size, so we should always
-		// read all the events with that one read call.
-	}
-	#endif
-	return modified;
+	return last_modified != buffer->last_write_time || buffer->inotify_modified;
 }
 
 void buffer_new_file(TextBuffer *buffer, const char *path) {
@@ -3317,10 +3289,11 @@ void buffer_new_file(TextBuffer *buffer, const char *path) {
 
 static bool buffer_write_to_file(TextBuffer *buffer, const char *path) {
 	const Settings *settings = buffer_settings(buffer);
+	Ted *ted = buffer->ted;
 	#if HAS_INOTIFY
 	if (buffer->inotify_watch != -1) {
 		// temporarily stop inotify events while we're writing to the buffer
-		inotify_rm_watch(buffer->inotify_fd, buffer->inotify_watch);
+		inotify_rm_watch(ted->inotify_fd, buffer->inotify_watch);
 		buffer->inotify_watch = -1;
 	}
 	#endif
@@ -3404,9 +3377,9 @@ static bool buffer_write_to_file(TextBuffer *buffer, const char *path) {
 		success = false;
 	}
 	#if HAS_INOTIFY
-	if (buffer->inotify_fd != -1) {
+	if (ted->inotify_fd != -1) {
 		// re-enable inotify
-		buffer->inotify_watch = inotify_add_watch(buffer->inotify_fd, path, INOTIFY_MASK);
+		buffer->inotify_watch = inotify_add_watch(ted->inotify_fd, path, INOTIFY_MASK);
 	}
 	#endif
 	
@@ -3456,6 +3429,7 @@ bool buffer_save(TextBuffer *buffer) {
 	if (success && *backup_path)
 		remove(backup_path);
 	buffer->last_write_time = timespec_to_seconds(time_last_modified(buffer->path));
+	buffer->inotify_modified = false;
 	if (success) {
 		buffer->undo_history_write_pos = arr_len(buffer->undo_history);
 		const char *filename = path_filename(buffer->path);
@@ -4267,4 +4241,12 @@ void buffer_set_manual_indent_with_tabs(TextBuffer *buffer) {
 void buffer_set_manual_tab_width(TextBuffer *buffer, u8 n) {
 	buffer->tab_width = n;
 	buffer->manual_indentation = true;
+}
+
+int buffer_inotify_watch(TextBuffer *buffer) {
+	return buffer->inotify_watch;
+}
+
+void buffer_set_inotify_modified(TextBuffer *buffer) {
+	buffer->inotify_modified = true;
 }

@@ -383,6 +383,7 @@ int main(int argc, char **argv) {
 	if (!ted) {
 		die("Not enough memory available to run ted.");
 	}
+	ted->inotify_fd = -1;
 	ted->last_save_time = -1e50;
 	ted->pid = process_get_id();
 	ted_update_time(ted);
@@ -604,6 +605,12 @@ int main(int argc, char **argv) {
 	PROFILE_TIME(fonts_end)
 	
 	PROFILE_TIME(create_start)
+	#if HAS_INOTIFY
+	ted->inotify_fd = inotify_init1(IN_CLOEXEC | IN_NONBLOCK);
+	if (ted->inotify_fd == -1) {
+		perror("inotify_init1");
+	}
+	#endif
 	{
 		TextBuffer *lbuffer = ted->line_buffer = line_buffer_new(ted);
 		if (!lbuffer || buffer_has_error(lbuffer))
@@ -901,6 +908,9 @@ int main(int argc, char **argv) {
 		// check if active buffer should be reloaded
 		{
 			TextBuffer *active_buffer = ted->active_buffer;
+			#if HAS_INOTIFY
+			ted_check_inotify(ted);
+			#endif
 			if (active_buffer && buffer_externally_changed(active_buffer)) {
 				if (buffer_settings(active_buffer)->auto_reload)
 					buffer_reload(active_buffer);

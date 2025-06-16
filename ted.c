@@ -3,7 +3,10 @@
 #include "ted-internal.h"
 #if _WIN32
 	#include <SDL_syswm.h>
+#elif __unix__
+	#include <unistd.h>
 #endif
+
 
 struct LoadedFont {
 	char *path;
@@ -978,3 +981,42 @@ void ted_test(Ted *ted) {
 #undef run_test
 	printf("all good as far as i know :3\n");
 }
+
+#if HAS_INOTIFY
+void ted_check_inotify(Ted *ted) {
+	// see buffer_externally_changed definition for why this exists
+	if (ted->inotify_fd == -1) return;
+	int *watches_modified = NULL;
+	char events[16384 * sizeof(struct inotify_event)];
+	ssize_t bytes = read(ted->inotify_fd, events, sizeof events);
+	for (int i = 0; i + (int)sizeof(struct inotify_event) <= bytes; i += (int)sizeof(struct inotify_event)) {
+		struct inotify_event event;
+		memcpy(&event, &events[i * (int)sizeof event], sizeof event);
+		if (event.mask & INOTIFY_MASK) {
+			bool new = true;
+			arr_foreach_ptr(watches_modified, int, w) {
+				if (*w == event.wd) {
+					new = false;
+					break;
+				}
+			}
+			if (new) arr_add(watches_modified, event.wd);
+		}
+		i += (int)event.len; // should always be 0 in theory...
+	}
+	// ideally we'd read more events in a loop here but then we'd hang if someone is constantly
+	// changing the file. probably no good way of dealing with that though.
+	// for what it's worth, 16384 is the default max inotify queue size, so we should always
+	// read all the events with that one read call.
+	arr_foreach_ptr(ted->buffers, TextBufferPtr, pbuffer) {
+		int watch = buffer_inotify_watch(*pbuffer);
+		arr_foreach_ptr(watches_modified, int, w) {
+			if (*w == watch) {
+				buffer_set_inotify_modified(*pbuffer);
+				break;
+			}
+		}
+	}
+	arr_free(watches_modified);
+}
+#endif

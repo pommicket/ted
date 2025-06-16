@@ -13,6 +13,13 @@
 #include "ds.h"
 #include "sdl-inc.h"
 #include "lib/glcorearb.h"
+#if __linux__
+#include <sys/inotify.h>
+#define HAS_INOTIFY 1
+#define INOTIFY_MASK (IN_ATTRIB | IN_CLOSE_WRITE | IN_DELETE_SELF | IN_MODIFY | IN_MOVE_SELF)
+#else
+#define HAS_INOTIFY 0
+#endif
 
 #if PROFILE
 #define PROFILE_TIME(var) double var = time_get_seconds();
@@ -436,7 +443,9 @@ struct Ted {
 	MessageType message_type;
 	MessageType message_shown_type;
 	char message_shown[512];
-	
+
+	// file descriptor used to access inotify API on Linux
+	int inotify_fd;
 	
 	u64 edit_notify_id;
 	EditNotifyInfo *edit_notifys;
@@ -492,6 +501,14 @@ void buffer_center_cursor_next_frame(TextBuffer *buffer);
 void buffer_check_valid(TextBuffer *buffer);
 void buffer_publish_diagnostics(TextBuffer *buffer, const LSPRequest *request, LSPDiagnostic *diagnostics);
 void buffer_print_undo_history(TextBuffer *buffer);
+#if HAS_INOTIFY
+/// get watch descriptor for this buffer for inotify tracking
+///
+/// returns -1 if there is none.
+int buffer_inotify_watch(TextBuffer *buffer);
+/// inform buffer that its watch on the Ted's inotify was modified
+void buffer_set_inotify_modified(TextBuffer *buffer);
+#endif
 
 // === build.c ===
 void build_frame(Ted *ted, float x1, float y1, float x2, float y2);
@@ -753,5 +770,7 @@ void ted_load_fonts(Ted *ted);
 void ted_free_fonts(Ted *ted);
 /// process textDocument/publishDiagnostics request
 void ted_process_publish_diagnostics(Ted *ted, LSP *lsp, LSPRequest *request);
+/// check inotify fd for events
+void ted_check_inotify(Ted *ted);
 
 #endif // TED_INTERNAL_H_

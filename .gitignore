@@ -26,6 +26,7 @@ TAGS
 *.msi
 *.zip
 *.a
+*.asc
 SDL2
 *.deb
 .vs
