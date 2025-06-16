@@ -3192,7 +3192,21 @@ void buffer_reload(TextBuffer *buffer) {
 bool buffer_externally_changed(TextBuffer *buffer) {
 	if (!buffer_is_named_file(buffer))
 		return false;
-	return buffer->last_write_time != timespec_to_seconds(time_last_modified(buffer->path));
+	double last_modified = timespec_to_seconds(time_last_modified(buffer->path));
+	if (last_modified == buffer->last_write_time)
+		return false;
+
+	// block until whatever program is writing the file finishes
+	for (int i = 0; i < 10; i++) { // give up after 200ms
+		time_sleep_ms(20);
+		double new_last_modified = timespec_to_seconds(time_last_modified(buffer->path));
+		if (new_last_modified == last_modified) {
+			// probably done now
+			break;
+		}
+		last_modified = new_last_modified;
+	}
+	return true;
 }
 
 void buffer_new_file(TextBuffer *buffer, const char *path) {

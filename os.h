@@ -85,6 +85,11 @@ static double time_get_seconds(void) {
 		+ (double)t.tv_nsec * 1e-9;
 }
 
+static void time_sleep_ms(double ms) {
+	if (ms <= 0) return;
+	time_sleep_ns((u64)(ms * 1000000));
+}
+
 /// sleep for seconds
 static void time_sleep_seconds(double s) {
 	if (s <= 0) return;
