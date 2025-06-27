@@ -3158,6 +3158,7 @@ Status buffer_load_file(TextBuffer *buffer, const char *path) {
 			BufferPos start = buffer_pos_start_of_file(buffer);
 			buffer_insert_utf8_at_pos(buffer, start, (const char *)file_contents);
 			buffer_end_edit_chain(buffer);
+			nlines = buffer_line_count(buffer);
 			buffer->view_only = prev_view_only;
 		}
 	}
