@@ -6,6 +6,7 @@
 GLOBAL_DATA_DIR?=/usr/share/ted
 LOCAL_DATA_DIR?=~/.local/share/ted
 INSTALL_BIN_DIR?=/usr/bin
+DEBTMP=deb-tmp
 
 ALL_CFLAGS=$(CFLAGS) -Wall -Wextra -Wshadow -Wconversion -Wpedantic -pedantic -std=gnu11 \
 	-Wno-unused-function -Wno-fixed-enum-extension -Wimplicit-fallthrough -Wno-format-truncation -Wno-unknown-warning-option \
@@ -51,16 +52,17 @@ pcre-lib:
 keywords.h: keywords.py
 	python3 keywords.py
 ted.deb: release
-	rm -rf /tmp/ted
-	mkdir -p /tmp/ted/DEBIAN
-	mkdir -p /tmp/ted$(INSTALL_BIN_DIR)
-	mkdir -p /tmp/ted$(GLOBAL_DATA_DIR)
-	mkdir -p /tmp/ted/usr/share/icons/hicolor/48x48/apps/
-	convert assets/icon.bmp -resize 48x48 /tmp/ted/usr/share/icons/hicolor/48x48/apps/ted.png
-	mkdir -p /tmp/ted/usr/share/applications
-	cp ted.desktop /tmp/ted/usr/share/applications
-	cp ted /tmp/ted$(INSTALL_BIN_DIR)/
-	cp -r assets themes ted.cfg /tmp/ted$(GLOBAL_DATA_DIR)/
-	./control.sh /tmp/ted > /tmp/ted/DEBIAN/control
-	dpkg-deb --build /tmp/ted
-	mv /tmp/ted.deb ./
+	rm -rf $(DEBTMP)
+	mkdir -p $(DEBTMP)/ted/DEBIAN
+	mkdir -p $(DEBTMP)/ted$(INSTALL_BIN_DIR)
+	mkdir -p $(DEBTMP)/ted$(GLOBAL_DATA_DIR)
+	mkdir -p $(DEBTMP)/ted/usr/share/icons/hicolor/48x48/apps/
+	convert assets/icon.bmp -resize 48x48 $(DEBTMP)/ted/usr/share/icons/hicolor/48x48/apps/ted.png
+	mkdir -p $(DEBTMP)/ted/usr/share/applications
+	cp ted.desktop $(DEBTMP)/ted/usr/share/applications
+	cp ted $(DEBTMP)/ted$(INSTALL_BIN_DIR)/
+	cp -r assets themes ted.cfg $(DEBTMP)/ted$(GLOBAL_DATA_DIR)/
+	./control.sh $(DEBTMP)/ted > $(DEBTMP)/ted/DEBIAN/control
+	dpkg-deb --root-owner-group --build $(DEBTMP)/ted
+	mv $(DEBTMP)/ted.deb ./
+	rm -rf $(DEBTMP)

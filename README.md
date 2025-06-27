@@ -364,6 +364,7 @@ Then run `make.bat release`.
 <tr><td>2.7.8</td> <td>Fix occasional crash (bad settings pointer)</td> <td>2025 Mar 23</td></tr>
 <tr><td>2.8.0</td> <td>Add syntax highlighting for C#; improvements to other languages</td> <td>2025 Jun 12</td></tr>
 <tr><td>2.8.1</td> <td>Better handling of automatic file reloading</td> <td>2025 Jun 16</td></tr>
+<tr><td>2.8.2</td> <td>Fix syntax highlighting bug</td> <td>2025 Jun 27</td></tr>
 </table>
 
 ## License
