@@ -45,12 +45,12 @@ install: release
 	install -m 644 ted.cfg $(GLOBAL_DATA_DIR)
 	install ted $(INSTALL_BIN_DIR)
 pcre-lib:
-	@if [ '(' '!' -f libpcre2-32.a ')' -o '(' '!' -f libpcre2-8.a ')' ]; then \
+	@if [ '!' -f pcre2/build/Makefile ]; then \
 		mkdir pcre2/build && cd pcre2/build && \
-			cmake -DCMAKE_BUILD_TYPE=Release -DPCRE2_BUILD_PCRE2_32=ON .. && \
-			$(MAKE) -j8 && \
-		cp libpcre2-32.a libpcre2-8.a ../../ ; \
+			cmake -DCMAKE_BUILD_TYPE=Release -DPCRE2_BUILD_PCRE2_32=ON ..;\
 	fi
+	$(MAKE) -C pcre2/build
+	cp pcre2/build/libpcre2-32.a pcre2/build/libpcre2-8.a .
 keywords.h: keywords.py
 	python3 keywords.py
 ted.deb: release
