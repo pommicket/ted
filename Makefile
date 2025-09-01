@@ -46,8 +46,10 @@ install: release
 	install ted $(INSTALL_BIN_DIR)
 pcre-lib:
 	@if [ '(' '!' -f libpcre2-32.a ')' -o '(' '!' -f libpcre2-8.a ')' ]; then \
-		cd pcre2 && cmake -DPCRE2_BUILD_PCRE2_32=ON . && $(MAKE) -j8 && \
-		cp libpcre2-32.a libpcre2-8.a ../ ; \
+		mkdir pcre2/build && cd pcre2/build && \
+			cmake -DCMAKE_BUILD_TYPE=Release -DPCRE2_BUILD_PCRE2_32=ON .. && \
+			$(MAKE) -j8 && \
+		cp libpcre2-32.a libpcre2-8.a ../../ ; \
 	fi
 keywords.h: keywords.py
 	python3 keywords.py

@@ -12,6 +12,10 @@
 #elif _WIN32
 #include <io.h>
 #endif
+
+/// Minimum capacity of a line (in code points).
+static const u32 LINE_MININUM_CAPACITY = 4;
+
 /// A single line in a buffer
 typedef struct Line Line;
 
@@ -934,7 +938,7 @@ u32 buffer_line_len(TextBuffer *buffer, u32 line_number) {
 
 // returns true if allocation was succesful
 static Status buffer_line_set_len(TextBuffer *buffer, Line *line, u32 new_len) {
-	if (new_len >= 8) {
+	if (new_len >= LINE_MININUM_CAPACITY) {
 		u32 curr_capacity = (u32)1 << (32 - util_count_leading_zeroes32(line->len));
 		assert(curr_capacity > line->len);
 
@@ -956,8 +960,8 @@ static Status buffer_line_set_len(TextBuffer *buffer, Line *line, u32 new_len) {
 			}
 		}
 	} else if (!line->str) {
-		// start by allocating 8 code points
-		line->str = buffer_malloc(buffer, 8 * sizeof *line->str);
+		// start by allocating LINE_MININUM_CAPACITY code points
+		line->str = buffer_malloc(buffer, LINE_MININUM_CAPACITY * sizeof *line->str);
 		if (!line->str) {
 			// ):
 			return false;
@@ -2259,9 +2263,18 @@ void buffer_select_page_down(TextBuffer *buffer, i64 npages) {
 	buffer_select_down(buffer, npages * (i64)buffer_display_lines(buffer));
 }
 
-static void buffer_shorten_line(Line *line, u32 new_len) {
+static void buffer_shorten_line(TextBuffer *buffer, Line *line, u32 new_len) {
 	assert(line->len >= new_len);
-	line->len = new_len; // @TODO(optimization,memory): decrease line capacity
+	// Technically this doesn't handle the case where a line's length slowly
+	// shrinks over time, but it's okay.
+	if (new_len < line->len / 4) {
+		size_t new_cap = (size_t)2 << (32 - util_count_leading_zeroes32(new_len));
+		if (new_cap < LINE_MININUM_CAPACITY)
+			new_cap = LINE_MININUM_CAPACITY;
+		char32_t *str = buffer_realloc(buffer, line->str, new_cap * sizeof(char32_t));
+		if (str) line->str = str;
+	}
+	line->len = new_len;
 }
 
 // returns -1 if c is not a digit of base
@@ -2464,21 +2477,16 @@ bool buffer_change_number_at_cursor(TextBuffer *buffer, i64 by) {
 
 // decrease the number of lines in the buffer.
 // DOES NOT DO ANYTHING TO THE LINES REMOVED! YOU NEED TO FREE THEM YOURSELF!
+// also, ANY POINTERS TO LINES COULD BE INVALIDATED!!!
 static void buffer_shorten(TextBuffer *buffer, u32 new_nlines) {
-	buffer->nlines = new_nlines; // @TODO(optimization,memory): decrease lines capacity
-}
-
-// delete `nlines` lines starting from index `first_line_idx`
-static void buffer_delete_lines(TextBuffer *buffer, u32 first_line_idx, u32 nlines) {
-	assert(first_line_idx < buffer->nlines);
-	assert(first_line_idx+nlines <= buffer->nlines);
-	Line *first_line = &buffer->lines[first_line_idx];
-	Line *end = first_line + nlines;
-
-	for (Line *l = first_line; l != end; ++l) {
-		buffer_line_free(l);
+	buffer->nlines = new_nlines;
+	if (new_nlines < buffer->lines_capacity / 4) {
+		// shorten lines array
+		u32 new_cap = buffer->lines_capacity = (2 * new_nlines + 1);
+		Line *new_lines = buffer_realloc(buffer, buffer->lines, new_cap * sizeof(Line));
+		if (new_lines)
+			buffer->lines = new_lines;
 	}
-	memmove(first_line, end, (size_t)(buffer->lines + buffer->nlines - end) * sizeof(Line));
 }
 
 void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) {
@@ -2598,7 +2606,7 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 	if (nchars + index > line->len) {
 		// delete rest of line
 		nchars -= line->len - index + 1; // +1 for the newline that got deleted
-		buffer_shorten_line(line, index);
+		buffer_shorten_line(buffer, line, index);
 
 		Line *last_line; // last line in lines deleted
 		for (last_line = line + 1; last_line < lines_end && nchars > last_line->len; ++last_line) {
@@ -2611,6 +2619,9 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 				buffer_line_free(&buffer->lines[idx]);
 			}
 			buffer_shorten(buffer, line_idx + 1);
+			// buffer_shorten could've broken these pointers
+			// set them to NULL so we know if we accidentally use them.
+			line = lines_end = NULL;
 		} else {
 			// join last_line[nchars:] to line.
 			u32 last_line_chars_left = (u32)(last_line->len - nchars);
@@ -2619,15 +2630,27 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 				memcpy(line->str + old_len, last_line->str + nchars, last_line_chars_left * sizeof(char32_t));
 			}
 			// remove all lines between line + 1 and last_line (inclusive).
-			buffer_delete_lines(buffer, line_idx + 1, (u32)(last_line - line));
+			Line *first_line_to_delete = &buffer->lines[line_idx + 1];
+			Line *end_lines_to_delete = first_line_to_delete + (u32)(last_line - line);
+			for (Line *l = first_line_to_delete; l != end_lines_to_delete; ++l) {
+				buffer_line_free(l);
+			}
+			memmove(
+				first_line_to_delete,
+				end_lines_to_delete,
+				(size_t)(buffer->lines + buffer->nlines - end_lines_to_delete) * sizeof(Line)
+			);
 
 			const u32 newlines_deleted = (u32)(last_line - line);
 			buffer_shorten(buffer, buffer->nlines - newlines_deleted);
+			// buffer_shorten could've broken these pointers
+			// set them to NULL so we know if we accidentally use them.
+			line = lines_end = NULL;
 		}
 	} else {
 		// just delete characters from this line
 		memmove(line->str + index, line->str + index + nchars, (size_t)(line->len - (nchars + index)) * sizeof(char32_t));
-		line->len -= nchars;
+		buffer_shorten_line(buffer, line, line->len - nchars);
 	}
 
 	buffer_remove_last_edit_if_empty(buffer);
@@ -3121,6 +3144,7 @@ Status buffer_load_file(TextBuffer *buffer, const char *path) {
 	}
 	u8 *file_contents = 0;
 	if (success) {
+		// read file contents
 		file_contents = buffer_calloc(buffer, 1, file_size + 2);
 		size_t bytes_read = fread(file_contents, 1, file_size, fp);
 		lines_capacity = 4;
