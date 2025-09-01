@@ -2751,20 +2751,24 @@ void buffer_newline(TextBuffer *buffer) {
 	BufferPos cursor_pos = buffer->cursor_pos;
 	String32 line = buffer_get_line(buffer, cursor_pos.line);
 	u32 whitespace_len;
-	for (whitespace_len = 0; whitespace_len < line.len; ++whitespace_len) {
+	for (whitespace_len = 0;
+		whitespace_len < line.len
+		&&  whitespace_len < cursor_pos.index; // ignore whitespace after cursor
+		++whitespace_len) {
 		if (line.str[whitespace_len] != ' ' && line.str[whitespace_len] != '\t')
 			break; // found end of indentation
 	}
 	if (settings->auto_indent) {
 		// newline + auto-indent
-		 // @TODO(optimize): don't allocate on heap if whitespace_len is small
-		char32_t *text = buffer_calloc(buffer, whitespace_len + 1, sizeof *text);
-		if (text) {
-			text[0] = '\n';
-			memcpy(&text[1], line.str, whitespace_len * sizeof *text);
-			buffer_insert_text_at_cursor(buffer, str32(text, whitespace_len + 1));
-			free(text);
-		}
+		char32_t inline_ws[17] = {0}; // don't use heap when whitespace_len is small (most cases)
+		char32_t *text = whitespace_len < arr_count(inline_ws) - 1
+			? inline_ws
+			: buffer_calloc(buffer, whitespace_len + 1, sizeof *text);
+		if (!text) return;
+		text[0] = '\n';
+		memcpy(&text[1], line.str, whitespace_len * sizeof *text);
+		buffer_insert_text_at_cursor(buffer, str32(text, whitespace_len + 1));
+		if (text != inline_ws) free(text);
 	} else {
 		// just newline
 		buffer_insert_char_at_cursor(buffer, '\n');
