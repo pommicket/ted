@@ -339,11 +339,11 @@ Then run `make.bat release`.
 <tr><td>2.1</td> <td>Better interaction between path+language specific settings, themes, and other things.</td> <td>2023 Mar 7</td></tr>
 <tr><td>2.2</td> <td>Keyboard macros</td> <td>2023 Mar 23</td></tr>
 <tr><td>2.2r1</td> <td>Minor bug fixes</td> <td>2023 Mar 27</td></tr>
-<tr><td>2.3</td> <td>`:matching-bracket`, various minor improvements</td> <td>2023 May 11</td></tr>
+<tr><td>2.3</td> <td><code>:matching-bracket</code>, various minor improvements</td> <td>2023 May 11</td></tr>
 <tr><td>2.3.1</td> <td>Bugfixes, better undo chaining, highlight TODOs in comments.</td> <td>2023 May 22</td></tr>
 <tr><td>2.3.2</td> <td>Misc bugfixes</td> <td>2023 Jun 17</td></tr>
 <tr><td>2.3.3</td> <td>JS highlighting improvments, fix TODO highlighting for single-line comments</td> <td>2023 Jul 6</td></tr>
-<tr><td>2.3.4</td> <td>Unicode bugfix, `:copy-path`</td> <td>2023 Jul 14</td></tr>
+<tr><td>2.3.4</td> <td>Unicode bugfix, <code>:copy-path</code></td> <td>2023 Jul 14</td></tr>
 <tr><td>2.4</td> <td>Font overhaul — allow multiple fonts, and variable-width fonts.</td> <td>2023 Jul 19</td></tr>
 <tr><td>2.4.1</td> <td>JSX highlighting fix, Windows DPI awareness</td> <td>2023 Jul 20</td></tr>
 <tr><td>2.4.2</td> <td>Fix font absolute paths</td> <td>2023 Jul 21</td></tr>
@@ -353,9 +353,9 @@ Then run `make.bat release`.
 <tr><td>2.6</td> <td>LSP diagnostics, LSP over TCP, GDScript support, &amp; more</td> <td>2023 Sep 10</td></tr>
 <tr><td>2.6.1</td> <td>LSP-related bugfixes</td> <td>2023 Sep 14</td></tr>
 <tr><td>2.6.2</td> <td>fix cursor position issue, nicer logging, status in title bar</td> <td>2023 Sep 24</td></tr>
-<tr><td>2.7.0</td> <td>`.editorconfig` and local `.ted.cfg`</td> <td>2023 Oct 19</td></tr>
+<tr><td>2.7.0</td> <td><code>.editorconfig</code> and local <code>.ted.cfg</code></td> <td>2023 Oct 19</td></tr>
 <tr><td>2.7.1</td> <td>bug fixes, auto-detect indentation</td> <td>2024 Feb 13</td></tr>
-<tr><td>2.7.2</td> <td>bug fixes, `sync` setting</td> <td>2024 Jul 17</td></tr>
+<tr><td>2.7.2</td> <td>bug fixes, <code>sync</code> setting</td> <td>2024 Jul 17</td></tr>
 <tr><td>2.7.3</td> <td>configure data directories, set indentation manually</td> <td>2024 Sep 8</td></tr>
 <tr><td>2.7.4</td> <td>find/replace and LSP bug fixes</td> <td>2024 Sep 8</td></tr>
 <tr><td>2.7.5</td> <td>LSP bug fix</td> <td>2024 Dec 7</td></tr>
@@ -374,7 +374,8 @@ ted is in the public domain (see `LICENSE.txt`).
 
 ## Reporting bugs
 
-You can report a bug by sending an email to `pommicket at pommicket.com`.
+You can report a bug by sending an email to `pommicket at pommicket.com`
+or by creating an [issue on GitHub](https://github.com/pommicket/ted/issues).
 
 If ted is crashing on startup try doing these things as temporary fixes:
 
