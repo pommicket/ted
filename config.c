@@ -630,7 +630,6 @@ uniform sampler2D t_texture;// LEGACY (this will always be black)\n\
 #line 1\n\
 %s", bg_shader_text);
 	
-	
 	char error[512] = {0};
 	GLuint shader = gl_compile_and_link_shaders(error, vshader, fshader);
 	if (*error)
@@ -660,7 +659,8 @@ uniform sampler2D t_texture;// LEGACY (this will always be black)\n\
 	glVertexAttribPointer(v_pos, 2, GL_FLOAT, 0, 2 * sizeof(float), 0);
 	glEnableVertexAttribArray(v_pos);
 
-	cfg->settings.bg_shader = gl_rc_sab_new(shader, array, buffer);
+	GlRcSAB *bg_shader = gl_rc_sab_new(shader, array, buffer);
+	config_set_setting(cfg, offsetof(Settings, bg_shader), &bg_shader, sizeof bg_shader);
 }
 
 static void config_parse_line(ConfigReader *reader, Config *cfg) {
