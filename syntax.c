@@ -1215,7 +1215,8 @@ static void syntax_highlight_markdown(SyntaxState *state, const char32_t *line, 
 }
 
 static bool is_html_tag_char(char32_t c) {
-	return c == '<' || c == '/' || c == '!' || c == ':' || is32_alnum(c);
+	return c == '<' || c == '/' || c == '!' || c == ':' || c == '-' || c == '.' || c == '_' || c >= 0x80
+		|| (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9');
 }
 
 // highlights XML and HTML

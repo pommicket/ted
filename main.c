@@ -1,7 +1,6 @@
 /*
 TODO:
 - syntax highlighting for Python t-strings
-- fix <foo-bar> html highlighting
 - don't autocomplete when tab is pressed if there is text selected
 - highlight <https://example.org> correctly in Markdown
 - highlight (https://example.org) correctly in Markdown (exactly which characters are allowed in links?)
