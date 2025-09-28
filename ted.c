@@ -803,7 +803,7 @@ void ted_reload_configs(Ted *ted) {
 	}
 }
 
-void ted_press_key(Ted *ted, SDL_Keycode keycode, SDL_Keymod modifier) {
+void ted_press_key(Ted *ted, SDL_Keycode keycode, u32 modifier) {
 	KeyCombo key_combo = KEY_COMBO(
 		(u32)((modifier & (KMOD_LCTRL|KMOD_RCTRL)) != 0) << KEY_MODIFIER_CTRL_BIT |
 		(u32)((modifier & (KMOD_LSHIFT|KMOD_RSHIFT)) != 0) << KEY_MODIFIER_SHIFT_BIT |
