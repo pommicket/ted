@@ -7,17 +7,6 @@
 float gl_window_width, gl_window_height;
 int gl_version_major, gl_version_minor;
 
-
-#if DEBUG
-unsigned char *stbi_load(const char *filename, int *x, int *y, int *comp, int req_comp);
-#else
-#define STB_IMAGE_STATIC
-no_warn_start
-#include "stb_image.c"
-no_warn_end
-#endif
-
-
 #define gl_define_proc(upper, lower) PFNGL##upper##PROC gl##lower;
 gl_for_each_proc(gl_define_proc)
 #undef gl_define_proc
@@ -47,28 +36,6 @@ void gl_rc_sab_decref(GlRcSAB **ps) {
 		free(s);
 	}
 	*ps = NULL;
-}
-
-GlRcTexture *gl_rc_texture_new(GLuint texture) {
-	GlRcTexture *t = calloc(1, sizeof *t);
-	t->ref_count = 1;
-	t->texture = texture;
-	return t;
-}
-
-void gl_rc_texture_incref(GlRcTexture *t) {
-	if (!t) return;
-	++t->ref_count;
-}
-
-void gl_rc_texture_decref(GlRcTexture **pt) {
-	GlRcTexture *t = *pt;
-	if (!t) return;
-	if (--t->ref_count == 0) {
-		glDeleteTextures(1, &t->texture);
-		free(t);
-	}
-	*pt = NULL;
 }
 
 void gl_get_procs(void) {
@@ -284,34 +251,4 @@ void gl_geometry_draw(void) {
 	glDrawArrays(GL_TRIANGLES, 0, (GLsizei)(3 * ntriangles));
 	
 	arr_clear(gl_geometry_triangles);
-}
-
-GLuint gl_load_texture_from_image(const char *path) {
-	GLuint texture = 0;
-	int w=0, h=0, n=0;
-	unsigned char *data = stbi_load(path, &w, &h, &n, 4);
-	if (data && w > 0 && h > 0) {
-		size_t bytes_per_row = (size_t)w * 4;
-		unsigned char *tempbuf = calloc(1, bytes_per_row);
-		// flip image vertically
-		for (int y = 0; y < h/2; ++y) {
-			int y2 = h-1-y;
-			unsigned char *row1 = &data[y*w*4];
-			unsigned char *row2 = &data[y2*w*4];
-			memcpy(tempbuf, row1, bytes_per_row);
-			memcpy(row1, row2, bytes_per_row);
-			memcpy(row2, tempbuf, bytes_per_row);
-		}
-		free(tempbuf);
-		
-		glGenTextures(1, &texture);
-		glBindTexture(GL_TEXTURE_2D, texture);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-		free(data);
-	}
-	return texture;
 }

@@ -294,8 +294,6 @@ static void settings_free_set(Settings *settings, const bool *set) {
 	}
 	if (set[offsetof(Settings, bg_shader)])
 		gl_rc_sab_decref(&settings->bg_shader);
-	if (set[offsetof(Settings, bg_texture)])
-		gl_rc_texture_decref(&settings->bg_texture);
 	for (size_t i = 0; i < arr_count(settings_string); i++) {
 		const SettingString *s = &settings_string[i];
 		const ptrdiff_t offset = (char *)s->control - (char *)&settings_zero;
@@ -347,8 +345,6 @@ void config_merge_into(Settings *dest, const Config *src_cfg) {
 	// increment reference counts for things we've borrowed from src
 	if (set[offsetof(Settings, bg_shader)])
 		gl_rc_sab_incref(dest->bg_shader);
-	if (set[offsetof(Settings, bg_texture)])
-		gl_rc_texture_incref(dest->bg_texture);
 	for (size_t i = 0; i < arr_count(settings_string); i++) {
 		const SettingString *s = &settings_string[i];
 		ptrdiff_t offset = (char *)s->control - (char *)&settings_zero;
@@ -630,7 +626,7 @@ void main() { \n\
 uniform float t_time;\n\
 uniform float t_save_time;\n\
 uniform vec2 t_aspect;\n\
-uniform sampler2D t_texture;\n\
+uniform sampler2D t_texture;// LEGACY (this will always be black)\n\
 #line 1\n\
 %s", bg_shader_text);
 	
@@ -665,20 +661,6 @@ uniform sampler2D t_texture;\n\
 	glEnableVertexAttribArray(v_pos);
 
 	cfg->settings.bg_shader = gl_rc_sab_new(shader, array, buffer);
-}
-
-
-static void settings_load_bg_texture(Ted *ted, Config *cfg, const char *path) {
-	char expanded[TED_PATH_MAX];
-	get_config_path(ted, expanded, sizeof expanded, path);
-	
-	GLuint texture = gl_load_texture_from_image(expanded);
-	if (!texture) {
-		ted_error(ted, "Couldn't load image %s", path);
-		return;
-	}
-
-	cfg->settings.bg_texture = gl_rc_texture_new(texture);
 }
 
 static void config_parse_line(ConfigReader *reader, Config *cfg) {
@@ -872,8 +854,6 @@ static void config_parse_line(ConfigReader *reader, Config *cfg) {
 		if (!setting_any) {
 			if (streq(key, "bg-shader"))
 				settings_load_bg_shader(ted, cfg, value);
-			else if (streq(key, "bg-texture"))
-				settings_load_bg_texture(ted, cfg, value);
 			// it's probably a bad idea to error on unrecognized settings
 			// because if we ever remove a setting in the future
 			// everyone will get errors

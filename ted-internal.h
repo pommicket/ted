@@ -139,7 +139,6 @@ struct Settings {
 	u8 scrolloff;
 	u8 tags_max_depth;
 	GlRcSAB *bg_shader;
-	GlRcTexture *bg_texture;
 	/// string used to start comments
 	RcStr *comment_start;
 	/// string used to end comments

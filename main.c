@@ -1040,15 +1040,8 @@ int main(int argc, char **argv) {
 				glUniform1f(glGetUniformLocation(shader, "t_time"), (float)fmod(t - start_time, 3600));
 				glUniform2f(glGetUniformLocation(shader, "t_aspect"), (float)window_width / (float)window_height, 1);
 				glUniform1f(glGetUniformLocation(shader, "t_save_time"), (float)(t - ted->last_save_time));
-				if (s->bg_texture) {
-					GLuint texture = s->bg_texture->texture;
-					glActiveTexture(GL_TEXTURE0);
-					glBindTexture(GL_TEXTURE_2D, texture);
-					glUniform1i(glGetUniformLocation(shader, "t_texture"), 0);
-				} else {
-					glActiveTexture(GL_TEXTURE0);
-					glBindTexture(GL_TEXTURE_2D, 0);
-				}
+				glActiveTexture(GL_TEXTURE0);
+				glBindTexture(GL_TEXTURE_2D, 0);
 				glBindBuffer(GL_ARRAY_BUFFER, buffer);
 				if (!array) {
 					GLuint v_pos = (GLuint)glGetAttribLocation(shader, "v_pos");
