@@ -3180,6 +3180,7 @@ Status buffer_load_file(TextBuffer *buffer, const char *path) {
 		file_contents[file_size] = 0;
 		if (success) {
 			bool prev_view_only = buffer->view_only;
+			BufferPos prev_cursor_pos = buffer->cursor_pos;
 			buffer->view_only = false;
 			buffer_start_edit_chain(buffer);
 			buffer_delete_all(buffer);
@@ -3188,6 +3189,7 @@ Status buffer_load_file(TextBuffer *buffer, const char *path) {
 			buffer_end_edit_chain(buffer);
 			nlines = buffer_line_count(buffer);
 			buffer->view_only = prev_view_only;
+			buffer_cursor_move_to_pos(buffer, prev_cursor_pos);
 		}
 	}
 	if (success && !reload) {
