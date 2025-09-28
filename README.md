@@ -367,6 +367,7 @@ Then run `make.bat release`.
 <tr><td>2.8.1</td> <td>Better handling of automatic file reloading</td> <td>2025 Jun 16</td></tr>
 <tr><td>2.8.2</td> <td>Fix syntax highlighting bug</td> <td>2025 Jun 27</td></tr>
 <tr><td>2.8.3</td> <td>Fix annoying auto-indent behaviour</td> <td>2025 Sep 1</td></tr>
+<tr><td>2.8.4</td> <td>Keep cursor pos on reload, other small improvements</td> <td>2025 Sep 28</td></tr>
 </table>
 
 ## License
