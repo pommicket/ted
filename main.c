@@ -1,11 +1,6 @@
 /*
-TODO:
-- highlight <https://example.org> correctly in Markdown
-- highlight (https://example.org) correctly in Markdown (exactly which characters are allowed in links?)
-  - what did I mean by this
-- LSP "actions"
-
 FUTURE FEATURES:
+- LSP "actions"
 - wrap-text command
 - path-specific extensions
 - more tests

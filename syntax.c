@@ -1153,6 +1153,24 @@ static void syntax_highlight_markdown(SyntaxState *state, const char32_t *line, 
 				char_types[i] = SYNTAX_BUILTIN;
 			}
 			break;
+		case '<': {
+			u32 end = U32_MAX;
+			bool has_colon = false;
+			for (u32 j = i+1; j < line_len; j++) {
+				char32_t e = line[j];
+				if (e == ' ' || e == '<' || e <= 0x1f)
+					break; // not a link
+				has_colon |= e == ':' && j > i + 2;
+				if (e == '>') {
+					end = j;
+					break;
+				}
+			}
+			if (!has_colon || end == U32_MAX) break;
+			// it's a link!
+			memset(&char_types[i], SYNTAX_LINK, end + 1 - i);
+			i = end;
+			} break;
 		case ANY_DIGIT:
 			if (start_of_line) {
 				size_t spn = str32_ascii_spn(remains, "0123456789");
@@ -1180,9 +1198,16 @@ static void syntax_highlight_markdown(SyntaxState *state, const char32_t *line, 
 				backslashes = 0;
 				u32 closing_bracket = j;
 				if (closing_bracket+2 < line_len && line[closing_bracket+1] == '(') {
+					u32 paren_level = 1;
 					for (j = closing_bracket+2; j < line_len; ++j) {
-						if (line[j] == ')' && backslashes % 2 == 0)
-							break;
+						if (line[j] == ')' && backslashes % 2 == 0) {
+							paren_level--;
+							if (paren_level == 0)
+								break;
+						}
+						if (line[j] == '(' && backslashes % 2 == 0) {
+							paren_level++;
+						}
 						if (line[j] == '\\')
 							++backslashes;
 						else
