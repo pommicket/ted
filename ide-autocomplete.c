@@ -107,6 +107,7 @@ static bool autocomplete_should_display_phantom(Ted *ted) {
 // do the actual completion
 static void autocomplete_complete(Ted *ted, Autocompletion completion) {
 	TextBuffer *buffer = ted->active_buffer;
+	if (buffer_has_selection(buffer)) return;
 	buffer_start_edit_chain(buffer); // don't merge with other edits
 	if (is32_word(buffer_char_before_cursor(buffer)))
 		buffer_backspace_words_at_cursor(buffer, 1); // delete whatever text was already typed
@@ -463,6 +464,7 @@ void autocomplete_open(Ted *ted, uint32_t trigger) {
 	if (!buffer) return;
 	if (!buffer_is_named_file(buffer)) return;
 	if (buffer_is_view_only(buffer)) return;
+	if (buffer_has_selection(buffer)) return;
 	autocomplete_clear_phantom(ac);
 	const Settings *settings = buffer_settings(buffer);
 	bool regenerated = false;
