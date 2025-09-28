@@ -335,7 +335,7 @@ static bool parse_completion_response(LSP *lsp, const JSON *json, LSPResponse *r
 		break;
 	default:
 		lsp_set_error(lsp, "Weird result type for textDocument/completion response: %s.", json_type_to_str(result.type));
-		break;		
+		break;
 	}
 		
 	if (!lsp_expect_array(lsp, items_value, "completion list"))

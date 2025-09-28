@@ -397,7 +397,7 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 
 				if (node == ted->dragging_tab_node && i == ted->dragging_tab_idx) {
 					// make tab follow mouse
-					tab_rect.pos = vec2_add(tab_rect.pos, 
+					tab_rect.pos = vec2_add(tab_rect.pos,
 						vec2_sub(ted_mouse_pos(ted), ted->dragging_tab_origin));
 				}
 				
@@ -502,7 +502,7 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 		if (ted_mouse_in_rect(ted, r_between)) {
 			ted->cursor = resize_cursor;
 		}
-		if (ted_clicked_in_rect(ted, r_between)) 
+		if (ted_clicked_in_rect(ted, r_between))
 			ted->resizing_split = node;
 		
 		node_frame(ted, a, r1);

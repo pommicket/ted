@@ -34,7 +34,7 @@ static bool is_source_file(const char *filename) {
 		if (streq(dot + 1, extensions[i])) {
 			return true;
 		}
-	}	
+	}
 	return false;
 }
 
@@ -49,7 +49,7 @@ static void tags_generate_at_dir(Ted *ted, bool run_in_build_window, const char 
 		char command[2048]; // 2048 is the limit on Windows XP, apparently
 		
 	#if __unix__
-		// ctags.emacs's sorting depends on the locale 
+		// ctags.emacs's sorting depends on the locale
 		// (ctags-universal doesn't)
 		const char *cmd_prefix = "LC_ALL=C ctags --append";
 	#else
@@ -385,7 +385,7 @@ SymbolInfo *tags_get_symbols(Ted *ted) {
 	if (file) {
 		char line[1024];
 		while (fgets(line, sizeof line, file)) {
-			if (line[0] != '!') { // tag metadata is formatted as tag names beginning with !	
+			if (line[0] != '!') { // tag metadata is formatted as tag names beginning with !
 				size_t len = strcspn(line, "\t");
 				SymbolInfo *info = arr_addp(infos);
 				info->name = strn_dup(line, len);

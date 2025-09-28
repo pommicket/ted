@@ -6,7 +6,7 @@ class Test {
 		is
 		a test*/
 		String x = "hello, world!\"";
-		System.out.println(x + 
+		System.out.println(x +
 			"yes\n\\"+
 			x);
 	}

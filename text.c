@@ -1,5 +1,5 @@
 #include "ted-internal.h"
- 
+
 no_warn_start
 #if DEBUG
 #include "lib/stb_rect_pack.h"

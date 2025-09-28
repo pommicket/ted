@@ -124,7 +124,7 @@ static Rect message_box_rect(Ted *ted) {
 }
 
 #if DEBUG
-static void APIENTRY gl_message_callback(GLenum source, GLenum type, unsigned int id, GLenum severity, 
+static void APIENTRY gl_message_callback(GLenum source, GLenum type, unsigned int id, GLenum severity,
 	GLsizei length, const char *message, const void *userParam) {
 	(void)source; (void)type; (void)id; (void)length; (void)userParam;
 	if (severity == GL_DEBUG_SEVERITY_NOTIFICATION) return;
@@ -227,7 +227,7 @@ static LONG WINAPI error_signal_handler(EXCEPTION_POINTERS *info) {
 				fprintf(log, "Instruction: 0x%llx\n", (unsigned long long)context->Rip);
 			} else {
 				fprintf(log, "Backtrace:\n");
-				HANDLE process = GetCurrentProcess(), thread = GetCurrentThread(); 
+				HANDLE process = GetCurrentProcess(), thread = GetCurrentThread();
 				// backtrace
 				// this here was very helpful: https://gist.github.com/jvranish/4441299
 				if (SymInitialize(process, NULL, true)) {
@@ -693,7 +693,7 @@ int main(int argc, char **argv) {
 		double frame_start = ted->frame_time;
 
 		SDL_PumpEvents();
-		u32 key_modifier = ted_get_key_modifier(ted);		
+		u32 key_modifier = ted_get_key_modifier(ted);
 		{ // get mouse position
 			int mouse_x = 0, mouse_y = 0;
 			ted->mouse_state = SDL_GetMouseState(&mouse_x, &mouse_y);
@@ -839,7 +839,7 @@ int main(int argc, char **argv) {
 				const char *text = event.text.text;
 				if (buffer
 					// unfortunately, some key combinations like ctrl+minus still register as a "-" text input event
-					&& (key_modifier & ~KEY_MODIFIER_SHIFT) == 0) { 
+					&& (key_modifier & ~KEY_MODIFIER_SHIFT) == 0) {
 					// insert the text
 					command_execute_string_argument(ted, CMD_INSERT_TEXT, text);
 					// check for trigger character
@@ -869,7 +869,7 @@ int main(int argc, char **argv) {
 							}
 						}
 					}
-					 
+					
 				}
 			} break;
 			}

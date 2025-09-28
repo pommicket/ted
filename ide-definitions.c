@@ -193,7 +193,7 @@ void definitions_process_lsp_response(Ted *ted, LSP *lsp, const LSPResponse *res
 		}
 		LSPLocation location = response_def->locations[0];
 		const char *path = lsp_document_path(lsp, location.document);
-		if (!ted_open_file(ted, path)) {	
+		if (!ted_open_file(ted, path)) {
 			ted_flash_error_cursor(ted);
 			return;
 		}

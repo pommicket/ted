@@ -64,7 +64,7 @@ static void hover_send_request(Ted *ted) {
 	if (get_hover_position(ted, &h->position, NULL, &lsp)) {
 		hover->requested_position = h->position;
 		hover->last_request = lsp_send_request(lsp, &request);
-	}	
+	}
 }
 
 void hover_process_lsp_response(Ted *ted, const LSPResponse *response) {

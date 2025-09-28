@@ -434,7 +434,7 @@ static Font *ted_load_single_font(Ted *ted, const char *filename) {
 	arr_foreach_ptr(ted->all_fonts, LoadedFont, f) {
 		if (paths_eq(path, f->path))
 			return f->font;
-	} 
+	}
 	
 	Font *font = text_font_load(path, ted_active_settings(ted)->text_size);
 	if (!font) {

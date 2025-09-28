@@ -322,7 +322,7 @@ static JSONWriter message_writer_new(LSP *lsp, StrBuilder *builder) {
 	writer.length_idx = str_builder_len(builder);
 	str_builder_append(builder, "XXXXXXXXXX\r\n\r\n");
 	writer.content_start_idx = str_builder_len(builder);
-	return writer;	
+	return writer;
 }
 
 static void message_writer_finish(JSONWriter *o) {

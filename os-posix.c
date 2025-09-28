@@ -20,7 +20,7 @@ static FsType statbuf_path_type(const struct stat *statbuf) {
 		return FS_FILE;
 	if (S_ISDIR(statbuf->st_mode))
 		return FS_DIRECTORY;
-	return FS_OTHER;	
+	return FS_OTHER;
 }
 
 FsType fs_path_type(const char *path) {
@@ -84,7 +84,7 @@ FsDirectoryEntry **fs_list_directory(const char *dirname) {
 					default:
 						entry->type = FS_OTHER;
 					}
-					if (idx < nentries) // this could actually fail if someone creates files between calculating nentries and here. 
+					if (idx < nentries) // this could actually fail if someone creates files between calculating nentries and here.
 						entries[idx++] = entry;
 				}
 			}
@@ -96,16 +96,16 @@ FsDirectoryEntry **fs_list_directory(const char *dirname) {
 
 int fs_mkdir(const char *path) {
 	if (mkdir(path, 0755) == 0) {
-		// directory created successfully 
+		// directory created successfully
 		return 1;
 	} else if (errno == EEXIST) {
 		struct stat statbuf = {0};
 		if (stat(path, &statbuf) == 0) {
 			if (S_ISDIR(statbuf.st_mode)) {
-				// already exists, and it's a directory 
+				// already exists, and it's a directory
 				return 0;
 			} else {
-				// already exists, but not a directory 
+				// already exists, but not a directory
 				return -1;
 			}
 		} else {
@@ -177,7 +177,7 @@ Process *process_run_ex(const char *command, const ProcessSettings *settings) {
 	int stdin_pipe[2] = {0}, stdout_pipe[2] = {0}, stderr_pipe[2] = {0};
 	if (pipe(stdin_pipe) != 0) {
 		strbuf_printf(proc->error, "%s", strerror(errno));
-		return proc; 
+		return proc;
 	}
 	if (pipe(stdout_pipe) != 0) {
 		strbuf_printf(proc->error, "%s", strerror(errno));
@@ -234,7 +234,7 @@ Process *process_run_ex(const char *command, const ProcessSettings *settings) {
 		// so we don't need the write end of the stdout pipe or the
 		// read end of the stdin pipe.
 		close(stdout_pipe[1]);
-		if (stderr_pipe[1])	
+		if (stderr_pipe[1])
 			close(stderr_pipe[1]);
 		close(stdin_pipe[0]);
 		// set pipes to non-blocking

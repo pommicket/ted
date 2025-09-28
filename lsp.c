@@ -627,7 +627,7 @@ static int lsp_communication_thread(void *data) {
 		if (!lsp_receive(lsp, (size_t)10<<20))
 			break;
 		if (SDL_SemWaitTimeout(lsp->quit_sem, send_delay_ms) == 0)
-			break;	
+			break;
 	}
 	
 	lsp->exited = true;
@@ -715,7 +715,7 @@ LSP *lsp_create(const LSPSetup *setup) {
 	lsp->command = str_dup(command);
 	if (configuration && *configuration)
 		lsp->configuration_to_send = str_dup(configuration);
-	lsp->quit_sem = SDL_CreateSemaphore(0);	
+	lsp->quit_sem = SDL_CreateSemaphore(0);
 	lsp->error_mutex = SDL_CreateMutex();
 	lsp->messages_mutex = SDL_CreateMutex();
 	

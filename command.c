@@ -492,7 +492,7 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 	case CMD_AUTOCOMPLETE_BACK:
 		if (autocomplete_is_open(ted))
 			autocomplete_prev(ted);
-		break;	
+		break;
 	case CMD_GOTO_DEFINITION:
 		menu_open(ted, MENU_GOTO_DEFINITION);
 		break;
@@ -558,7 +558,7 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 		break;
 	case CMD_TEXT_SIZE_DECREASE:
 		if (argument != 0) {
-			i64 new_text_size = settings->text_size - argument;	
+			i64 new_text_size = settings->text_size - argument;
 			if (new_text_size >= TEXT_SIZE_MIN && new_text_size <= TEXT_SIZE_MAX) {
 				settings->text_size = (u16)new_text_size;
 				ted_change_text_size(ted, (float)new_text_size);

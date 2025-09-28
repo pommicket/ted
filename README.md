@@ -50,7 +50,7 @@ are mostly what you'd expect them to be (Ctrl+o for open, Ctrl+n for new, Ctrl+s
 
 ### Tips
 
-- Even if you don't want to change anything with ted, it's a good idea to look at the config file (see below) to 
+- Even if you don't want to change anything with ted, it's a good idea to look at the config file (see below) to
 check out all of the keyboard shortcuts!
 - You can use Ctrl+f for "find", but if you want to search for something across multiple files, you can do
 Ctrl+! (run shell command), then run `grep -n search_term *.py`, for example (on Windows, you will need to have
@@ -86,7 +86,7 @@ it clear it's a command.
 A list of key names can be found [here](https://wiki.libsdl.org/SDL2/SDL_Keycode).
 
 Colors are formatted like `#rgb`, `#rgba`, `#rrggbb` or `#rrggbbaa`, where r, g, b, and a are red, green,
-blue, and alpha (transparency/opacity). You can use a [color picker](https://www.google.com/search?q=color+picker) to help you out. 
+blue, and alpha (transparency/opacity). You can use a [color picker](https://www.google.com/search?q=color+picker) to help you out.
 The extensions section is fairly self-explanatory.
 
 You can set settings for specific programming languages like this:
@@ -182,7 +182,7 @@ You can Ctrl+Click on an identifier to go to its definition, or Ctrl+Shift+Click
 to its declaration, or Ctrl+Alt+Click to go to its type's definition.
 
 You can also press Ctrl+D to get a searchable list of all functions/types where you can select one to go to
-its definition. 
+its definition.
 
 Press Ctrl+space to autocomplete. If there is only one possible completion, it will be selected automatically.
 Otherwise, you'll get a popup showing all possible completions. You can press tab to select a completion (or click on it), and press
@@ -304,7 +304,8 @@ On Windows, install Microsoft Visual Studio 2022, then find and add vcvarsall.ba
 (most likely lives at `C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build`).
 Also, install the [Visual Studio Installer Projects extension](https://marketplace.visualstudio.com/items?itemName=VisualStudioClient.MicrosoftVisualStudio2022InstallerProjects)
 (needed to build the .msi installer).
-Next you will need the SDL2 VC development libraries: https://www.libsdl.org/download-2.0.php  
+
+Next you will need the SDL2 VC development libraries: https://www.libsdl.org/download-2.0.php.
 Extract the zip, copy SDL2-2.x.y into the ted directory, and rename it to SDL2. Also copy SDL2\\lib\\x64\\SDL2.dll
 to the ted directory.
 Then run `make.bat release`.

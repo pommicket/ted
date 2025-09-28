@@ -273,7 +273,7 @@ typedef struct {
 	LSPRequestType type;
 	LSPString id_string; // if non-empty, this is the ID (only for server-to-client messages; we always use integer IDs)
 	// one member of this union is set depending on `type`.
-	union {	
+	union {
 		LSPRequestCancel cancel;
 		LSPRequestDidOpen open;
 		LSPRequestDidClose close;
@@ -365,7 +365,7 @@ typedef enum {
 } LSPCompletionKind;
 
 // interface TextEdit in the LSP spec
-typedef struct {	
+typedef struct {
 	LSPRange range;
 	LSPString new_text;
 } LSPTextEdit;

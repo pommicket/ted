@@ -17,7 +17,7 @@ struct Autocompletion {
 	/// this can be NULL!
 	char *documentation;
 	bool deprecated;
-	SymbolKind kind; 
+	SymbolKind kind;
 };
 
 struct Autocomplete {
@@ -41,7 +41,7 @@ struct Autocomplete {
 	/// dynamic array of completions to be suggested (indices into completions)
 	u32 *suggested;
 	/// position of cursor last time completions were generated. if this changes, we need to recompute completions.
-	BufferPos last_pos; 
+	BufferPos last_pos;
 	/// which completion is currently selected (index into suggested)
 	i32 cursor;
 	i32 scroll;
@@ -453,7 +453,7 @@ void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *response) {
 		// if autocomplete was invoked by Ctrl+Space, and there's only one completion, select it.
 		if (ac->trigger == TRIGGER_INVOKED)
 			autocomplete_complete(ted, ac->completions[ac->suggested[0]]);
-		return;	
+		return;
 	}
 }
 
@@ -483,7 +483,7 @@ void autocomplete_open(Ted *ted, uint32_t trigger) {
 			regenerated = true;
 			tags_generate(ted, false);
 			goto find_completions;
-		} else { 
+		} else {
 			autocomplete_no_suggestions(ted);
 		}
 		return;

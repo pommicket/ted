@@ -115,7 +115,7 @@ typedef int64_t i64;
 /// maximum value of \ref i64
 #define I64_MAX 0x7fffffffffffffff
 
-/// allows 
+/// allows
 /// ```
 /// switch (c) {
 /// case ANY_DIGIT:

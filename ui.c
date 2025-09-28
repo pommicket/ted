@@ -546,7 +546,7 @@ char *file_selector_update(Ted *ted, FileSelector *fs) {
 
 			if (file_selector_cd(ted, fs, dir_name)) {
 				buffer_delete_chars_at_pos(line_buffer, buffer_pos_start_of_file(line_buffer), last_path_sep + 1); // delete up to and including the last path separator
-				buffer_clear_undo_redo(line_buffer);			
+				buffer_clear_undo_redo(line_buffer);
 			} else {
 				// delete up to first path separator in line buffer
 				BufferPos pos = {.line = 0, .index = first_path_sep};
@@ -676,7 +676,7 @@ vec2 button_get_size(Ted *ted, const char *text) {
 	return vec2_add_const(text_get_size_vec2(ted->font, text), 2 * border_thickness);
 }
 
-void button_render(Ted *ted, Rect button, const char *text, u32 color) {	
+void button_render(Ted *ted, Rect button, const char *text, u32 color) {
 	if (ted_mouse_in_rect(ted, button)) {
 		// highlight button when hovering over it
 		u32 new_color = (color & 0xffffff00) | ((color & 0xff) / 3);
@@ -715,7 +715,7 @@ static void popup_get_rects(Ted const *ted, u32 options, Rect *popup, Rect *butt
 	if (options & POPUP_CANCEL) {
 		*button_cancel = r;
 		r.pos.x += button_width;
-	}	
+	}
 }
 
 PopupOption popup_update(Ted *ted, u32 options) {

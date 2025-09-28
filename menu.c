@@ -274,7 +274,7 @@ static void warn_unsaved_menu_update(Ted *ted) {
 		case CMD_TAB_CLOSE: {
 			menu_close(ted);
 			TextBuffer *buffer = ted->active_buffer;
-			command_execute(ted, CMD_SAVE, 1); 
+			command_execute(ted, CMD_SAVE, 1);
 			if (!buffer_unsaved_changes(buffer)) {
 				command_execute(ted, CMD_TAB_CLOSE, 1);
 			}
@@ -426,7 +426,7 @@ static void goto_line_menu_update(Ted *ted) {
 	TextBuffer *buffer = ted->prev_active_buffer;
 	if (*contents != '\0' && *end == '\0') {
 		if (line_number < 1) line_number = 1;
-		if (line_number > (long)buffer_line_count(buffer)) line_number = (long)buffer_line_count(buffer); 
+		if (line_number > (long)buffer_line_count(buffer)) line_number = (long)buffer_line_count(buffer);
 		BufferPos pos = {(u32)line_number - 1, 0};
 		
 		if (line_buffer_is_submitted(line_buffer)) {

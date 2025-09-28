@@ -1019,7 +1019,7 @@ static void buffer_free_inner(TextBuffer *buffer) {
 	if (!ted->quit) { // don't send didClose on quit (calling buffer_lsp would actually create a LSP if this is called after destroying all the LSPs which isnt good)
 		LSP *lsp = buffer_lsp(buffer);
 		if (lsp) {
-			buffer_send_lsp_did_close(buffer, lsp, NULL);	
+			buffer_send_lsp_did_close(buffer, lsp, NULL);
 		}
 	}
 	
@@ -2546,7 +2546,7 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 		}
 		BufferPos del_start = pos, del_end = buffer_pos_advance(buffer, del_start, nchars);
 
-		bool create_new_edit = 
+		bool create_new_edit =
 			!last_edit || // if there is no previous edit to combine it with
 			buffer_pos_cmp(del_end, edit_start) < 0 || // or if delete does not overlap last_edit
 			buffer_pos_cmp(del_start, edit_end) > 0 ||

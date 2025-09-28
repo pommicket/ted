@@ -152,7 +152,7 @@ static void *arr_add_ptr_(void **arr, size_t member_size) {
 }
 
 static void arr_reserve_(void **arr, size_t member_size, size_t n) {
-	if (n >= U32_MAX-1) { 
+	if (n >= U32_MAX-1) {
 		// too big; free arr.
 		if (*arr) free(arr_hdr_(*arr));
 		*arr = NULL;
@@ -338,7 +338,7 @@ static void *arr_copy_(const void *arr, size_t member_size) {
 	} while (0)
 
 /// Ensure that enough space is allocated for `n` elements.
-#define arr_reserve(a, n) arr_reserve_((void **)&(a), sizeof *(a), (n)) 
+#define arr_reserve(a, n) arr_reserve_((void **)&(a), sizeof *(a), (n))
 /// set the length of `a` to `n`, increasing the capacity if necessary.
 /// the newly-added elements are zero-initialized.
 #define arr_set_len(a, n) arr_set_len_((void **)&(a), sizeof *(a), (n))

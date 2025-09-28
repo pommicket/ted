@@ -5,7 +5,7 @@
 
 
 /// \mainpage ted doxygen documentation
-/// 
+///
 /// See "files" above. You probably want to look at \ref ted.h.
 
 #ifndef TED_H_

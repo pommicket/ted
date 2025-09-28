@@ -296,7 +296,7 @@ static bool syntax_number_continues(Language lang, const char32_t *line, u32 lin
 		break;
 	}
 	
-	return (line[i] < CHAR_MAX && 
+	return (line[i] < CHAR_MAX &&
 		(strchr(digits, (char)line[i])
 		|| (i && line[i-1] == 'e' && (line[i] == '+' || line[i] == '-'))));
 }
@@ -339,7 +339,7 @@ static u32 syntax_keyword_len(Language lang, const char32_t *line, u32 i, u32 li
 		}
 	}
 	return keyword_end - i;
-}	
+}
 
 // highlighting for C, C++, and GLSL
 static void syntax_highlight_c_cpp(SyntaxState *state_ptr, const char32_t *line, u32 line_len, SyntaxCharType *char_types, Language lang) {
@@ -740,7 +740,7 @@ static void syntax_highlight_rust(SyntaxState *state, const char32_t *line, u32 
 		
 	}
 	
-	u32 max_comment_depth = ((u32)1<<SYNTAX_STATE_RUST_COMMENT_DEPTH_BITS);	
+	u32 max_comment_depth = ((u32)1<<SYNTAX_STATE_RUST_COMMENT_DEPTH_BITS);
 	if (comment_depth >= max_comment_depth)
 		comment_depth = max_comment_depth;
 	*state = (SyntaxState)(
@@ -777,7 +777,7 @@ static void syntax_highlight_python(SyntaxState *state, const char32_t *line, u3
 			break;
 		// format/raw/byte/unicode/template string
 		case 'f': case 'r': case 'b': case 'u': case 't':
-		case 'F': case 'R': case 'B': case 'U': case 'T': 
+		case 'F': case 'R': case 'B': case 'U': case 'T':
 			if (!in_string && !interpolating) {
 				bool is_string = true;
 				u32 j;
@@ -1541,7 +1541,7 @@ static void syntax_highlight_javascript_like(
 						for (; i < line_len; ++i) {
 							if (line[i] >= 128 || !strchr("dgimsuy", (char)line[i]))
 								break;
-							char_types[i] = SYNTAX_STRING;	
+							char_types[i] = SYNTAX_STRING;
 						}
 						--i; // back to last char in flags
 					}
@@ -2030,7 +2030,7 @@ static void syntax_highlight_css(SyntaxState *state_ptr, const char32_t *line, u
 		case '.':
 		case '#':
 			if (!in_braces && char_types) {
-				char_types[i++] = SYNTAX_KEYWORD;		
+				char_types[i++] = SYNTAX_KEYWORD;
 				for (; i < line_len; ++i) {
 					if (is32_alnum(line[i]) || line[i] == '-' || line[i] == '_') {
 						char_types[i] = SYNTAX_KEYWORD;
@@ -2043,28 +2043,28 @@ static void syntax_highlight_css(SyntaxState *state_ptr, const char32_t *line, u
 				while (i < line_len && line[i] == ':') {
 					// handle pseudo-classes and pseudo-elements
 					static const char *const pseudo[] = {
-						":active", ":any-link", ":autofill", ":blank", ":checked", 
-						":current", ":default", ":defined", ":dir", ":disabled", 
-						":empty", ":enabled", ":first", ":first-child", 
-						":first-of-type", ":fullscreen", ":future", ":focus", 
-						":focus-visible", ":focus-within", ":has", ":host", 
-						":host-context", ":hover", ":indeterminate", ":in-range", 
-						":invalid", ":is", ":lang", ":last-child", ":last-of-type", 
-						":left", ":link", ":local-link", ":modal", ":not", 
-						":nth-child", ":nth-col", ":nth-last-child", 
-						":nth-last-col", ":nth-last-of-type", ":nth-of-type", 
-						":only-child", ":only-of-type", ":optional", 
-						":out-of-range", ":past", ":picture-in-picture", 
-						":placeholder-shown", ":paused", ":playing", ":read-only", 
-						":read-write", ":required", ":right", ":root", ":scope", 
-						":state", ":target", ":target-within", ":user-invalid", 
-						":valid", ":visited", ":where", "::after", "::before", 
+						":active", ":any-link", ":autofill", ":blank", ":checked",
+						":current", ":default", ":defined", ":dir", ":disabled",
+						":empty", ":enabled", ":first", ":first-child",
+						":first-of-type", ":fullscreen", ":future", ":focus",
+						":focus-visible", ":focus-within", ":has", ":host",
+						":host-context", ":hover", ":indeterminate", ":in-range",
+						":invalid", ":is", ":lang", ":last-child", ":last-of-type",
+						":left", ":link", ":local-link", ":modal", ":not",
+						":nth-child", ":nth-col", ":nth-last-child",
+						":nth-last-col", ":nth-last-of-type", ":nth-of-type",
+						":only-child", ":only-of-type", ":optional",
+						":out-of-range", ":past", ":picture-in-picture",
+						":placeholder-shown", ":paused", ":playing", ":read-only",
+						":read-write", ":required", ":right", ":root", ":scope",
+						":state", ":target", ":target-within", ":user-invalid",
+						":valid", ":visited", ":where", "::after", "::before",
 						":after", ":before",
-						"::backdrop", "::cue", "::cue-region", "::first-letter", 
-						"::first-line", "::file-selector-button", 
-						"::grammar-error", "::marker", "::part", "::placeholder", 
-						"::selection", "::slotted", "::spelling-error", 
-						"::target-text", 
+						"::backdrop", "::cue", "::cue-region", "::first-letter",
+						"::first-line", "::file-selector-button",
+						"::grammar-error", "::marker", "::part", "::placeholder",
+						"::selection", "::slotted", "::spelling-error",
+						"::target-text",
 					};
 					String32 s32 = {
 						.len = line_len - i,
@@ -2139,7 +2139,7 @@ static void syntax_highlight_css(SyntaxState *state_ptr, const char32_t *line, u
 					dealt_with = true;
 					if (!in_braces && char_types) {
 						goto handle_pseudo;
-					} else {					
+					} else {				
 						--i; // we'll increment i from the for loop
 					}
 					break;

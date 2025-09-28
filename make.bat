@@ -1,5 +1,5 @@
 @echo off
-if _%VCVARS% == _ ( 
+if _%VCVARS% == _ (
 	set VCVARS=1
 	call vcvarsall x64
 )
@@ -12,7 +12,7 @@ if not exist pcre2-8-static.lib (
 	copy /y pcre2\Release\pcre2-8-static.lib
 )
 SET C_FLAGS=/nologo /W4 /MD /wd4200 /wd4204 /wd4221 /wd4706 /wd4214 /D_CRT_SECURE_NO_WARNINGS /I SDL2/include /I pcre2 User32.lib SDL2/lib/x64/SDL2main.lib SDL2/lib/x64/SDL2.lib pcre2-8-static.lib pcre2-32-static.lib
-rc /nologo ted.rc 
+rc /nologo ted.rc
 if _%1 == _ (
 	if not exist debug mkdir debug
 	pushd debug

@@ -161,7 +161,7 @@ void find_redo_search(Ted *ted) {
 		}
 		
 		arr_foreach_ptr(ted->find_results, FindResult, res) {
-			if (best_scroll_candidate.line == U32_MAX 
+			if (best_scroll_candidate.line == U32_MAX
 			|| (buffer_pos_cmp(best_scroll_candidate, cursor_pos) < 0 && buffer_pos_cmp(res->start, cursor_pos) >= 0))
 				best_scroll_candidate = res->start;
 		}
@@ -481,7 +481,7 @@ void find_menu_frame(Ted *ted, Rect menu_bounds) {
 
 void find_open(Ted *ted, bool replace) {
 	if (menu_is_any_open(ted)) return;
-	if (ted->active_buffer == ted->build_buffer) return; 
+	if (ted->active_buffer == ted->build_buffer) return;
 	if (!ted->find)
 		ted->prev_active_buffer = ted->active_buffer;
 	ted_switch_to_buffer(ted, ted->find_buffer);
@@ -580,7 +580,7 @@ static void find_edit_notify(void *context, TextBuffer *buffer, const EditInfo *
 		}
 	} else if (buffer == ted->find_buffer) {
 		find_redo_search(ted);
-		buffer_scroll_to_cursor(buffer);	
+		buffer_scroll_to_cursor(buffer);
 	}
 }
 

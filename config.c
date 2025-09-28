@@ -678,7 +678,7 @@ static void settings_load_bg_texture(Ted *ted, Config *cfg, const char *path) {
 		return;
 	}
 
-	cfg->settings.bg_texture = gl_rc_texture_new(texture);	
+	cfg->settings.bg_texture = gl_rc_texture_new(texture);
 }
 
 static void config_parse_line(ConfigReader *reader, Config *cfg) {
@@ -1283,7 +1283,7 @@ static char *editorconfig_glob_to_regex(ConfigReader *reader, const char *glob) 
 	
 	{
 		// add base path
-		char dirname[4096];	
+		char dirname[4096];
 		strbuf_cpy(dirname, reader->filename);
 		path_dirname(dirname);
 		if (!dirname[0]) {
@@ -1672,7 +1672,7 @@ static void editorconfig_glob_test_expect(Ted *ted, const char *pattern, const c
 		.ted = ted,
 		.filename = "/test.editorconfig",
 		.line_number = 1,
-	}; 
+	};
 	char *regex = editorconfig_glob_to_regex(&reader, pattern);
 	int error_code = 0;
 	PCRE2_SIZE error_offset = 0;

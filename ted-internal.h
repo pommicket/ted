@@ -85,7 +85,7 @@ typedef struct {
 /// All of ted's settings
 ///
 /// NOTE: to add more options to ted, add fields here,
-/// and change the settings_<type> global constant near the top of config.c	
+/// and change the settings_<type> global constant near the top of config.c
 struct Settings {
 	u32 colors[COLOR_COUNT];
 	float cursor_blink_time_on, cursor_blink_time_off;
@@ -298,7 +298,7 @@ struct Ted {
 	TextBuffer *drag_buffer;
 	/// while a menu or something is open, there is no active buffer. when the menu is closed,
 	/// the old active buffer needs to be restored. that's what this stores.
-	TextBuffer *prev_active_buffer; 
+	TextBuffer *prev_active_buffer;
 	Node *active_node;
 	Config *all_configs;
 	/// cwd where \ref default_settings was computed
@@ -312,7 +312,7 @@ struct Ted {
 	MouseClick *mouse_clicks[4];
 	MouseRelease *mouse_releases[4];
 	/// total amount scrolled this frame
-	int scroll_total_x, scroll_total_y; 
+	int scroll_total_x, scroll_total_y;
 	MenuInfo *all_menus;
 	/// index of currently open menu, or 0 if no menu is open
 	u32 menu_open_idx;
