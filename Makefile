@@ -46,8 +46,9 @@ install: release
 	install ted $(INSTALL_BIN_DIR)
 pcre-lib:
 	@if [ '!' -f pcre2/build/Makefile ]; then \
-		mkdir pcre2/build && cd pcre2/build && \
-			cmake -DCMAKE_BUILD_TYPE=Release -DPCRE2_BUILD_PCRE2_32=ON ..;\
+		rm -rf pcre2/build; \
+		mkdir pcre2/build && cd pcre2/build && pwd && \
+			cmake -DPCRE2_BUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release -DPCRE2_BUILD_PCRE2_32=ON ..;\
 	fi
 	$(MAKE) -C pcre2/build
 	cp pcre2/build/libpcre2-32.a pcre2/build/libpcre2-8.a .
