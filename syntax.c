@@ -775,9 +775,9 @@ static void syntax_highlight_python(SyntaxState *state, const char32_t *line, u3
 				i = line_len - 1;
 			}
 			break;
-		// format/raw/byte/unicode string
-		case 'f': case 'r': case 'b': case 'u':
-		case 'F': case 'R': case 'B': case 'U':
+		// format/raw/byte/unicode/template string
+		case 'f': case 'r': case 'b': case 'u': case 't':
+		case 'F': case 'R': case 'B': case 'U': case 'T': 
 			if (!in_string && !interpolating) {
 				bool is_string = true;
 				u32 j;
@@ -787,7 +787,8 @@ static void syntax_highlight_python(SyntaxState *state, const char32_t *line, u3
 					if (d == '\'' || d == '"')
 						break;
 					if (d == 'r' || d == 'f' || d == 'b' || d == 'u'
-						|| d == 'R' || d == 'F' || d == 'B' || d == 'U') {
+						|| d == 'R' || d == 'F' || d == 'B' || d == 'U'
+						|| d == 't' || d == 'T') {
 						fstring |= d == 'f' || d == 'F';
 						continue;
 					}
