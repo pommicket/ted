@@ -125,7 +125,6 @@ void lsp_request_free(LSPRequest *r) {
 	case LSP_REQUEST_DID_OPEN:
 	case LSP_REQUEST_FORMATTING:
 	case LSP_REQUEST_RANGE_FORMATTING:
-	case LSP_REQUEST_CODE_ACTION:
 		break;
 	case LSP_REQUEST_PUBLISH_DIAGNOSTICS: {
 		LSPRequestPublishDiagnostics *pub = &r->data.publish_diagnostics;
@@ -137,6 +136,10 @@ void lsp_request_free(LSPRequest *r) {
 	case LSP_REQUEST_PREPARE_RENAME:
 	case LSP_REQUEST_WORKSPACE_SYMBOLS:
 		break;
+	case LSP_REQUEST_CODE_ACTION: {
+		LSPRequestCodeAction *c = &r->data.code_action;
+		arr_free(c->raw_diagnostics);
+		} break;
 	case LSP_REQUEST_DID_CHANGE: {
 		LSPRequestDidChange *c = &r->data.change;
 		arr_free(c->changes);

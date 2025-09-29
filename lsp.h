@@ -171,6 +171,8 @@ typedef struct {
 	/// URI to description of code
 	/// e.g. for Rust's E0621, this would be https://doc.rust-lang.org/error_codes/E0621.html
 	LSPString code_description_uri;
+	// raw diagnostic object, to be used with textDocument/codeAction
+	LSPString raw;
 } LSPDiagnostic;
 
 typedef struct {
@@ -262,6 +264,7 @@ typedef struct {
 typedef struct {
 	LSPDocumentID document;
 	LSPRange range;
+	LSPString *raw_diagnostics;
 } LSPRequestCodeAction;
 
 typedef struct {
@@ -945,6 +948,8 @@ LSPString lsp_response_add_json_string(LSPResponse *response, const JSON *json, 
 LSPString lsp_request_add_json_string(LSPRequest *request, const JSON *json, JSONString string);
 /// free resources used by lsp-write.c
 void lsp_write_quit(void);
+// convert JSON value back into string
+char *json_reserialize(const JSON *json, JSONValue value);
 
 /// print server-to-client communication
 #define LSP_SHOW_S2C 1

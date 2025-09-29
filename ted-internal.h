@@ -450,6 +450,19 @@ struct Ted {
 	EditNotifyInfo *edit_notifys;
 };
 
+typedef struct {
+	MessageType severity;
+	// start position
+	BufferPos pos;
+	// end position
+	BufferPos end;
+	char *message;
+	// may be NULL
+	char *url;
+	// raw JSON object (for textDocument/codeAction)
+	char *raw;
+} Diagnostic;
+
 // === buffer.c ===
 /// create a new empty buffer with no file name
 TextBuffer *buffer_new(Ted *ted);
@@ -508,6 +521,7 @@ int buffer_inotify_watch(TextBuffer *buffer);
 /// inform buffer that its watch on the Ted's inotify was modified
 void buffer_set_inotify_modified(TextBuffer *buffer);
 #endif
+const Diagnostic *buffer_diagnostics(TextBuffer *buffer);
 
 // === build.c ===
 void build_frame(Ted *ted, float x1, float y1, float x2, float y2);

@@ -250,6 +250,68 @@ static void write_document_position(JSONWriter *o, LSPDocumentPosition pos) {
 	write_key_position(o, "position", pos.pos);
 }
 
+
+static void json_reserialize_to(const JSON *json, JSONWriter *o, JSONValue val) {
+	switch (val.type) {
+	case JSON_UNDEFINED:
+		assert(false);
+		break;
+	case JSON_TRUE:
+		write_bool(o, true);
+		break;
+	case JSON_FALSE:
+		write_bool(o, false);
+		break;
+	case JSON_NULL:
+		write_null(o);
+		break;
+	case JSON_NUMBER:
+		write_number(o, val.val.number);
+		break;
+	case JSON_STRING: {
+		char *s = json_string_get_alloc(json, val.val.string);
+		write_string(o, s);
+		free(s);
+		} break;
+	case JSON_ARRAY: {
+		JSONArray array = val.val.array;
+		write_arr_start(o);
+		for (u32 i = 0; i < array.len; i++) {
+			JSONValue elem = json_array_get(json, array, i);
+			write_arr_elem(o);
+			json_reserialize_to(json, o, elem);
+		}
+		write_arr_end(o);
+		} break;
+	case JSON_OBJECT: {
+		JSONObject object = val.val.object;
+		write_obj_start(o);
+		JSONValue *keys = &json->values[object.items];
+		JSONValue *values = keys + object.len;
+		for (u32 i = 0; i < object.len; i++) {
+			JSONValue key_val = keys[i];
+			assert(key_val.type == JSON_STRING);
+			JSONString key = key_val.val.string;
+			JSONValue value = values[i];
+			char *key_str = json_string_get_alloc(json, key);
+			write_key(o, key_str);
+			free(key_str);
+			json_reserialize_to(json, o, value);
+		}
+		write_obj_end(o);
+		} break;
+	}
+}
+
+char *json_reserialize(const JSON *json, JSONValue value) {
+	StrBuilder builder = str_builder_new();
+	JSONWriter writer = json_writer_new(NULL, &builder);
+	json_reserialize_to(json, &writer, value);
+	char *str = str_dup(builder.str);
+	str_builder_free(&builder);
+	return str;
+}
+
 static const char *lsp_request_method(LSPRequest *request) {
 	switch (request->type) {
 	case LSP_REQUEST_NONE: break;
@@ -698,16 +760,10 @@ void write_request(LSP *lsp, LSPRequest *request, StrBuilder *builder) {
 			write_key_range(o, "range", code_action->range);
 			write_key_obj_start(o, "context");
 				write_key_arr_start(o, "diagnostics");
-				write_arr_end(o);
-				write_key_arr_start(o, "only");
-					write_arr_elem_string(o, "quickfix");
-					write_arr_elem_string(o, "refactor");
-					write_arr_elem_string(o, "refactor.extract");
-					write_arr_elem_string(o, "refactor.inline");
-					write_arr_elem_string(o, "refactor.rewrite");
-					write_arr_elem_string(o, "source");
-					write_arr_elem_string(o, "source.organizeImports");
-					write_arr_elem_string(o, "source.fixAll");
+					arr_foreach_ptr(code_action->raw_diagnostics, const LSPString, raw_diagnostic) {
+						write_arr_elem(o);
+						str_builder_append(o->builder, lsp_request_string(request, *raw_diagnostic));
+					}
 				write_arr_end(o);
 			write_obj_end(o);
 		write_obj_end(o);

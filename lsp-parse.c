@@ -800,10 +800,14 @@ static bool parse_publish_diagnostics(LSP *lsp, const JSON *json, LSPRequest *re
 		return false;
 	JSONArray diagnostics = json_object_get_array(json, params, "diagnostics");
 	for (u32 i = 0; i < diagnostics.len; ++i) {
-		JSONObject diagnostic_in = json_array_get_object(json, diagnostics, i);
+		JSONValue diagnostic_val = json_array_get(json, diagnostics, i);
+		JSONObject diagnostic_in = json_force_object(diagnostic_val);
 		LSPDiagnostic *diagnostic_out = arr_addp(pub->diagnostics);
 		if (!parse_diagnostic(lsp, request, json, diagnostic_in, diagnostic_out))
 			return false;
+		char *raw = json_reserialize(json, diagnostic_val);
+		diagnostic_out->raw = lsp_request_add_string(request, raw);
+		free(raw);
 	}
 	return true;
 }

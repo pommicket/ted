@@ -39,14 +39,6 @@ struct BufferEdit {
 	double time; // time at start of edit (i.e. the time just before the edit), in seconds since epoch
 };
 
-typedef struct {
-	MessageType severity;
-	BufferPos pos;
-	char *message;
-	// may be NULL
-	char *url;
-} Diagnostic;
-
 struct TextBuffer {
 	/// NULL if this buffer is untitled or doesn't correspond to a file (e.g. line buffers)
 	char *path;
@@ -1004,6 +996,7 @@ static void buffer_line_free(Line *line) {
 static void diagnostic_free(Diagnostic *diagnostic) {
 	free(diagnostic->message);
 	free(diagnostic->url);
+	free(diagnostic->raw);
 	memset(diagnostic, 0, sizeof *diagnostic);
 }
 
@@ -4245,7 +4238,9 @@ void buffer_publish_diagnostics(TextBuffer *buffer, const LSPRequest *request, L
 	arr_foreach_ptr(diagnostics, const LSPDiagnostic, diagnostic) {
 		Diagnostic *d = arr_addp(buffer->diagnostics);
 		d->pos = buffer_pos_from_lsp(buffer, diagnostic->range.start);
+		d->end = buffer_pos_from_lsp(buffer, diagnostic->range.end);
 		d->severity = diagnostic_severity(diagnostic);
+		d->raw = str_dup(lsp_request_string(request, diagnostic->raw));
 		char message[280];
 		const char *code = lsp_request_string(request, diagnostic->code);
 		if (*code) {
@@ -4287,3 +4282,7 @@ void buffer_set_inotify_modified(TextBuffer *buffer) {
 	buffer->inotify_modified = true;
 }
 #endif
+
+const Diagnostic *buffer_diagnostics(TextBuffer *buffer) {
+	return buffer->diagnostics;
+}
