@@ -81,7 +81,6 @@ void document_link_frame(Ted *ted) {
 		document_link_clear(ted);
 		return;
 	}
-	
 	TextBuffer *buffer = ted->active_buffer;
 	if (!buffer)
 		return;
@@ -89,20 +88,24 @@ void document_link_frame(Ted *ted) {
 	LSP *lsp = buffer_lsp(buffer);
 	if (!lsp)
 		return;
-	
-	if (!dl->last_request.id) {
+	LSPDocumentID document = buffer_lsp_document_id(buffer);
+	if (document != dl->requested_document // don't spam requests
+		&& !dl->last_request.id) {
 		// send the request
 		LSPRequest request = {.type = LSP_REQUEST_DOCUMENT_LINK};
 		LSPRequestDocumentLink *lnk = &request.data.document_link;
-		lnk->document = buffer_lsp_document_id(buffer);
+		lnk->document = document;
 		dl->last_request = lsp_send_request(lsp, &request);
 		dl->requested_document = lnk->document;
 	}
-	
+
 	arr_foreach_ptr(dl->links, DocumentLink, l) {
 		Rect r = document_link_get_rect(ted, l);
 		if (ted_mouse_in_rect(ted, r)) {
 			ted->cursor = ted->cursor_hand;
+			r.pos.y += r.size.y - 1;
+			r.size.y = 1;
+			gl_geometry_rect(r, settings_color(settings, COLOR_TEXT));
 		}
 	}
 }
