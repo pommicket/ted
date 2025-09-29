@@ -125,6 +125,7 @@ void lsp_request_free(LSPRequest *r) {
 	case LSP_REQUEST_DID_OPEN:
 	case LSP_REQUEST_FORMATTING:
 	case LSP_REQUEST_RANGE_FORMATTING:
+	case LSP_REQUEST_CODE_ACTION:
 		break;
 	case LSP_REQUEST_PUBLISH_DIAGNOSTICS: {
 		LSPRequestPublishDiagnostics *pub = &r->data.publish_diagnostics;
@@ -237,6 +238,8 @@ static bool lsp_supports_request(LSP *lsp, const LSPRequest *request) {
 		return cap->open_close_support;
 	case LSP_REQUEST_DID_CHANGE:
 		return cap->sync_support;
+	case LSP_REQUEST_CODE_ACTION:
+		return cap->code_action_support;
 	case LSP_REQUEST_INITIALIZE:
 	case LSP_REQUEST_INITIALIZED:
 	case LSP_REQUEST_CANCEL:
@@ -320,6 +323,7 @@ static bool request_type_is_notification(LSPRequestType type) {
 	case LSP_REQUEST_DOCUMENT_LINK:
 	case LSP_REQUEST_FORMATTING:
 	case LSP_REQUEST_RANGE_FORMATTING:
+	case LSP_REQUEST_CODE_ACTION:
 		return false;
 	}
 	assert(0);

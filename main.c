@@ -95,6 +95,7 @@ the first character can be interpreted specially if it is one of the following:
 #include "menu.c"
 #include "ide-autocomplete.c"
 #include "ide-signature-help.c"
+#include "ide-code-action.c"
 #include "ide-rename-symbol.c"
 #include "ide-hover.c"
 #include "ide-definitions.c"

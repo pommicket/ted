@@ -311,6 +311,8 @@ static const char *lsp_request_method(LSPRequest *request) {
 		return "textDocument/rangeFormatting";
 	case LSP_REQUEST_FORMATTING:
 		return "textDocument/formatting";
+	case LSP_REQUEST_CODE_ACTION:
+		return "textDocument/codeAction";
 	}
 	assert(0);
 	return "$/ignore";
@@ -467,6 +469,9 @@ void write_request(LSP *lsp, LSPRequest *request, StrBuilder *builder) {
 					// publish diagnostics capabilities
 					write_key_obj_start(o, "publishDiagnostics");
 						write_key_bool(o, "codeDescriptionSupport", true);
+					write_obj_end(o);
+					
+					write_key_obj_start(o, "codeAction");
 					write_obj_end(o);
 				write_obj_end(o);
 				write_key_obj_start(o, "workspace");
@@ -668,6 +673,29 @@ void write_request(LSP *lsp, LSPRequest *request, StrBuilder *builder) {
 			if (formatting->use_range) {
 				write_key_range(o, "range", formatting->range);
 			}
+		write_obj_end(o);
+		} break;
+	case LSP_REQUEST_CODE_ACTION: {
+		LSPRequestCodeAction *code_action = &request->data.code_action;
+		write_key_obj_start(o, "params");
+			write_key_obj_start(o, "textDocument");
+				write_key_file_uri(o, "uri", code_action->document);
+			write_obj_end(o);
+			write_key_range(o, "range", code_action->range);
+			write_key_obj_start(o, "context");
+				write_key_arr_start(o, "diagnostics");
+				write_arr_end(o);
+				write_key_arr_start(o, "only");
+					write_arr_elem_string(o, "quickfix");
+					write_arr_elem_string(o, "refactor");
+					write_arr_elem_string(o, "refactor.extract");
+					write_arr_elem_string(o, "refactor.inline");
+					write_arr_elem_string(o, "refactor.rewrite");
+					write_arr_elem_string(o, "source");
+					write_arr_elem_string(o, "source.organizeImports");
+					write_arr_elem_string(o, "source.fixAll");
+				write_arr_end(o);
+			write_obj_end(o);
 		write_obj_end(o);
 		} break;
 	}

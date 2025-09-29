@@ -111,6 +111,7 @@ static CommandName command_names[] = {
 	{"indent-with-tabs", CMD_INDENT_WITH_TABS},
 	{"set-tab-width", CMD_SET_TAB_WIDTH},
 	{"debug-print-undo-history", CMD_DEBUG_PRINT_UNDO_HISTORY},
+	{"code-action", CMD_CODE_ACTION},
 };
 
 static_assert_if_possible(arr_count(command_names) == CMD_COUNT)
@@ -739,6 +740,9 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 		break;
 	case CMD_DEBUG_PRINT_UNDO_HISTORY:
 		buffer_print_undo_history(buffer);
+		break;
+	case CMD_CODE_ACTION:
+		code_action_start(ted);
 		break;
 	}
 }

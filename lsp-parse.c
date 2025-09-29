@@ -280,6 +280,11 @@ static void parse_capabilities(LSP *lsp, const JSON *json, JSONObject capabiliti
 		cap->range_formatting_support = true;
 	}
 	
+	JSONValue code_action_value = json_object_get(json, capabilities, "codeActionProvider");
+	if (code_action_value.type == JSON_OBJECT || code_action_value.type == JSON_TRUE) {
+		cap->code_action_support = true;
+	}
+	
 	JSONObject workspace = json_object_get_object(json, capabilities, "workspace");
 	// check WorkspaceFoldersServerCapabilities
 	JSONObject workspace_folders = json_object_get_object(json, workspace, "workspaceFolders");

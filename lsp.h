@@ -97,6 +97,7 @@ typedef enum {
 	LSP_REQUEST_LOG_MESSAGE, //< window/logMessage
 	LSP_REQUEST_WORKSPACE_FOLDERS, //< workspace/workspaceFolders - NOTE: this is handled directly in lsp-parse.c (because it only needs information from the LSP struct)
 	LSP_REQUEST_PUBLISH_DIAGNOSTICS, //< textDocument/publishDiagnostics
+	LSP_REQUEST_CODE_ACTION, //< textDocument/codeAction
 } LSPRequestType;
 
 typedef enum {
@@ -259,6 +260,11 @@ typedef struct {
 } LSPRequestFormatting;
 
 typedef struct {
+	LSPDocumentID document;
+	LSPRange range;
+} LSPRequestCodeAction;
+
+typedef struct {
 	LSPMessageType type;
 	/// LSP requests/responses tend to have a lot of strings.
 	/// to avoid doing a ton of allocations+frees,
@@ -296,6 +302,7 @@ typedef struct {
 		LSPRequestPublishDiagnostics publish_diagnostics;
 		// LSP_REQUEST_FORMATTING and LSP_REQUEST_RANGE_FORMATTING
 		LSPRequestFormatting formatting;
+		LSPRequestCodeAction code_action;
 	} data;
 } LSPRequest;
 
@@ -629,6 +636,7 @@ typedef struct {
 	bool document_link_support;
 	bool formatting_support;
 	bool range_formatting_support;
+	bool code_action_support;
 } LSPCapabilities;
 
 typedef struct LSP LSP;
@@ -939,8 +947,8 @@ LSPString lsp_request_add_json_string(LSPRequest *request, const JSON *json, JSO
 void lsp_write_quit(void);
 
 /// print server-to-client communication
-#define LSP_SHOW_S2C 0
+#define LSP_SHOW_S2C 1
 /// print client-to-server communication
-#define LSP_SHOW_C2S 0
+#define LSP_SHOW_C2S 1
 
 #endif // LSP_INTERNAL

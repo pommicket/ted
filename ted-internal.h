@@ -634,6 +634,9 @@ void autocomplete_quit(Ted *ted);
 void autocomplete_frame(Ted *ted);
 void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *response);
 
+// === ide-code-action.c ===
+void code_action_start(Ted *ted);
+
 // === ide-definitions.c ===
 void definitions_init(Ted *ted);
 /// go to the definition of `name`.
