@@ -472,6 +472,20 @@ void write_request(LSP *lsp, LSPRequest *request, StrBuilder *builder) {
 					write_obj_end(o);
 					
 					write_key_obj_start(o, "codeAction");
+						write_key_obj_start(o, "codeActionLiteralSupport");
+							write_key_obj_start(o, "codeActionKind");
+								write_key_arr_start(o, "valueSet");
+									write_arr_elem_string(o, "quickfix");
+									write_arr_elem_string(o, "refactor");
+									write_arr_elem_string(o, "refactor.extract");
+									write_arr_elem_string(o, "refactor.inline");
+									write_arr_elem_string(o, "refactor.rewrite");
+									write_arr_elem_string(o, "source");
+									write_arr_elem_string(o, "source.organizeImports");
+									write_arr_elem_string(o, "source.fixAll");
+								write_arr_end(o);
+							write_obj_end(o);
+						write_obj_end(o);
 					write_obj_end(o);
 				write_obj_end(o);
 				write_key_obj_start(o, "workspace");
