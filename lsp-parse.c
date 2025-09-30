@@ -1109,7 +1109,7 @@ static bool parse_command(LSP *lsp, LSPResponse *response, const JSON *json, JSO
 		command_out->kind = LSP_COMMAND_WORKSPACE_EDIT;
 		return true;
 	}
-	fprintf(stderr, "Unrecognized command: %s\n", command);
+	eprint("Unrecognized command: %s\n", command);
 	(void)command_out;
 	return false;
 }
