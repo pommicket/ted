@@ -112,6 +112,7 @@ static CommandName command_names[] = {
 	{"set-tab-width", CMD_SET_TAB_WIDTH},
 	{"debug-print-undo-history", CMD_DEBUG_PRINT_UNDO_HISTORY},
 	{"code-action", CMD_CODE_ACTION},
+	{"code-action-prev", CMD_CODE_ACTION_PREV},
 };
 
 static_assert_if_possible(arr_count(command_names) == CMD_COUNT)
@@ -345,6 +346,8 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 			buffer_select_all(buffer);
 		} else if (autocomplete_is_open(ted) || autocomplete_has_phantom(ted)) {
 			autocomplete_select_completion(ted);
+		} else if (code_action_is_open(ted)) {
+			code_action_select(ted);
 		} else if (buffer) {
 			if (buffer_has_selection(buffer))
 				buffer_indent_selection(buffer);
@@ -369,9 +372,7 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 		break;
 	case CMD_NEWLINE:
 	case CMD_NEWLINE_BACK:
-		if (code_action_is_open(ted)) {
-			code_action_select_best(ted);
-		} else if (ted->find) {
+		if (ted->find) {
 			if (buffer == ted->find_buffer || buffer == ted->replace_buffer) {
 				if (c == CMD_NEWLINE)
 					find_next(ted);
@@ -380,6 +381,8 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 			} else if (buffer) {
 				buffer_newline(buffer);
 			}
+		} else if (code_action_is_open(ted)) {
+			code_action_select(ted);
 		} else if (buffer) {
 			buffer_newline(buffer);
 		}
@@ -746,7 +749,13 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 		buffer_print_undo_history(buffer);
 		break;
 	case CMD_CODE_ACTION:
-		code_action_open(ted);
+		if (code_action_is_open(ted))
+			code_action_next(ted);
+		else
+			code_action_open(ted);
+		break;
+	case CMD_CODE_ACTION_PREV:
+		code_action_prev(ted);
 		break;
 	}
 }

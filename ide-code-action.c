@@ -13,6 +13,7 @@ struct CodeAction {
 	BufferPos cursor_pos;
 	LSPResponse response;
 	Action *actions;
+	u32 cursor;
 };
 
 static bool ranges_touch(BufferPos p1, BufferPos p2, BufferPos q1, BufferPos q2) {
@@ -41,6 +42,7 @@ void code_action_open(Ted *ted) {
 	LSP *lsp = buffer_lsp(buffer);
 	if (!lsp) return;
 	autocomplete_close(ted);
+	c->cursor = 0;
 	c->which_buffer = buffer_lsp_document_id(buffer);
 	c->cursor_pos = buffer_cursor_pos(buffer);
 	BufferPos range_start = {0}, range_end = {0};
@@ -70,6 +72,20 @@ void code_action_open(Ted *ted) {
 		}
 	}
 	c->last_request = lsp_send_request(lsp, &req);
+}
+
+void code_action_next(Ted *ted) {
+	CodeAction *c = ted->code_action;
+	u32 actions_count = arr_len(c->actions);
+	if (actions_count)
+		c->cursor = (c->cursor + 1) % actions_count;
+}
+
+void code_action_prev(Ted *ted) {
+	CodeAction *c = ted->code_action;
+	u32 actions_count = arr_len(c->actions);
+	if (actions_count)
+		c->cursor = c->cursor ? c->cursor - 1 : actions_count - 1;
 }
 
 bool code_action_is_open(Ted *ted) {
@@ -151,10 +167,10 @@ static void code_action_perform(Ted *ted, const LSPCodeAction *action) {
 	code_action_close(ted);
 }
 
-void code_action_select_best(Ted *ted) {
+void code_action_select(Ted *ted) {
 	CodeAction *c = ted->code_action;
-	if (arr_len(c->actions))
-		code_action_perform(ted, c->actions[0].lsp);
+	if (c->cursor < arr_len(c->actions))
+		code_action_perform(ted, c->actions[c->cursor].lsp);
 }
 
 void code_action_frame(Ted *ted) {
@@ -183,7 +199,7 @@ void code_action_frame(Ted *ted) {
 		return;
 	}
 	const Settings *settings = ted_active_settings(ted);
-	Font *font = ted->font, *font_bold = ted->font_bold;
+	Font *font = ted->font;
 	float char_height = text_font_char_height(font);
 	float padding = settings->padding;
 	float border_thickness = settings->border_thickness;
@@ -214,8 +230,9 @@ void code_action_frame(Ted *ted) {
 	const Action *selected_action = NULL;
 	arr_foreach_ptr(c->actions, const Action, action) {
 		Rect entry_rect = {{x, y}, {panel_width, char_height}};
-		if (rect_contains_point(entry_rect, ted->mouse_pos)) {
-			// hovering over this entry
+		if (rect_contains_point(entry_rect, ted->mouse_pos)
+			|| c->cursor == (u32)(action - c->actions)) {
+			// hovering/cursoring over this entry
 			ted->cursor = ted->cursor_hand;
 			gl_geometry_rect(entry_rect, settings_color(settings, COLOR_AUTOCOMPLETE_HL));
 		}
@@ -228,20 +245,12 @@ void code_action_frame(Ted *ted) {
 			gl_geometry_rect(border, settings_color(settings, COLOR_AUTOCOMPLETE_BORDER));
 			y += border_thickness;
 		};
-		text_utf8(action == c->actions ? font_bold : font,
-			action->name, x + padding, y, settings_color(settings, COLOR_TEXT));
-		if (action == c->actions) {
-			// action we think is best
-			text_utf8_anchored(font, "(Enter)",
-				panel_rect.pos.x + panel_rect.size.x - padding, y,
-				settings_color(settings, COLOR_COMMENT),
-				ANCHOR_TOP_RIGHT);
-		}
+		text_utf8(font, action->name, x + padding, y,
+			settings_color(settings, COLOR_TEXT));
 		y += char_height;
 	}
 	gl_geometry_draw();
 	text_render(font);
-	text_render(font_bold);
 	if (selected_action) {
 		code_action_perform(ted, selected_action->lsp);
 	} else {

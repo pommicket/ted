@@ -108,6 +108,7 @@ typedef enum {
 	CMD_FIND_USAGES,
 	CMD_RENAME_SYMBOL,
 	CMD_CODE_ACTION,
+	CMD_CODE_ACTION_PREV,
 
 	/// "go to definition of..." menu
 	CMD_GOTO_DEFINITION,

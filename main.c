@@ -1,6 +1,5 @@
 /*
 FUTURE FEATURES:
-- LSP "actions"
 - wrap-text command
 - path-specific extensions
 - more tests
