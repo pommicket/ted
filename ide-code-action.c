@@ -142,6 +142,12 @@ static void code_action_perform(Ted *ted, const LSPCodeAction *action) {
 	LSPServerRequestID request_id = c->last_request;
 	LSP *lsp = ted_get_lsp_by_id(ted, request_id.lsp);
 	ted_perform_workspace_edit(ted, lsp, response, &action->edit);
+	switch (action->command.kind) {
+	case LSP_COMMAND_NONE: break;
+	case LSP_COMMAND_WORKSPACE_EDIT:
+		ted_perform_workspace_edit(ted, lsp, response, &action->command.data.edit);
+		break;
+	}
 	code_action_close(ted);
 }
 

@@ -1090,10 +1090,25 @@ static bool parse_formatting_response(LSP *lsp, const JSON *json, LSPResponse *r
 	return true;
 }
 
-static bool parse_command(LSP *lsp, const JSON *json, JSONObject command_in, LSPCommand *command_out) {
+static bool parse_command(LSP *lsp, LSPResponse *response, const JSON *json, JSONObject command_in, LSPCommand *command_out) {
 	JSONString command_str = json_object_get_string(json, command_in, "command");
+	JSONArray arguments = json_object_get_array(json, command_in, "arguments");
 	char command[64];
 	json_string_get(json, command_str, command, sizeof command);
+	if (strcmp(command, "java.apply.workspaceEdit") == 0) {
+		// why does this exist??
+		if (arguments.len != 1) {
+			lsp_set_error(lsp, "Expected 1 argument to %s; got %" PRIu32, command, arguments.len);
+			return false;
+		}
+		JSONObject edit = json_array_get_object(json, arguments, 0);
+		if (!parse_workspace_edit(lsp, response, json, edit, &command_out->data.edit)) {
+			lsp_workspace_edit_free(&command_out->data.edit);
+			return false;
+		}
+		command_out->kind = LSP_COMMAND_WORKSPACE_EDIT;
+		return true;
+	}
 	lsp_set_error(lsp, "Unrecognized command: %s\n", command);
 	(void)command_out;
 	return false;
@@ -1131,7 +1146,7 @@ static bool parse_code_action_response(LSP *lsp, const JSON *json, LSPResponse *
 		bool understood = true;
 		if (command_val.type == JSON_STRING) {
 			// this action is a Command
-			understood &= parse_command(lsp, json, action, &action_out.command);
+			understood &= parse_command(lsp, response, json, action, &action_out.command);
 		} else {
 			// this action is a CodeAction
 			JSONValue edit = json_object_get(json, action, "edit");
@@ -1139,7 +1154,7 @@ static bool parse_code_action_response(LSP *lsp, const JSON *json, LSPResponse *
 				understood &= parse_workspace_edit(lsp, response, json, edit.val.object, &action_out.edit);
 			}
 			if (command_val.type == JSON_OBJECT) {
-				understood &= parse_command(lsp, json, command_val.val.object, &action_out.command);
+				understood &= parse_command(lsp, response, json, command_val.val.object, &action_out.command);
 			}
 		}
 		if (understood)

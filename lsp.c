@@ -153,7 +153,7 @@ void lsp_request_free(LSPRequest *r) {
 	memset(r, 0, sizeof *r);
 }
 
-static void lsp_workspace_edit_free(LSPWorkspaceEdit *edit) {
+void lsp_workspace_edit_free(LSPWorkspaceEdit *edit) {
 	arr_foreach_ptr(edit->changes, LSPWorkspaceChange, c) {
 		if (c->type == LSP_CHANGE_EDITS) {
 			arr_free(c->data.edit.edits);
@@ -196,6 +196,12 @@ void lsp_response_free(LSPResponse *r) {
 	case LSP_REQUEST_CODE_ACTION: {
 		LSPResponseCodeAction *c = &r->data.code_action;
 		arr_foreach_ptr(c->actions, LSPCodeAction, action) {
+			switch (action->command.kind) {
+			case LSP_COMMAND_WORKSPACE_EDIT:
+				lsp_workspace_edit_free(&action->command.data.edit);
+				break;
+			default: break;
+			}
 			lsp_workspace_edit_free(&action->edit);
 		}
 		arr_free(c->actions);
@@ -465,7 +471,7 @@ static bool lsp_receive(LSP *lsp, size_t max_size) {
 	arr_hdr_(lsp->received_data)->len = (u32)received_so_far;
 	lsp->received_data[received_so_far] = '\0';// null terminate
 	#if LSP_SHOW_S2C
-	const int limit = 1000;
+	const int limit = 10000;
 	debug_println("%s%.*s%s%s",term_italics(stdout),limit,lsp->received_data,
 		strlen(lsp->received_data) > (size_t)limit ? "..." : "",
 		term_clear(stdout));

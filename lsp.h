@@ -575,8 +575,16 @@ typedef struct {
 	LSPTextEdit *edits;
 } LSPResponseFormatting;
 
+typedef enum {
+	LSP_COMMAND_NONE,
+	LSP_COMMAND_WORKSPACE_EDIT,
+} LSPCommandKind;
+
 typedef struct {
-	int type;
+	LSPCommandKind kind;
+	union {
+		LSPWorkspaceEdit edit;
+	} data;
 } LSPCommand;
 
 typedef enum {
@@ -969,6 +977,7 @@ size_t json_escape_to(char *out, size_t out_sz, const char *in);
 char *json_escape(const char *str);
 LSPString lsp_response_add_json_string(LSPResponse *response, const JSON *json, JSONString string);
 LSPString lsp_request_add_json_string(LSPRequest *request, const JSON *json, JSONString string);
+void lsp_workspace_edit_free(LSPWorkspaceEdit *edit);
 /// free resources used by lsp-write.c
 void lsp_write_quit(void);
 // convert JSON value back into string
