@@ -3,6 +3,7 @@
 typedef struct {
 	const char *name;
 	const LSPCodeAction *lsp;
+	int relevancy;
 } Action;
 
 struct CodeAction {
@@ -100,6 +101,11 @@ void code_action_close(Ted *ted) {
 	memset(&c->response, 0, sizeof c->response);
 }
 
+static int action_qsort_cmp_relevancy(const void *av, const void *bv) {
+	const Action *a = av, *b = bv;
+	return b->relevancy - a->relevancy;
+}
+
 bool code_action_process_lsp_response(Ted *ted, const LSPResponse *response) {
 	CodeAction *c = ted->code_action;
 	if (response->request.id != c->last_request.id
@@ -115,13 +121,11 @@ bool code_action_process_lsp_response(Ted *ted, const LSPResponse *response) {
 	lsp_response_free(&c->response); // free old response
 	c->response = *response;
 	arr_free(c->actions);
-	// we want to figure out which action should be "preferred"
+	// we want to figure out which actions should be "preferred" (ordered first)
 	// currently we:
 	//    first, prefer actions with the LSP isPreferred property set to true.
 	//     then, prefer 'quickfix' to other kinds of actions.
 	//     then, prefer whichever action comes first.
-	int best_score = -1;
-	ptrdiff_t best_action = -1;
 	arr_foreach_ptr(response->data.code_action.actions, const LSPCodeAction, action) {
 		Action *action_out = arr_addp(c->actions);
 		action_out->lsp = action;
@@ -131,17 +135,9 @@ bool code_action_process_lsp_response(Ted *ted, const LSPResponse *response) {
 			score += 10;
 		if (action->kind == LSP_CODE_ACTION_QUICKFIX)
 			score += 1;
-		if (score > best_score) {
-			best_action = action_out - c->actions;
-			best_score = score;
-		}
+		action_out->relevancy = score;
 	}
-	if (best_action != -1) {
-		// move "best" action to top
-		Action best = c->actions[best_action];
-		memmove(c->actions + 1, c->actions, (size_t)best_action * sizeof *c->actions);
-		*c->actions = best;
-	}
+	arr_qsort(c->actions, action_qsort_cmp_relevancy);
 	return true;
 }
 
