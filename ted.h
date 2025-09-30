@@ -935,6 +935,8 @@ void code_action_open(Ted *ted);
 void code_action_close(Ted *ted);
 /// Are code actions being shown?
 bool code_action_is_open(Ted *ted);
+/// Select best code action
+void code_action_select_best(Ted *ted);
 
 // === ide-definitions.c ===
 /// cancel the last go-to-definition / find symbols request.

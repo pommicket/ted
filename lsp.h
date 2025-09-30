@@ -579,9 +579,16 @@ typedef struct {
 	int type;
 } LSPCommand;
 
+typedef enum {
+	LSP_CODE_ACTION_OTHER,
+	LSP_CODE_ACTION_QUICKFIX,
+} LSPCodeActionKind;
+
 typedef struct {
 	LSPString name;
 	LSPWorkspaceEdit edit;
+	LSPCodeActionKind kind;
+	bool is_preferred;
 	LSPCommand command;
 } LSPCodeAction;
 

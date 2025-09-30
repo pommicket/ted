@@ -1099,6 +1099,12 @@ static bool parse_command(LSP *lsp, const JSON *json, JSONObject command_in, LSP
 	return false;
 }
 
+static LSPCodeActionKind parse_code_action_kind(const char *kind) {
+	if (streq(kind, "quickfix"))
+		return LSP_CODE_ACTION_QUICKFIX;
+	return LSP_CODE_ACTION_OTHER;
+}
+
 static bool parse_code_action_response(LSP *lsp, const JSON *json, LSPResponse *response) {
 	JSONValue actions_val = json_get(json, "result");
 	if (actions_val.type == JSON_NULL) {
@@ -1117,6 +1123,11 @@ static bool parse_code_action_response(LSP *lsp, const JSON *json, LSPResponse *
 		LSPCodeAction action_out = {0};
 		JSONString title_str = json_object_get_string(json, action, "title");
 		action_out.name = lsp_response_add_json_string(response, json, title_str);
+		action_out.is_preferred = json_object_get_bool(json, action, "isPreferred", false);
+		JSONString kind_str = json_object_get_string(json, action, "kind");
+		char kind[32];
+		json_string_get(json, kind_str, kind, sizeof kind);
+		action_out.kind = parse_code_action_kind(kind);
 		bool understood = true;
 		if (command_val.type == JSON_STRING) {
 			// this action is a Command

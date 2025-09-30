@@ -369,7 +369,9 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 		break;
 	case CMD_NEWLINE:
 	case CMD_NEWLINE_BACK:
-		if (ted->find) {
+		if (code_action_is_open(ted)) {
+			code_action_select_best(ted);
+		} else if (ted->find) {
 			if (buffer == ted->find_buffer || buffer == ted->replace_buffer) {
 				if (c == CMD_NEWLINE)
 					find_next(ted);

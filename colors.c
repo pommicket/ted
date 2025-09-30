@@ -10,7 +10,6 @@ typedef struct {
 static ColorName color_names[] = {
 	{COLOR_UNKNOWN, "unknown"},
 	{COLOR_TEXT, "text"},
-	{COLOR_TEXT_SECONDARY, "text-secondary"},
 	{COLOR_BG, "bg"},
 	{COLOR_CURSOR, "cursor"},
 	{COLOR_CURSOR_ERROR, "cursor-error"},

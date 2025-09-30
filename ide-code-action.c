@@ -1,8 +1,15 @@
 #include "ted-internal.h"
 
+typedef struct {
+	const char *name;
+	const LSPCodeAction *lsp;
+	bool is_best;
+} Action;
+
 struct CodeAction {
 	LSPServerRequestID last_request;
 	LSPResponse response;
+	Action *actions;
 };
 
 static bool ranges_touch(BufferPos p1, BufferPos p2, BufferPos q1, BufferPos q2) {
@@ -68,6 +75,7 @@ bool code_action_is_open(Ted *ted) {
 void code_action_close(Ted *ted) {
 	CodeAction *c = ted->code_action;
 	lsp_response_free(&c->response);
+	arr_free(c->actions);
 	memset(&c->response, 0, sizeof c->response);
 }
 
@@ -85,6 +93,30 @@ bool code_action_process_lsp_response(Ted *ted, const LSPResponse *response) {
 	}
 	lsp_response_free(&c->response);
 	c->response = *response;
+	arr_free(c->actions);
+	int best_score = -1;
+	Action *best_action = NULL;
+	arr_foreach_ptr(response->data.code_action.actions, const LSPCodeAction, action) {
+		Action *action_out = arr_addp(c->actions);
+		action_out->lsp = action;
+		action_out->name = lsp_response_string(response, action->name);
+		int score = 0;
+		if (action->is_preferred)
+			score += 10;
+		if (action->kind == LSP_CODE_ACTION_QUICKFIX)
+			score += 1;
+		if (score > best_score) {
+			best_action = action_out;
+			best_score = score;
+		}
+	}
+	best_action->is_best = true;
+	if (best_action != c->actions) {
+		// move to top
+		Action best = *best_action;
+		memmove(c->actions + 1, c->actions, (size_t)(best_action - c->actions) * sizeof *c->actions);
+		*c->actions = best;
+	}
 	return true;
 }
 
@@ -101,13 +133,22 @@ static void code_action_perform(Ted *ted, const LSPCodeAction *action) {
 	LSPServerRequestID request_id = c->last_request;
 	LSP *lsp = ted_get_lsp_by_id(ted, request_id.lsp);
 	ted_perform_workspace_edit(ted, lsp, response, &action->edit);
+	code_action_close(ted);
+}
+
+void code_action_select_best(Ted *ted) {
+	CodeAction *c = ted->code_action;
+	const Action *best = NULL;
+	arr_foreach_ptr(c->actions, const Action, action)
+		if (action->is_best)
+			best = action;
+	if (best)
+		code_action_perform(ted, best->lsp);
 }
 
 void code_action_frame(Ted *ted) {
 	CodeAction *c = ted->code_action;
-	LSPResponse *response = &c->response;
-	const LSPCodeAction *code_actions = response->data.code_action.actions;
-	if (arr_len(code_actions) == 0)
+	if (arr_len(c->actions) == 0)
 		return;
 	TextBuffer *buffer = ted_active_buffer(ted);
 	if (!buffer) {
@@ -117,14 +158,13 @@ void code_action_frame(Ted *ted) {
 	const Settings *settings = ted_active_settings(ted);
 	vec2 cursor_pos = buffer_pos_to_pixels(buffer, buffer_cursor_pos(buffer));
 	float x = cursor_pos.x, y = cursor_pos.y;
-	Font *font = ted->font;
+	Font *font = ted->font, *font_bold = ted->font_bold;
 	float char_height = text_font_char_height(font);
 	float padding = settings->padding;
 	float border_thickness = settings->border_thickness;
-	float panel_width = 0, panel_height = (char_height + border_thickness) * (float)arr_len(code_actions);
-	arr_foreach_ptr(code_actions, const LSPCodeAction, action) {
-		const char *name = lsp_response_string(response, action->name);
-		float row_width = text_get_size_vec2(font, name).x
+	float panel_width = 0, panel_height = (char_height + border_thickness) * (float)arr_len(c->actions);
+	arr_foreach_ptr(c->actions, const Action, action) {
+		float row_width = text_get_size_vec2(font, action->name).x
 			+ char_height * 6 + padding * 2;
 		if (row_width > panel_width)
 			panel_width = row_width;
@@ -140,10 +180,9 @@ void code_action_frame(Ted *ted) {
 	Rect panel_rect = {{x,y},{panel_width,panel_height}};
 	gl_geometry_rect(panel_rect, settings_color(settings, COLOR_BG));
 	gl_geometry_rect_border(panel_rect, border_thickness, settings_color(settings, COLOR_AUTOCOMPLETE_BORDER));
-	const LSPCodeAction *selected_action = NULL;
-	arr_foreach_ptr(code_actions, const LSPCodeAction, action) {
-		const char *name = lsp_response_string(response, action->name);
-		Rect entry_rect = {{x, y}, {panel_width, border_thickness + char_height}};
+	const Action *selected_action = NULL;
+	arr_foreach_ptr(c->actions, const Action, action) {
+		Rect entry_rect = {{x, y}, {panel_width, char_height}};
 		if (rect_contains_point(entry_rect, ted->mouse_pos)) {
 			ted->cursor = ted->cursor_hand;
 			gl_geometry_rect(entry_rect, settings_color(settings, COLOR_AUTOCOMPLETE_HL));			
@@ -151,19 +190,26 @@ void code_action_frame(Ted *ted) {
 		arr_foreach_ptr(ted->mouse_clicks[SDL_BUTTON_LEFT], const MouseClick, click)
 			if (rect_contains_point(entry_rect, click->pos))
 				selected_action = action;
-		if (action != code_actions) {
+		if (action != c->actions) {
 			Rect border = {{x, y}, {panel_width, border_thickness}};
 			gl_geometry_rect(border, settings_color(settings, COLOR_AUTOCOMPLETE_BORDER));
 			y += border_thickness;
 		};
-		text_utf8(font, name, x + padding, y, settings_color(settings, COLOR_TEXT));
+		text_utf8(action->is_best ? font_bold : font,
+			action->name, x + padding, y, settings_color(settings, COLOR_TEXT));
+		if (action->is_best) {
+			text_utf8_anchored(font, "(Enter)",
+				panel_rect.pos.x + panel_rect.size.x - padding, y,
+				settings_color(settings, COLOR_COMMENT),
+				ANCHOR_TOP_RIGHT);
+		}
 		y += char_height;
 	}
 	gl_geometry_draw();
 	text_render(font);
+	text_render(font_bold);
 	if (selected_action) {
-		code_action_perform(ted, selected_action);
-		code_action_close(ted);
+		code_action_perform(ted, selected_action->lsp);
 	} else {
 		arr_foreach_ptr(ted->mouse_clicks[SDL_BUTTON_LEFT], const MouseClick, click) {
 			if (!rect_contains_point(panel_rect, click->pos)) {

@@ -534,6 +534,7 @@ void write_request(LSP *lsp, LSPRequest *request, StrBuilder *builder) {
 					write_obj_end(o);
 					
 					write_key_obj_start(o, "codeAction");
+						write_key_bool(o, "isPreferredSupport", true);
 						write_key_obj_start(o, "codeActionLiteralSupport");
 							write_key_obj_start(o, "codeActionKind");
 								write_key_arr_start(o, "valueSet");
