@@ -3,7 +3,6 @@
 typedef struct {
 	const char *name;
 	const LSPCodeAction *lsp;
-	bool is_best;
 } Action;
 
 struct CodeAction {
@@ -97,9 +96,14 @@ bool code_action_process_lsp_response(Ted *ted, const LSPResponse *response) {
 		ted_flash_error_cursor(ted);
 		return false;
 	}
-	lsp_response_free(&c->response);
+	lsp_response_free(&c->response); // free old response
 	c->response = *response;
 	arr_free(c->actions);
+	// we want to figure out which action should be "preferred"
+	// currently we:
+	//    first, prefer actions with the LSP isPreferred property set to true.
+	//     then, prefer 'quickfix' to other kinds of actions.
+	//     then, prefer whichever action comes first.
 	int best_score = -1;
 	Action *best_action = NULL;
 	arr_foreach_ptr(response->data.code_action.actions, const LSPCodeAction, action) {
@@ -116,9 +120,8 @@ bool code_action_process_lsp_response(Ted *ted, const LSPResponse *response) {
 			best_score = score;
 		}
 	}
-	best_action->is_best = true;
 	if (best_action != c->actions) {
-		// move to top
+		// move "best" action to top
 		Action best = *best_action;
 		memmove(c->actions + 1, c->actions, (size_t)(best_action - c->actions) * sizeof *c->actions);
 		*c->actions = best;
@@ -144,12 +147,8 @@ static void code_action_perform(Ted *ted, const LSPCodeAction *action) {
 
 void code_action_select_best(Ted *ted) {
 	CodeAction *c = ted->code_action;
-	const Action *best = NULL;
-	arr_foreach_ptr(c->actions, const Action, action)
-		if (action->is_best)
-			best = action;
-	if (best)
-		code_action_perform(ted, best->lsp);
+	if (arr_len(c->actions))
+		code_action_perform(ted, c->actions[0].lsp);
 }
 
 void code_action_frame(Ted *ted) {
@@ -178,12 +177,14 @@ void code_action_frame(Ted *ted) {
 		return;
 	}
 	const Settings *settings = ted_active_settings(ted);
-	vec2 cursor_pos = buffer_pos_to_pixels(buffer, buffer_cursor_pos(buffer));
-	float x = cursor_pos.x, y = cursor_pos.y;
 	Font *font = ted->font, *font_bold = ted->font_bold;
 	float char_height = text_font_char_height(font);
 	float padding = settings->padding;
 	float border_thickness = settings->border_thickness;
+
+	// display code action panel
+	vec2 cursor_pos = buffer_pos_to_pixels(buffer, buffer_cursor_pos(buffer));
+	float x = cursor_pos.x, y = cursor_pos.y;
 	float panel_width = 0, panel_height = (char_height + border_thickness) * (float)arr_len(c->actions);
 	arr_foreach_ptr(c->actions, const Action, action) {
 		float row_width = text_get_size_vec2(font, action->name).x
@@ -191,14 +192,16 @@ void code_action_frame(Ted *ted) {
 		if (row_width > panel_width)
 			panel_width = row_width;
 	}
-	if (x > ted->window_width / 2) {
-		x -= panel_width;
-	}
+	// ensure panel doesn't go offscreen
+	if (x > ted->window_width - panel_width)
+		x = ted->window_width - panel_width;
 	if (y > ted->window_height / 2) {
-		y -= panel_height + char_height;
+		// open panel upwards
+		y -= panel_height;
 	} else {
 		y += char_height;
 	}
+	
 	Rect panel_rect = {{x,y},{panel_width,panel_height}};
 	gl_geometry_rect(panel_rect, settings_color(settings, COLOR_BG));
 	gl_geometry_rect_border(panel_rect, border_thickness, settings_color(settings, COLOR_AUTOCOMPLETE_BORDER));
@@ -206,20 +209,23 @@ void code_action_frame(Ted *ted) {
 	arr_foreach_ptr(c->actions, const Action, action) {
 		Rect entry_rect = {{x, y}, {panel_width, char_height}};
 		if (rect_contains_point(entry_rect, ted->mouse_pos)) {
+			// hovering over this entry
 			ted->cursor = ted->cursor_hand;
 			gl_geometry_rect(entry_rect, settings_color(settings, COLOR_AUTOCOMPLETE_HL));			
 		}
 		arr_foreach_ptr(ted->mouse_clicks[SDL_BUTTON_LEFT], const MouseClick, click)
 			if (rect_contains_point(entry_rect, click->pos))
-				selected_action = action;
+				selected_action = action; // clicked on this entry
 		if (action != c->actions) {
+			// border between entries
 			Rect border = {{x, y}, {panel_width, border_thickness}};
 			gl_geometry_rect(border, settings_color(settings, COLOR_AUTOCOMPLETE_BORDER));
 			y += border_thickness;
 		};
-		text_utf8(action->is_best ? font_bold : font,
+		text_utf8(action == c->actions ? font_bold : font,
 			action->name, x + padding, y, settings_color(settings, COLOR_TEXT));
-		if (action->is_best) {
+		if (action == c->actions) {
+			// action we think is best
 			text_utf8_anchored(font, "(Enter)",
 				panel_rect.pos.x + panel_rect.size.x - padding, y,
 				settings_color(settings, COLOR_COMMENT),
@@ -235,6 +241,7 @@ void code_action_frame(Ted *ted) {
 	} else {
 		arr_foreach_ptr(ted->mouse_clicks[SDL_BUTTON_LEFT], const MouseClick, click) {
 			if (!rect_contains_point(panel_rect, click->pos)) {
+				// clicked outside of code action panel; close it.
 				code_action_close(ted);
 			}
 		}
