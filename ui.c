@@ -648,7 +648,7 @@ void file_selector_render(Ted *ted, FileSelector *fs) {
 	{
 		const char *cwd = fs->cwd;
 		const float text_width = text_get_size_vec2(font, cwd).x;
-		TextRenderState	state = text_render_state_default;
+		TextRenderState state = text_render_state_default;
 		state.x = bounds.pos.x;
 		if (text_width > bounds.size.x) {
 			// very long cwd

@@ -2139,7 +2139,7 @@ static void syntax_highlight_css(SyntaxState *state_ptr, const char32_t *line, u
 					dealt_with = true;
 					if (!in_braces && char_types) {
 						goto handle_pseudo;
-					} else {				
+					} else {
 						--i; // we'll increment i from the for loop
 					}
 					break;

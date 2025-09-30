@@ -6,5 +6,5 @@
 
 # Check for trailing whitespace
 git grep -In ' $' && { echo 'Fix trailing whitespace!'; exit 1; }
-git grep -In '\w'"$(printf '\t')"'$' && { echo 'Fix trailing whitespace!'; exit 1; }
+git grep -In '\S'"$(printf '\t')" && { echo 'Fix trailing whitespace!'; exit 1; }
 exit 0

@@ -211,7 +211,7 @@ void code_action_frame(Ted *ted) {
 		if (rect_contains_point(entry_rect, ted->mouse_pos)) {
 			// hovering over this entry
 			ted->cursor = ted->cursor_hand;
-			gl_geometry_rect(entry_rect, settings_color(settings, COLOR_AUTOCOMPLETE_HL));			
+			gl_geometry_rect(entry_rect, settings_color(settings, COLOR_AUTOCOMPLETE_HL));
 		}
 		arr_foreach_ptr(ted->mouse_clicks[SDL_BUTTON_LEFT], const MouseClick, click)
 			if (rect_contains_point(entry_rect, click->pos))

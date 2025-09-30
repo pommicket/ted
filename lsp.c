@@ -488,10 +488,6 @@ static bool lsp_receive(LSP *lsp, size_t max_size) {
 			json_free(&json);
 		}
 		size_t leftover_data_len = arr_len(lsp->received_data) - (response_offset + response_size);
-		
-		//printf("arr_cap = %u response_offset = %u, response_size = %zu, leftover len = %u\n",
-		//	arr_hdr_(lsp->received_data)->cap,
-		//	response_offset, response_size, leftover_data_len);
 		memmove(lsp->received_data, lsp->received_data + response_offset + response_size,
 			leftover_data_len);
 		arr_set_len(lsp->received_data, leftover_data_len);
