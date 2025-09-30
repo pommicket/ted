@@ -237,7 +237,7 @@ The Go team's `go-pls` is enabled by default. You can download it
 ### Java
 
 Eclipse's `jdtls` is enabled by default.
-You can download it [here](download.eclipse.org/jdtls/milestones/?d).
+You can download it [here](https://download.eclipse.org/jdtls/milestones/?d).
 
 ### JavaScript/TypeScript
 
