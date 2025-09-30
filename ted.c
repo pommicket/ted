@@ -1068,11 +1068,10 @@ void ted_check_inotify(Ted *ted) {
 	// see buffer_externally_changed definition for why this exists
 	if (ted->inotify_fd == -1) return;
 	int *watches_modified = NULL;
-	char events[16384 * sizeof(struct inotify_event)];
-	ssize_t bytes = read(ted->inotify_fd, events, sizeof events);
+	ssize_t bytes = read(ted->inotify_fd, ted->inotify_event_buf, sizeof ted->inotify_event_buf);
 	for (int i = 0; i + (int)sizeof(struct inotify_event) <= bytes; i += (int)sizeof(struct inotify_event)) {
 		struct inotify_event event;
-		memcpy(&event, &events[i * (int)sizeof event], sizeof event);
+		memcpy(&event, &ted->inotify_event_buf[i], sizeof event);
 		if (event.mask & INOTIFY_MASK) {
 			bool new = true;
 			arr_foreach_ptr(watches_modified, int, w) {
@@ -1083,12 +1082,10 @@ void ted_check_inotify(Ted *ted) {
 			}
 			if (new) arr_add(watches_modified, event.wd);
 		}
-		i += (int)event.len; // should always be 0 in theory...
+		i += (int)event.len; // should always be 0 in theory given our event types...
 	}
 	// ideally we'd read more events in a loop here but then we'd hang if someone is constantly
 	// changing the file. probably no good way of dealing with that though.
-	// for what it's worth, 16384 is the default max inotify queue size, so we should always
-	// read all the events with that one read call.
 	arr_foreach_ptr(ted->buffers, TextBufferPtr, pbuffer) {
 		int watch = buffer_inotify_watch(*pbuffer);
 		arr_foreach_ptr(watches_modified, int, w) {

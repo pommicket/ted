@@ -452,6 +452,8 @@ struct Ted {
 	
 	u64 edit_notify_id;
 	EditNotifyInfo *edit_notifys;
+	// 16384 = default inotify queue size
+	char inotify_event_buf[16384 * sizeof(struct inotify_event)];
 };
 
 typedef struct {
