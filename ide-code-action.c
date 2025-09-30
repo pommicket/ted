@@ -105,7 +105,7 @@ bool code_action_process_lsp_response(Ted *ted, const LSPResponse *response) {
 	//     then, prefer 'quickfix' to other kinds of actions.
 	//     then, prefer whichever action comes first.
 	int best_score = -1;
-	Action *best_action = NULL;
+	ptrdiff_t best_action = -1;
 	arr_foreach_ptr(response->data.code_action.actions, const LSPCodeAction, action) {
 		Action *action_out = arr_addp(c->actions);
 		action_out->lsp = action;
@@ -116,14 +116,14 @@ bool code_action_process_lsp_response(Ted *ted, const LSPResponse *response) {
 		if (action->kind == LSP_CODE_ACTION_QUICKFIX)
 			score += 1;
 		if (score > best_score) {
-			best_action = action_out;
+			best_action = action_out - c->actions;
 			best_score = score;
 		}
 	}
-	if (best_action != c->actions) {
+	if (best_action != -1) {
 		// move "best" action to top
-		Action best = *best_action;
-		memmove(c->actions + 1, c->actions, (size_t)(best_action - c->actions) * sizeof *c->actions);
+		Action best = c->actions[best_action];
+		memmove(c->actions + 1, c->actions, (size_t)best_action * sizeof *c->actions);
 		*c->actions = best;
 	}
 	return true;
