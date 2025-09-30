@@ -1538,6 +1538,7 @@ void config_read(Ted *ted, const char *path, ConfigFormat format) {
 		break;
 	case CONFIG_TED_CFG:
 		config_read_ted_cfg(ted, source_rc, &include_stack);
+		arr_free(include_stack);
 		// force recompute default settings
 		strcpy(ted->default_settings_cwd, "//");
 		break;

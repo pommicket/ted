@@ -153,6 +153,15 @@ void lsp_request_free(LSPRequest *r) {
 	memset(r, 0, sizeof *r);
 }
 
+static void lsp_workspace_edit_free(LSPWorkspaceEdit *edit) {
+	arr_foreach_ptr(edit->changes, LSPWorkspaceChange, c) {
+		if (c->type == LSP_CHANGE_EDITS) {
+			arr_free(c->data.edit.edits);
+		}
+	}
+	arr_free(edit->changes);
+}
+
 void lsp_response_free(LSPResponse *r) {
 	lsp_message_base_free(&r->base);
 	switch (r->request.type) {
@@ -170,12 +179,7 @@ void lsp_response_free(LSPResponse *r) {
 		break;
 	case LSP_REQUEST_RENAME: {
 		LSPResponseRename *rename = &r->data.rename;
-		arr_foreach_ptr(rename->changes, LSPWorkspaceChange, c) {
-			if (c->type == LSP_CHANGE_EDITS) {
-				arr_free(c->data.edit.edits);
-			}
-		}
-		arr_free(r->data.rename.changes);
+		lsp_workspace_edit_free(rename);
 		} break;
 	case LSP_REQUEST_HIGHLIGHT:
 		arr_free(r->data.highlight.highlights);
@@ -192,7 +196,7 @@ void lsp_response_free(LSPResponse *r) {
 	case LSP_REQUEST_CODE_ACTION: {
 		LSPResponseCodeAction *c = &r->data.code_action;
 		arr_foreach_ptr(c->actions, LSPCodeAction, action) {
-			arr_free(action->edit.changes);
+			lsp_workspace_edit_free(&action->edit);
 		}
 		arr_free(c->actions);
 		} break;

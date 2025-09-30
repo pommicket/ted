@@ -1302,6 +1302,7 @@ int main(int argc, char **argv) {
 	signature_help_quit(ted);
 	autocomplete_quit(ted);
 	format_quit(ted);
+	code_action_quit(ted);
 	highlights_quit(ted);
 	usages_quit(ted);
 	session_write(ted);
