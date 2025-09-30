@@ -8,6 +8,10 @@ typedef struct {
 
 struct CodeAction {
 	LSPServerRequestID last_request;
+	// which buffer code action is open for
+	LSPDocumentID which_buffer;
+	// cursor position when code action was opened
+	BufferPos cursor_pos;
 	LSPResponse response;
 	Action *actions;
 };
@@ -38,6 +42,8 @@ void code_action_open(Ted *ted) {
 	LSP *lsp = buffer_lsp(buffer);
 	if (!lsp) return;
 	autocomplete_close(ted);
+	c->which_buffer = buffer_lsp_document_id(buffer);
+	c->cursor_pos = buffer_cursor_pos(buffer);
 	BufferPos range_start = {0}, range_end = {0};
 	LSPRange range = {0};
 	if (buffer_selection_pos(buffer, &range_start)) {
@@ -152,6 +158,22 @@ void code_action_frame(Ted *ted) {
 		return;
 	TextBuffer *buffer = ted_active_buffer(ted);
 	if (!buffer) {
+		code_action_close(ted);
+		return;
+	}
+	LSP *lsp = buffer_lsp(buffer);
+	if (!lsp || lsp_get_id(lsp) != c->last_request.lsp) {
+		// LSP or active buffer changed
+		code_action_close(ted);
+		return;
+	}
+	if (buffer_lsp_document_id(buffer) != c->which_buffer) {
+		// buffer changed
+		code_action_close(ted);
+		return;
+	}
+	if (!buffer_pos_eq(buffer_cursor_pos(buffer), c->cursor_pos)) {
+		// cursor moved
 		code_action_close(ted);
 		return;
 	}
