@@ -2660,6 +2660,9 @@ void buffer_delete_chars_at_pos(TextBuffer *buffer, BufferPos pos, i64 nchars_) 
 	// just in case
 	buffer_pos_validate(buffer, &buffer->cursor_pos);
 	buffer_pos_validate(buffer, &buffer->selection_pos);
+	if (buffer_pos_eq(buffer->cursor_pos, buffer->selection_pos)) {
+		buffer->selection = false;
+	}
 	
 	// we need to do this *after* making the change to the buffer
 	// because of how non-incremental syncing works.
@@ -3529,6 +3532,8 @@ bool buffer_handle_click(Ted *ted, TextBuffer *buffer, vec2 click, u8 times) {
 		else
 			autocomplete_close(ted); // close autocomplete menu if user clicks outside of it
 	}
+	if (code_action_is_open(ted))
+		return false;
 	if (buffer_pixels_to_pos(buffer, click, &buffer_pos)) {
 		// user clicked on buffer
 		if (!menu_is_any_open(ted) || buffer->is_line_buffer) {

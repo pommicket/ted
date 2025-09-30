@@ -189,6 +189,13 @@ void lsp_response_free(LSPResponse *r) {
 	case LSP_REQUEST_FORMATTING:
 		arr_free(r->data.formatting.edits);
 		break;
+	case LSP_REQUEST_CODE_ACTION: {
+		LSPResponseCodeAction *c = &r->data.code_action;
+		arr_foreach_ptr(c->actions, LSPCodeAction, action) {
+			arr_free(action->edit.changes);
+		}
+		arr_free(c->actions);
+		} break;
 	default:
 		break;
 	}

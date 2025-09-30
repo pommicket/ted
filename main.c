@@ -588,6 +588,7 @@ int main(int argc, char **argv) {
 	find_init(ted);
 	macros_init(ted);
 	definitions_init(ted);
+	code_action_init(ted);
 	autocomplete_init(ted);
 	format_init(ted);
 	signature_help_init(ted);
@@ -969,6 +970,7 @@ int main(int argc, char **argv) {
 			LSP *lsp = ted->lsps[i];
 			LSPMessage message = {0};
 			while (lsp_next_message(lsp, &message)) {
+				bool message_moved = false;
 				switch (message.type) {
 				case LSP_REQUEST: {
 					LSPRequest *r = &message.request;
@@ -1006,10 +1008,15 @@ int main(int argc, char **argv) {
 					highlights_process_lsp_response(ted, r);
 					usages_process_lsp_response(ted, r);
 					document_link_process_lsp_response(ted, r);
+					if (code_action_process_lsp_response(ted, r)) {
+						message_moved = true;
+						break;
+					}
 					rename_symbol_process_lsp_response(ted, r);
 					} break;
 				}
-				lsp_message_free(&message);
+				if (!message_moved)
+					lsp_message_free(&message);
 			}
 		}
 		
@@ -1102,6 +1109,7 @@ int main(int argc, char **argv) {
 				float y1 = padding;
 				node_frame(ted, node, rect4(x1, y1, x2, y));
 				autocomplete_frame(ted);
+				code_action_frame(ted);
 				signature_help_frame(ted);
 				hover_frame(ted, frame_dt);
 				definitions_frame(ted);

@@ -1090,6 +1090,53 @@ static bool parse_formatting_response(LSP *lsp, const JSON *json, LSPResponse *r
 	return true;
 }
 
+static bool parse_command(LSP *lsp, const JSON *json, JSONObject command_in, LSPCommand *command_out) {
+	JSONString command_str = json_object_get_string(json, command_in, "command");
+	char command[64];
+	json_string_get(json, command_str, command, sizeof command);
+	lsp_set_error(lsp, "Unrecognized command: %s\n", command);
+	(void)command_out;
+	return false;
+}
+
+static bool parse_code_action_response(LSP *lsp, const JSON *json, LSPResponse *response) {
+	JSONValue actions_val = json_get(json, "result");
+	if (actions_val.type == JSON_NULL) {
+		// nothing there
+		return true;
+	}
+	if (actions_val.type != JSON_ARRAY) {
+		lsp_set_error(lsp, "Expected array or null for code action response; got %s",
+			json_type_to_str(actions_val.type));
+		return false;
+	}
+	JSONArray actions = json_force_array(actions_val);
+	for (u32 i = 0; i < actions.len; i++) {
+		JSONObject action = json_array_get_object(json, actions, i);
+		JSONValue command_val = json_object_get(json, action, "command");
+		LSPCodeAction action_out = {0};
+		JSONString title_str = json_object_get_string(json, action, "title");
+		action_out.name = lsp_response_add_json_string(response, json, title_str);
+		bool understood = true;
+		if (command_val.type == JSON_STRING) {
+			// this action is a Command
+			understood &= parse_command(lsp, json, action, &action_out.command);
+		} else {
+			// this action is a CodeAction
+			JSONValue edit = json_object_get(json, action, "edit");
+			if (edit.type == JSON_OBJECT) {
+				understood &= parse_workspace_edit(lsp, response, json, edit.val.object, &action_out.edit);
+			}
+			if (command_val.type == JSON_OBJECT) {
+				understood &= parse_command(lsp, json, command_val.val.object, &action_out.command);
+			}
+		}
+		if (understood)
+			arr_add(response->data.code_action.actions, action_out);
+	}
+	return true;
+}
+
 void process_message(LSP *lsp, JSON *json) {
 		
 	#if 0
@@ -1172,6 +1219,9 @@ void process_message(LSP *lsp, JSON *json) {
 				break;
 			case LSP_REQUEST_DOCUMENT_LINK:
 				add_to_messages = parse_document_link_response(lsp, json, &response);
+				break;
+			case LSP_REQUEST_CODE_ACTION:
+				add_to_messages = parse_code_action_response(lsp, json, &response);
 				break;
 			case LSP_REQUEST_INITIALIZE:
 				if (!lsp->initialized) {

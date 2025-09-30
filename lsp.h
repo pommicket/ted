@@ -576,6 +576,20 @@ typedef struct {
 } LSPResponseFormatting;
 
 typedef struct {
+	int type;
+} LSPCommand;
+
+typedef struct {
+	LSPString name;
+	LSPWorkspaceEdit edit;
+	LSPCommand command;
+} LSPCodeAction;
+
+typedef struct {
+	LSPCodeAction *actions;
+} LSPResponseCodeAction;
+
+typedef struct {
 	LSPMessageBase base;
 	/// the request which this is a response to
 	LSPRequest request;
@@ -596,6 +610,7 @@ typedef struct {
 		LSPResponseDocumentLink document_link;
 		/// `LSP_REQUEST_FORMATTING` or `LSP_REQUEST_RANGE_FORMATTING`
 		LSPResponseFormatting formatting;
+		LSPResponseCodeAction code_action;
 	} data;
 } LSPResponse;
 
@@ -680,6 +695,7 @@ void lsp_register_language(u64 id, const char *lsp_identifier);
 // if clear = true, the error will be cleared.
 // you can set error = NULL, error_size = 0, clear = true to just clear the error
 bool lsp_get_error(LSP *lsp, char *error, size_t error_size, bool clear);
+void lsp_response_free(LSPResponse *response);
 void lsp_message_free(LSPMessage *message);
 u32 lsp_document_id(LSP *lsp, const char *path);
 // returned pointer lives as long as lsp.
@@ -952,8 +968,8 @@ void lsp_write_quit(void);
 char *json_reserialize(const JSON *json, JSONValue value);
 
 /// print server-to-client communication
-#define LSP_SHOW_S2C 1
+#define LSP_SHOW_S2C 0
 /// print client-to-server communication
-#define LSP_SHOW_C2S 1
+#define LSP_SHOW_C2S 0
 
 #endif // LSP_INTERNAL

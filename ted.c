@@ -982,6 +982,87 @@ void ted_test(Ted *ted) {
 	printf("all good as far as i know :3\n");
 }
 
+void ted_perform_workspace_edit(Ted *ted, LSP *lsp, const LSPResponse *response, const LSPWorkspaceEdit *edit) {
+	TextBuffer *const start_buffer = ted_active_buffer(ted);
+	arr_foreach_ptr(edit->changes, const LSPWorkspaceChange, change) {
+		if (change->type == LSP_CHANGE_DELETE && change->data.delete.recursive) {
+			ted_error(ted, "refusing to perform edit because it involves a recursive deletion\n"
+				"I'm too scared to go through with this");
+			return;
+		}
+	}
+	
+	arr_foreach_ptr(edit->changes, const LSPWorkspaceChange, change) {
+		switch (change->type) {
+		case LSP_CHANGE_EDITS: {
+			const LSPWorkspaceChangeEdit *change_data = &change->data.edit;
+			const char *path = lsp_document_path(lsp, change_data->document);
+			if (!ted_open_file(ted, path)) goto done;
+			
+			TextBuffer *buffer = ted_get_buffer_with_file(ted, path);
+			// chain all edits together so they can be undone with one ctrl+z
+			buffer_start_edit_chain(buffer);
+			
+			if (!buffer) {
+				// this should never happen since we just
+				// successfully opened it
+				assert(0);
+				goto done;
+			}
+			
+			buffer_apply_lsp_text_edits(buffer, response, change_data->edits, arr_len(change_data->edits));
+			}
+			break;
+		case LSP_CHANGE_RENAME: {
+			const LSPWorkspaceChangeRename *rename = &change->data.rename;
+			const char *old = lsp_document_path(lsp, rename->old);
+			const char *new = lsp_document_path(lsp, rename->new);
+			FsType new_type = fs_path_type(new);
+			if (new_type == FS_DIRECTORY) {
+				ted_error(ted, "Aborting rename since it's asking to overwrite a directory.");
+				goto done;
+			}
+			
+			if (rename->ignore_if_exists && new_type != FS_NON_EXISTENT) {
+				break;
+			}
+			if (!rename->overwrite && new_type != FS_NON_EXISTENT) {
+				ted_error(ted, "Aborting rename since it would overwrite a file.");
+				goto done;
+			}
+			os_rename_overwrite(old, new);
+			if (ted_close_buffer_with_file(ted, old))
+				ted_open_file(ted, new);
+		} break;
+		case LSP_CHANGE_DELETE: {
+			const LSPWorkspaceChangeDelete *delete = &change->data.delete;
+			const char *path = lsp_document_path(lsp, delete->document);
+			remove(path);
+			ted_close_buffer_with_file(ted, path);
+		} break;
+		case LSP_CHANGE_CREATE: {
+			const LSPWorkspaceChangeCreate *create = &change->data.create;
+			const char *path = lsp_document_path(lsp, create->document);
+			FILE *fp = fopen(path, create->overwrite ? "wb" : "ab");
+			if (fp) fclose(fp);
+			ted_open_file(ted, path);
+		} break;
+		}
+	}
+	done:
+
+	{
+		// end all edit chains in all buffers
+		// they're almost definitely all created by us
+		arr_foreach_ptr(ted->buffers, TextBufferPtr, pbuffer) {
+			buffer_end_edit_chain(*pbuffer);
+		}
+		
+		ted_save_all(ted);
+	}
+	ted_switch_to_buffer(ted, start_buffer);
+}
+
 #if HAS_INOTIFY
 void ted_check_inotify(Ted *ted) {
 	// see buffer_externally_changed definition for why this exists

@@ -928,6 +928,14 @@ void autocomplete_prev(Ted *ted);
 /// close completion menu
 void autocomplete_close(Ted *ted);
 
+// === ide-code-action.c ==
+/// Show suggested code actions
+void code_action_open(Ted *ted);
+/// Hide suggested code actions
+void code_action_close(Ted *ted);
+/// Are code actions being shown?
+bool code_action_is_open(Ted *ted);
+
 // === ide-definitions.c ===
 /// cancel the last go-to-definition / find symbols request.
 void definition_cancel_lookup(Ted *ted);

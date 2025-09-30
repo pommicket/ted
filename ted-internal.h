@@ -260,6 +260,9 @@ typedef struct Definitions Definitions;
 /// "highlight" information from LSP server
 typedef struct Highlights Highlights;
 
+/// "code action" information from LSP server
+typedef struct CodeAction CodeAction;
+
 typedef struct Macro Macro;
 
 typedef struct LoadedFont LoadedFont;
@@ -364,6 +367,7 @@ struct Ted {
 	Usages *usages;
 	RenameSymbol *rename_symbol;
 	Formatting *formatting;
+	CodeAction *code_action;
 	/// process ID
 	int pid;
 	
@@ -649,7 +653,10 @@ void autocomplete_frame(Ted *ted);
 void autocomplete_process_lsp_response(Ted *ted, const LSPResponse *response);
 
 // === ide-code-action.c ===
-void code_action_start(Ted *ted);
+void code_action_init(Ted *ted);
+void code_action_quit(Ted *ted);
+void code_action_frame(Ted *ted);
+bool code_action_process_lsp_response(Ted *ted, const LSPResponse *response);
 
 // === ide-definitions.c ===
 void definitions_init(Ted *ted);
@@ -788,5 +795,7 @@ void ted_free_fonts(Ted *ted);
 void ted_process_publish_diagnostics(Ted *ted, LSP *lsp, LSPRequest *request);
 /// check inotify fd for events
 void ted_check_inotify(Ted *ted);
+/// perform LSP WorkspaceEdit
+void ted_perform_workspace_edit(Ted *ted, LSP *lsp, const LSPResponse *response, const LSPWorkspaceEdit *edit);
 
 #endif // TED_INTERNAL_H_

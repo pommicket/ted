@@ -641,6 +641,8 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 			*ted->message_shown = '\0';
 		} else if (autocomplete_is_open(ted)) {
 			autocomplete_close(ted);
+		} else if (code_action_is_open(ted)) {
+			code_action_close(ted);
 		} else if (menu_is_any_open(ted)) {
 			menu_escape(ted);
 		} else {
@@ -742,7 +744,7 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 		buffer_print_undo_history(buffer);
 		break;
 	case CMD_CODE_ACTION:
-		code_action_start(ted);
+		code_action_open(ted);
 		break;
 	}
 }
