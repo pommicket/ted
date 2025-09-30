@@ -577,7 +577,7 @@ void json_string_get(const JSON *json, JSONString string, char *buf, size_t buf_
 				hex[0] = text[i++];
 				hex[1] = text[i++];
 				hex[2] = text[i++];
-				hex[3] = text[i++];
+				hex[3] = text[i];
 				unsigned code_point=0;
 				sscanf(hex, "%04x", &code_point);
 				// technically this won't deal with people writing out UTF-16 surrogate halves
