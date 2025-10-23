@@ -1301,6 +1301,9 @@ void buffer_scroll_to_cursor(TextBuffer *buffer) {
 
 void buffer_set_manual_language(TextBuffer *buffer, u32 language) {
 	buffer->manual_language = language;
+	// ensure whole file is re-highlighted
+	buffer->frame_earliest_line_modified = 0;
+	buffer->frame_latest_line_modified = buffer->nlines - 1;
 }
 
 void buffer_center_cursor(TextBuffer *buffer) {

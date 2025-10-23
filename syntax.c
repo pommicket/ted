@@ -1488,8 +1488,7 @@ static void syntax_highlight_javascript_like(
 						if (char_types) char_types[i] = SYNTAX_COMMENT;
 						dealt_with = true;
 					}
-				}
-				if (!dealt_with && i+1 < line_len) {
+				} else if (!dealt_with && i+1 < line_len) {
 					if (line[i+1] == '/') {
 						// single line comment
 						if (char_types) {
