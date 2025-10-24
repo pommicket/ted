@@ -355,11 +355,9 @@ static void syntax_highlight_c_cpp(SyntaxState *state_ptr, const char32_t *line,
 	
 	int backslashes = 0;
 	for (u32 i = 0; i < line_len; ++i) {
-
 		// are there 1/2 characters left in the line?
 		bool has_1_char =  i + 1 < line_len;
 		bool has_2_chars = i + 2 < line_len;
-		
 		bool dealt_with = false;
 		
 		char32_t c = line[i];
@@ -381,20 +379,26 @@ static void syntax_highlight_c_cpp(SyntaxState *state_ptr, const char32_t *line,
 		case '\\':
 			++backslashes;
 			break;
+		case '*':
+			if (in_multi_line_comment && has_1_char && line[i + 1] == '/') {
+				dealt_with = true;
+				if (char_types) {
+					char_types[i] = SYNTAX_COMMENT;
+					char_types[i+1] = SYNTAX_COMMENT;
+				}
+				i++;
+				in_multi_line_comment = false;
+			}
+			break;
 		case '/':
 			if (!in_multi_line_comment && !in_single_line_comment && !in_string && !in_char && has_1_char) {
-				if (line[i + 1] == '/')
+				if (line[i + 1] == '/') {
 					in_single_line_comment = true; // //
-				else if (line[i + 1] == '*')
+				} else if (line[i + 1] == '*') {
 					in_multi_line_comment = true; // /*
-			} else if (in_multi_line_comment) {
-				if (i && line[i - 1] == '*') {
-					// */
-					in_multi_line_comment = false;
-					if (char_types) {
-						dealt_with = true;
+					if (char_types)
 						char_types[i] = SYNTAX_COMMENT;
-					}
+					i++;
 				}
 			}
 			break;
@@ -524,19 +528,28 @@ static void syntax_highlight_rust(SyntaxState *state, const char32_t *line, u32 
 		bool has_3_chars = i + 3 < line_len;
 		
 		switch (c) {
+		case '*':
+			if (comment_depth && has_1_char && line[i+1] == '/') {
+				if (char_types) {
+					char_types[i] = SYNTAX_COMMENT;
+					char_types[i+1] = SYNTAX_COMMENT;
+					dealt_with = true;
+				}
+				i++;
+				comment_depth--;
+			}
+			break;
 		case '/':
 			if (!in_string) {
-				if (i && line[i-1] == '*') {
-					// */
-					if (comment_depth)
-						--comment_depth;
-					if (char_types) {
-						char_types[i] = SYNTAX_COMMENT;
-						dealt_with = true;
-					}
-				} else if (has_1_char && line[i+1] == '*') {
+				if (has_1_char && line[i+1] == '*') {
 					// /*
 					++comment_depth;
+					if (char_types) {
+						char_types[i] = SYNTAX_COMMENT;
+						char_types[i+1] = SYNTAX_COMMENT;
+						dealt_with = true;
+					}
+					i++;
 				} else if (!comment_depth && has_1_char && line[i+1] == '/') {
 					// //
 					// just handle it all now
@@ -1479,33 +1492,36 @@ static void syntax_highlight_javascript_like(
 		char32_t c = line[i];
 		bool dealt_with = false;
 		switch (c) {
-		case '/':
-			if (!in_string) {
-				if (i > 0 && in_multiline_comment) {
-					if (line[i-1] == '*') {
-						// end of multi line comment
-						in_multiline_comment = false;
-						if (char_types) char_types[i] = SYNTAX_COMMENT;
-						dealt_with = true;
-					}
-				} else if (!dealt_with && i+1 < line_len) {
-					if (line[i+1] == '/') {
-						// single line comment
-						if (char_types) {
-							for (u32 j = i; j < line_len; j++) {
-								char_types[j] = syntax_highlight_comment(line, j, line_len);
-							}
-						}
-						i = line_len - 1;
-						dealt_with = true;
-					} else if (line[i+1] == '*') {
-						// multi line comment
-						in_multiline_comment = true;
-						if (char_types) char_types[i] = SYNTAX_COMMENT;
-						dealt_with = true;
-					}
+		case '*':
+			if (in_multiline_comment && i+1 < line_len && line[i+1] == '/') {
+				// end of multi line comment
+				in_multiline_comment = false;
+				if (char_types) {
+					char_types[i] = SYNTAX_COMMENT;
+					char_types[i+1] = SYNTAX_COMMENT;
 				}
-				if (!dealt_with && !in_multiline_comment && !in_string) {
+				i++;
+				dealt_with = true;
+			}
+			break;
+		case '/':
+			if (!in_string && !in_multiline_comment && i+1 < line_len) {
+				if (line[i+1] == '/') {
+					// single line comment
+					if (char_types) {
+						for (u32 j = i; j < line_len; j++) {
+							char_types[j] = syntax_highlight_comment(line, j, line_len);
+						}
+					}
+					i = line_len - 1;
+					dealt_with = true;
+				} else if (line[i+1] == '*') {
+					// multi line comment
+					in_multiline_comment = true;
+					if (char_types)
+						char_types[i] = SYNTAX_COMMENT;
+					i++;
+				} else {
 					// this is not foolproof for detecting regex literals
 					//  but should handle all "reasonable" uses of regex,
 					// while not accidentally treating division as regex.
@@ -1680,17 +1696,24 @@ static void syntax_highlight_java(SyntaxState *state_ptr, const char32_t *line, 
 	
 	int backslashes = 0;
 	for (u32 i = 0; i < line_len; ++i) {
-
-		// are there 1/2 characters left in the line?
 		bool has_1_char =  i + 1 < line_len;
-		
 		bool dealt_with = false;
-		
 		char32_t c = line[i];
 		
 		switch (c) {
 		case '\\':
 			++backslashes;
+			break;
+		case '*':
+			if (in_multiline_comment && has_1_char && line[i+1] == '/') {
+				in_multiline_comment = false;
+				if (char_types) {
+					dealt_with = true;
+					char_types[i] = SYNTAX_COMMENT;
+					char_types[i+1] = SYNTAX_COMMENT;
+				}
+				i++;
+			}
 			break;
 		case '/':
 			if (!in_multiline_comment && !in_string && !in_char && has_1_char) {
@@ -1705,15 +1728,9 @@ static void syntax_highlight_java(SyntaxState *state_ptr, const char32_t *line, 
 					dealt_with = true;
 				} else if (line[i + 1] == '*') {
 					in_multiline_comment = true; // /*
-				}
-			} else if (in_multiline_comment) {
-				if (i > 0 && line[i - 1] == '*' && in_multiline_comment) {
-					// */
-					in_multiline_comment = false;
-					if (char_types) {
-						dealt_with = true;
+					if (char_types)
 						char_types[i] = SYNTAX_COMMENT;
-					}
+					i++;
 				}
 			}
 			break;
@@ -1811,17 +1828,24 @@ static void syntax_highlight_go(SyntaxState *state_ptr, const char32_t *line, u3
 	
 	int backslashes = 0;
 	for (u32 i = 0; i < line_len; ++i) {
-
-		// are there 1/2 characters left in the line?
-		bool has_1_char =  i + 1 < line_len;
-		
+		bool has_1_char = i + 1 < line_len;
 		bool dealt_with = false;
-		
 		char32_t c = line[i];
 		
 		switch (c) {
 		case '\\':
 			++backslashes;
+			break;
+		case '*':
+			if (in_multiline_comment && has_1_char && line[i+1] == '/') {
+				in_multiline_comment = false;
+				if (char_types) {
+					dealt_with = true;
+					char_types[i] = SYNTAX_COMMENT;
+					char_types[i+1] = SYNTAX_COMMENT;
+				}
+				i++;
+			}
 			break;
 		case '/':
 			if (!in_multiline_comment && !in_string && !in_char && has_1_char) {
@@ -1835,15 +1859,9 @@ static void syntax_highlight_go(SyntaxState *state_ptr, const char32_t *line, u3
 					dealt_with = true;
 				} else if (line[i + 1] == '*') {
 					in_multiline_comment = true; // /*
-				}
-			} else if (in_multiline_comment) {
-				if (i > 0 && line[i - 1] == '*' && in_multiline_comment) {
-					// */
-					in_multiline_comment = false;
-					if (char_types) {
-						dealt_with = true;
+					if (char_types)
 						char_types[i] = SYNTAX_COMMENT;
-					}
+					i++;
 				}
 			}
 			break;
@@ -1965,17 +1983,22 @@ static void syntax_highlight_css(SyntaxState *state_ptr, const char32_t *line, u
 		char32_t c = line[i];
 		
 		if (in_comment) {
-			if (c == '/' && i > 0 && line[i - 1] == '*') {
+			if (c == '*' && has_1_char && line[i + 1] == '/') {
 				in_comment = false;
-				if (char_types) char_types[i] = SYNTAX_COMMENT;
+				if (char_types) {
+					char_types[i] = SYNTAX_COMMENT;
+					char_types[i+1] = SYNTAX_COMMENT;
+				}
+				i++;
 				dealt_with = true;
 			}
 		} else switch (c) {
 		case '/':
-			if (has_1_char) {
-				if (line[i + 1] == '*') {
-					in_comment = true; // /*
-				}
+			if (has_1_char && line[i + 1] == '*') {
+				in_comment = true; // /*
+				if (char_types)
+					char_types[i] = SYNTAX_COMMENT;
+				i++;
 			}
 			break;
 		case '{':
