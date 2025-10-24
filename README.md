@@ -369,6 +369,7 @@ Then run `make.bat release`.
 <tr><td>2.8.3</td> <td>Fix annoying auto-indent behaviour</td> <td>2025 Sep 1</td></tr>
 <tr><td>2.8.4</td> <td>Keep cursor pos on reload, other small improvements</td> <td>2025 Sep 28</td></tr>
 <tr><td>2.9.0</td> <td>LSP code actions, bug fixes</td> <td>2025 Sep 30</td></tr>
+<tr><td>2.9.1</td> <td>Small syntax highlighting fixes</td> <td>2025 Oct 24</td></tr>
 </table>
 
 ## License

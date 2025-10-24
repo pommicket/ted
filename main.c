@@ -1,5 +1,6 @@
 /*
 FUTURE FEATURES:
+- remove TED_PATH_MAX
 - wrap-text command
 - path-specific extensions
 - more tests
