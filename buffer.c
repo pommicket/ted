@@ -1299,11 +1299,15 @@ void buffer_scroll_to_cursor(TextBuffer *buffer) {
 	buffer_scroll_to_pos(buffer, buffer->cursor_pos);
 }
 
-void buffer_set_manual_language(TextBuffer *buffer, u32 language) {
-	buffer->manual_language = language;
-	// ensure whole file is re-highlighted
+// force full recalculation of syntax highlighting
+static void buffer_force_rehighlight(TextBuffer *buffer) {
 	buffer->frame_earliest_line_modified = 0;
 	buffer->frame_latest_line_modified = buffer->nlines - 1;
+}
+
+void buffer_set_manual_language(TextBuffer *buffer, u32 language) {
+	buffer->manual_language = language;
+	buffer_force_rehighlight(buffer);
 }
 
 void buffer_center_cursor(TextBuffer *buffer) {
@@ -3492,8 +3496,7 @@ bool buffer_save_as(TextBuffer *buffer, const char *new_path) {
 		buffer->view_only = false;
 		// ensure whole file is re-highlighted when saving with a different
 		//  file extension
-		buffer->frame_earliest_line_modified = 0;
-		buffer->frame_latest_line_modified = buffer->nlines - 1;
+		buffer_force_rehighlight(buffer);
 		if (lsp)
 			buffer_send_lsp_did_close(buffer, lsp, prev_path);
 		buffer->last_lsp_check = -INFINITY;
