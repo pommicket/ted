@@ -427,13 +427,13 @@ static Status file_selector_cd1(Ted *ted, FileSelector *fs, const char *name, si
 
 		#if __unix__
 		if (symlink_depth < 32) { // on my system, MAXSYMLINKS is 20, so this should be plenty
-			char link_to[TED_PATH_MAX];
-			ssize_t bytes = readlink(path, link_to, sizeof link_to);
-			if (bytes != -1) {
+			char *link_to = read_link(path);
+			if (link_to) {
 				free(path);
 				// this is a symlink
-				link_to[bytes] = '\0';
-				return file_selector_cd_(ted, fs, link_to, symlink_depth + 1);
+				bool success = file_selector_cd_(ted, fs, link_to, symlink_depth + 1);
+				free(link_to);
+				return success;
 			}
 		} else {
 			free(path);

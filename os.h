@@ -24,6 +24,13 @@ typedef struct {
 	char name[];
 } FsDirectoryEntry;
 
+#if __unix__
+/// Get target of symbolic link
+///
+/// Return value must be freed.
+char *read_link(const char *path);
+#endif
+
 /// returns what kind of thing this is.
 FsType fs_path_type(const char *path);
 /// get which permissions user has for file

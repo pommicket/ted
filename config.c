@@ -1556,11 +1556,9 @@ static char *last_separator(char *path) {
 }
 
 char *settings_get_root_dir(const Settings *settings, const char *path) {
-	char best_path[TED_PATH_MAX];
-	*best_path = '\0';
+	char *best_path = NULL;
 	u32 best_path_score = 0;
-	char pathbuf[TED_PATH_MAX];
-	strbuf_cpy(pathbuf, path);
+	char *pathbuf = str_dup(path);
 	
 	while (1) {
 		FsDirectoryEntry **entries = fs_list_directory(pathbuf);
@@ -1577,7 +1575,7 @@ char *settings_get_root_dir(const Settings *settings, const char *path) {
 						u32 score = U32_MAX - (u32)(ident_name - root_identifiers);
 						if (score > best_path_score) {
 							best_path_score = score;
-							strbuf_cpy(best_path, pathbuf);
+							best_path = str_dup(pathbuf);
 						}
 					}
 					ident_name += ident_len;
@@ -1594,22 +1592,22 @@ char *settings_get_root_dir(const Settings *settings, const char *path) {
 		if (!last_separator(pathbuf))
 			break; // we made it all the way to / (or c:\ or whatever)
 	}
+	free(pathbuf);
 	
-	if (*best_path) {
-		return str_dup(best_path);
-	} else {
-		// didn't find any identifiers.
-		// just return
-		//  - `path` if it's a directory
-		//  - the directory containing path if it's a file
-		if (fs_path_type(path) == FS_DIRECTORY) {
-			return str_dup(path);
-		}
-		strbuf_cpy(pathbuf, path);
-		char *sep = last_separator(pathbuf);
-		*sep = '\0';
-		return str_dup(pathbuf);
+	if (best_path) {
+		return best_path;
 	}
+	// didn't find any identifiers.
+	// just return
+	//  - `path` if it's a directory
+	//  - the directory containing path if it's a file
+	if (fs_path_type(path) == FS_DIRECTORY) {
+		return str_dup(path);
+	}
+	pathbuf = str_dup(path);
+	char *sep = last_separator(pathbuf);
+	*sep = '\0';
+	return pathbuf;
 }
 
 u32 settings_color(const Settings *settings, ColorSetting color) {

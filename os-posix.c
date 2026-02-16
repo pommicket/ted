@@ -15,6 +15,25 @@
 #include <fcntl.h>
 #include <time.h>
 
+char *read_link(const char *path) {
+	char *buf = NULL;
+	for (size_t len = 16; len <= 65536; len <<= 1) {
+		char *new_buf = realloc(buf, len);
+		if (!new_buf) goto fail;
+		buf = new_buf;
+		ssize_t status = readlink(path, buf, len);
+		if (status == -1) {
+			goto fail;
+		} else if (status < (ssize_t)len) {
+			buf[status] = 0;
+			return buf;
+		}
+	}
+	fail:
+	free(buf);
+	return NULL;
+}
+
 static FsType statbuf_path_type(const struct stat *statbuf) {
 	if (S_ISREG(statbuf->st_mode))
 		return FS_FILE;
