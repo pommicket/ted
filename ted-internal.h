@@ -429,11 +429,11 @@ struct Ted {
 	/// home directory
 	char home[TED_PATH_MAX];
 	/// current working directory
-	char cwd[TED_PATH_MAX];
+	char *cwd;
 	/// directory where we run the build command
-	char build_dir[TED_PATH_MAX];
+	char *build_dir;
 	/// where we are reading tags from
-	char tags_dir[TED_PATH_MAX];
+	char *tags_dir;
 	/// `nodes[0]` is always the "root node", if any buffers are open.
 	Node **nodes;
 	TextBuffer **buffers;

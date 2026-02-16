@@ -1187,9 +1187,11 @@ float ted_get_menu_width(Ted *ted);
 /// Check the various places a ted data file could be
 /// (i.e. look for it in the local and global data directories),
 /// and return the full path.
-Status ted_get_file(Ted const *ted, const char *name, char *out, size_t outsz);
+///
+/// Return value must be freed.
+char *ted_get_file(Ted const *ted, const char *name);
 /// get full path relative to ted working directory.
-void ted_path_full(Ted *ted, const char *relpath, char *abspath, size_t abspath_size);
+char *ted_path_full(Ted *ted, const char *relpath);
 /// Returns the buffer containing the file at absolute path `path`, or `NULL` if there is none.
 TextBuffer *ted_get_buffer_with_file(Ted *ted, const char *path);
 /// close this buffer, discarding unsaved changes.

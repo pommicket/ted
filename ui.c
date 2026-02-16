@@ -20,7 +20,7 @@ struct FileSelector {
 	char title[32];
 	Selector sel;
 	Rect bounds;
-	char cwd[TED_PATH_MAX];
+	char *cwd;
 	/// indicates that this is for creating files, not opening files
 	bool create_menu;
 };
@@ -454,18 +454,16 @@ static Status file_selector_cd1(Ted *ted, FileSelector *fs, const char *name, si
 }
 
 static Status file_selector_cd_(Ted *ted, FileSelector *fs, const char *path, int symlink_depth) {
-	char *const cwd = fs->cwd;
 	if (path[0] == '\0') return true;
 
 	if (path_is_absolute(path)) {
 		// absolute path (e.g. /foo, c:\foo)
 		// start out by replacing cwd with the start of the absolute path
 		if (path[0] == PATH_SEPARATOR) {
-			char root[TED_PATH_MAX];
 			// necessary because the full path of \ on windows isn't just \, it's c:\ or something
 			char pathsep[] = {PATH_SEPARATOR, '\0'};
-			ted_path_full(ted, pathsep, root, sizeof root);
-			strcpy(cwd, root);
+			free(fs->cwd);
+			fs->cwd = ted_path_full(ted, pathsep);
 			path += 1;
 		}
 		#if _WIN32
@@ -515,11 +513,10 @@ char *file_selector_update(Ted *ted, FileSelector *fs) {
 	TextBuffer *line_buffer = ted->line_buffer;
 	String32 search_term32 = buffer_get_line(line_buffer, 0);
 	fs->sel.enable_cursor = !fs->create_menu || search_term32.len == 0;
-	char *const cwd = fs->cwd;
 
-	if (cwd[0] == '\0') {
+	if (!fs->cwd) {
 		// set the file selector's directory to our current directory.
-		str_cpy(cwd, sizeof fs->cwd, ted->cwd);
+		fs->cwd = str_dup(ted->cwd);
 	}
 	
 
@@ -560,19 +557,18 @@ char *file_selector_update(Ted *ted, FileSelector *fs) {
 	char *option_chosen = selector_update(ted, &fs->sel);
 
 	if (option_chosen) {
-		char path[TED_PATH_MAX];
-		path_full(cwd, option_chosen, path, sizeof path);
+		char *path = path_full(fs->cwd, option_chosen);
 		char *ret = NULL;
 
 		switch (fs_path_type(path)) {
 		case FS_NON_EXISTENT:
 		case FS_OTHER:
 			if (fs->create_menu)
-				ret = str_dup(path); // you can only select non-existent things if this is a create menu
+				ret = path; // you can only select non-existent things if this is a create menu
 			break;
 		case FS_FILE:
 			// selected a file!
-			ret = str_dup(path);
+			ret = path;
 			break;
 		case FS_DIRECTORY:
 			// cd there
@@ -580,7 +576,8 @@ char *file_selector_update(Ted *ted, FileSelector *fs) {
 			buffer_clear(line_buffer);
 			break;
 		}
-		
+		if (path != ret)
+			free(path);
 		free(option_chosen);
 		if (ret) {
 			return ret;
@@ -594,13 +591,13 @@ char *file_selector_update(Ted *ted, FileSelector *fs) {
 	FsDirectoryEntry **files;
 	// if the directory we're in gets deleted, go back a directory.
 	for (u32 i = 0; i < 100; ++i) {
-		files = fs_list_directory(cwd);
+		files = fs_list_directory(fs->cwd);
 		if (files) break;
 		else if (i == 0) {
-			if (fs_path_type(cwd) == FS_NON_EXISTENT)
-				ted_error(ted, "%s is not a directory.", cwd);
+			if (fs_path_type(fs->cwd) == FS_NON_EXISTENT)
+				ted_error(ted, "%s is not a directory.", fs->cwd);
 			else
-				ted_error(ted, "Can't list directory %s.", cwd);
+				ted_error(ted, "Can't list directory %s.", fs->cwd);
 		}
 		file_selector_cd(ted, fs, "..");
 	}
@@ -624,9 +621,10 @@ char *file_selector_update(Ted *ted, FileSelector *fs) {
 			free(files[i]);
 		free(files);
 		// set cwd to this (if no buffers are open, the "open" menu should use the last file selector's cwd)
-		strbuf_cpy(ted->cwd, cwd);
+		free(ted->cwd);
+		ted->cwd = str_dup(fs->cwd);
 	} else {
-		ted_error(ted, "Couldn't list directory '%s'.", cwd);
+		ted_error(ted, "Couldn't list directory '%s'.", fs->cwd);
 	}
 	
 	return NULL;

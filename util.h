@@ -157,7 +157,9 @@ bool path_is_absolute(const char *path);
 /// cuts `path` off at last path separator
 void path_dirname(char *path);
 /// assuming `dir` is an absolute path, returns the absolute path of `relpath`, relative to `dir`.
-void path_full(const char *dir, const char *relpath, char *abspath, size_t abspath_size);
+///
+/// return value must be freed.
+char *path_full(const char *dir, const char *relpath);
 /// returns true if the paths are the same.
 ///
 /// handles the fact that paths are case insensitive on windows and that `\\` is the same as `/`.

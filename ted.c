@@ -391,59 +391,64 @@ u32 ted_active_color(Ted *ted, ColorSetting color) {
 	return settings_color(ted_active_settings(ted), color);
 }
 
-void ted_path_full(Ted *ted, const char *relpath, char *abspath, size_t abspath_size) {
-	path_full(ted->cwd, relpath, abspath, abspath_size);
+char *ted_path_full(Ted *ted, const char *relpath) {
+	return path_full(ted->cwd, relpath);
 }
 
 static bool ted_is_regular_buffer(Ted *ted, TextBuffer *buffer) {
 	return arr_index_of(ted->buffers, buffer) >= 0;
 }
 
-Status ted_get_file(Ted const *ted, const char *name, char *out, size_t outsz) {
+char *ted_get_file(Ted const *ted, const char *name) {
 	if (path_is_absolute(name)) {
-		str_cpy(out, outsz, name);
-		if (fs_file_exists(out))
-			return true;
+		if (fs_file_exists(name))
+			return str_dup(name);
 	}
 	if (ted->search_start_cwd) {
 		// check in start_cwd
-		path_full(ted->start_cwd, name, out, outsz);
-		if (fs_file_exists(out))
-			return true;
+		char *path = path_full(ted->start_cwd, name);
+		if (fs_file_exists(path))
+			return path;
+		free(path);
 	}
 	if (*ted->local_data_dir) {
-		str_printf(out, outsz, "%s%c%s", ted->local_data_dir, PATH_SEPARATOR, name);
-		if (fs_file_exists(out))
-			return true;
+		char *path = a_sprintf("%s%c%s", ted->local_data_dir, PATH_SEPARATOR, name);
+		if (fs_file_exists(path))
+			return path;
+		free(path);
 	}
 	if (*ted->global_data_dir) {
-		str_printf(out, outsz, "%s%c%s", ted->global_data_dir, PATH_SEPARATOR, name);
-		if (fs_file_exists(out))
-			return true;
+		char *path = a_sprintf("%s%c%s", ted->global_data_dir, PATH_SEPARATOR, name);
+		if (fs_file_exists(path))
+			return path;
+		free(path);
 	}
 	return false;
 }
 
 static Font *ted_load_single_font(Ted *ted, const char *filename) {
-	char path[TED_PATH_MAX];
-	if (!ted_get_file(ted, filename, path, sizeof path)) {
+	char *path = ted_get_file(ted, filename);
+	if (!path) {
 		ted_error(ted, "Couldn't find font file '%s'", filename);
 		return NULL;
 	}
 
 	arr_foreach_ptr(ted->all_fonts, LoadedFont, f) {
-		if (paths_eq(path, f->path))
+		if (paths_eq(path, f->path)) {
+			free(path);
 			return f->font;
+		}
 	}
 	
 	Font *font = text_font_load(path, ted_active_settings(ted)->text_size);
 	if (!font) {
 		ted_error(ted, "Couldn't load font '%s': %s\n", path, text_get_err());
+		free(path);
 		return NULL;
 	}
 	
 	LoadedFont *f = arr_addp(ted->all_fonts);
-	f->path = str_dup(path);
+	f->path = path;
 	f->font = font;
 	return font;
 }

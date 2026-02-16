@@ -3436,13 +3436,12 @@ bool buffer_save(TextBuffer *buffer) {
 		return false;
 	}
 	
-	char backup_path[TED_PATH_MAX+10];
-	*backup_path = '\0';
+	char *backup_path = NULL;
 	
 	if (settings->save_backup) {
-		strbuf_printf(backup_path, "%s~", buffer->path);
-		if (strlen(backup_path) < strlen(buffer->path) + 1) {
-			buffer_error(buffer, "File name too long.");
+		backup_path = a_sprintf("%s~", buffer->path);
+		if (!backup_path) {
+			buffer_out_of_mem(buffer);
 			return false;
 		}
 	#if __unix__
@@ -3451,6 +3450,7 @@ bool buffer_save(TextBuffer *buffer) {
 		if (fd == -1) {
 			buffer_error(buffer, "Error creating %s: %s",
 				backup_path, strerror(errno));
+			free(backup_path);
 			return false;
 		}
 		close(fd);
@@ -3459,13 +3459,14 @@ bool buffer_save(TextBuffer *buffer) {
 	
 	bool success = true;
 	// first save backup so if writing main file fails halfway through user's data won't be lost
-	if (*backup_path)
+	if (backup_path)
 		success &= buffer_write_to_file(buffer, backup_path);
 	if (success)
 		success &= buffer_write_to_file(buffer, buffer->path);
 	// now if writing the main file succeeded we can safely delete the backup
-	if (success && *backup_path)
+	if (success && backup_path)
 		remove(backup_path);
+	free(backup_path); backup_path = NULL;
 	buffer->last_write_time = timespec_to_seconds(time_last_modified(buffer->path));
 	buffer->inotify_modified = false;
 	if (success) {

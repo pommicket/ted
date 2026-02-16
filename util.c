@@ -507,11 +507,12 @@ void path_dirname(char *path) {
 	assert(0); // invalid path (no path separator)
 }
 
-void path_full(const char *dir, const char *relpath, char *abspath, size_t abspath_size) {
-	assert(abspath_size);
+char *path_full(const char *dir, const char *relpath) {
 	assert(dir[0]);
 	assert(path_is_absolute(dir));
-	abspath[0] = '\0';
+	size_t abspath_size = strlen(dir) + strlen(relpath) + 5;
+	char *abspath = calloc(abspath_size, 1);
+	if (!abspath) return NULL;
 	
 	if (path_is_absolute(relpath)) {
 		if (is_path_separator(relpath[0])) {
@@ -557,6 +558,7 @@ void path_full(const char *dir, const char *relpath, char *abspath, size_t abspa
 		else
 			relpath = component_end + 1;
 	}
+	return abspath;
 }
 
 bool paths_eq(const char *path1, const char *path2) {

@@ -25,6 +25,8 @@ static FsType statbuf_path_type(const struct stat *statbuf) {
 
 FsType fs_path_type(const char *path) {
 	struct stat statbuf = {0};
+	if (!path)
+		return FS_NON_EXISTENT;
 	if (stat(path, &statbuf) != 0)
 		return FS_NON_EXISTENT;
 	return statbuf_path_type(&statbuf);

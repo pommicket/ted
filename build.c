@@ -49,7 +49,7 @@ static bool build_run_next_command_in_queue(Ted *ted) {
 	if (!ted->build_queue)
 		return false;
 	assert(!ted->build_process);
-	assert(*ted->build_dir);
+	assert(ted->build_dir);
 	char *command = ted->build_queue[0];
 	arr_remove(ted->build_queue, 0);
 	if (ted_save_all(ted)) {
@@ -108,8 +108,8 @@ void build_queue_finish(Ted *ted) {
 }
 
 void build_set_working_directory(Ted *ted, const char *dir) {
-	assert(strlen(dir) < TED_PATH_MAX - 1);
-	strbuf_cpy(ted->build_dir, dir);
+	ted->build_dir = str_dup(dir);
+	if (!ted->build_dir) die("out of memory");
 }
 
 void build_start_with_command(Ted *ted, const char *command) {
@@ -145,9 +145,10 @@ void build_start(Ted *ted) {
 		};
 		for (size_t i = 0; i < arr_count(associations); ++i) {
 			Assoc *assoc = &associations[i];
-			char path[TED_PATH_MAX];
-			path_full(ted->build_dir, assoc->filename, path, sizeof path);
-			if (fs_file_exists(path)) {
+			char *path = path_full(ted->build_dir, assoc->filename);
+			bool exists = fs_file_exists(path);
+			free(path);
+			if (exists) {
 				command = assoc->command;
 				break;
 			}
@@ -319,9 +320,8 @@ void build_check_for_errors(Ted *ted) {
 				}
 				char *filename = str32_to_utf8_cstr(str32(filename_start, filename_len));
 				if (filename) {
-					char full_path[TED_PATH_MAX];
 					const char *pfilename = filename;
-					path_full(ted->build_dir, pfilename, full_path, sizeof full_path);
+					char *full_path = path_full(ted->build_dir, pfilename);
 					// if the file does not exist, try stripping ../
 					// this can solve "file not found" problems if your build command involves
 					// cd'ing to a directory inside build_dir
@@ -332,11 +332,12 @@ void build_check_for_errors(Ted *ted) {
 						#endif
 						)) {
 						pfilename += 3;
-						path_full(ted->build_dir, pfilename, full_path, sizeof full_path);
+						free(full_path);
+						full_path = path_full(ted->build_dir, pfilename);
 					}
 										
 					BuildError error = {
-						.path = str_dup(full_path),
+						.path = full_path,
 						.line = (u32)line_number,
 						.column = (u32)column_number,
 						.columns_per_tab = columns_per_tab,

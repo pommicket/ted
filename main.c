@@ -526,11 +526,12 @@ int main(int argc, char **argv) {
 	ted->window = window;
 		
 	{ // set icon
-		char icon_filename[TED_PATH_MAX];
-		if (ted_get_file(ted, "assets/icon.bmp", icon_filename, sizeof icon_filename)) {
+		char *icon_filename = ted_get_file(ted, "assets/icon.bmp");
+		if (icon_filename) {
 			SDL_Surface *icon = SDL_LoadBMP(icon_filename);
 			SDL_SetWindowIcon(window, icon);
 			SDL_FreeSurface(icon);
+			free(icon_filename);
 		} // if we can't find the icon file, it's no big deal
 	}
 	
@@ -1353,6 +1354,9 @@ int main(int argc, char **argv) {
 	ted_free_fonts(ted);
 	config_free_all(ted);
 	macros_free(ted);
+	free(ted->build_dir);
+	free(ted->tags_dir);
+	free(ted->cwd);
 	free(ted);
 #if _WIN32
 	for (int i = 0; i < argc; ++i)

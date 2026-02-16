@@ -552,20 +552,15 @@ static void config_init_settings(void) {
 }
 
 
-static void get_config_path(Ted *ted, char *expanded, size_t expanded_sz, const char *path) {
-	assert(path != expanded);
-	
-	expanded[0] = '\0';
+static char *get_config_path(Ted *ted, const char *path) {
 	if (path[0] == '~' && is_path_separator(path[1])) {
-		str_printf(expanded, expanded_sz, "%s%c%s", ted->home, PATH_SEPARATOR, path + 1);
+		return a_sprintf("%s%c%s", ted->home, PATH_SEPARATOR, path + 1);
 	} else if (!path_is_absolute(path)) {
-		if (!ted_get_file(ted, path, expanded, expanded_sz)) {
-			str_cpy(expanded, expanded_sz, path);
-		}
-	} else {
-		str_cpy(expanded, expanded_sz, path);
+		char *file = ted_get_file(ted, path);
+		if (file)
+			return file;
 	}
-	
+	return str_dup(path);
 }
 
 // only reads fp for multi-line strings
