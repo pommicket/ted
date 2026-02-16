@@ -208,6 +208,85 @@ size_t tags_beginning_with(Ted *ted, const char *prefix, char **out, size_t out_
 	return nmatches;
 }
 
+static bool goto_tag_address(Ted *ted, const char *address) {
+	TextBuffer *buffer = ted_active_buffer(ted);
+	int line_number = atoi(address);
+	if (line_number > 0) {
+		// the tags file gives us a (1-indexed) line number
+		BufferPos pos = {.line = (u32)line_number - 1, .index = 0};
+		buffer_cursor_move_to_pos(buffer, pos);
+		buffer_center_cursor_next_frame(buffer);
+		return true;
+	} else if (address[0] == '/') {
+		// the tags file gives us a pattern to look for
+		const char *in = address + 1;
+		
+		// the patterns seem to be always literal (not regex-y), except for ^ and $
+		// first, we do some preprocessing to remove backslashes and check for ^ and $.
+		bool start_anchored = false, end_anchored = false;
+		char *pattern = calloc(1, strlen(in) + 1);
+		{
+			char *out = pattern;
+			if (*in == '^') {
+				start_anchored = true;
+				++in;
+			}
+			while (*in) {
+				if (*in == '\\' && in[1]) {
+					 *out++ = in[1];
+					 in += 2;
+				} else
+				// NOTE: ctags-universal doesn't escape $ when it's not at the end of the pattern
+				if (*in == '$' && in[1] == 0) {
+					end_anchored = true;
+					break;
+				} else {
+					*out++ = *in++;
+				}
+			}
+		}
+		
+		// now we search
+		String32 pattern32 = str32_from_utf8(pattern);
+		u32 options = PCRE2_LITERAL;
+		if (start_anchored) options |= PCRE2_ANCHORED;
+		if (end_anchored) options |= PCRE2_ENDANCHORED;
+		int error_code;
+		bool success = false;
+		PCRE2_SIZE error_offset;
+		pcre2_code_32 *code = pcre2_compile_32(pattern32.str, pattern32.len,
+			options, &error_code, &error_offset, NULL);
+		if (code) {
+			pcre2_match_data_32 *match_data = pcre2_match_data_create_32(10, NULL);
+			if (match_data) {
+				for (u32 line_idx = 0, line_count = buffer_line_count(buffer); line_idx < line_count; ++line_idx) {
+					String32 line = buffer_get_line(buffer, line_idx);
+					int n = pcre2_match_32(code, line.str, line.len, 0, PCRE2_NOTEMPTY,
+						match_data, NULL);
+					if (n == 1) {
+						// found it!
+						PCRE2_SIZE *ovector = pcre2_get_ovector_pointer_32(match_data);
+						PCRE2_SIZE index = ovector[0];
+						BufferPos pos = {line_idx, (u32)index};
+						buffer_cursor_move_to_pos(buffer, pos);
+						buffer_center_cursor_next_frame(buffer);
+						success = true;
+						break;
+					}
+				}
+				pcre2_match_data_free_32(match_data);
+			}
+			pcre2_code_free_32(code);
+		}
+		str32_free(&pattern32);
+		free(pattern);
+		return success;
+	} else {
+		ted_error(ted, "Unrecognized tag address: %s", address);
+		return false;
+	}
+}
+
 // returns true if the tag exists.
 bool tag_goto(Ted *ted, const char *tag) {
 	bool already_regenerated_tags = false;
@@ -279,83 +358,12 @@ top:;
 						assert(streq(name, tag));
 						char *path = path_full(ted->tags_dir, filename);
 						char *full_path = ted_path_full(ted, path);
-						success &= ted_open_file(ted, full_path);
+						success = ted_open_file(ted, full_path);
 						free(path); path = NULL;
 						free(full_path); full_path = NULL;
-						if (!success) goto failure;
-						TextBuffer *buffer = ted->active_buffer;
-						int line_number = atoi(address);
-						if (line_number > 0) {
-							// the tags file gives us a (1-indexed) line number
-							BufferPos pos = {.line = (u32)line_number - 1, .index = 0};
-							buffer_cursor_move_to_pos(buffer, pos);
-							buffer_center_cursor_next_frame(buffer);
-							success = true;
-						} else if (address[0] == '/') {
-							// the tags file gives us a pattern to look for
-							const char *in = address + 1;
-							
-							// the patterns seem to be always literal (not regex-y), except for ^ and $
-							// first, we do some preprocessing to remove backslashes and check for ^ and $.
-							bool start_anchored = false, end_anchored = false;
-							char *pattern = calloc(1, strlen(in) + 1);
-							{
-								char *out = pattern;
-								if (*in == '^') {
-									start_anchored = true;
-									++in;
-								}
-								while (*in) {
-									if (*in == '\\' && in[1]) {
-										 *out++ = in[1];
-										 in += 2;
-									} else
-									// NOTE: ctags-universal doesn't escape $ when it's not at the end of the pattern
-									if (*in == '$' && in[1] == 0) {
-										end_anchored = true;
-										break;
-									} else {
-										*out++ = *in++;
-									}
-								}
-							}
-							
-							// now we search
-							String32 pattern32 = str32_from_utf8(pattern);
-							u32 options = PCRE2_LITERAL;
-							if (start_anchored) options |= PCRE2_ANCHORED;
-							if (end_anchored) options |= PCRE2_ENDANCHORED;
-							int error_code;
-							PCRE2_SIZE error_offset;
-							pcre2_code_32 *code = pcre2_compile_32(pattern32.str, pattern32.len,
-								options, &error_code, &error_offset, NULL);
-							if (code) {
-								pcre2_match_data_32 *match_data = pcre2_match_data_create_32(10, NULL);
-								if (match_data) {
-									for (u32 line_idx = 0, line_count = buffer_line_count(buffer); line_idx < line_count; ++line_idx) {
-										String32 line = buffer_get_line(buffer, line_idx);
-										int n = pcre2_match_32(code, line.str, line.len, 0, PCRE2_NOTEMPTY,
-											match_data, NULL);
-										if (n == 1) {
-											// found it!
-											PCRE2_SIZE *ovector = pcre2_get_ovector_pointer_32(match_data);
-											PCRE2_SIZE index = ovector[0];
-											BufferPos pos = {line_idx, (u32)index};
-											buffer_cursor_move_to_pos(buffer, pos);
-											buffer_center_cursor_next_frame(buffer);
-											success = true;
-											break;
-										}
-									}
-									pcre2_match_data_free_32(match_data);
-								}
-								pcre2_code_free_32(code);
-							}
-							str32_free(&pattern32);
-							free(pattern);
-						} else {
-							ted_error(ted, "Unrecognized tag address: %s", address);
-						}
+						success = success && goto_tag_address(ted, address);
+						if (!success)
+							goto failure;
 					}
 					break;
 				}

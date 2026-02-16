@@ -1576,6 +1576,7 @@ char *settings_get_root_dir(const Settings *settings, const char *path) {
 						u32 score = U32_MAX - (u32)(ident_name - root_identifiers);
 						if (score > best_path_score) {
 							best_path_score = score;
+							free(best_path);
 							best_path = str_dup(pathbuf);
 						}
 					}
