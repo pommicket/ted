@@ -384,8 +384,6 @@ static int file_selector_entry_cmp(void *context, const SelectorEntry *a, const 
 
 // cd to the directory `name`. `name` cannot include any path separators.
 static Status file_selector_cd1(Ted *ted, FileSelector *fs, const char *name, size_t name_len, int symlink_depth) {
-	char *const cwd = fs->cwd;
-
 	if (name_len == 0 || (name_len == 1 && name[0] == '.')) {
 		// no name, or .
 		return true;
@@ -403,11 +401,11 @@ static Status file_selector_cd1(Ted *ted, FileSelector *fs, const char *name, si
 
 	if (name_len == 2 && name[0] == '.' && name[1] == '.') {
 		// ..
-		char *last_sep = strrchr(cwd, PATH_SEPARATOR);
+		char *last_sep = strrchr(fs->cwd, PATH_SEPARATOR);
 		if (last_sep) {
-			if (last_sep == cwd // this is the starting "/" of a path
+			if (last_sep == fs->cwd // this is the starting "/" of a path
 			#if _WIN32
-				|| (last_sep == cwd + 2 && cwd[1] == ':') // this is the \ of C:\  .
+				|| (last_sep == fs->cwd + 2 && fs->cwd[1] == ':') // this is the \ of C:\  .
 			#endif
 				) {
 				last_sep[1] = '\0'; // include the last separator
@@ -416,38 +414,35 @@ static Status file_selector_cd1(Ted *ted, FileSelector *fs, const char *name, si
 			}
 		}
 	} else {
-		char path[TED_PATH_MAX];
-		strbuf_cpy(path, cwd);
-		if (path[strlen(path) - 1] != PATH_SEPARATOR)
-			strbuf_catf(path, "%c", PATH_SEPARATOR);
-		strbuf_catf(path, "%*s", (int)name_len, name);
-		
+		char *name_copy = strn_dup(name, name_len);
+		char *path = path_full(fs->cwd, name_copy);
+		free(name_copy);
 		if (fs_path_type(path) != FS_DIRECTORY) {
 			// trying to cd to something that's not a directory!
+			free(path);
 			return false;
 		}
+		
 
 		#if __unix__
 		if (symlink_depth < 32) { // on my system, MAXSYMLINKS is 20, so this should be plenty
 			char link_to[TED_PATH_MAX];
 			ssize_t bytes = readlink(path, link_to, sizeof link_to);
+			free(path);
 			if (bytes != -1) {
 				// this is a symlink
 				link_to[bytes] = '\0';
 				return file_selector_cd_(ted, fs, link_to, symlink_depth + 1);
 			}
 		} else {
+			free(path);
 			return false;
 		}
 		#else
 		(void)symlink_depth;
 		#endif
-
-		// add path separator to end if not already there (which could happen in the case of /)
-		if (cwd[strlen(cwd) - 1] != PATH_SEPARATOR)
-			str_catf(cwd, sizeof fs->cwd, "%c", PATH_SEPARATOR);
-		// add name itself
-		strn_cat(cwd, sizeof fs->cwd, name, name_len);
+		free(fs->cwd);
+		fs->cwd = path;
 	}
 	return true;
 	
@@ -468,8 +463,8 @@ static Status file_selector_cd_(Ted *ted, FileSelector *fs, const char *path, in
 		}
 		#if _WIN32
 		else {
-			cwd[0] = '\0';
-			strn_cat(cwd, sizeof fs->cwd, path, 3);
+			free(fs->cwd);
+			fs->cwd = strn_dup(path, 3);
 			path += 3;
 		}
 		#endif

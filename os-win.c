@@ -119,14 +119,29 @@ int fs_mkdir(const char *path) {
 	}
 }
 
-int os_get_cwd(char *buf, size_t buflen) {
-	assert(buf && buflen);
-	wchar_t wide_path[4100];
-	DWORD wide_pathlen = GetCurrentDirectoryW(sizeof wide_path - 1, wide_path);
-	if (wide_pathlen == 0) return -1;
-	if (WideCharToMultiByte(CP_UTF8, 0, wide_path, (int)wide_pathlen, buf, (int)buflen, NULL, NULL) == 0)
-		return 0;
-	return 1;
+char *os_get_cwd(void) {
+	WCHAR *buf = NULL;
+	DWORD wide_pathlen = 0;
+	for (size_t len = 16; len <= 65536; len <<= 1) {
+		WCHAR *new_buf = realloc(buf, len * sizeof(WCHAR));
+		if (!new_buf) goto fail;
+		buf = new_buf;
+		wide_pathlen = GetCurrentDirectoryW(len - 1, buf);
+		if (wide_pathlen == 0) {
+			continue;
+		}
+		buf[wide_pathlen] = 0;
+		size_t utf8len = 4 * wide_pathlen + 1;
+		char *utf8 = calloc(1, utf8len);
+		if (WideCharToMultiByte(CP_UTF8, 0, wide_path, (int)wide_pathlen, utf8, (int)utf8len, NULL, NULL) == 0) {
+			free(utf8);
+			return NULL;
+		}
+		return utf8;
+	}
+	fail:
+	free(buf);
+	return NULL;
 }
 
 int os_rename_overwrite(const char *oldname, const char *newname) {

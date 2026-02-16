@@ -394,7 +394,7 @@ int main(int argc, char **argv) {
 	// make sure signal handler has access to ted.
 	error_signal_handler_ted = ted;
 
-	os_get_cwd(ted->start_cwd, sizeof ted->start_cwd);
+	ted->start_cwd = os_get_cwd();
 	{ // get local and global data directory
 	#if _WIN32
 		char *appdata = NULL;
@@ -505,9 +505,8 @@ int main(int argc, char **argv) {
 		ted_log(ted, "starting ted\n");
 	}
 
-	{ // get current working directory
-		os_get_cwd(ted->cwd, sizeof ted->cwd);
-	}
+	// get current working directory
+	ted->cwd = os_get_cwd();
 
 	#if TED_FORCE_SEARCH_START_CWD
 	// override whether or not we are in the executable's directory
@@ -903,8 +902,8 @@ int main(int argc, char **argv) {
 						size_t dirname_len = (size_t)(last_sep - buffer_path);
 						if (dirname_len == 0) dirname_len = 1; // make sure "/x" sets our cwd to "/", not ""
 						// set cwd to buffer's directory
-						memcpy(ted->cwd, buffer_path, dirname_len);
-						ted->cwd[dirname_len] = 0;
+						free(ted->cwd);
+						ted->cwd = strn_dup(buffer_path, dirname_len);
 					}
 				}
 			}
@@ -1356,6 +1355,7 @@ int main(int argc, char **argv) {
 	macros_free(ted);
 	free(ted->build_dir);
 	free(ted->tags_dir);
+	free(ted->start_cwd);
 	free(ted->cwd);
 	free(ted);
 #if _WIN32

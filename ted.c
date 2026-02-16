@@ -668,15 +668,7 @@ TextBuffer *ted_get_buffer_with_file(Ted *ted, const char *path) {
 	return NULL;
 }
 
-bool ted_open_file(Ted *ted, const char *filename) {
-	if (!filename) {
-		assert(0);
-		return false;
-	}
-	
-	char path[TED_PATH_MAX];
-	ted_path_full(ted, filename, path, sizeof path);
-
+static bool open_path(Ted *ted, const char *path) {
 	// first, check if file is already open
 	TextBuffer *already_open = ted_get_buffer_with_file(ted, path);
 	if (already_open) {
@@ -706,19 +698,26 @@ bool ted_open_file(Ted *ted, const char *filename) {
 	}
 }
 
-bool ted_new_file(Ted *ted, const char *filename) {
+bool ted_open_file(Ted *ted, const char *filename) {
+	if (!filename) {
+		assert(0);
+		return false;
+	}
+	
+	char *path = ted_path_full(ted, filename);
+	bool success = open_path(ted, path);
+	free(path);
+	return success;
+}
+
+static bool new_with_path(Ted *ted, const char *path) {
 	u16 tab_idx=0;
-	char path[TED_PATH_MAX];
-	if (filename)
-		ted_path_full(ted, filename, path, sizeof path);
-	else
-		*path = '\0';
-	TextBuffer *buffer = ted_get_buffer_with_file(ted, path);
+	TextBuffer *buffer = path ? ted_get_buffer_with_file(ted, path) : NULL;
 	if (buffer) {
 		ted_switch_to_buffer(ted, buffer);
 		return true;
 	} else if ((buffer = ted_open_buffer(ted, &tab_idx))) {
-		buffer_new_file(buffer, *path ? path : NULL);
+		buffer_new_file(buffer, path);
 		if (!buffer_has_error(buffer)) {
 			return true;
 		} else {
@@ -729,6 +728,15 @@ bool ted_new_file(Ted *ted, const char *filename) {
 	} else {
 		return false;
 	}
+}
+
+bool ted_new_file(Ted *ted, const char *filename) {
+	char *path = NULL;
+	if (filename)
+		path = ted_path_full(ted, filename);
+	bool success = new_with_path(ted, path);
+	free(path);
+	return success;
 }
 
 

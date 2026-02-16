@@ -108,8 +108,8 @@ void build_queue_finish(Ted *ted) {
 }
 
 void build_set_working_directory(Ted *ted, const char *dir) {
+	free(ted->build_dir);
 	ted->build_dir = str_dup(dir);
-	if (!ted->build_dir) die("out of memory");
 }
 
 void build_start_with_command(Ted *ted, const char *command) {

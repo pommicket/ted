@@ -118,15 +118,22 @@ int fs_mkdir(const char *path) {
 	}
 }
 
-int os_get_cwd(char *buf, size_t buflen) {
-	assert(buf && buflen);
-	if (getcwd(buf, buflen)) {
-		return 1;
-	} else if (errno == ERANGE) {
-		return 0;
-	} else {
-		return -1;
+char *os_get_cwd(void) {
+	char *buf = NULL;
+	for (size_t len = 16; len <= 65536; len <<= 1) {
+		char *new_buf = realloc(buf, len);
+		if (!new_buf)
+			goto fail;
+		buf = new_buf;
+		if (getcwd(buf, len)) {
+			return buf;
+		}
+		if (errno != ERANGE)
+			goto fail;
 	}
+	fail:
+	free(buf);
+	return NULL;
 }
 
 int os_rename_overwrite(const char *oldname, const char *newname) {

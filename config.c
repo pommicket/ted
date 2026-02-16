@@ -1105,12 +1105,13 @@ static void config_read_ted_cfg(Ted *ted, RcStr *cfg_path_rc, const char ***incl
 			char line[2048];
 			config_read_to_eol(reader, line, sizeof line);
 			if (str_has_prefix(line, "include ")) {
-				char included[TED_PATH_MAX];
-				char expanded[TED_PATH_MAX];
-				strbuf_cpy(included, line + strlen("include "));
+				char *included = calloc(1, strlen(line));
+				strcpy(included, line + strlen("include "));
 				str_trim(included);
-				get_config_path(ted, expanded, sizeof expanded, included);
+				char *expanded = get_config_path(ted, included);
+				free(included);
 				RcStr *expanded_rc = rc_str_new(expanded, -1);
+				free(expanded);
 				config_read_ted_cfg(ted, expanded_rc, include_stack);
 				rc_str_decref(&expanded_rc);
 			} else {

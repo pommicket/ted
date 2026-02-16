@@ -139,6 +139,21 @@ static void read_cstr(FILE *fp, char *out, size_t out_sz) {
 	}
 }
 
+static char *read_cstr_unbound(FILE *fp) {
+	char *buf = NULL;
+	while (1) {
+		int c = getc(fp);
+		if (c == 0 || c == EOF) {
+			arr_add(buf, 0);
+			break;
+		}
+		arr_add(buf, (char)c);
+	}
+	char *str = str_dup(buf);
+	arr_free(buf);
+	return str;
+}
+
 
 // write a buffer position to a file
 static void buffer_pos_write(BufferPos pos, FILE *fp) {
@@ -280,7 +295,8 @@ static void session_read_file(Ted *ted, FILE *fp) {
 		return; // wrong version
 	}
 
-	read_cstr(fp, ted->cwd, sizeof ted->cwd);
+	free(ted->cwd);
+	ted->cwd = read_cstr_unbound(fp);
 
 	u16 active_node_idx = read_u16(fp);
 	u16 active_buffer_idx = read_u16(fp);

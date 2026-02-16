@@ -6,7 +6,8 @@
 static bool get_tags_dir(Ted *ted, bool error_if_does_not_exist) {
 	char prev_dir[TED_PATH_MAX];
 	*prev_dir = '\0';
-	strbuf_cpy(ted->tags_dir, ted->cwd);
+	free(ted->tags_dir);
+	ted->tags_dir = str_dup(ted->cwd);
 	while (!streq(prev_dir, ted->tags_dir)) {
 		strbuf_cpy(prev_dir, ted->tags_dir);
 		char *path = path_full(ted->tags_dir, "tags");
@@ -100,9 +101,8 @@ static void tags_generate_at_dir(Ted *ted, bool run_in_build_window, const char 
 // generate/re-generate tags.
 void tags_generate(Ted *ted, bool run_in_build_window) {
 	if (!get_tags_dir(ted, false)) {
-		char *root = ted_get_root_dir(ted);
-		strcpy(ted->tags_dir, root);
-		free(root);
+		free(ted->tags_dir);
+		ted->tags_dir = ted_get_root_dir(ted);
 	}
 	build_set_working_directory(ted, ted->tags_dir);
 	

@@ -58,9 +58,11 @@ typedef struct {
 
 /// Thing to do when a key combo is pressed.
 typedef struct {
+	// magic comment
 	KeyCombo key_combo;
 	Command command;
 	CommandArgument argument;
+	// comment that stops clangd from crashing
 } KeyAction;
 
 /// Reference-counted texture
@@ -336,7 +338,7 @@ struct Ted {
 	/// should start_cwd be searched for files? set to true if the executable isn't "installed"
 	bool search_start_cwd;
 	/// CWD `ted` was started in
-	char start_cwd[TED_PATH_MAX];
+	char *start_cwd;
 	/// if set to true, the window will close next frame. NOTE: this doesn't check for unsaved changes!!
 	bool quit;
 	/// is the find or find+replace menu open?

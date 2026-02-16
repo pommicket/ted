@@ -44,13 +44,10 @@ FsDirectoryEntry **fs_list_directory(const char *dirname);
 /// 0  if the directory already exists\n
 /// -1 if the path already exists, but it's not a directory, or if there's another error (e.g. don't have permission to create directory).
 int fs_mkdir(const char *path);
-/// Puts the current working directory into `buf`, including a null-terminator, writing at most `buflen` bytes.
+/// Returns the current working directory.
 ///
-/// \returns
-/// 1  if the working directory was inserted into buf successfully\n
-/// 0  if buf is too short to hold the cwd\n
-/// -1 if we can't get the cwd for whatever reason.
-int os_get_cwd(char *buf, size_t buflen);
+/// Return value must be freed.
+char *os_get_cwd(void);
 /// Unlike ISO C rename() function, this will overwrite `newname` if it exists.
 ///
 /// \returns

@@ -15,8 +15,14 @@
 #define str_catf(str, size, ...) str_printf((str) + strlen(str), (size) - strlen(str), __VA_ARGS__)
 #define strbuf_catf(str, ...) assert(sizeof str != 4 && sizeof str != 8), \
 	str_catf(str, sizeof str, __VA_ARGS__)
-#define strbuf_cpy(dst, src) str_cpy(dst, sizeof dst, src)
-#define strbuf_cat(dst, src) str_cat(dst, sizeof dst, src)
+#define strbuf_cpy(dst, src) do {\
+	static_assert_if_possible(sizeof dst != sizeof(char *));\
+	str_cpy(dst, sizeof dst, src);\
+	} while (0)
+#define strbuf_cat(dst, src)  do {\
+	static_assert_if_possible(sizeof dst != sizeof(char *));\
+	str_cat(dst, sizeof dst, src);\
+	} while (0)
 
 
 #define PIf 3.14159265358979f
