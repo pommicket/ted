@@ -130,9 +130,6 @@ GLuint gl_compile_and_link_shaders(char error_buf[256], const char *vshader_code
 	GLuint program = gl_link_program(error_buf, shaders, 2);
 	if (shaders[0]) glDeleteShader(shaders[0]);
 	if (shaders[1]) glDeleteShader(shaders[1]);
-	if (program) {
-		debug_print("Successfully linked program %u.\n", program);
-	}
 	return program;
 }
 

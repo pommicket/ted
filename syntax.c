@@ -7,6 +7,11 @@
 // ---- syntax state constants ----
 // syntax state is explained in development.md
 
+#if INT_MAX < (1L << 30)
+#error "line below won't work (enums can't hold values > INT_MAX)"
+#endif
+#define SYNTAX_STATE_TOP_BIT (1 << 30)
+
 // these all say "CPP" but really they're C/C++
 enum {
 	SYNTAX_STATE_CPP_MULTI_LINE_COMMENT = 0x1, // are we in a multi-line comment? (delineated by /* */)
@@ -47,7 +52,9 @@ enum {
 };
 
 enum {
-	SYNTAX_STATE_HTML_COMMENT = 0x01
+	SYNTAX_STATE_HTML_COMMENT = 0x01,
+	SYNTAX_STATE_HTML_CSS = SYNTAX_STATE_TOP_BIT,
+	SYNTAX_STATE_HTML_JS = SYNTAX_STATE_TOP_BIT >> 1,
 };
 
 enum {
@@ -90,6 +97,9 @@ typedef struct {
 
 static LanguageName *language_names = NULL; // dynamic array
 
+static void syntax_highlight_javascript_like(
+	SyntaxState *state, const char32_t *line, u32 line_len, SyntaxCharType *char_types, Language language);
+static void syntax_highlight_css(SyntaxState *state_ptr, const char32_t *line, u32 line_len, SyntaxCharType *char_types);
 
 Language language_from_str(const char *str) {
 	arr_foreach_ptr(language_names, LanguageName, lname) {
@@ -764,7 +774,6 @@ static void syntax_highlight_rust(SyntaxState *state, const char32_t *line, u32 
 }
 
 static void syntax_highlight_python(SyntaxState *state, const char32_t *line, u32 line_len, SyntaxCharType *char_types) {
-	(void)state;
 	bool in_string = (*state & SYNTAX_STATE_PYTHON_STRING) != 0;
 	bool string_is_dbl_quoted = (*state & SYNTAX_STATE_PYTHON_STRING_DBL_QUOTED) != 0;
 	bool string_is_fstring = (*state & SYNTAX_STATE_PYTHON_FSTRING) != 0;
@@ -1258,8 +1267,44 @@ static bool is_html_tag_char(char32_t c) {
 		|| (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9');
 }
 
+// if line[*p_idx] starts with <tag_name\s*>, advances *p_idx, highlights the tag, and returns true.
+static bool is_tag(const char32_t *line, SyntaxCharType *char_types, u32 *p_idx, u32 line_len, const char *tag_name) {
+	u32 i = *p_idx;
+	size_t tag_name_len = strlen(tag_name);
+	if (i + tag_name_len + 2 > line_len) {
+		return false;
+	}
+	if (line[i] != '<') return false;
+	i++;
+	for (size_t j = 0; j < tag_name_len; i++, j++) {
+		char32_t c = line[i];
+		if (c > 'z') return false;
+		if (c >= 'A' && c <= 'Z') c += 'a' - 'A';
+		if ((int)c != tag_name[j])
+			return false;
+	}
+	while (i < line_len && line[i] <= 32 && strchr("\t \f\r", (char)line[i])) {
+		i++;
+	}
+	if (i < line_len && line[i] == '>') {
+		if (char_types)
+			memset(char_types + *p_idx, SYNTAX_KEYWORD, i+1 - *p_idx);
+		*p_idx = i+1;
+		return true;
+	}
+	return false;
+}
+
 // highlights XML and HTML
 static void syntax_highlight_html_like(SyntaxState *state, const char32_t *line, u32 line_len, SyntaxCharType *char_types, Language lang) {
+	if (*state & SYNTAX_STATE_HTML_JS) {
+		syntax_highlight_javascript_like(state, line, line_len, char_types, LANG_JAVASCRIPT);
+		return;
+	}
+	if (*state & SYNTAX_STATE_HTML_CSS) {
+		syntax_highlight_css(state, line, line_len, char_types);
+		return;
+	}
 	bool comment = (*state & SYNTAX_STATE_HTML_COMMENT) != 0;
 	bool in_sgl_string = false; // 'string'
 	bool in_dbl_string = false; // "string"
@@ -1316,6 +1361,20 @@ static void syntax_highlight_html_like(SyntaxState *state, const char32_t *line,
 				break;
 			case '<':
 				if (has_1_char && is_html_tag_char(line[i+1])) {
+					if (lang == LANG_HTML && is_tag(line, char_types, &i, line_len, "script")) {
+						*state = SYNTAX_STATE_HTML_JS;
+						if (char_types)
+							char_types += i;
+						syntax_highlight_javascript_like(state, line + i, line_len - i, char_types, LANG_JAVASCRIPT);
+						return;
+					}
+					if (lang == LANG_HTML && is_tag(line, char_types, &i, line_len, "style")) {
+						*state = SYNTAX_STATE_HTML_CSS;
+						if (char_types)
+							char_types += i;
+						syntax_highlight_css(state, line + i, line_len - i, char_types);
+						return;
+					}
 					for (; i < line_len; ++i) {
 						if (!is_html_tag_char(line[i])) {
 							--i;
@@ -1478,7 +1537,7 @@ static void syntax_highlight_cfg(SyntaxState *state, const char32_t *line, u32 l
 // highlighting for javascript, typescript, and JSON
 static void syntax_highlight_javascript_like(
 	SyntaxState *state, const char32_t *line, u32 line_len, SyntaxCharType *char_types, Language language) {
-	(void)state;
+	bool is_html = (*state & SYNTAX_STATE_HTML_JS) != 0;
 	bool string_is_template = (*state & SYNTAX_STATE_JAVASCRIPT_TEMPLATE_STRING) != 0;
 	bool in_multiline_comment = (*state & SYNTAX_STATE_JAVASCRIPT_MULTILINE_COMMENT) != 0;
 	bool interpolating = (*state & SYNTAX_STATE_JAVASCRIPT_INTERPOLATION) != 0;
@@ -1502,6 +1561,15 @@ static void syntax_highlight_javascript_like(
 				}
 				i++;
 				dealt_with = true;
+			}
+			break;
+		case '<':
+			if (!in_string && !in_multiline_comment
+				&& is_html && is_tag(line, char_types, &i, line_len, "/script")) {
+				*state = 0;
+				if (char_types) char_types += i;
+				syntax_highlight_html_like(state, &line[i], line_len - i, char_types, LANG_HTML);
+				return;
 			}
 			break;
 		case '/':
@@ -1678,13 +1746,12 @@ static void syntax_highlight_javascript_like(
 			char_types[i] = type;
 		}
 	}
-	*state = 0;
-	if ((in_string || interpolating) && string_is_template)
-		*state |= SYNTAX_STATE_JAVASCRIPT_TEMPLATE_STRING;
-	if (interpolating)
-		*state |= SYNTAX_STATE_JAVASCRIPT_INTERPOLATION;
-	if (in_multiline_comment)
-		*state |= SYNTAX_STATE_JAVASCRIPT_MULTILINE_COMMENT;
+	*state =
+		((in_string || interpolating) && string_is_template)
+			* SYNTAX_STATE_JAVASCRIPT_TEMPLATE_STRING
+		| interpolating * SYNTAX_STATE_JAVASCRIPT_INTERPOLATION
+		| in_multiline_comment * SYNTAX_STATE_JAVASCRIPT_MULTILINE_COMMENT
+		| is_html * SYNTAX_STATE_HTML_JS;
 }
 
 static void syntax_highlight_java(SyntaxState *state_ptr, const char32_t *line, u32 line_len, SyntaxCharType *char_types) {
@@ -1966,7 +2033,6 @@ static void syntax_highlight_go(SyntaxState *state_ptr, const char32_t *line, u3
 static void syntax_highlight_text(SyntaxState *state, const char32_t *line, u32 line_len, SyntaxCharType *char_types) {
 	(void)state;
 	(void)line;
-	(void)line_len;
 	if (char_types) {
 		memset(char_types, 0, line_len);
 	}
@@ -1974,6 +2040,7 @@ static void syntax_highlight_text(SyntaxState *state, const char32_t *line, u32 
 
 static void syntax_highlight_css(SyntaxState *state_ptr, const char32_t *line, u32 line_len, SyntaxCharType *char_types) {
 	SyntaxState state = *state_ptr;
+	bool is_html = (state & SYNTAX_STATE_HTML_CSS) != 0;
 	bool in_comment = (state & SYNTAX_STATE_CSS_COMMENT) != 0;
 	bool in_braces = (state & SYNTAX_STATE_CSS_IN_BRACES) != 0;
 	
@@ -2012,6 +2079,15 @@ static void syntax_highlight_css(SyntaxState *state_ptr, const char32_t *line, u
 				char_types[i++] = SYNTAX_KEYWORD;
 				dealt_with = true;
 				goto handle_pseudo;
+			}
+			break;
+		case '<':
+			if (is_html && is_tag(line, char_types, &i, line_len, "/style")) {
+				*state_ptr = 0;
+				if (char_types)
+					char_types += i;
+				syntax_highlight_html_like(state_ptr, line + i, line_len - i, char_types, LANG_HTML);
+				return;
 			}
 			break;
 		case '[':
@@ -2179,11 +2255,11 @@ static void syntax_highlight_css(SyntaxState *state_ptr, const char32_t *line, u
 	*state_ptr = (SyntaxState)(
 		  (in_comment * SYNTAX_STATE_CSS_COMMENT)
 		  | (in_braces * SYNTAX_STATE_CSS_IN_BRACES)
+		  | (is_html * SYNTAX_STATE_HTML_CSS)
 	);
 }
 
 static void syntax_highlight_gdscript(SyntaxState *state, const char32_t *line, u32 line_len, SyntaxCharType *char_types) {
-	(void)state;
 	bool in_string = (*state & SYNTAX_STATE_GDSCRIPT_STRING) != 0;
 	bool string_is_dbl_quoted = (*state & SYNTAX_STATE_GDSCRIPT_STRING_DBL_QUOTED) != 0;
 	bool string_is_multiline = true;
