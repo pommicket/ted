@@ -60,7 +60,7 @@ void menu_open_with_context(Ted *ted, const char *menu_name, void *context) {
 	ted->prev_active_buffer = ted->active_buffer;
 	
 	ted_switch_to_buffer(ted, NULL);
-	*ted->warn_overwrite = 0; // clear warn_overwrite
+	free(ted->warn_overwrite); ted->warn_overwrite = NULL; // clear warn_overwrite
 	buffer_clear(ted->line_buffer);
 	if (info->open) info->open(ted);
 }
@@ -72,9 +72,9 @@ void menu_open(Ted *ted, const char *menu_name) {
 void menu_escape(Ted *ted) {
 	if (!menu_is_any_open(ted)) return;
 	
-	if (*ted->warn_overwrite) {
+	if (ted->warn_overwrite) {
 		// just close "are you sure you want to overwrite?"
-		*ted->warn_overwrite = 0;
+		free(ted->warn_overwrite); ted->warn_overwrite = NULL;
 		ted_switch_to_buffer(ted, ted->line_buffer);
 	} else {
 		menu_close(ted);
@@ -197,7 +197,7 @@ static void save_as_menu_open(Ted *ted) {
 }
 
 static void save_as_menu_update(Ted *ted) {
-	if (*ted->warn_overwrite) {
+	if (ted->warn_overwrite) {
 		switch (popup_update(ted, POPUP_YES_NO_CANCEL)) {
 		case POPUP_NONE:
 			// no option selected
@@ -212,7 +212,7 @@ static void save_as_menu_update(Ted *ted) {
 		} break;
 		case POPUP_NO:
 			// back to the file selector
-			*ted->warn_overwrite = '\0';
+			free(ted->warn_overwrite); ted->warn_overwrite = NULL;
 			ted_switch_to_buffer(ted, ted->line_buffer);
 			break;
 		case POPUP_CANCEL:
@@ -227,7 +227,8 @@ static void save_as_menu_update(Ted *ted) {
 			if (buffer) {
 				if (fs_path_type(selected_file) != FS_NON_EXISTENT) {
 					// file already exists! warn about overwriting it.
-					strbuf_cpy(ted->warn_overwrite, selected_file);
+					free(ted->warn_overwrite);
+					ted->warn_overwrite = selected_file;
 					ted_switch_to_buffer(ted, NULL);
 				} else {
 					// create the new file.
@@ -235,13 +236,14 @@ static void save_as_menu_update(Ted *ted) {
 					menu_close(ted);
 				}
 			}
-			free(selected_file);
+			if (ted->warn_overwrite != selected_file)
+				free(selected_file);
 		}
 	}
 }
 
 static void save_as_menu_render(Ted *ted) {
-	if (*ted->warn_overwrite) {
+	if (ted->warn_overwrite) {
 		const char *path = ted->warn_overwrite;
 		const char *filename = path_filename(path);
 		char title[64] = {0}, body[1024] = {0};

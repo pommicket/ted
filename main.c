@@ -1357,6 +1357,8 @@ int main(int argc, char **argv) {
 	free(ted->tags_dir);
 	free(ted->start_cwd);
 	free(ted->cwd);
+	free(ted->default_settings_cwd);
+	free(ted->warn_overwrite);
 	free(ted);
 #if _WIN32
 	for (int i = 0; i < argc; ++i)

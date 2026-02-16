@@ -58,11 +58,9 @@ typedef struct {
 
 /// Thing to do when a key combo is pressed.
 typedef struct {
-	// magic comment
 	KeyCombo key_combo;
 	Command command;
 	CommandArgument argument;
-	// comment that stops clangd from crashing
 } KeyAction;
 
 /// Reference-counted texture
@@ -306,7 +304,7 @@ struct Ted {
 	Node *active_node;
 	Config *all_configs;
 	/// cwd where \ref default_settings was computed
-	char default_settings_cwd[TED_PATH_MAX];
+	char *default_settings_cwd;
 	/// settings to use when no buffer is open
 	Settings default_settings;
 	float window_width, window_height;
@@ -421,9 +419,9 @@ struct Ted {
 	/// allows execution of multiple commands -- needed for tags generation
 	char **build_queue;
 	/// comma-separated list of files with unsaved changes (only applicable if warn_unsaved != 0)
-	char warn_unsaved_names[TED_PATH_MAX];
-	/// file name user is trying to overwrite
-	char warn_overwrite[TED_PATH_MAX];
+	char warn_unsaved_names[256];
+	/// path user is trying to overwrite
+	char *warn_overwrite;
 	/// file name which we want to reload
 	char ask_reload[TED_PATH_MAX];
 	char local_data_dir[TED_PATH_MAX];

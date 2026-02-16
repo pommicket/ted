@@ -1536,7 +1536,9 @@ void config_read(Ted *ted, const char *path, ConfigFormat format) {
 		config_read_ted_cfg(ted, source_rc, &include_stack);
 		arr_free(include_stack);
 		// force recompute default settings
-		strcpy(ted->default_settings_cwd, "//");
+		free(ted->default_settings_cwd);
+		// (empty string will never equal ted->cwd)
+		ted->default_settings_cwd = calloc(1, 1);
 		break;
 	case CONFIG_EDITORCONFIG:
 		config_read_editorconfig(ted, source_rc);

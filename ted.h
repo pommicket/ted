@@ -1342,7 +1342,7 @@ void file_selector_set_bounds(FileSelector *s, Rect bounds);
 void file_selector_set_title(FileSelector *s, const char *title);
 /// free resources used by file selector
 void file_selector_free(FileSelector *fs);
-/// returns the name of the selected file, or `NULL` if none was selected.
+/// returns the path of the selected file, or `NULL` if none was selected.
 ///
 /// the returned pointer should be freed.
 char *file_selector_update(Ted *ted, FileSelector *fs);

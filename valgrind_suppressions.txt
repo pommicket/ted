@@ -158,6 +158,14 @@
    <insert_a_suppression_name_here>
    Memcheck:Leak
    match-leak-kinds: reachable
+   ...
+   fun:_XcursorGetDisplayInfo
+   ...
+}
+{
+   <insert_a_suppression_name_here>
+   Memcheck:Leak
+   match-leak-kinds: reachable
    fun:malloc
    obj:/usr/lib/x86_64-linux-gnu/libSDL2-2.0.so.*
    ...

@@ -358,6 +358,7 @@ void selector_render(Ted *ted, Selector *s) {
 
 void file_selector_clear(FileSelector *fs) {
 	selector_clear(&fs->sel);
+	free(fs->cwd);
 	memset(fs, 0, sizeof *fs);
 }
 
@@ -428,8 +429,8 @@ static Status file_selector_cd1(Ted *ted, FileSelector *fs, const char *name, si
 		if (symlink_depth < 32) { // on my system, MAXSYMLINKS is 20, so this should be plenty
 			char link_to[TED_PATH_MAX];
 			ssize_t bytes = readlink(path, link_to, sizeof link_to);
-			free(path);
 			if (bytes != -1) {
+				free(path);
 				// this is a symlink
 				link_to[bytes] = '\0';
 				return file_selector_cd_(ted, fs, link_to, symlink_depth + 1);
