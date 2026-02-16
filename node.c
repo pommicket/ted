@@ -440,7 +440,7 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 						strbuf_catf(ted->window_title, "%u spaces", buffer_tab_width(buffer));
 					else
 						strbuf_catf(ted->window_title, "tabs");
-					if (*rc_str(settings->lsp, "")) {
+					if (*rc_str(settings->lsp, "") && settings->lsp_enabled) {
 						LSP *lsp = buffer_lsp(buffer);
 						strbuf_catf(ted->window_title, " | LSP %s",
 							lsp && lsp_is_initialized(lsp) && !lsp_has_exited(lsp)
