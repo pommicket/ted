@@ -173,7 +173,8 @@ static void set_nonblocking(int fd) {
 
 Process *process_run_ex(const char *command, const ProcessSettings *settings) {
 	Process *proc = calloc(1, sizeof *proc);
-
+	if (!proc)
+		return NULL;
 	int stdin_pipe[2] = {0}, stdout_pipe[2] = {0}, stderr_pipe[2] = {0};
 	if (pipe(stdin_pipe) != 0) {
 		strbuf_printf(proc->error, "%s", strerror(errno));
@@ -192,6 +193,13 @@ Process *process_run_ex(const char *command, const ProcessSettings *settings) {
 			close(stdin_pipe[1]);
 			close(stdout_pipe[0]);
 			close(stdout_pipe[1]);
+			return proc;
+		}
+	}
+	for (size_t i = 0; i < settings->env_count; i++) {
+		const char *name = settings->env[i].name;
+		if (strchr(name, '=')) {
+			strbuf_printf(proc->error, "Environment variable '%s' contains =", name);
 			return proc;
 		}
 	}
@@ -223,7 +231,30 @@ Process *process_run_ex(const char *command, const ProcessSettings *settings) {
 		
 		char *program = "/bin/sh";
 		char *argv[] = {program, "-c", (char *)command, NULL};
-		if (execv(program, argv) == -1) {
+		char **envp = environ;
+		if (settings->env_count) {
+			// set up environment variables
+			size_t environ_count = 0;
+			while (environ[environ_count]) environ_count++;
+			envp = calloc(environ_count + settings->env_count + 1, sizeof(char *));
+			if (!envp) {
+				dprintf(STDERR_FILENO, "out of memory\n");
+				exit(127);
+			}
+			// variables inherited from parent
+			memcpy(envp, environ, environ_count * sizeof(char *));\
+			// variables specified in settings
+			for (size_t i = 0; i < settings->env_count; i++) {
+				const EnvironmentVariable *var = &settings->env[i];
+				char *str = a_sprintf("%s=%s", var->name, var->value);
+				if (!str) {
+					dprintf(STDERR_FILENO, "out of memory\n");
+					exit(127);
+				}
+				envp[environ_count + i] = str;
+			}
+		}
+		if (execve(program, argv, envp) == -1) {
 			dprintf(STDERR_FILENO, "%s: %s\n", program, strerror(errno));
 			exit(127);
 		}

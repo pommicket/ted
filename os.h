@@ -99,10 +99,19 @@ static void time_sleep_seconds(double s) {
 /// a process
 typedef struct Process Process;
 
+typedef struct {
+	/// Environment variable name - must not contain `=`
+	const char *name;
+	/// Environment variable value
+	const char *value;
+} EnvironmentVariable;
+
 /// zero everything except what you're using
 typedef struct {
 	bool separate_stderr;
 	const char *working_directory;
+	const EnvironmentVariable *env;
+	size_t env_count;
 	/// for forwards compatibility
 	char _reserved[256];
 } ProcessSettings;

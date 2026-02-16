@@ -54,7 +54,23 @@ static bool build_run_next_command_in_queue(Ted *ted) {
 	arr_remove(ted->build_queue, 0);
 	if (ted_save_all(ted)) {
 		ProcessSettings settings = {0};
+		EnvironmentVariable env[3] = {0};
+		char line_str[24], col_str[24];
+		size_t env_count = 0;
+		TextBuffer *active_buffer = ted_active_buffer(ted);
+		if (active_buffer) {
+			const char *buffer_path = buffer_get_path(active_buffer);
+			BufferPos cursor_pos = buffer_cursor_pos(active_buffer);
+			// helpful environment variables
+			env[env_count++] = (EnvironmentVariable){"TED_FILE", buffer_path};
+			strbuf_printf(line_str, "%" PRIu32, cursor_pos.line + 1);
+			strbuf_printf(col_str, "%" PRIu32, cursor_pos.index + 1);
+			env[env_count++] = (EnvironmentVariable){"TED_LINE", line_str};
+			env[env_count++] = (EnvironmentVariable){"TED_COLUMN", col_str};
+		}
 		settings.working_directory = ted->build_dir;
+		settings.env = env;
+		settings.env_count = env_count;
 		ted->build_process = process_run_ex(command, &settings);
 		const char *error = process_geterr(ted->build_process);
 		if (!error) {

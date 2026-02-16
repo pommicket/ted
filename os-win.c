@@ -205,6 +205,53 @@ static void get_last_error_str(char *out, size_t out_sz) {
 	str_printf(out + strlen(out), out_sz - strlen(out), " (error code %u)", (unsigned)errnum);
 }
 
+static void *create_environment_block(Process *process, const ProcessSettings *settings) {
+	WCHAR *inherit = GetEnvironmentStringsW();
+	if (!settings->env_count)
+		return inherit;
+	size_t inherit_len = 0;
+	while (inherit[inherit_len] || inherit[inherit_len + 1])
+		inherit_len++;
+	inherit_len++; // include 1 of the 2 terminating null characters
+	size_t total_len = inherit_len + 1;
+	for (size_t i = 0; i < settings->env_count; i++) {
+		const char *name = settings->env[i].name;
+		const char *value = settings->env[i].value;
+		if (strchr(name, '=')) {
+			strbuf_printf(process->error, "Environment variable '%s' contains =", name);
+			return NULL;
+		}
+		total_len += strlen(name) + strlen(value) + 2;
+	}
+	WCHAR *environment = calloc(total_len, sizeof(WCHAR));
+	if (!environment)
+		return NULL;
+	memcpy(environment, inherit, inherit_len * sizeof(WCHAR));
+	WCHAR *environment_end = environment + total_len, *p = environment + inherit_len;
+	for (size_t i = 0; i < settings->env_count; i++) {
+		const char *name = settings->env[i].name;
+		const char *value = settings->env[i].value;
+		int wide_len = MultiByteToWideChar(CP_UTF8, 0, name, -1, p, (int)(environment_end - p);
+		if (!wide_len) {
+			strbuf_printf(process->error, "Environment variable name contains bad UTF-8");
+			return NULL;
+		}
+		p += wide_len - 1; // don't include null terminator
+		*p++ = '=';
+		wide_len = MultiByteToWideChar(CP_UTF8, 0, value, -1, p, (int)(environment_end - p));
+		if (!wide_len) {
+			strbuf_printf(process->error, "Environment variable name contains bad UTF-8");
+			return NULL;
+		}
+		*p++ = '\0';
+	}
+	*p++ = '\0';
+	assert(p < environment_end);
+	TODO: test me
+	
+	return environment;
+}
+
 Process *process_run_ex(const char *command, const ProcessSettings *settings) {
 	// thanks to https://devblogs.microsoft.com/oldnewthing/20131209-00/?p=2433 for the job code
 	Process *process = calloc(1, sizeof *process);
@@ -222,7 +269,7 @@ Process *process_run_ex(const char *command, const ProcessSettings *settings) {
 		}
 		working_directory = wdbuf;
 	}
-	
+	void *environment = create_environment_block(process, process_settings);
 
 	// we need to create a "job" for this, because when you kill a process on windows,
 	// all its children just keep going. so cmd.exe would die, but not the actual build process.
@@ -251,7 +298,7 @@ Process *process_run_ex(const char *command, const ProcessSettings *settings) {
 			startup.wShowWindow = SW_HIDE;
 			PROCESS_INFORMATION *process_info = &process->process_info;
 			if (CreateProcessW(NULL, command_line, NULL, NULL, TRUE, CREATE_NEW_CONSOLE | CREATE_SUSPENDED,
-				NULL, working_directory, &startup, process_info)) {
+				environment, working_directory, &startup, process_info)) {
 				// create a suspended process, add it to the job, then resume (unsuspend) the process
 				if (AssignProcessToJobObject(job, process_info->hProcess)) {
 					if (ResumeThread(process_info->hThread) != (DWORD)-1) {
@@ -294,6 +341,8 @@ Process *process_run_ex(const char *command, const ProcessSettings *settings) {
 		if (*process->error)
 			CloseHandle(job);
 	}
+	if (settings->env_count)
+		free(environment);
 	free(command_line);
 	return process;
 }
