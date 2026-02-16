@@ -423,11 +423,11 @@ struct Ted {
 	/// path user is trying to overwrite
 	char *warn_overwrite;
 	/// file name which we want to reload
-	char ask_reload[TED_PATH_MAX];
-	char local_data_dir[TED_PATH_MAX];
-	char global_data_dir[TED_PATH_MAX];
+	char ask_reload[256];
+	char *local_data_dir;
+	char *global_data_dir;
 	/// home directory
-	char home[TED_PATH_MAX];
+	char *home;
 	/// current working directory
 	char *cwd;
 	/// directory where we run the build command

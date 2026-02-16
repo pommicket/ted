@@ -409,7 +409,7 @@ int main(int argc, char **argv) {
 		id = FOLDERID_Profile;
 		wchar_t *home_wide = NULL;
 		if (SHGetKnownFolderPath(&id, 0, NULL, &home_wide) == S_OK) {
-			strbuf_printf(ted->home, "%ls", home_wide);
+			ted->home = a_sprintf("%ls", home_wide);
 			CoTaskMemFree(home_wide);
 		}
 		WCHAR executable_wide_path[TED_PATH_MAX] = {0};
@@ -423,8 +423,8 @@ int main(int argc, char **argv) {
 		}
 	#elif __unix__
 		char *home = getenv("HOME");
-		strbuf_printf(ted->home, "%s", home);
-		char executable_dir[TED_PATH_MAX] = {0};
+		ted->home = str_dup(home);
+		char executable_dir[4096];
 		ssize_t len = readlink("/proc/self/exe", executable_dir, sizeof executable_dir - 1);
 		if (len == -1) {
 			// some posix systems don't have /proc/self/exe. oh well.
@@ -444,41 +444,40 @@ int main(int argc, char **argv) {
 		// replace special characters at start of data dirs
 		typedef struct {
 			const char *src;
-			char *dest;
-			size_t size;
+			char **dest;
 		} DataDir;
 		DataDir data_dirs[] = {
-			{.src = TED_LOCAL_DATA_DIR, .dest = ted->local_data_dir, .size = sizeof ted->local_data_dir},
-			{.src = TED_GLOBAL_DATA_DIR, .dest = ted->global_data_dir, .size = sizeof ted->global_data_dir},
+			{.src = TED_LOCAL_DATA_DIR, .dest = &ted->local_data_dir},
+			{.src = TED_GLOBAL_DATA_DIR, .dest = &ted->global_data_dir},
 		};
 		for (size_t i = 0; i < arr_count(data_dirs); i++) {
 			const char *src = data_dirs[i].src;
-			char *dest = data_dirs[i].dest;
-			size_t size = data_dirs[i].size;
+			char **dest = data_dirs[i].dest;
 			if (!src[0] || !strchr(ALL_PATH_SEPARATORS, src[1])) goto absolute_path;
 			switch (src[0]) {
 			case '~':
-				str_printf(dest, size, "%s%s", ted->home, src + 1);
+				*dest = a_sprintf("%s%s", ted->home, src + 1);
 				break;
 			#if _WIN32
 			case '^':
-				str_printf(dest, size, "%s%s", appdata, src + 1);
+				*dest = a_sprintf("%s%s", appdata, src + 1);
 				break;
 			#endif
 			case '@':
-				str_printf(dest, size, "%s%s", executable_dir, src + 1);
+				*dest = a_sprintf("%s%s", executable_dir, src + 1);
 				break;
 			default:
 			absolute_path:
 				if (!path_is_absolute(src)) {
 					die("Data directory %s is not an absolute path", src);
 				}
-				str_cpy(dest, size, src);
+				*dest = str_dup(src);
 			}
+			char *path = *dest;
 			// ensure we always use the same path separator
-			for (int c = 0; dest[c]; c++) {
-				if (strchr(ALL_PATH_SEPARATORS, dest[c]))
-					dest[c] = PATH_SEPARATOR;
+			for (int c = 0; path[c]; c++) {
+				if (strchr(ALL_PATH_SEPARATORS, path[c]))
+					path[c] = PATH_SEPARATOR;
 			}
 		}
 		if (fs_path_type(ted->global_data_dir) == FS_NON_EXISTENT) {
@@ -1359,6 +1358,9 @@ int main(int argc, char **argv) {
 	free(ted->cwd);
 	free(ted->default_settings_cwd);
 	free(ted->warn_overwrite);
+	free(ted->local_data_dir);
+	free(ted->global_data_dir);
+	free(ted->home);
 	free(ted);
 #if _WIN32
 	for (int i = 0; i < argc; ++i)

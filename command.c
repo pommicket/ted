@@ -464,7 +464,7 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 			arr_foreach_ptr(ted->buffers, TextBufferPtr, pbuffer) {
 				buffer = *pbuffer;
 				if (buffer_unsaved_changes(buffer)) {
-					char name[TED_PATH_MAX];
+					char name[256];
 					buffer_display_filename(buffer, name, sizeof name);
 					strbuf_catf(ted->warn_unsaved_names, "%s%s", first ? "" : ", ", name);
 					first = false;
@@ -545,9 +545,9 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 		if (buffer) buffer_paste(buffer);
 		break;
 	case CMD_OPEN_CONFIG: {
-		char local_config_filename[TED_PATH_MAX];
-		strbuf_printf(local_config_filename, "%s%c" TED_CFG, ted->local_data_dir, PATH_SEPARATOR);
+		char *local_config_filename = a_sprintf("%s%c%s", ted->local_data_dir, PATH_SEPARATOR, TED_CFG);
 		ted_open_file(ted, local_config_filename);
+		free(local_config_filename);
 	} break;
 	case CMD_COMMAND_SELECTOR:
 		menu_open(ted, MENU_COMMAND_SELECTOR);
