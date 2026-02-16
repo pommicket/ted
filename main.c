@@ -1,6 +1,6 @@
 /*
 FUTURE FEATURES:
-- remove TED_PATH_MAX
+- save/load sessions under custom names
 - wrap-text command
 - path-specific extensions
 - more tests
@@ -396,6 +396,7 @@ int main(int argc, char **argv) {
 
 	ted->start_cwd = os_get_cwd();
 	{ // get local and global data directory
+		char *executable_dir = NULL;
 	#if _WIN32
 		char *appdata = NULL;
 		wchar_t *appdata_wide = NULL;
@@ -412,24 +413,23 @@ int main(int argc, char **argv) {
 			ted->home = a_sprintf("%ls", home_wide);
 			CoTaskMemFree(home_wide);
 		}
-		WCHAR executable_wide_path[TED_PATH_MAX] = {0};
-		char executable_dir[TED_PATH_MAX] = {0};
+		WCHAR executable_wide_path[4096] = {0};
 		if (GetModuleFileNameW(NULL, executable_wide_path, sizeof executable_wide_path - 1) > 0) {
-			WideCharToMultiByte(CP_UTF8, 0, executable_wide_path, -1, executable_dir, sizeof executable_dir, NULL, NULL);
-			char *last_backslash = strrchr(executable_dir, '\\');
-			if (last_backslash) {
-				*last_backslash = '\0';
+			executable_dir = a_sprintf("%ls", executable_wide_path);
+			if (executable_dir) {
+				char *last_backslash = strrchr(executable_dir, '\\');
+				if (last_backslash) {
+					*last_backslash = '\0';
+				}
 			}
 		}
 	#elif __unix__
 		char *home = getenv("HOME");
 		ted->home = str_dup(home);
-		char executable_dir[4096];
-		ssize_t len = readlink("/proc/self/exe", executable_dir, sizeof executable_dir - 1);
-		if (len == -1) {
+		executable_dir = read_link("/proc/self/exe");
+		if (!executable_dir) {
 			// some posix systems don't have /proc/self/exe. oh well.
 		} else {
-			executable_dir[len] = '\0';
 			char *last_slash = strrchr(executable_dir, '/');
 			if (last_slash) {
 				*last_slash = '\0';
@@ -464,7 +464,7 @@ int main(int argc, char **argv) {
 				break;
 			#endif
 			case '@':
-				*dest = a_sprintf("%s%s", executable_dir, src + 1);
+				*dest = a_sprintf("%s%s", executable_dir ? executable_dir : "", src + 1);
 				break;
 			default:
 			absolute_path:
@@ -485,6 +485,7 @@ int main(int argc, char **argv) {
 		}
 		if (fs_path_type(ted->local_data_dir) == FS_NON_EXISTENT)
 			fs_mkdir(ted->local_data_dir);
+		free(executable_dir);
 	#if _WIN32
 		free(appdata);
 	#endif
@@ -492,15 +493,15 @@ int main(int argc, char **argv) {
 
 	{
 		// open log file
-		char log_filename[TED_PATH_MAX];
-		char log1_filename[TED_PATH_MAX];
-		strbuf_printf(log_filename, "%s/log.txt", ted->local_data_dir);
-		strbuf_printf(log1_filename, "%s/log.1.txt", ted->local_data_dir);
+		char *log_filename = a_sprintf("%s/log.txt", ted->local_data_dir);
+		char *log1_filename = a_sprintf("%s/log.1.txt", ted->local_data_dir);
 		if (fs_file_size(log_filename) > 500000) {
 			remove(log1_filename);
 			rename(log_filename, log1_filename);
 		}
 		ted->log = fopen(log_filename, "a");
+		free(log_filename);
+		free(log1_filename);
 		ted_log(ted, "starting ted\n");
 	}
 

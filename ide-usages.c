@@ -55,7 +55,7 @@ void usages_process_lsp_response(Ted *ted, const LSPResponse *response) {
 		TextBuffer *buffer = ted->build_buffer;
 		build_setup_buffer(ted);
 		ted->build_shown = true;
-		char last_path[TED_PATH_MAX] = {0};
+		const char *last_path = NULL;
 		TextBuffer *last_buffer = NULL;
 		FILE *last_file = NULL;
 		u32 last_line = 0;
@@ -63,9 +63,9 @@ void usages_process_lsp_response(Ted *ted, const LSPResponse *response) {
 		arr_foreach_ptr(refs->locations, LSPLocation, location) {
 			const char *path = lsp_document_path(lsp, location->document);
 			
-			if (!paths_eq(path, last_path)) {
+			if (!last_path || !paths_eq(path, last_path)) {
 				// it's a new file!
-				strbuf_cpy(last_path, path);
+				last_path = path;
 				if (last_file) {
 					fclose(last_file);
 					last_file = NULL;

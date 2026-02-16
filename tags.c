@@ -4,18 +4,17 @@
 #include "pcre-inc.h"
 
 static bool get_tags_dir(Ted *ted, bool error_if_does_not_exist) {
-	char prev_dir[TED_PATH_MAX];
-	*prev_dir = '\0';
 	free(ted->tags_dir);
 	ted->tags_dir = str_dup(ted->cwd);
-	while (!streq(prev_dir, ted->tags_dir)) {
-		strbuf_cpy(prev_dir, ted->tags_dir);
+	while (1) {
 		char *path = path_full(ted->tags_dir, "tags");
 		bool exists = fs_file_exists(path);
 		free(path);
 		if (exists)
 			return true;
 		path = path_full(ted->tags_dir, "..");
+		if (streq(path, ted->tags_dir))
+			break;
 		free(ted->tags_dir);
 		ted->tags_dir = path;
 	}

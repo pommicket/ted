@@ -23,8 +23,6 @@ extern "C" {
 
 /// Version number
 #define TED_VERSION "2.9.1"
-/// Maximum path size ted handles.
-#define TED_PATH_MAX 1024
 /// Config filename
 #define TED_CFG "ted.cfg"
 

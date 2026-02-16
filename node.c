@@ -385,7 +385,7 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 			for (u16 i = 0; i < ntabs; ++i) {
 				TextBuffer *buffer = node->tabs[i];
 				char tab_title[256];
-				char filename[TED_PATH_MAX];
+				char filename[256];
 				buffer_display_filename(buffer, filename, sizeof filename);
 				Rect tab_rect = rect_xywh(r.pos.x + tab_width * i, r.pos.y, tab_width, tab_bar_height);
 				

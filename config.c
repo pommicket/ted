@@ -1010,13 +1010,13 @@ static void config_read_ted_cfg(Ted *ted, RcStr *cfg_path_rc, const char ***incl
 		if (c == '[') {
 			// a new section!
 			#define SECTION_HEADER_HELP "Section headers should look like this: [(path//)(language.)section-name]"
-			char header[256];
+			char header[512];
 			config_read_to_eol(reader, header, sizeof header);
-			char path[TED_PATH_MAX]; path[0] = '\0';
+			// path for path-local settings
+			char path[512]; path[0] = 0;
 			if (is_local) {
 				// prepend directory
-				char dirname[TED_PATH_MAX];
-				strbuf_cpy(dirname, cfg_path);
+				char *dirname = str_dup(cfg_path);
 				path_dirname(dirname);
 				for (size_t i = 0, out = 0; dirname[i] && out < sizeof path - 3; i++) {
 					if (regex_char_needs_escaping(dirname[i])) {
@@ -1025,6 +1025,7 @@ static void config_read_ted_cfg(Ted *ted, RcStr *cfg_path_rc, const char ***incl
 					path[out++] = dirname[i];
 					path[out] = '\0';
 				}
+				free(dirname);
 			}
 			Language language = 0;
 			if (strlen(header) == 0 || header[strlen(header) - 1] != ']') {

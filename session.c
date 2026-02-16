@@ -241,8 +241,8 @@ static void session_write_buffer(FILE *fp, TextBuffer *buffer) {
 
 static bool session_read_buffer(Ted *ted, FILE *fp) {
 	TextBuffer *buffer = ted_new_buffer(ted);
-	char filename[TED_PATH_MAX] = {0};
-	read_cstr(fp, filename, sizeof filename);
+	char *filename = read_cstr_unbound(fp);
+	if (!filename) return false;
 	if (!buffer_has_error(buffer)) {
 		if (*filename) {
 			if (!buffer_load_file(buffer, filename))
@@ -264,6 +264,7 @@ static bool session_read_buffer(Ted *ted, FILE *fp) {
 		buffer_scroll_to_pos(buffer, buffer_pos_start_of_file(buffer));
 		buffer_scroll(buffer, scroll_x, scroll_y);
 	}
+	free(filename);
 	return true;
 }
 
@@ -356,9 +357,8 @@ void session_write(Ted *ted) {
 	if (!settings->restore_session)
 		return;
 	// first we write to a prefixed file so in case something goes wrong we still have the old session.
-	char filename1[TED_PATH_MAX], filename2[TED_PATH_MAX];
-	strbuf_printf(filename1, "%s/_" SESSION_FILENAME, ted->local_data_dir);
-	strbuf_printf(filename2, "%s/"  SESSION_FILENAME, ted->local_data_dir);
+	char *filename1 = a_sprintf("%s/_%s", ted->local_data_dir, SESSION_FILENAME);
+	char *filename2 = a_sprintf("%s/%s", ted->local_data_dir, SESSION_FILENAME);
 	FILE *fp = fopen(filename1, "wb");
 	if (fp) {
 		session_write_file(ted, fp);
@@ -370,14 +370,16 @@ void session_write(Ted *ted) {
 			os_rename_overwrite(filename1, filename2); // overwrite old session
 		}
 	}
+	free(filename1);
+	free(filename2);
 }
 
 void session_read(Ted *ted) {
 	const Settings *settings = ted_active_settings(ted);
 	if (settings->restore_session) {
-		char filename[TED_PATH_MAX];
-		strbuf_printf(filename, "%s/" SESSION_FILENAME, ted->local_data_dir);
+		char *filename = a_sprintf("%s/" SESSION_FILENAME, ted->local_data_dir);
 		FILE *fp = fopen(filename, "rb");
+		free(filename);
 		if (fp) {
 			session_read_file(ted, fp);
 			fclose(fp);

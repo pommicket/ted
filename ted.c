@@ -455,14 +455,13 @@ static Font *ted_load_single_font(Ted *ted, const char *filename) {
 }
 
 static Font *ted_load_multifont(Ted *ted, const char *filenames) {
-	char filename[TED_PATH_MAX];
 	Font *first_font = NULL;
 	Font *curr_font = NULL;
 	
 	while (*filenames) {
 		while (*filenames == ',') ++filenames;
 		size_t len = strcspn(filenames, ",");
-		strn_cpy(filename, sizeof filename, filenames, len);
+		char *filename = strn_dup(filenames, len);
 		str_trim(filename);
 		if (*filename) {
 			Font *font = ted_load_single_font(ted, filename);
@@ -472,6 +471,7 @@ static Font *ted_load_multifont(Ted *ted, const char *filenames) {
 				text_font_set_fallback(curr_font, font);
 			curr_font = font;
 		}
+		free(filename);
 		filenames += len;
 	}
 	
@@ -783,10 +783,8 @@ float ted_get_menu_width(Ted *ted) {
 void ted_load_configs(Ted *ted) {
 	
 	// copy global config to local config
-	char local_config_filename[TED_PATH_MAX];
-	strbuf_printf(local_config_filename, "%s%c" TED_CFG, ted->local_data_dir, PATH_SEPARATOR);
-	char global_config_filename[TED_PATH_MAX];
-	strbuf_printf(global_config_filename, "%s%c" TED_CFG, ted->global_data_dir, PATH_SEPARATOR);
+	char *local_config_filename = a_sprintf("%s%c%s", ted->local_data_dir, PATH_SEPARATOR, TED_CFG);
+	char *global_config_filename = a_sprintf("%s%c%s", ted->global_data_dir, PATH_SEPARATOR, TED_CFG);
 	if (!fs_file_exists(local_config_filename)) {
 		if (fs_file_exists(global_config_filename)) {
 			if (!copy_file(global_config_filename, local_config_filename)) {
@@ -802,10 +800,12 @@ void ted_load_configs(Ted *ted) {
 	config_read(ted, local_config_filename, CONFIG_TED_CFG);
 	if (ted->search_start_cwd) {
 		// read config in start_cwd
-		char start_cwd_filename[TED_PATH_MAX];
-		strbuf_printf(start_cwd_filename, "%s%c" TED_CFG, ted->start_cwd, PATH_SEPARATOR);
+		char *start_cwd_filename = a_sprintf("%s%c%s", ted->start_cwd, PATH_SEPARATOR, TED_CFG);
 		config_read(ted, start_cwd_filename, CONFIG_TED_CFG);
+		free(start_cwd_filename);
 	}
+	free(global_config_filename);
+	free(local_config_filename);
 }
 
 void ted_reload_configs(Ted *ted) {
