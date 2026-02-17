@@ -122,7 +122,7 @@ int fs_mkdir(const char *path) {
 char *os_get_cwd(void) {
 	WCHAR *buf = NULL;
 	DWORD wide_pathlen = 0;
-	for (size_t len = 16; len <= 65536; len <<= 1) {
+	for (DWORD len = 16; len <= 65536; len <<= 1) {
 		WCHAR *new_buf = realloc(buf, len * sizeof(WCHAR));
 		if (!new_buf) goto fail;
 		buf = new_buf;
@@ -133,7 +133,7 @@ char *os_get_cwd(void) {
 		buf[wide_pathlen] = 0;
 		size_t utf8len = 4 * wide_pathlen + 1;
 		char *utf8 = calloc(1, utf8len);
-		if (WideCharToMultiByte(CP_UTF8, 0, wide_path, (int)wide_pathlen, utf8, (int)utf8len, NULL, NULL) == 0) {
+		if (WideCharToMultiByte(CP_UTF8, 0, buf, (int)wide_pathlen, utf8, (int)utf8len, NULL, NULL) == 0) {
 			free(utf8);
 			return NULL;
 		}
@@ -246,7 +246,7 @@ static void *create_environment_block(Process *process, const ProcessSettings *s
 	for (size_t i = 0; i < settings->env_count; i++) {
 		const char *name = settings->env[i].name;
 		const char *value = settings->env[i].value;
-		int wide_len = MultiByteToWideChar(CP_UTF8, 0, name, -1, p, (int)(environment_end - p);
+		int wide_len = MultiByteToWideChar(CP_UTF8, 0, name, -1, p, (int)(environment_end - p));
 		if (!wide_len) {
 			strbuf_printf(process->error, "Environment variable name contains bad UTF-8");
 			return NULL;
@@ -258,11 +258,10 @@ static void *create_environment_block(Process *process, const ProcessSettings *s
 			strbuf_printf(process->error, "Environment variable name contains bad UTF-8");
 			return NULL;
 		}
-		*p++ = '\0';
+		p += wide_len; // include null terminator
 	}
 	*p++ = '\0';
-	assert(p < environment_end);
-	TODO: test me
+	assert(p <= environment_end);
 	
 	return environment;
 }
@@ -284,7 +283,7 @@ Process *process_run_ex(const char *command, const ProcessSettings *settings) {
 		}
 		working_directory = wdbuf;
 	}
-	void *environment = create_environment_block(process, process_settings);
+	void *environment = create_environment_block(process, settings);
 
 	// we need to create a "job" for this, because when you kill a process on windows,
 	// all its children just keep going. so cmd.exe would die, but not the actual build process.
@@ -312,7 +311,8 @@ Process *process_run_ex(const char *command, const ProcessSettings *settings) {
 			startup.hStdInput = pipe_stdin_read;
 			startup.wShowWindow = SW_HIDE;
 			PROCESS_INFORMATION *process_info = &process->process_info;
-			if (CreateProcessW(NULL, command_line, NULL, NULL, TRUE, CREATE_NEW_CONSOLE | CREATE_SUSPENDED,
+			if (CreateProcessW(NULL, command_line, NULL, NULL, TRUE,
+				CREATE_UNICODE_ENVIRONMENT | CREATE_NEW_CONSOLE | CREATE_SUSPENDED,
 				environment, working_directory, &startup, process_info)) {
 				// create a suspended process, add it to the job, then resume (unsuspend) the process
 				if (AssignProcessToJobObject(job, process_info->hProcess)) {

@@ -72,9 +72,9 @@ static bool build_run_next_command_in_queue(Ted *ted) {
 		settings.env = env;
 		settings.env_count = env_count;
 		ted->build_process = process_run_ex(command, &settings);
+		ted->building = true;
 		const char *error = process_geterr(ted->build_process);
 		if (!error) {
-			ted->building = true;
 			ted->build_shown = true;
 			TextBuffer *build_buffer = ted->build_buffer;
 			char32_t text[] = {'$', ' '};
