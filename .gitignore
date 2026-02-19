@@ -37,3 +37,4 @@ compile_commands.json
 # clangd creates .cache on windows at least
 .cache
 doc
+out
