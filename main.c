@@ -414,7 +414,7 @@ int main(int argc, char **argv) {
 			CoTaskMemFree(home_wide);
 		}
 		WCHAR executable_wide_path[4096] = {0};
-		if (GetModuleFileNameW(NULL, executable_wide_path, sizeof executable_wide_path - 1) > 0) {
+		if (GetModuleFileNameW(NULL, executable_wide_path, arr_count(executable_wide_path) - 1) > 0) {
 			executable_dir = a_sprintf("%ls", executable_wide_path);
 			if (executable_dir) {
 				char *last_backslash = strrchr(executable_dir, '\\');

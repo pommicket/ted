@@ -120,28 +120,30 @@ int fs_mkdir(const char *path) {
 }
 
 char *os_get_cwd(void) {
-	WCHAR *buf = NULL;
-	DWORD wide_pathlen = 0;
-	for (DWORD len = 16; len <= 65536; len <<= 1) {
-		WCHAR *new_buf = realloc(buf, len * sizeof(WCHAR));
-		if (!new_buf) goto fail;
-		buf = new_buf;
-		wide_pathlen = GetCurrentDirectoryW(len - 1, buf);
-		if (wide_pathlen == 0) {
-			continue;
-		}
-		buf[wide_pathlen] = 0;
-		size_t utf8len = 4 * wide_pathlen + 1;
-		char *utf8 = calloc(1, utf8len);
-		if (WideCharToMultiByte(CP_UTF8, 0, buf, (int)wide_pathlen, utf8, (int)utf8len, NULL, NULL) == 0) {
-			free(utf8);
+	WCHAR small_buf[32];
+	WCHAR *big_buf = NULL;
+	DWORD cwd_len = GetCurrentDirectoryW(arr_count(small_buf), small_buf);
+	if (cwd_len == 0) return NULL;
+	WCHAR *buf = small_buf;
+	if (cwd_len > arr_count(small_buf)) {
+		buf = big_buf = calloc(cwd_len, sizeof(WCHAR));
+		if (!buf) return NULL;
+		DWORD new_cwd_len = GetCurrentDirectoryW(cwd_len, buf);
+		if (new_cwd_len == 0 || new_cwd_len > cwd_len) {
+			free(big_buf);
 			return NULL;
 		}
-		return utf8;
 	}
-	fail:
-	free(buf);
-	return NULL;
+	size_t utf8len = 4 * cwd_len + 1;
+	char *utf8 = calloc(1, utf8len);
+	int result = WideCharToMultiByte(CP_UTF8, 0, buf, (int)cwd_len, utf8, (int)utf8len, NULL, NULL);
+	if (big_buf)
+		free(big_buf);
+	if (!result) {
+		free(utf8);
+		return NULL;
+	}
+	return utf8;
 }
 
 int os_rename_overwrite(const char *oldname, const char *newname) {
