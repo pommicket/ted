@@ -62,7 +62,8 @@ static bool build_run_next_command_in_queue(Ted *ted) {
 			const char *buffer_path = buffer_get_path(active_buffer);
 			BufferPos cursor_pos = buffer_cursor_pos(active_buffer);
 			// helpful environment variables
-			env[env_count++] = (EnvironmentVariable){"TED_FILE", buffer_path};
+			if (buffer_path)
+				env[env_count++] = (EnvironmentVariable){"TED_FILE", buffer_path};
 			strbuf_printf(line_str, "%" PRIu32, cursor_pos.line + 1);
 			strbuf_printf(col_str, "%" PRIu32, cursor_pos.index + 1);
 			env[env_count++] = (EnvironmentVariable){"TED_LINE", line_str};
