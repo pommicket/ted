@@ -356,6 +356,12 @@ void selector_render(Ted *ted, Selector *s) {
 	text_render(font);
 }
 
+static void file_selector_ensure_cwd(Ted *ted, FileSelector *fs) {
+	// set the file selector's directory to our current directory.
+	if (!fs->cwd)
+		fs->cwd = str_dup(ted->cwd);
+}
+
 void file_selector_clear(FileSelector *fs) {
 	selector_clear(&fs->sel);
 	free(fs->cwd);
@@ -510,11 +516,7 @@ char *file_selector_update(Ted *ted, FileSelector *fs) {
 	String32 search_term32 = buffer_get_line(line_buffer, 0);
 	fs->sel.enable_cursor = !fs->create_menu || search_term32.len == 0;
 
-	if (!fs->cwd) {
-		// set the file selector's directory to our current directory.
-		fs->cwd = str_dup(ted->cwd);
-	}
-	
+	file_selector_ensure_cwd(ted, fs);
 
 	// check if the search term contains a path separator. if so, cd to the dirname.
 	u32 first_path_sep = U32_MAX, last_path_sep = U32_MAX;
@@ -627,6 +629,7 @@ char *file_selector_update(Ted *ted, FileSelector *fs) {
 }
 
 void file_selector_render(Ted *ted, FileSelector *fs) {
+	file_selector_ensure_cwd(ted, fs);
 	const Settings *settings = ted_active_settings(ted);
 	Rect bounds = fs->bounds;
 	Font *font = ted->font, *font_bold = ted->font_bold;
