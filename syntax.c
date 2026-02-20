@@ -373,7 +373,7 @@ static void syntax_highlight_c_cpp(SyntaxState *state_ptr, const char32_t *line,
 		char32_t c = line[i];
 		
 		if (in_raw_string) {
-			if (has_2_chars && c == ')' && line[1] == '"') {
+			if (has_1_char && c == ')' && line[i+1] == '"') {
 				raw_string_ending = true;
 			}
 			if (char_types)
