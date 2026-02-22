@@ -148,8 +148,12 @@ void print_bytes(const u8 *bytes, size_t n);
 char *strstr_case_insensitive(const char *haystack, const char *needle);
 /// like strcmp, but case-insensitive
 int strcmp_case_insensitive(const char *a, const char *b);
+/// like strncmp, but case-insensitive
+int strncmp_case_insensitive(const char *a, const char *b, size_t n);
 /// like streq, but case-insensitive
 bool streq_case_insensitive(const char *a, const char *b);
+/// like \ref str_has_prefix, but case-insensitive
+bool str_has_prefix_case_insensitive(const char *str, const char *prefix);
 /// function to be passed into qsort for case insensitive sorting
 int str_qsort_case_insensitive_cmp(const void *av, const void *bv);
 /// is c a path separator?

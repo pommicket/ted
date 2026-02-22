@@ -428,8 +428,27 @@ int strcmp_case_insensitive(const char *a, const char *b) {
 #endif
 }
 
+int strncmp_case_insensitive(const char *a, const char *b, size_t n) {
+#if _WIN32
+	return _memicmp(a, b, n);
+#else
+	return strncasecmp(a, b, n);
+#endif
+}
+
 bool streq_case_insensitive(const char *a, const char *b) {
 	return strcmp_case_insensitive(a, b) == 0;
+}
+
+bool str_has_prefix_case_insensitive(const char *str, const char *prefix) {
+	// isn't quite accurate with unicode, but in most cases,
+	// upper/lowercase variants have the same byte length,
+	// so it's okay
+	size_t str_len = strlen(str);
+	size_t prefix_len = strlen(prefix);
+	if (str_len > prefix_len)
+		return false;
+	return strncmp_case_insensitive(str, prefix, prefix_len) == 0;
 }
 
 int str_qsort_case_insensitive_cmp(const void *av, const void *bv) {

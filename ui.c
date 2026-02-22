@@ -184,21 +184,47 @@ void selector_end(Ted *ted, Selector *s) {
 	selector_scroll_to_cursor(ted, s);
 }
 
-static int selectory_entry_cmp_name(void *context, const void *av, const void *bv) {
+static int selector_entry_cmp_name(void *context, const void *av, const void *bv) {
 	const Selector *s = context;
-	const SelectorEntry *a = av, *b = bv;
-	
-	// put exact match of search term first
-	if (s->search_term && streq(a->name, s->search_term))
-		return -1;
-	if (s->search_term && streq(b->name, s->search_term))
-		return 1;
-
-	return strcmp_case_insensitive(a->name, b->name);
+	const SelectorEntry *ae = av, *be = bv;
+	const char *a = ae->name, *b = be->name;
+	const char *search_term = s->search_term;
+	if (search_term) {
+		bool a_exact_match = streq(a, search_term);
+		bool b_exact_match = streq(b, search_term);
+		// put exact match of search term first
+		if (a_exact_match > b_exact_match)
+			return -1;
+		if (b_exact_match > a_exact_match)
+			return 1;
+		bool a_insensitive_match = streq_case_insensitive(a, search_term);
+		bool b_insensitive_match = streq_case_insensitive(b, search_term);
+		// then put case insensitive match of search term
+		if (a_insensitive_match > b_insensitive_match)
+			return -1;
+		if (b_insensitive_match > a_insensitive_match)
+			return 1;
+		// then put exact extension of search term
+		bool a_exact_prefix = str_has_prefix(a, search_term);
+		bool b_exact_prefix = str_has_prefix(b, search_term);
+		if (a_exact_prefix > b_exact_prefix)
+			return -1;
+		if (b_exact_prefix > a_exact_prefix)
+			return 1;
+		// then put case insensitive extension of search term
+		bool a_insensitive_prefix = str_has_prefix_case_insensitive(a, search_term);
+		bool b_insensitive_prefix = str_has_prefix_case_insensitive(b, search_term);
+		if (b_insensitive_prefix > a_insensitive_prefix)
+			return -1;
+		if (a_insensitive_prefix > b_insensitive_prefix)
+			return 1;
+	}
+	// lastly, sort alphabetically
+	return strcmp_case_insensitive(a, b);
 }
 
 void selector_sort_entries_by_name(Selector *s) {
-	qsort_with_context(s->entries, arr_len(s->entries), sizeof *s->entries, selectory_entry_cmp_name, s);
+	qsort_with_context(s->entries, arr_len(s->entries), sizeof *s->entries, selector_entry_cmp_name, s);
 }
 
 static Rect selector_entry_rect_unclipped(Ted *ted, Selector *s, u32 i_display) {
@@ -371,14 +397,21 @@ void file_selector_clear(FileSelector *fs) {
 static int file_selector_entry_cmp(void *context, const SelectorEntry *a, const SelectorEntry *b) {
 	const Selector *s = context;
 	FsType a_type = (FsType)a->userdata, b_type = (FsType)b->userdata;
-
-
-	// put exact match of search term first
-	if (s->search_term && streq(a->name, s->search_term))
-		return -1;
-	if (s->search_term && streq(b->name, s->search_term))
-		return 1;
-
+	const char *search_term = s->search_term;
+	if (search_term) {
+		// prioritize matches over putting directories first
+		if (streq(a->name, search_term))
+			return -1;
+		if (streq(b->name, search_term))
+			return 1;
+		bool a_matches_insensitive = streq_case_insensitive(a->name, search_term);
+		bool b_matches_insensitive = streq_case_insensitive(b->name, search_term);
+		if (a_matches_insensitive > b_matches_insensitive)
+			return -1;
+		if (b_matches_insensitive > a_matches_insensitive)
+			return 1;
+	}
+	
 	// put directories first
 	if (a_type == FS_DIRECTORY && b_type != FS_DIRECTORY) {
 		return -1;
@@ -386,7 +419,7 @@ static int file_selector_entry_cmp(void *context, const SelectorEntry *a, const 
 	if (a_type != FS_DIRECTORY && b_type == FS_DIRECTORY) {
 		return +1;
 	}
-	return strcmp_case_insensitive(a->name, b->name);
+	return selector_entry_cmp_name(context, a, b);
 }
 
 // cd to the directory `name`. `name` cannot include any path separators.
