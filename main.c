@@ -1,6 +1,4 @@
 /*
-TODO:
-- why does cursor move down when typing "test.j" in ted/test
 FUTURE FEATURES:
 - save/load sessions under custom names
 - wrap-text command

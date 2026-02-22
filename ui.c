@@ -245,6 +245,8 @@ char *selector_update(Ted *ted, Selector *s) {
 		s->search_term = buffer_get_line_utf8(line_buffer, 0);
 		if (prev_search_term && !streq(prev_search_term, s->search_term)) {
 			// sort entries according to new search term
+			// (important we do this now, otherwise selector_home might
+			//  point to the wrong thing)
 			selector_sort_entries(s);
 			// reset cursor because not doing it looks weird
 			selector_home(ted, s);

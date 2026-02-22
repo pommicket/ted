@@ -372,6 +372,7 @@ Then run `make.bat release`.
 <tr><td>2.9.1</td> <td>Small syntax highlighting fixes</td> <td>2025 Oct 24</td></tr>
 <tr><td>3.0.0</td> <td>Remove path length limit, CSS/JS-in-HTML highlighting, &amp; more</td> <td>2026 Feb 18</td></tr>
 <tr><td>3.0.1</td> <td>Fix C++ raw string highlighting</td> <td>2026 Feb 19</td></tr>
+<tr><td>3.0.2</td> <td>Better selector entry sorting</td> <td>2026 Feb 22</td></tr>
 </table>
 
 ## License

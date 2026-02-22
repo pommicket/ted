@@ -22,7 +22,7 @@ extern "C" {
 #include "command.h"
 
 /// Version number
-#define TED_VERSION "3.0.1"
+#define TED_VERSION "3.0.2"
 /// Config filename
 #define TED_CFG "ted.cfg"
 
