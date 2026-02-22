@@ -161,6 +161,9 @@ typedef struct SelectorEntry {
 	char reserved[32];
 } SelectorEntry;
 
+/// Function for sorting a \ref Selector
+typedef int SelectorSortFunction(Selector *selector, const SelectorEntry *e1, const SelectorEntry *e2);
+
 /// a split or collection of tabs
 ///
 /// this handles ted's split-screen and tab features.
@@ -1285,8 +1288,12 @@ PopupOption popup_update(Ted *ted, u32 options);
 void popup_render(Ted *ted, u32 options, const char *title, const char *body);
 /// update and render checkbox
 vec2 checkbox_frame(Ted *ted, bool *value, const char *label, vec2 pos);
+/// Sort selector entries by name
+int selector_entry_cmp_name(Selector *s, const SelectorEntry *a, const SelectorEntry *b);
 /// create a new selector
-Selector *selector_new(void);
+///
+/// pass `NULL` to `sort_function` to keep entries unsorted.
+Selector *selector_new(SelectorSortFunction *sort_function);
 /// set location where selector will be rendered.
 void selector_set_bounds(Selector *s, Rect bounds);
 /// add a new entry to this selector
@@ -1315,10 +1322,6 @@ void selector_down(Ted *ted, Selector *s);
 void selector_home(Ted *ted, Selector *s);
 /// move selector cursor to the last entry
 void selector_end(Ted *ted, Selector *s);
-/// sort entries by comparison function
-void selector_sort_entries(Selector *s, int (*compar)(void *context, const SelectorEntry *e1, const SelectorEntry *e2), void *context);
-/// sort entries alphabetically
-void selector_sort_entries_by_name(Selector *s);
 /// returns a null-terminated UTF-8 string of the entry selected, or `NULL` if none was.
 ///
 /// also, the cursor will be set to the index of the entry, even if the mouse was used.

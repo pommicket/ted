@@ -10,6 +10,7 @@
 struct Selector {
 	SelectorEntry *entries;
 	char *search_term;
+	int (*sort_function)(Selector *selector, const SelectorEntry *e1, const SelectorEntry *e2);
 	Rect bounds;
 	u32 cursor;
 	float scroll;
@@ -17,8 +18,8 @@ struct Selector {
 };
 
 struct FileSelector {
-	char title[32];
 	Selector sel;
+	char title[32];
 	Rect bounds;
 	char *cwd;
 	/// indicates that this is for creating files, not opening files
@@ -27,13 +28,14 @@ struct FileSelector {
 
 static Status file_selector_cd_(Ted *ted, FileSelector *fs, const char *path, int symlink_depth);
 
-static void selector_init(Selector *s) {
+static void selector_init(Selector *s, SelectorSortFunction *sort_function) {
 	s->enable_cursor = true;
+	s->sort_function = sort_function;
 }
 
-Selector *selector_new(void) {
+Selector *selector_new(SelectorSortFunction *sort_function) {
 	Selector *s = calloc(1, sizeof *s);
-	selector_init(s);
+	selector_init(s, sort_function);
 	return s;
 }
 
@@ -79,29 +81,6 @@ void selector_set_bounds(Selector *s, Rect bounds) {
 
 Status selector_get_cursor_entry(Selector *s, SelectorEntry *entry) {
 	return selector_get_entry(s, s->cursor, entry);
-}
-
-FileSelector *file_selector_new(void) {
-	FileSelector *s = calloc(1, sizeof *s);
-	selector_init(&s->sel);
-	return s;
-}
-
-void file_selector_set_create(FileSelector *s, bool create) {
-	s->create_menu = create;
-}
-
-void file_selector_free(FileSelector *s) {
-	file_selector_clear(s);
-	free(s);
-}
-
-void file_selector_set_bounds(FileSelector *s, Rect bounds) {
-	s->bounds = bounds;
-}
-
-void file_selector_set_title(FileSelector *s, const char *title) {
-	strbuf_cpy(s->title, title);
 }
 
 static float selector_entries_start_y(Ted *ted, const Selector *s) {
@@ -184,9 +163,7 @@ void selector_end(Ted *ted, Selector *s) {
 	selector_scroll_to_cursor(ted, s);
 }
 
-static int selector_entry_cmp_name(void *context, const void *av, const void *bv) {
-	const Selector *s = context;
-	const SelectorEntry *ae = av, *be = bv;
+int selector_entry_cmp_name(Selector *s, const SelectorEntry *ae, const SelectorEntry *be) {
 	const char *a = ae->name, *b = be->name;
 	const char *search_term = s->search_term;
 	if (search_term) {
@@ -214,17 +191,17 @@ static int selector_entry_cmp_name(void *context, const void *av, const void *bv
 		// then put case insensitive extension of search term
 		bool a_insensitive_prefix = str_has_prefix_case_insensitive(a, search_term);
 		bool b_insensitive_prefix = str_has_prefix_case_insensitive(b, search_term);
-		if (b_insensitive_prefix > a_insensitive_prefix)
-			return -1;
 		if (a_insensitive_prefix > b_insensitive_prefix)
+			return -1;
+		if (b_insensitive_prefix > a_insensitive_prefix)
 			return 1;
 	}
-	// lastly, sort alphabetically
-	return strcmp_case_insensitive(a, b);
-}
-
-void selector_sort_entries_by_name(Selector *s) {
-	qsort_with_context(s->entries, arr_len(s->entries), sizeof *s->entries, selector_entry_cmp_name, s);
+	// sort alphabetically (case insensitive)
+	int cmp = strcmp_case_insensitive(a, b);
+	if (cmp != 0)
+		return cmp;
+	// if equal insensitively, sort case sensitively
+	return strcmp(a, b);
 }
 
 static Rect selector_entry_rect_unclipped(Ted *ted, Selector *s, u32 i_display) {
@@ -253,6 +230,13 @@ static Rect selector_entry_rect_clipped(Ted *ted, Selector *s, u32 i_display) {
 	return r;
 }
 
+static void selector_sort_entries(Selector *s) {
+	if (s->sort_function) {
+		qsort_with_context(s->entries, arr_len(s->entries), sizeof *s->entries,
+			(int (*) (void *, const void *, const void *))s->sort_function, s);
+	}
+}
+
 char *selector_update(Ted *ted, Selector *s) {
 	char *ret = NULL;
 	TextBuffer *line_buffer = ted->line_buffer;
@@ -260,11 +244,14 @@ char *selector_update(Ted *ted, Selector *s) {
 		char *prev_search_term = s->search_term;
 		s->search_term = buffer_get_line_utf8(line_buffer, 0);
 		if (prev_search_term && !streq(prev_search_term, s->search_term)) {
+			// sort entries according to new search term
+			selector_sort_entries(s);
 			// reset cursor because not doing it looks weird
 			selector_home(ted, s);
 		}
 		free(prev_search_term);
 	}
+	selector_sort_entries(s);
 	
 	ted->selector_open = s;
 	u32 i_display = 0;
@@ -304,6 +291,7 @@ char *selector_update(Ted *ted, Selector *s) {
 }
 
 void selector_render(Ted *ted, Selector *s) {
+	selector_sort_entries(s);
 	const Settings *settings = ted_active_settings(ted);
 	Font *font = ted->font;
 	float padding = settings->padding;
@@ -325,7 +313,7 @@ void selector_render(Ted *ted, Selector *s) {
 			}
 		}
 		if (!selector_show_entry(s, &s->entries[s->cursor])) {
-			s->cursor = prev;
+			s->cursor = prev == U32_MAX ? 0 : prev;
 		}
 	}
 	
@@ -382,6 +370,23 @@ void selector_render(Ted *ted, Selector *s) {
 	text_render(font);
 }
 
+void file_selector_set_create(FileSelector *s, bool create) {
+	s->create_menu = create;
+}
+
+void file_selector_free(FileSelector *s) {
+	file_selector_clear(s);
+	free(s);
+}
+
+void file_selector_set_bounds(FileSelector *s, Rect bounds) {
+	s->bounds = bounds;
+}
+
+void file_selector_set_title(FileSelector *s, const char *title) {
+	strbuf_cpy(s->title, title);
+}
+
 static void file_selector_ensure_cwd(Ted *ted, FileSelector *fs) {
 	// set the file selector's directory to our current directory.
 	if (!fs->cwd)
@@ -394,8 +399,7 @@ void file_selector_clear(FileSelector *fs) {
 	memset(fs, 0, sizeof *fs);
 }
 
-static int file_selector_entry_cmp(void *context, const SelectorEntry *a, const SelectorEntry *b) {
-	const Selector *s = context;
+static int file_selector_entry_cmp(Selector *s, const SelectorEntry *a, const SelectorEntry *b) {
 	FsType a_type = (FsType)a->userdata, b_type = (FsType)b->userdata;
 	const char *search_term = s->search_term;
 	if (search_term) {
@@ -419,7 +423,13 @@ static int file_selector_entry_cmp(void *context, const SelectorEntry *a, const 
 	if (a_type != FS_DIRECTORY && b_type == FS_DIRECTORY) {
 		return +1;
 	}
-	return selector_entry_cmp_name(context, a, b);
+	return selector_entry_cmp_name(s, a, b);
+}
+
+FileSelector *file_selector_new(void) {
+	FileSelector *s = calloc(1, sizeof *s);
+	selector_init(&s->sel, file_selector_entry_cmp);
+	return s;
 }
 
 // cd to the directory `name`. `name` cannot include any path separators.
@@ -540,10 +550,6 @@ static ColorSetting color_setting_for_file_type(FsType type) {
 	}
 }
 
-void selector_sort_entries(Selector *s, int (*compar)(void *context, const SelectorEntry *e1, const SelectorEntry *e2), void *context) {
-	qsort_with_context(s->entries, arr_len(s->entries), sizeof *s->entries, (int (*) (void *, const void *, const void *))compar, context);
-}
-
 char *file_selector_update(Ted *ted, FileSelector *fs) {
 	TextBuffer *line_buffer = ted->line_buffer;
 	String32 search_term32 = buffer_get_line(line_buffer, 0);
@@ -646,7 +652,7 @@ char *file_selector_update(Ted *ted, FileSelector *fs) {
 			};
 			selector_add_entry(&fs->sel, &entry);
 		}
-		selector_sort_entries(&fs->sel, file_selector_entry_cmp, &fs->sel);
+		selector_sort_entries(&fs->sel);
 
 		for (u32 i = 0; files[i]; ++i)
 			free(files[i]);

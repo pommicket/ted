@@ -329,7 +329,7 @@ void definitions_init(Ted *ted) {
 	menu_register(ted, &info);
 	
 	Definitions *defs = ted->definitions = ted_calloc(ted, 1, sizeof *ted->definitions);
-	defs->selector = selector_new();
+	defs->selector = selector_new(NULL); // (trust LSP sorting)
 }
 
 void definitions_quit(Ted *ted) {

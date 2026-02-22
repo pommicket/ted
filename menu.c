@@ -539,7 +539,7 @@ void menu_init(Ted *ted) {
 	
 	ted_add_edit_notify(ted, menu_edit_notify, ted);
 	
-	ted->command_selector = selector_new();
+	ted->command_selector = selector_new(selector_entry_cmp_name);
 	for (Command c = 0; c < CMD_COUNT; ++c) {
 		const char *name = command_to_str(c);
 		if (c != CMD_UNKNOWN && *name) {

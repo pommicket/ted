@@ -446,7 +446,7 @@ bool str_has_prefix_case_insensitive(const char *str, const char *prefix) {
 	// so it's okay
 	size_t str_len = strlen(str);
 	size_t prefix_len = strlen(prefix);
-	if (str_len > prefix_len)
+	if (str_len < prefix_len)
 		return false;
 	return strncmp_case_insensitive(str, prefix, prefix_len) == 0;
 }
