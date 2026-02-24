@@ -373,6 +373,7 @@ Then run `make.bat release`.
 <tr><td>3.0.0</td> <td>Remove path length limit, CSS/JS-in-HTML highlighting, &amp; more</td> <td>2026 Feb 18</td></tr>
 <tr><td>3.0.1</td> <td>Fix C++ raw string highlighting</td> <td>2026 Feb 19</td></tr>
 <tr><td>3.0.2</td> <td>Better selector entry sorting</td> <td>2026 Feb 22</td></tr>
+<tr><td>3.0.3</td> <td>File selector bug fix</td> <td>2026 Feb 24</td></tr>
 </table>
 
 ## License

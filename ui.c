@@ -395,12 +395,6 @@ static void file_selector_ensure_cwd(Ted *ted, FileSelector *fs) {
 		fs->cwd = str_dup(ted->cwd);
 }
 
-void file_selector_clear(FileSelector *fs) {
-	selector_clear(&fs->sel);
-	free(fs->cwd);
-	memset(fs, 0, sizeof *fs);
-}
-
 static int file_selector_entry_cmp(Selector *s, const SelectorEntry *a, const SelectorEntry *b) {
 	FsType a_type = (FsType)a->userdata, b_type = (FsType)b->userdata;
 	const char *search_term = s->search_term;
@@ -417,7 +411,11 @@ static int file_selector_entry_cmp(Selector *s, const SelectorEntry *a, const Se
 		if (b_matches_insensitive > a_matches_insensitive)
 			return 1;
 	}
-	
+	// put .. first
+	if (streq(a->name, ".."))
+		return -1;
+	if (streq(b->name, ".."))
+		return 1;
 	// put directories first
 	if (a_type == FS_DIRECTORY && b_type != FS_DIRECTORY) {
 		return -1;
@@ -426,6 +424,13 @@ static int file_selector_entry_cmp(Selector *s, const SelectorEntry *a, const Se
 		return +1;
 	}
 	return selector_entry_cmp_name(s, a, b);
+}
+
+void file_selector_clear(FileSelector *fs) {
+	selector_clear(&fs->sel);
+	free(fs->cwd);
+	memset(fs, 0, sizeof *fs);
+	selector_init(&fs->sel, file_selector_entry_cmp);
 }
 
 FileSelector *file_selector_new(void) {
