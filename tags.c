@@ -39,6 +39,16 @@ static bool is_source_file(const char *filename) {
 	return false;
 }
 
+static void run_tags_command(Ted *ted, const char *command, bool run_in_build_window) {
+	if (run_in_build_window) {
+		build_queue_command(ted, command);
+	} else {
+		if (system(command) != 0) {
+			// maybe would be better to ted_error here. but that might be annoying
+			ted_log(ted, "Failed to generate tags: %s", strerror(errno));
+		}
+	}
+}
 
 static void tags_generate_at_dir(Ted *ted, bool run_in_build_window, const char *dir, int depth) {
 	const Settings *settings = ted_active_settings(ted);
@@ -69,10 +79,7 @@ static void tags_generate_at_dir(Ted *ted, bool run_in_build_window, const char 
 						any_files = true;
 						// make sure command doesn't get too long
 						if (cmdlen + pathlen + 5 >= sizeof command) {
-							if (run_in_build_window)
-								build_queue_command(ted, command);
-							else
-								system(command);
+							run_tags_command(ted, command, run_in_build_window);
 							strbuf_printf(command, "%s %s", cmd_prefix, path);
 						} else {
 							command[cmdlen++] = ' ';
@@ -89,10 +96,7 @@ static void tags_generate_at_dir(Ted *ted, bool run_in_build_window, const char 
 			free(path);
 		}
 		if (any_files) {
-			if (run_in_build_window)
-				build_queue_command(ted, command);
-			else
-				system(command);
+			run_tags_command(ted, command, run_in_build_window);
 		}
 	}
 }
@@ -177,8 +181,13 @@ size_t tags_beginning_with(Ted *ted, const char *prefix, char **out, size_t out_
 	}
 	char line[1024];
 	fseek(file, (long)mid, SEEK_SET);
-	if (!exact && mid > 0)
-		fgets(line, sizeof line, file); // go to next line
+	if (!exact && mid > 0) {
+		// go to next line (consistent with tag_try, so we don't start reading halfway through a line)
+		if (!fgets(line, sizeof line, file)) {
+			// probably means file changed halfway through, but whatever, just return no match.
+			return 0;
+		}
+	}
 	
 	size_t nmatches = 0;
 	size_t prefix_len = strlen(prefix);

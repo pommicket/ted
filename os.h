@@ -25,6 +25,10 @@ typedef struct {
 } FsDirectoryEntry;
 
 #if __unix__
+/// 0-terminated array of signals which ted crash-handles
+///
+/// extern-declared here so we can remove the handlers on fork
+extern int ted_crash_signals[];
 /// Get target of symbolic link
 ///
 /// Return value must be freed.

@@ -235,7 +235,14 @@ Process *process_run_ex(const char *command, const ProcessSettings *settings) {
 	pid_t pid = fork();
 	if (pid == 0) {
 		// child process
-		chdir(settings->working_directory);
+		for (int *psignal = ted_crash_signals; *psignal; psignal++) {
+			// don't run ted's crash handler if we abort below or something
+			signal(*psignal, SIG_DFL);
+		}
+		if (chdir(settings->working_directory)) {
+			dprintf(STDERR_FILENO, "failed to change directory\n");
+			exit(127);
+		}
 		// put child in its own group. it will be in this group with all of its descendents,
 		// so by killing everything in the group, we kill all the descendents of this process.
 		// if we didn't do this, we would just be killing the sh process in process_kill.

@@ -273,6 +273,10 @@ static void ted_update_window_dimensions(Ted *ted) {
 	gl_window_height = ted->window_height = (float)h;
 }
 
+#if __unix__
+int ted_crash_signals[] = {SIGSEGV, SIGFPE, SIGABRT, SIGILL, 0};
+#endif
+
 #if _WIN32
 INT WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 	PSTR lpCmdLine, INT nCmdShow) {
@@ -309,10 +313,8 @@ int main(int argc, char **argv) {
 		struct sigaction act = {0};
 		act.sa_sigaction = error_signal_handler;
 		act.sa_flags = SA_SIGINFO;
-		sigaction(SIGSEGV, &act, NULL);
-		sigaction(SIGFPE, &act, NULL);
-		sigaction(SIGABRT, &act, NULL);
-		sigaction(SIGILL, &act, NULL);
+		for (int *psignal = ted_crash_signals; *psignal; psignal++)
+			sigaction(*psignal, &act, NULL);
 		signal(SIGPIPE, SIG_IGN);
 	}
 #elif _WIN32

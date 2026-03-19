@@ -55,63 +55,69 @@ static u8 read_u8(FILE *fp) {
 	return (u8)getc(fp);
 }
 
+// fread, but zero remainder on short read (due to error or eof)
+static void fread_or_zero(FILE *fp, void *buf, size_t count) {
+	size_t bytes_read = fread(buf, 1, count, fp);
+	memset((char *)buf + bytes_read, 0, count - bytes_read);
+}
+
 static u16 read_u16(FILE *fp) {
-	u16 x = 0;
-	fread(&x, sizeof x, 1, fp);
+	u16 x;
+	fread_or_zero(fp, &x, sizeof x);
 	return x;
 }
 
 static u32 read_u32(FILE *fp) {
-	u32 x = 0;
-	fread(&x, sizeof x, 1, fp);
+	u32 x;
+	fread_or_zero(fp, &x, sizeof x);
 	return x;
 }
 
 static u64 read_u64(FILE *fp) {
-	u64 x = 0;
-	fread(&x, sizeof x, 1, fp);
+	u64 x;
+	fread_or_zero(fp, &x, sizeof x);
 	return x;
 }
 
 static i8 read_i8(FILE *fp) {
-	i8 x = 0;
-	fread(&x, sizeof x, 1, fp);
+	i8 x;
+	fread_or_zero(fp, &x, sizeof x);
 	return x;
 }
 
 static i16 read_i16(FILE *fp) {
-	i16 x = 0;
-	fread(&x, sizeof x, 1, fp);
+	i16 x;
+	fread_or_zero(fp, &x, sizeof x);
 	return x;
 }
 
 static i32 read_i32(FILE *fp) {
-	i32 x = 0;
-	fread(&x, sizeof x, 1, fp);
+	i32 x;
+	fread_or_zero(fp, &x, sizeof x);
 	return x;
 }
 
 static i64 read_i64(FILE *fp) {
-	i64 x = 0;
-	fread(&x, sizeof x, 1, fp);
+	i64 x;
+	fread_or_zero(fp, &x, sizeof x);
 	return x;
 }
 
 static float read_float(FILE *fp) {
-	float x = 0;
-	fread(&x, sizeof x, 1, fp);
+	float x;
+	fread_or_zero(fp, &x, sizeof x);
 	return x;
 }
 
 static double read_double(FILE *fp) {
-	double x = 0;
-	fread(&x, sizeof x, 1, fp);
+	double x;
+	fread_or_zero(fp, &x, sizeof x);
 	return x;
 }
 
 static char read_char(FILE *fp) {
-	char x = 0;
-	fread(&x, sizeof x, 1, fp);
+	char x;
+	fread_or_zero(fp, &x, sizeof x);
 	return x;
 }
 
@@ -289,8 +295,8 @@ static void session_write_file(Ted *ted, FILE *fp) {
 }
 
 static void session_read_file(Ted *ted, FILE *fp) {
-	char version[sizeof SESSION_VERSION] = {0};
-	fread(version, 1, sizeof version, fp);
+	char version[sizeof SESSION_VERSION];
+	fread_or_zero(fp, version, sizeof version);
 	if (memcmp(version, SESSION_VERSION, sizeof version) != 0) {
 		debug_println("WARNING: Session file has wrong version (see %s:%d)!\n", __FILE__, __LINE__);
 		return; // wrong version

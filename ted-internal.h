@@ -28,7 +28,6 @@
 #define PROFILE_TIME(var)
 #endif
 
-
 /// Minimum text size
 #define TEXT_SIZE_MIN 6
 /// Maximum text size
