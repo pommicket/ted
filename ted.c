@@ -873,35 +873,6 @@ void ted_cancel_lsp_request(Ted *ted, LSPServerRequestID *request) {
 }
 
 
-static void mark_node_reachable(Ted *ted, Node *node, bool *reachable) {
-	i32 i = arr_index_of(ted->nodes, node);
-	if (i < 0) return;
-	if (reachable[i]) {
-		ted_error(ted, "Node %d reachable in 2 different ways\nThis should never happen.", i);
-		node_close(ted, node);
-		return;
-	}
-	reachable[i] = true;
-	if (node_child1(node)) {
-		mark_node_reachable(ted, node_child1(node), reachable);
-		mark_node_reachable(ted, node_child2(node), reachable);
-	}
-}
-
-void ted_check_for_node_problems(Ted *ted) {
-	bool *reachable = ted_calloc(ted, arr_len(ted->nodes), 1);
-	if (arr_len(ted->nodes))
-		mark_node_reachable(ted, ted->nodes[0], reachable);
-	for (u32 i = 0; i < arr_len(ted->nodes); ++i) {
-		if (!reachable[i]) {
-			ted_error(ted, "ORPHANED NODE %u\nThis should never happen.", i);
-			node_close(ted, ted->nodes[i]);
-			--i;
-		}
-	}
-	free(reachable);
-}
-
 MessageType ted_message_type_from_lsp(LSPWindowMessageType type) {
 	switch (type) {
 	case LSP_WINDOW_MESSAGE_ERROR: return MESSAGE_ERROR;

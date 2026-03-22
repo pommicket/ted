@@ -356,6 +356,7 @@ static void session_read_file(Ted *ted, FILE *fp) {
 		ted->active_buffer = ted->buffers[0];
 	}
 	ted_check_for_node_problems(ted);
+	node_fix_broken_session(ted);
 }
 
 void session_write(Ted *ted) {

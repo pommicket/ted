@@ -266,6 +266,8 @@ typedef struct Macro Macro;
 
 typedef struct LoadedFont LoadedFont;
 
+typedef struct FileFinder FileFinder;
+
 typedef struct {
 	vec2 pos;
 	u8 times;
@@ -451,6 +453,7 @@ struct Ted {
 	
 	u64 edit_notify_id;
 	EditNotifyInfo *edit_notifys;
+	FileFinder *file_finder;
 #if HAS_INOTIFY
 	// 16384 = default inotify queue size
 	char inotify_event_buf[16384 * sizeof(struct inotify_event)];
@@ -560,6 +563,11 @@ i32 config_priority(const Config *cfg);
 void settings_free(Settings *settings);
 /// test config stuff
 void config_test(Ted *ted);
+
+// === filefinder.c ===
+void filefinder_init(Ted *ted);
+void filefinder_free(Ted *ted);
+void filefinder_frame(Ted *ted);
 
 // === find.c ===
 void find_init(Ted *ted);
@@ -746,6 +754,8 @@ Status node_add_tab(Ted *ted, Node *node, TextBuffer *buffer);
 /// cannot be called if `node` has already been initialized or contains tabs.
 void node_init_split(Node *node, Node *child1, Node *child2, float split_pos, bool is_vertical);
 void node_frame(Ted *ted, Node *node, Rect r);
+/// fix session issues with nodes
+void node_fix_broken_session(Ted *ted);
 
 // === syntax.c ===
 /// register built-in languages, etc.

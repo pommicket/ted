@@ -64,6 +64,10 @@ void selector_set_cursor(Selector *s, u32 pos) {
 	s->cursor = pos;
 }
 
+size_t selector_entry_count(Selector *s) {
+	return arr_len(s->entries);
+}
+
 u32 selector_get_cursor(Selector *s) {
 	return s->cursor;
 }

@@ -175,6 +175,9 @@ typedef enum {
 
 	/// print undo history to stdout
 	CMD_DEBUG_PRINT_UNDO_HISTORY,
+	
+	CMD_FILEFINDER_REINDEX,
+	CMD_FILEFINDER_OPEN,
 
 	CMD_COUNT
 } Command;

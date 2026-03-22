@@ -5,7 +5,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 		ide-document-link.c ide-definitions.c ide-format.c ide-highlights.c ide-hover.c ide-code-action.c
 		ide-signature-help.c ide-usages.c ide-rename-symbol.c lsp.c lsp-json.c lsp-parse.c
 		lsp-write.c main.c menu.c node.c os.c session.c stb_truetype.c syntax.c
-		tags.c ted.c text.c ui.c util.c macro.c)
+		tags.c ted.c text.c ui.c util.c macro.c filefinder.c)
 else()
 	set(SOURCES main.c)
 endif()

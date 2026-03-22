@@ -272,6 +272,8 @@ typedef enum {
 #define MENU_SHELL "ted-shell"
 /// "Rename symbol"
 #define MENU_RENAME_SYMBOL "ted-rename-sym"
+/// "File finder"
+#define MENU_FILEFINDER "ted-filefinder"
 
 /// Information about a programming language
 ///
@@ -864,6 +866,9 @@ float settings_border_thickness(const Settings *settings);
 /// get padding
 float settings_padding(const Settings *settings);
 
+// === filefinder.c ===
+void filefinder_index(Ted *ted);
+
 // === find.c ===
 /// which buffer will be searched?
 TextBuffer *find_search_buffer(Ted *ted);
@@ -1294,6 +1299,8 @@ int selector_entry_cmp_name(Selector *s, const SelectorEntry *a, const SelectorE
 ///
 /// pass `NULL` to `sort_function` to keep entries unsorted.
 Selector *selector_new(SelectorSortFunction *sort_function);
+/// Get number of entries in selector
+size_t selector_entry_count(Selector *s);
 /// set location where selector will be rendered.
 void selector_set_bounds(Selector *s, Rect bounds);
 /// add a new entry to this selector

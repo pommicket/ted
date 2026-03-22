@@ -556,3 +556,56 @@ void node_split_swap(Ted *ted) {
 	parent->split_a = parent->split_b;
 	parent->split_b = temp;
 }
+
+static void mark_node_reachable(Ted *ted, Node *node, bool *reachable) {
+	i32 i = arr_index_of(ted->nodes, node);
+	if (i < 0) return;
+	if (reachable[i]) {
+		ted_error(ted, "Node %d reachable in 2 different ways\nThis should never happen.", i);
+		node_close(ted, node);
+		return;
+	}
+	reachable[i] = true;
+	if (node_child1(node)) {
+		mark_node_reachable(ted, node_child1(node), reachable);
+		mark_node_reachable(ted, node_child2(node), reachable);
+	}
+}
+
+void ted_check_for_node_problems(Ted *ted) {
+	bool *reachable = ted_calloc(ted, arr_len(ted->nodes), 1);
+	if (arr_len(ted->nodes))
+		mark_node_reachable(ted, ted->nodes[0], reachable);
+	for (u32 i = 0; i < arr_len(ted->nodes); ++i) {
+		if (!reachable[i]) {
+			ted_error(ted, "ORPHANED NODE %u\nThis should never happen.", i);
+			node_close(ted, ted->nodes[i]);
+			--i;
+		}
+	}
+	free(reachable);
+}
+
+void node_fix_broken_session(Ted *ted) {
+	if (ted->active_buffer && !ted->active_node) {
+		ted_log(ted, "Active buffer got set by session restore, but not active node.");
+		Node *fallback_node = NULL;
+		TextBuffer *fallback_buffer = NULL;
+		for (u32 i = 0; i < arr_len(ted->nodes); i++) {
+			Node *node = ted->nodes[i];
+			arr_foreach_ptr(node->tabs, TextBuffer*, tab) {
+				if (*tab == ted->active_buffer) {
+					ted->active_node = node;
+					break;
+				} else if (!fallback_node) {
+					fallback_node = node;
+					fallback_buffer = *tab;
+				}
+			}
+		}
+		if (!ted->active_node) {
+			ted->active_node = fallback_node;
+			ted->active_buffer = fallback_buffer;
+		}
+	}
+}

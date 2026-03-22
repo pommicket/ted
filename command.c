@@ -113,6 +113,8 @@ static CommandName command_names[] = {
 	{"debug-print-undo-history", CMD_DEBUG_PRINT_UNDO_HISTORY},
 	{"code-action", CMD_CODE_ACTION},
 	{"code-action-prev", CMD_CODE_ACTION_PREV},
+	{"filefinder-open", CMD_FILEFINDER_OPEN},
+	{"filefinder-reindex", CMD_FILEFINDER_REINDEX},
 };
 
 static_assert_if_possible(arr_count(command_names) == CMD_COUNT)
@@ -756,6 +758,12 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 		break;
 	case CMD_CODE_ACTION_PREV:
 		code_action_prev(ted);
+		break;
+	case CMD_FILEFINDER_REINDEX:
+		filefinder_index(ted);
+		break;
+	case CMD_FILEFINDER_OPEN:
+		menu_open(ted, MENU_FILEFINDER);
 		break;
 	}
 }

@@ -111,6 +111,7 @@ the first character can be interpreted specially if it is one of the following:
 #include "lsp-json.c"
 #include "lsp-write.c"
 #include "lsp-parse.c"
+#include "filefinder.c"
 
 #endif // ONE_SOURCE
 
@@ -585,6 +586,8 @@ int main(int argc, char **argv) {
 
 	ted->file_selector = file_selector_new();
 	gl_geometry_init();
+	PROFILE_TIME(gl_end)
+	PROFILE_TIME(misc2_start)
 	text_init();
 	menu_init(ted);
 	find_init(ted);
@@ -599,7 +602,8 @@ int main(int argc, char **argv) {
 	hover_init(ted);
 	rename_symbol_init(ted);
 	document_link_init(ted);
-	PROFILE_TIME(gl_end)
+	filefinder_init(ted);
+	PROFILE_TIME(misc2_end)
 	
 	
 	PROFILE_TIME(configs_start)
@@ -675,6 +679,7 @@ int main(int argc, char **argv) {
 	print(" - Create: %.1fms\n", 1000 * (create_end - create_start));
 	print(" - OpenGL: %.1fms\n", 1000 * (gl_end - gl_start));
 	print(" - misc: %.1fms\n", 1000 * (misc_end - misc_start));
+	print(" - misc2: %.1fms\n", 1000 * (misc2_end - misc2_start));
 	print(" - Loading fonts: %.1fms\n", 1000 * (fonts_end - fonts_start));
 	print(" - Read configs: %.1fms\n", 1000 * (configs_end - configs_start));
 	print(" - Get ready: %.1fms\n", 1000 * (get_ready_end - get_ready_start));
@@ -1106,6 +1111,7 @@ int main(int argc, char **argv) {
 				y -= padding;
 			}
 
+			filefinder_frame(ted);
 			if (arr_len(ted->nodes)) {
 				Node *node = ted->nodes[0];
 				float y1 = padding;
