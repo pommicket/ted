@@ -512,6 +512,7 @@ void path_dirname(char *path) {
 		if (is_path_separator(path[i])) {
 			if (strcspn(path, ALL_PATH_SEPARATORS) == i) {
 				// only one path separator
+				// keep it around so we return c:\ instead of c: and / instead of empty string
 				path[i+1] = '\0';
 				return;
 			}
