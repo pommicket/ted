@@ -176,8 +176,12 @@ typedef enum {
 	/// print undo history to stdout
 	CMD_DEBUG_PRINT_UNDO_HISTORY,
 	
+	/// regenerate file finder index
 	CMD_FILEFINDER_REINDEX,
+	/// open file finder
 	CMD_FILEFINDER_OPEN,
+	/// clear all file finder indexes
+	CMD_FILEFINDER_RESET,
 
 	CMD_COUNT
 } Command;

@@ -851,6 +851,12 @@ void command_execute_string_argument(Ted *ted, Command c, const char *string);
 ///
 /// the return value should be freed.
 char *settings_get_root_dir(const Settings *settings, const char *path);
+/// returns the best guess for the root directory of the project containing absolute path `path`.
+///
+/// if not null, sets `*is_identified` to whether or not there was an identifying file (e.g. .git) in the root.
+///
+/// the return value should be freed.
+char *settings_get_root_dir_ex(const Settings *settings, const char *path, bool *is_identified);
 /// get color in `0xRRGGBBAA` format
 u32 settings_color(const Settings *settings, ColorSetting color);
 /// get color as four floats
@@ -867,7 +873,10 @@ float settings_border_thickness(const Settings *settings);
 float settings_padding(const Settings *settings);
 
 // === filefinder.c ===
-void filefinder_index(Ted *ted);
+/// start indexing current project, optionally showing a message to the user.
+void filefinder_index(Ted *ted, bool show_message);
+/// clear all file finder indexes
+void filefinder_reset(Ted *ted);
 
 // === find.c ===
 /// which buffer will be searched?
@@ -1170,6 +1179,10 @@ u32 ted_get_key_modifier(Ted *ted);
 bool ted_clicked_in_rect(Ted *ted, Rect rect);
 /// display a message to the user
 void ted_set_message(Ted *ted, MessageType type, PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRINTF(3, 4);
+/// clear the currently-displayed message
+void ted_clear_message(Ted *ted);
+/// get type of currently-displayed message
+MessageType ted_message_type(Ted *ted);
 /// display an error to the user
 void ted_error(Ted *ted, PRINTF_FORMAT_STRING const char *fmt, ...) ATTRIBUTE_PRINTF(2, 3);
 /// display a warning to the user
@@ -1226,6 +1239,12 @@ char *ted_get_root_dir_of(Ted *ted, const char *path);
 ///
 /// The returned value should be freed.
 char *ted_get_root_dir(Ted *ted);
+/// Get likely root directory of currently open project.
+///
+/// if not null, sets `*is_identified` to whether or not there was an identifying file (e.g. .git) in the root.
+///
+/// The returned value should be freed.
+char *ted_get_root_dir_ex(Ted *ted, bool *is_identified);
 /// settings to use when no buffer is open
 Settings *ted_default_settings(Ted *ted);
 /// the settings of the active buffer, or the default settings if there is no active buffer

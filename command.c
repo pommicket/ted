@@ -115,6 +115,7 @@ static CommandName command_names[] = {
 	{"code-action-prev", CMD_CODE_ACTION_PREV},
 	{"filefinder-open", CMD_FILEFINDER_OPEN},
 	{"filefinder-reindex", CMD_FILEFINDER_REINDEX},
+	{"filefinder-reset", CMD_FILEFINDER_RESET},
 };
 
 static_assert_if_possible(arr_count(command_names) == CMD_COUNT)
@@ -760,10 +761,13 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 		code_action_prev(ted);
 		break;
 	case CMD_FILEFINDER_REINDEX:
-		filefinder_index(ted);
+		filefinder_index(ted, true);
 		break;
 	case CMD_FILEFINDER_OPEN:
 		menu_open(ted, MENU_FILEFINDER);
+		break;
+	case CMD_FILEFINDER_RESET:
+		filefinder_reset(ted);
 		break;
 	}
 }

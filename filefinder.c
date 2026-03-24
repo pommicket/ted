@@ -1,5 +1,3 @@
-// TODO:
-//  - keep separate index for each project?
 #include "ted-internal.h"
 
 #include <stdatomic.h>
@@ -16,20 +14,28 @@ typedef struct {
 	BufferList *buffers;
 } FileList;
 
-struct FileFinder {
+// every "project" (i.e. root directory, per ted_get_root_dir) has its own list of files.
+typedef struct {
+	char *root;
 	FileList files;
 	FileList new_files;
+	Process *process;
+	unsigned short readpos;
+	char readbuf[8192];
+} Project;
+
+struct FileFinder {
+	// probably we should clean up old projects at some point. but who knows what's the
+	// best way of doing that...
+	Project *projects;
 	Selector *selector;
-	Process *index_process;
 	char *prev_search_term;
-	unsigned short index_readpos;
-	SDL_Thread *filter_thread;
 	bool selector_entries_dirty;
 	bool open_when_index_finishes;
 	size_t filter_progress;
 	size_t filter_count;
+	long prev_project;
 	const char *filter_results[500];
-	char index_readbuf[8192];
 };
 
 static void *buffer_list_malloc(BufferList **buf, size_t n) {
@@ -84,8 +90,44 @@ static void file_list_add(FileList *list, const char *file, size_t len) {
 }
 
 
+static int path_qsort_cmp(const void *av, const void *bv) {
+	const char *a = *(const char **)av, *b = *(const char **)bv;
+	// first compare by filenames
+	int cmp = strcmp_case_insensitive(path_filename(a), path_filename(b));
+	if (cmp) return cmp;
+	// then compare paths directly, I guess
+	cmp = strcmp_case_insensitive(a, b);
+	if (cmp) return cmp;
+	return strcmp(a, b);
+}
+
 static void file_list_sort(FileList *list) {
-	arr_qsort(list->files, str_qsort_case_insensitive_cmp);
+	arr_qsort(list->files, path_qsort_cmp);
+}
+
+static long filefinder_get_project_index(Ted *ted) {
+	FileFinder *file_finder = ted->file_finder;
+	bool is_identified;
+	char *root = ted_get_root_dir_ex(ted, &is_identified);
+	if (!is_identified) {
+		free(root);
+		return -1;
+	}
+	arr_foreach_ptr(file_finder->projects, Project, p) {
+		if (streq(p->root, root)) {
+			free(root);
+			return p - file_finder->projects;
+		}
+	}
+	Project *project = arr_addp(file_finder->projects);
+	project->root = root;
+	return arr_len(file_finder->projects) - 1;
+}
+
+static Project *filefinder_get_project(Ted *ted) {
+	FileFinder *file_finder = ted->file_finder;
+	long index = filefinder_get_project_index(ted);
+	return index == -1 ? NULL : &file_finder->projects[index];
 }
 
 static void filefinder_render(Ted *ted) {
@@ -109,11 +151,17 @@ static void filefinder_select_file(Ted *ted, const SelectorEntry *entry) {
 	ted_open_file(ted, path);
 }
 
+static size_t file_list_len(FileList *list) {
+	return arr_len(list->files);
+}
+
 static void filefinder_update(Ted *ted) {
 	FileFinder *file_finder = ted->file_finder;
 	char *search_term = buffer_contents_utf8_alloc(ted->line_buffer);
 	if (!search_term) return;
-	if (file_finder->selector_entries_dirty || !streq(search_term, file_finder->prev_search_term)) {
+	if (file_finder->selector_entries_dirty ||
+		!file_finder->prev_search_term ||
+		!streq(search_term, file_finder->prev_search_term)) {
 		// start new filter
 		file_finder->filter_progress = 0;
 		file_finder->filter_count = 0;
@@ -123,17 +171,20 @@ static void filefinder_update(Ted *ted) {
 		search_term = NULL; // prevent it from being freed
 	}
 	free(search_term);
-	if (file_finder->filter_progress < arr_len(file_finder->files.files)) {
+	Project *project = filefinder_get_project(ted);
+	if (!project) return;
+	FileList *files = &project->files;
+	if (file_finder->filter_progress < file_list_len(files)) {
 		double start_time = time_get_seconds();
 		for (;
-			file_finder->filter_progress < arr_len(file_finder->files.files);
+			file_finder->filter_progress < file_list_len(files);
 			file_finder->filter_progress++) {
 			if (file_finder->filter_count >= arr_count(file_finder->filter_results)) {
 				// we've got enough results; finish up now.
-				file_finder->filter_progress = arr_len(file_finder->files.files);
+				file_finder->filter_progress = file_list_len(files);
 				break;
 			}
-			const char *file = file_finder->files.files[file_finder->filter_progress];
+			const char *file = files->files[file_finder->filter_progress];
 			if (strstr_case_insensitive(file, file_finder->prev_search_term)) {
 				file_finder->filter_results[file_finder->filter_count++] = file;
 			}
@@ -143,7 +194,7 @@ static void filefinder_update(Ted *ted) {
 				break;
 			}
 		}
-		if (file_finder->filter_progress >= arr_len(file_finder->files.files)) {
+		if (file_finder->filter_progress >= file_list_len(files)) {
 			selector_clear_entries(file_finder->selector);
 			for (size_t i = 0; i < file_finder->filter_count; i++) {
 				SelectorEntry entry = {0};
@@ -177,15 +228,21 @@ static void filefinder_update(Ted *ted) {
 
 static void filefinder_open(Ted *ted) {
 	FileFinder *file_finder = ted->file_finder;
-	if (!file_finder->files.files) {
+	Project *project = filefinder_get_project(ted);
+	if (!project) {
+		menu_close(ted);
+		ted_error(ted, "Not sure what project root is. Make sure that there's a file in the root of your project matching root-identifiers in ted.cfg");
+		return;
+	}
+	if (!project->files.files) {
 		menu_close(ted);
 		if (file_finder->open_when_index_finishes) {
 			// we've been around this loop once before
 			file_finder->open_when_index_finishes = false;
 			return;
 		}
+		filefinder_index(ted, false);
 		file_finder->open_when_index_finishes = true;
-		filefinder_index(ted);
 		return;
 	}
 	ted_switch_to_buffer(ted, ted->line_buffer);
@@ -195,12 +252,17 @@ static void filefinder_open(Ted *ted) {
 }
 
 static bool filefinder_close(Ted *ted) {
-	(void)ted;
+	FileFinder *file_finder = ted->file_finder;
+	file_finder->filter_progress = 0;
+	file_finder->filter_count = 0;
+	free(file_finder->prev_search_term);
+	file_finder->prev_search_term = NULL;
 	return true;
 }
 
 void filefinder_init(Ted *ted) {
 	FileFinder *file_finder = ted->file_finder = ted_calloc(ted, 1, sizeof *ted->file_finder);
+	if (!file_finder) return;
 	file_finder->selector = selector_new(NULL);
 	MenuInfo info = {
 		.open = filefinder_open,
@@ -213,88 +275,120 @@ void filefinder_init(Ted *ted) {
 
 }
 
-void filefinder_index(Ted *ted) {
+void filefinder_index(Ted *ted, bool show_message) {
 	FileFinder *file_finder = ted->file_finder;
-	process_kill(&file_finder->index_process);
-	char *wd = ted_get_root_dir(ted);
-	ProcessSettings settings = {0};
-	settings.working_directory = wd;
-	file_finder->index_process = process_run_ex("git ls-files", &settings);
-	const char *err = process_geterr(file_finder->index_process);
+	file_finder->open_when_index_finishes = false;
+	Settings *settings = ted_active_settings(ted);
+	Project *project = filefinder_get_project(ted);
+	process_kill(&project->process);
+	const char *command = rc_str(settings->filefinder_command, "");
+	if (!*command) {
+		return;
+	}
+	ProcessSettings process_settings = {0};
+	process_settings.working_directory = project->root;
+	project->process = process_run_ex(command, &process_settings);
+	if (show_message) {
+		ted_info(ted, "Indexing %s...", project->root);
+	}
+	const char *err = process_geterr(project->process);
 	if (err) {
 		ted_error(ted, "Error starting index process: %s", err);
-		process_kill(&file_finder->index_process);
+		process_kill(&project->process);
 	}
-	free(wd);
+}
+
+static void filefinder_project_free(Project *p) {
+	free(p->root);
+	process_kill(&p->process);
+	file_list_free(&p->files);
+	file_list_free(&p->new_files);
+}
+
+void filefinder_reset(Ted *ted) {
+	if (menu_is_open(ted, MENU_FILEFINDER)) {
+		menu_close(ted);
+	}
+	FileFinder *file_finder = ted->file_finder;
+	arr_foreach_ptr(file_finder->projects, Project, p) {
+		filefinder_project_free(p);
+	}
+	arr_free(file_finder->projects);
 }
 
 void filefinder_free(Ted *ted) {
 	FileFinder *file_finder = ted->file_finder;
-	process_kill(&file_finder->index_process);
 	selector_free(file_finder->selector);
-	file_list_free(&file_finder->files);
-	file_list_free(&file_finder->new_files);
 	free(file_finder->prev_search_term);
+	arr_foreach_ptr(file_finder->projects, Project, p) {
+		filefinder_project_free(p);
+	}
+	arr_free(file_finder->projects);
 	free(file_finder);
 	ted->file_finder = NULL;
 }
 
 void filefinder_frame(Ted *ted) {
 	FileFinder *file_finder = ted->file_finder;
-	if (file_finder->index_process) {
+	Project *project = filefinder_get_project(ted);
+	if (project && project->process) {
 		int read_calls = 0;
 		long long nbytes = 0;
 		// read the file names from the index process
-		while ((++read_calls) < 100 && (nbytes = process_read(file_finder->index_process,
-			file_finder->index_readbuf + file_finder->index_readpos,
-			sizeof file_finder->index_readbuf - file_finder->index_readpos)) > 0) {
+		while ((++read_calls) < 100 && (nbytes = process_read(project->process,
+			project->readbuf + project->readpos,
+			sizeof project->readbuf - project->readpos)) > 0) {
 			size_t i = 0;
 			while (i < (size_t)nbytes) {
-				char *newline = memchr(file_finder->index_readbuf + i, '\n', (size_t)nbytes - i);
+				char *newline = memchr(project->readbuf + i, '\n', (size_t)nbytes - i);
 				if (!newline) break;
-				if (newline == file_finder->index_readbuf + i) {
+				if (newline == project->readbuf + i) {
 					// empty line, for some reason
 					i++;
 					continue;
 				}
-				size_t line_len = (size_t)(newline - (file_finder->index_readbuf + i));
+				size_t line_len = (size_t)(newline - (project->readbuf + i));
 				if (newline[-1] == '\r') --line_len;
 				if (line_len == 0) {
 					i++; // empty line, for some reason
 					continue;
 				}
-				file_list_add(&file_finder->new_files, file_finder->index_readbuf + i, line_len);
-				i = (size_t)(newline + 1 - file_finder->index_readbuf);
+				file_list_add(&project->new_files, project->readbuf + i, line_len);
+				i = (size_t)(newline + 1 - project->readbuf);
 			}
-			if ((size_t)nbytes - i > sizeof file_finder->index_readbuf / 2) {
+			if ((size_t)nbytes - i > sizeof project->readbuf / 2) {
 				// super long file name is clogging up the read buffer - just ignore it
-				file_finder->index_readpos = 0;
+				project->readpos = 0;
 				nbytes = 0;
 				i = 0;
 			}
 			// slide over bytes to start of buffer
-			memmove(file_finder->index_readbuf,
-				file_finder->index_readbuf + i,
+			memmove(project->readbuf,
+				project->readbuf + i,
 				(size_t)nbytes - i);
-			file_finder->index_readpos = (unsigned short)((size_t)nbytes - i);
+			project->readpos = (unsigned short)((size_t)nbytes - i);
 		}
 		ProcessExitInfo info;
-		int status = process_check_status(&file_finder->index_process, &info);
+		int status = process_check_status(&project->process, &info);
 		if (nbytes == -2 || status == -1) {
 			ted_error(ted, "Error reading file list: %s",
-				file_finder->index_process ? process_geterr(file_finder->index_process) : info.message);
-			process_kill(&file_finder->index_process);
-			file_list_free(&file_finder->new_files);
+				project->process ? process_geterr(project->process) : info.message);
+			process_kill(&project->process);
+			file_list_free(&project->new_files);
 		}
 		if (nbytes == -1 || status == 1) {
 			// EOF - set files = new_files
-			process_kill(&file_finder->index_process);
-			file_list_free(&file_finder->files);
-			file_finder->files = file_finder->new_files;
-			memset(&file_finder->new_files, 0, sizeof file_finder->new_files);
-			file_list_sort(&file_finder->files);
+			process_kill(&project->process);
+			file_list_free(&project->files);
+			project->files = project->new_files;
+			memset(&project->new_files, 0, sizeof project->new_files);
+			file_list_sort(&project->files);
 			selector_clear_entries(file_finder->selector);
 			file_finder->selector_entries_dirty = true;
+			if (ted_message_type(ted) == MESSAGE_INFO) {
+				// clear "Indexing project..." message box
+				ted_clear_message(ted);
+			}
 			if (file_finder->open_when_index_finishes) {
 				menu_open(ted, MENU_FILEFINDER);
 			}

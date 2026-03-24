@@ -161,6 +161,8 @@ struct Settings {
 	/// - full - sync data and metadata to disk
 	/// - data - only sync data but not metadata (on Windows this is the same as full)
 	RcStr *sync;
+	/// Command for file finder to run to get files
+	RcStr *filefinder_command;
 	LanguageExtension *language_extensions;
 	/// dynamic array, sorted by KEY_COMBO(modifier, key)
 	KeyAction *key_actions;

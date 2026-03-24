@@ -62,6 +62,17 @@ static void ted_vset_message(Ted *ted, MessageType type, const char *fmt, va_lis
 	}
 }
 
+void ted_clear_message(Ted *ted) {
+	ted->message_type = 0;
+	ted->message_shown_type = 0;
+	*ted->message = 0;
+	*ted->message_shown = 0;
+}
+
+MessageType ted_message_type(Ted *ted) {
+	return ted->message_type;
+}
+
 void ted_update_time(Ted *ted) {
 	time_t t = time(NULL);
 	struct tm *tm = localtime(&t);
@@ -214,15 +225,16 @@ char *ted_get_root_dir_of(Ted *ted, const char *path) {
 	return settings_get_root_dir(settings, path);
 }
 
-// get the project root directory (based on the active buffer or ted->cwd if there's no active buffer).
-// the return value should be freed
-char *ted_get_root_dir(Ted *ted) {
+char *ted_get_root_dir_ex(Ted *ted, bool *is_identified) {
 	TextBuffer *buffer = ted->active_buffer;
-	if (buffer && buffer_is_named_file(buffer)) {
-		return ted_get_root_dir_of(ted, buffer_get_path(buffer));
-	} else {
-		return ted_get_root_dir_of(ted, ted->cwd);
-	}
+	const Settings *settings = ted_active_settings(ted);
+	return settings_get_root_dir_ex(settings,
+		buffer && buffer_is_named_file(buffer) ? buffer_get_path(buffer) : ted->cwd,
+		is_identified);
+}
+
+char *ted_get_root_dir(Ted *ted) {
+	return ted_get_root_dir_ex(ted, NULL);
 }
 
 static int applicable_configs_cmp(void *context, const void *av, const void *bv) {

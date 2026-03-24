@@ -167,6 +167,7 @@ static const SettingString settings_string[] = {
 	{"font", &settings_zero.font, false},
 	{"font-bold", &settings_zero.font_bold, false},
 	{"sync", &settings_zero.sync, false},
+	{"filefinder-command", &settings_zero.filefinder_command, true}
 };
 static const SettingKeyCombo settings_key_combo[] = {
 	{"hover-key", &settings_zero.hover_key, true},
@@ -1556,11 +1557,10 @@ static char *last_separator(char *path) {
 	return NULL;
 }
 
-char *settings_get_root_dir(const Settings *settings, const char *path) {
+char *settings_get_root_dir_ex(const Settings *settings, const char *path, bool *is_identified) {
 	char *best_path = NULL;
 	u32 best_path_score = 0;
 	char *pathbuf = str_dup(path);
-	
 	while (1) {
 		FsDirectoryEntry **entries = fs_list_directory(pathbuf);
 		if (entries) { // note: this may actually be NULL on the first iteration if `path` is a file
@@ -1596,9 +1596,10 @@ char *settings_get_root_dir(const Settings *settings, const char *path) {
 	}
 	free(pathbuf);
 	
-	if (best_path) {
+	if (is_identified)
+		*is_identified = best_path != NULL;
+	if (best_path)
 		return best_path;
-	}
 	// didn't find any identifiers.
 	// just return
 	//  - `path` if it's a directory
@@ -1610,6 +1611,10 @@ char *settings_get_root_dir(const Settings *settings, const char *path) {
 	char *sep = last_separator(pathbuf);
 	*sep = '\0';
 	return pathbuf;
+}
+
+char *settings_get_root_dir(const Settings *settings, const char *path) {
+	return settings_get_root_dir_ex(settings, path, NULL);
 }
 
 u32 settings_color(const Settings *settings, ColorSetting color) {
