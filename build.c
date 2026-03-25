@@ -64,8 +64,9 @@ static bool build_run_next_command_in_queue(Ted *ted) {
 		if (active_buffer) {
 			const char *buffer_path = buffer_get_path(active_buffer);
 			BufferPos cursor_pos = buffer_cursor_pos(active_buffer);
-			BufferPos selection_pos = cursor_pos;
-			buffer_selection_pos(active_buffer, &selection_pos);
+			BufferPos selection_pos;
+			if (!buffer_selection_pos(active_buffer, &selection_pos))
+				selection_pos = cursor_pos;
 			// helpful environment variables
 			if (buffer_path)
 				env[env_count++] = (EnvironmentVariable){"TED_FILE", buffer_path};
