@@ -375,6 +375,7 @@ Then run `make.bat release`.
 <tr><td>3.0.2</td> <td>Better selector entry sorting</td> <td>2026 Feb 22</td></tr>
 <tr><td>3.0.3</td> <td>File selector bug fix</td> <td>2026 Feb 24</td></tr>
 <tr><td>3.1.0</td> <td>File finder, more `:shell` environment variables</td> <td>2026 Mar 24</td></tr>
+<tr><td>3.1.1</td> <td>File finder improvements, `trust-lsp-symbol-filtering`, bug fixes</td> <td>2026 Mar 25</td></tr>
 </table>
 
 ## License

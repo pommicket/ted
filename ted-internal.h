@@ -569,7 +569,7 @@ void config_test(Ted *ted);
 
 // === filefinder.c ===
 void filefinder_init(Ted *ted);
-void filefinder_free(Ted *ted);
+void filefinder_quit(Ted *ted);
 void filefinder_frame(Ted *ted);
 
 // === find.c ===

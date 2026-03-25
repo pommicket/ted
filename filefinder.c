@@ -136,6 +136,7 @@ static void filefinder_select_file(Ted *ted, const SelectorEntry *entry) {
 	free(root);
 	menu_close(ted);
 	ted_open_file(ted, path);
+	free(path);
 }
 
 static size_t file_list_len(FileList *list) {
@@ -354,7 +355,7 @@ void filefinder_reset(Ted *ted) {
 	arr_free(file_finder->projects);
 }
 
-void filefinder_free(Ted *ted) {
+void filefinder_quit(Ted *ted) {
 	FileFinder *file_finder = ted->file_finder;
 	selector_free(file_finder->selector);
 	free(file_finder->prev_search_term);

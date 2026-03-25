@@ -1320,6 +1320,7 @@ int main(int argc, char **argv) {
 	document_link_quit(ted);
 	definitions_quit(ted);
 	menu_quit(ted);
+	filefinder_quit(ted);
 	arr_free(ted->edit_notifys);
 	
 	file_selector_free(ted->file_selector); ted->file_selector = NULL;
