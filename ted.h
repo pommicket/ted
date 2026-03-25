@@ -1318,6 +1318,10 @@ int selector_entry_cmp_name(Selector *s, const SelectorEntry *a, const SelectorE
 ///
 /// pass `NULL` to `sort_function` to keep entries unsorted.
 Selector *selector_new(SelectorSortFunction *sort_function);
+/// Set selector user data (for comparison function to retrieve with \ref selector_get_userdata)
+void selector_set_userdata(Selector *s, void *userdata);
+/// Get selector data set by \ref selector_set_userdata
+void *selector_get_userdata(Selector *s);
 /// Get number of entries in selector
 size_t selector_entry_count(Selector *s);
 /// set location where selector will be rendered.

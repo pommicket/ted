@@ -11,6 +11,7 @@ struct Selector {
 	SelectorEntry *entries;
 	char *search_term;
 	int (*sort_function)(Selector *selector, const SelectorEntry *e1, const SelectorEntry *e2);
+	void *userdata;
 	Rect bounds;
 	u32 cursor;
 	float scroll;
@@ -66,6 +67,14 @@ void selector_set_cursor(Selector *s, u32 pos) {
 
 size_t selector_entry_count(Selector *s) {
 	return arr_len(s->entries);
+}
+
+void selector_set_userdata(Selector *s, void *userdata) {
+	s->userdata = userdata;
+}
+
+void *selector_get_userdata(Selector *s) {
+	return s->userdata;
 }
 
 u32 selector_get_cursor(Selector *s) {
@@ -171,34 +180,22 @@ int selector_entry_cmp_name(Selector *s, const SelectorEntry *ae, const Selector
 	const char *a = ae->name, *b = be->name;
 	const char *search_term = s->search_term;
 	if (search_term) {
-		bool a_exact_match = streq(a, search_term);
-		bool b_exact_match = streq(b, search_term);
-		// put exact match of search term first
-		if (a_exact_match > b_exact_match)
-			return -1;
-		if (b_exact_match > a_exact_match)
-			return 1;
-		bool a_insensitive_match = streq_case_insensitive(a, search_term);
-		bool b_insensitive_match = streq_case_insensitive(b, search_term);
-		// then put case insensitive match of search term
-		if (a_insensitive_match > b_insensitive_match)
-			return -1;
-		if (b_insensitive_match > a_insensitive_match)
-			return 1;
-		// then put exact extension of search term
-		bool a_exact_prefix = str_has_prefix(a, search_term);
-		bool b_exact_prefix = str_has_prefix(b, search_term);
-		if (a_exact_prefix > b_exact_prefix)
-			return -1;
-		if (b_exact_prefix > a_exact_prefix)
-			return 1;
-		// then put case insensitive extension of search term
-		bool a_insensitive_prefix = str_has_prefix_case_insensitive(a, search_term);
-		bool b_insensitive_prefix = str_has_prefix_case_insensitive(b, search_term);
-		if (a_insensitive_prefix > b_insensitive_prefix)
-			return -1;
-		if (b_insensitive_prefix > a_insensitive_prefix)
-			return 1;
+		static bool (*const comparators[])(const char *, const char *) = {
+			// first exact matches of search term
+			streq,
+			// then case-insensitive matches of search term
+			streq_case_insensitive,
+			// then exact extensions of search term
+			str_has_prefix,
+			// then case-insensitive extensions of search term
+			str_has_prefix_case_insensitive
+		};
+		for (size_t i = 0; i < arr_count(comparators); i++) {
+			int a_value = comparators[i](a, search_term);
+			int b_value = comparators[i](b, search_term);
+			if (a_value != b_value)
+				return b_value - a_value;
+		}
 	}
 	// sort alphabetically (case insensitive)
 	int cmp = strcmp_case_insensitive(a, b);

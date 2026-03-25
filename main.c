@@ -1,6 +1,4 @@
 /*
-TODO:
-- why aren't extensions of search term being put first (e.g. search "ted.cfg" in /p/ted)
 FUTURE FEATURES:
 - save/load sessions under custom names
 - wrap-text command

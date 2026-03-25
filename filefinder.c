@@ -89,22 +89,6 @@ static void file_list_add(FileList *list, const char *file, size_t len) {
 	arr_add(list->files, name);
 }
 
-
-static int path_qsort_cmp(const void *av, const void *bv) {
-	const char *a = *(const char **)av, *b = *(const char **)bv;
-	// first compare by filenames
-	int cmp = strcmp_case_insensitive(path_filename(a), path_filename(b));
-	if (cmp) return cmp;
-	// then compare paths directly, I guess
-	cmp = strcmp_case_insensitive(a, b);
-	if (cmp) return cmp;
-	return strcmp(a, b);
-}
-
-static void file_list_sort(FileList *list) {
-	arr_qsort(list->files, path_qsort_cmp);
-}
-
 static long filefinder_get_project_index(Ted *ted) {
 	FileFinder *file_finder = ted->file_finder;
 	bool is_identified;
@@ -260,10 +244,56 @@ static bool filefinder_close(Ted *ted) {
 	return true;
 }
 
+
+static int filefinder_selector_cmp(Selector *s, const SelectorEntry *a_entry, const SelectorEntry *b_entry) {
+	FileFinder *file_finder = selector_get_userdata(s);
+	const char *a_path = file_finder->filter_results[a_entry->userdata],
+		*b_path = file_finder->filter_results[b_entry->userdata];
+	const char *a_name = a_entry->name;
+	const char *b_name = b_entry->name;
+	const char *search_term = file_finder->prev_search_term;
+	if (search_term && *search_term) {
+		static bool (*const comparators[])(const char *, const char *) = {
+			// first exact matches of search term
+			streq,
+			// then case-insensitive matches of search term
+			streq_case_insensitive,
+			// then exact extensions of search term
+			str_has_prefix,
+			// then case-insensitive extensions of search term
+			str_has_prefix_case_insensitive
+		};
+
+		// first match against file name
+		for (size_t i = 0; i < arr_count(comparators); i++) {
+			int a_value = comparators[i](a_name, search_term);
+			int b_value = comparators[i](b_name, search_term);
+			if (a_value != b_value)
+				return b_value - a_value;
+		}
+		// then match against full path
+		for (size_t i = 0; i < arr_count(comparators); i++) {
+			int a_value = comparators[i](a_path, search_term);
+			int b_value = comparators[i](b_path, search_term);
+			if (a_value != b_value)
+				return b_value - a_value;
+		}
+	}
+	// first compare by filenames
+	int cmp = strcmp_case_insensitive(a_name, b_name);
+	if (cmp) return cmp;
+	// then compare paths directly, I guess
+	cmp = strcmp_case_insensitive(a_path, b_path);
+	if (cmp) return cmp;
+	return strcmp(a_path, b_path);
+}
+
 void filefinder_init(Ted *ted) {
 	FileFinder *file_finder = ted->file_finder = ted_calloc(ted, 1, sizeof *ted->file_finder);
-	if (!file_finder) return;
-	file_finder->selector = selector_new(NULL);
+	if (!file_finder) die("out of memory");
+	file_finder->selector = selector_new(filefinder_selector_cmp);
+	if (!file_finder->selector) die("out of memory");
+	selector_set_userdata(file_finder->selector, file_finder);
 	MenuInfo info = {
 		.open = filefinder_open,
 		.close = filefinder_close,
@@ -382,7 +412,6 @@ void filefinder_frame(Ted *ted) {
 			file_list_free(&project->files);
 			project->files = project->new_files;
 			memset(&project->new_files, 0, sizeof project->new_files);
-			file_list_sort(&project->files);
 			selector_clear_entries(file_finder->selector);
 			file_finder->selector_entries_dirty = true;
 			if (ted_message_type(ted) == MESSAGE_INFO) {
