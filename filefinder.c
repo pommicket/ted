@@ -1,7 +1,5 @@
 #include "ted-internal.h"
 
-#include <stdatomic.h>
-
 typedef struct BufferList BufferList;
 struct BufferList {
 	BufferList *next;
