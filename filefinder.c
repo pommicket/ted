@@ -98,7 +98,7 @@ static long filefinder_get_project_index(Ted *ted) {
 	arr_foreach_ptr(file_finder->projects, Project, p) {
 		if (streq(p->root, root)) {
 			free(root);
-			return p - file_finder->projects;
+			return (long)(p - file_finder->projects);
 		}
 	}
 	Project *project = arr_addp(file_finder->projects);
