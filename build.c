@@ -54,13 +54,18 @@ static bool build_run_next_command_in_queue(Ted *ted) {
 	arr_remove(ted->build_queue, 0);
 	if (ted_save_all(ted)) {
 		ProcessSettings settings = {0};
-		EnvironmentVariable env[3] = {0};
-		char line_str[24], col_str[24];
+		EnvironmentVariable env[8] = {0};
+		char line_str[24], col_str[24],
+			line1_str[24], col1_str[24],
+			line2_str[24], col2_str[24];
+		char *selection = NULL;
 		size_t env_count = 0;
 		TextBuffer *active_buffer = ted_active_buffer(ted);
 		if (active_buffer) {
 			const char *buffer_path = buffer_get_path(active_buffer);
 			BufferPos cursor_pos = buffer_cursor_pos(active_buffer);
+			BufferPos selection_pos = cursor_pos;
+			buffer_selection_pos(active_buffer, &selection_pos);
 			// helpful environment variables
 			if (buffer_path)
 				env[env_count++] = (EnvironmentVariable){"TED_FILE", buffer_path};
@@ -68,11 +73,26 @@ static bool build_run_next_command_in_queue(Ted *ted) {
 			strbuf_printf(col_str, "%" PRIu32, cursor_pos.index + 1);
 			env[env_count++] = (EnvironmentVariable){"TED_LINE", line_str};
 			env[env_count++] = (EnvironmentVariable){"TED_COLUMN", col_str};
+			BufferPos selection_start = buffer_pos_min(cursor_pos, selection_pos);
+			BufferPos selection_end = buffer_pos_max(cursor_pos, selection_pos);
+			strbuf_printf(line1_str, "%" PRIu32, selection_start.line + 1);
+			strbuf_printf(col1_str, "%" PRIu32, selection_start.index + 1);
+			strbuf_printf(line2_str, "%" PRIu32, selection_end.line + 1);
+			strbuf_printf(col2_str, "%" PRIu32, selection_end.index + 1);
+			env[env_count++] = (EnvironmentVariable){"TED_LINE1", line1_str};
+			env[env_count++] = (EnvironmentVariable){"TED_COLUMN1", col1_str};
+			env[env_count++] = (EnvironmentVariable){"TED_LINE2", line2_str};
+			env[env_count++] = (EnvironmentVariable){"TED_COLUMN2", col2_str};
+			selection = buffer_get_selected_text_utf8(active_buffer);
+			if (selection) {
+				env[env_count++] = (EnvironmentVariable){"TED_SELECTION", selection};
+			}
 		}
 		settings.working_directory = ted->build_dir;
 		settings.env = env;
 		settings.env_count = env_count;
 		ted->build_process = process_run_ex(command, &settings);
+		free(selection);
 		ted->building = true;
 		const char *error = process_geterr(ted->build_process);
 		if (!error) {

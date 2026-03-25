@@ -503,6 +503,10 @@ size_t buffer_contents_utf8(TextBuffer *buffer, char *out);
 ///
 /// The return value should be freed.
 char *buffer_contents_utf8_alloc(TextBuffer *buffer);
+/// Get current selection as UTF-8 string, or `NULL` if there is no selection.
+///
+/// The return value should be freed.
+char *buffer_get_selected_text_utf8(TextBuffer *buffer);
 /// clear contents, undo history, etc. of a buffer
 void buffer_clear(TextBuffer *buffer);
 /// returns the number of characters in the `line_number`th line (0-indexed),
@@ -776,6 +780,10 @@ bool buffer_pos_eq(BufferPos p1, BufferPos p2);
 ///
 /// faster than \ref buffer_pos_diff (constant time)
 int buffer_pos_cmp(BufferPos p1, BufferPos p2);
+/// returns whichever of `a` and `b` comes first
+BufferPos buffer_pos_min(BufferPos a, BufferPos b);
+/// returns whichever of `a` and `b` comes last
+BufferPos buffer_pos_max(BufferPos a, BufferPos b);
 /// returns `p2 - p1`, that is, the number of characters between `p1` and `p2`,
 /// but negative if `p1` comes after `p2`.
 i64 buffer_pos_diff(TextBuffer *buffer, BufferPos p1, BufferPos p2);

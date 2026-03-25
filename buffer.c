@@ -757,11 +757,11 @@ bool buffer_pos_eq(BufferPos p1, BufferPos p2) {
 	return p1.line == p2.line && p1.index == p2.index;
 }
 
-static BufferPos buffer_pos_min(BufferPos p1, BufferPos p2) {
+BufferPos buffer_pos_min(BufferPos p1, BufferPos p2) {
 	return buffer_pos_cmp(p1, p2) < 0 ? p1 : p2;
 }
 
-static BufferPos buffer_pos_max(BufferPos p1, BufferPos p2) {
+BufferPos buffer_pos_max(BufferPos p1, BufferPos p2) {
 	return buffer_pos_cmp(p1, p2) > 0 ? p1 : p2;
 }
 
@@ -2990,23 +2990,25 @@ void buffer_end_edit_chain(TextBuffer *buffer) {
 	if (last_edit) last_edit->block_chaining = true;
 }
 
+char *buffer_get_selected_text_utf8(TextBuffer *buffer) {
+	if (!buffer->selection) return NULL;
+	BufferPos pos1 = buffer_pos_min(buffer->selection_pos, buffer->cursor_pos);
+	BufferPos pos2 = buffer_pos_max(buffer->selection_pos, buffer->cursor_pos);
+	i64 selection_len = buffer_pos_diff(buffer, pos1, pos2);
+	return buffer_get_utf8_text_at_pos(buffer, pos1, (size_t)selection_len);
+}
+
 static void buffer_copy_or_cut(TextBuffer *buffer, bool cut) {
-	if (buffer->selection) {
-		BufferPos pos1 = buffer_pos_min(buffer->selection_pos, buffer->cursor_pos);
-		BufferPos pos2 = buffer_pos_max(buffer->selection_pos, buffer->cursor_pos);
-		i64 selection_len = buffer_pos_diff(buffer, pos1, pos2);
-		char *text = buffer_get_utf8_text_at_pos(buffer, pos1, (size_t)selection_len);
-		if (text) {
-			int err = SDL_SetClipboardText(text);
-			free(text);
-			if (err < 0) {
-				buffer_error(buffer, "Couldn't set clipboard contents: %s", SDL_GetError());
-			} else {
-				// text copied successfully
-				if (cut) {
-					buffer_delete_selection(buffer);
-				}
-			}
+	char *text = buffer_get_selected_text_utf8(buffer);
+	if (!text) return;
+	int err = SDL_SetClipboardText(text);
+	free(text);
+	if (err < 0) {
+		buffer_error(buffer, "Couldn't set clipboard contents: %s", SDL_GetError());
+	} else {
+		// text copied successfully
+		if (cut) {
+			buffer_delete_selection(buffer);
 		}
 	}
 }
