@@ -9,6 +9,9 @@ struct BufferList {
 
 typedef struct {
 	const char **files;
+	// file name offsets for quick lookup
+	// (files[i] + name_offsets[i] == path_filename(files[i]))
+	u32 *name_offsets;
 	BufferList *buffers;
 } FileList;
 
@@ -76,6 +79,7 @@ static void buffer_list_free(BufferList *list) {
 static void file_list_free(FileList *list) {
 	buffer_list_free(list->buffers);
 	arr_free(list->files);
+	arr_free(list->name_offsets);
 	memset(list, 0, sizeof *list);
 }
 
@@ -85,6 +89,7 @@ static void file_list_add(FileList *list, const char *file, size_t len) {
 	memcpy(name, file, len);
 	name[len] = 0;
 	arr_add(list->files, name);
+	arr_add(list->name_offsets, (u32)(path_filename(name) - name));
 }
 
 static long filefinder_get_project_index(Ted *ted) {
@@ -141,6 +146,7 @@ static void filefinder_update(Ted *ted) {
 	FileFinder *file_finder = ted->file_finder;
 	char *search_term = buffer_contents_utf8_alloc(ted->line_buffer);
 	if (!search_term) return;
+	bool match_vs_whole_file_path = search_term && strchr(search_term, PATH_SEPARATOR) != NULL;
 	if (file_finder->selector_entries_dirty ||
 		!file_finder->prev_search_term ||
 		!streq(search_term, file_finder->prev_search_term)) {
@@ -158,27 +164,30 @@ static void filefinder_update(Ted *ted) {
 	FileList *files = &project->files;
 	if (file_finder->filter_progress < file_list_len(files)) {
 		double start_time = time_get_seconds();
-		for (;
-			file_finder->filter_progress < file_list_len(files);
-			file_finder->filter_progress++) {
-			if (file_finder->filter_count >= arr_count(file_finder->filter_results)) {
-				// we've got enough results; finish up now.
-				file_finder->filter_progress = file_list_len(files);
-				break;
+		size_t i = file_finder->filter_progress;
+		size_t filter_count = file_finder->filter_count;
+		for (; i < file_list_len(files); i++) {
+			const char *path = files->files[i];
+			const char *search_target = match_vs_whole_file_path ? path : path + files->name_offsets[i];
+			if (strstr_case_insensitive(search_target, file_finder->prev_search_term)) {
+				file_finder->filter_results[filter_count++] = path;
+				if (filter_count >= arr_count(file_finder->filter_results)) {
+					// we've got enough results; finish up now.
+					i = file_list_len(files);
+					break;
+				}
 			}
-			const char *file = files->files[file_finder->filter_progress];
-			if (strstr_case_insensitive(file, file_finder->prev_search_term)) {
-				file_finder->filter_results[file_finder->filter_count++] = file;
-			}
-			if (file_finder->filter_progress % 1024 == 0
-				&& time_get_seconds() - start_time >= 0.01) {
+			if (i % 1024 == 0 && time_get_seconds() - start_time >= 0.01) {
 				// only spend 10ms per frame on filtering
 				break;
 			}
 		}
+		file_finder->filter_count = filter_count;
+		file_finder->filter_progress = i;
 		if (file_finder->filter_progress >= file_list_len(files)) {
+			// finished filtering - update selector
 			selector_clear_entries(file_finder->selector);
-			for (size_t i = 0; i < file_finder->filter_count; i++) {
+			for (i = 0; i < file_finder->filter_count; i++) {
 				SelectorEntry entry = {0};
 				const char *path = file_finder->filter_results[i];
 				char *dirname = strdup(path);
@@ -291,6 +300,7 @@ void filefinder_init(Ted *ted) {
 	if (!file_finder) die("out of memory");
 	file_finder->selector = selector_new(filefinder_selector_cmp);
 	if (!file_finder->selector) die("out of memory");
+	selector_set_filtering_disabled(file_finder->selector, true);
 	selector_set_userdata(file_finder->selector, file_finder);
 	MenuInfo info = {
 		.open = filefinder_open,

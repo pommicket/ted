@@ -287,6 +287,8 @@ static void definitions_selector_update(Ted *ted) {
 	Definitions *defs = ted->definitions;
 	Selector *sel = defs->selector;
 	
+	selector_set_filtering_disabled(sel,
+		ted_active_settings(ted)->trust_lsp_symbol_filtering);
 	// send new request if search term has changed.
 	// this is needed because e.g. clangd gives an incomplete list
 	definitions_send_request_if_needed(ted);

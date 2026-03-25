@@ -120,6 +120,7 @@ static const SettingBool settings_bool[] = {
 	{"jump-to-build-error", &settings_zero.jump_to_build_error, true},
 	{"force-monospace", &settings_zero.force_monospace, true},
 	{"show-diagnostics", &settings_zero.show_diagnostics, true},
+	{"trust-lsp-symbol-filtering", &settings_zero.trust_lsp_symbol_filtering, true},
 };
 static const SettingBool setting_auto_add_newline = SETTING_AUTO_ADD_NEWLINE;
 static const SettingBool setting_indent_with_spaces = SETTING_INDENT_WITH_SPACES;

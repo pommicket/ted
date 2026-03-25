@@ -15,6 +15,7 @@ struct Selector {
 	Rect bounds;
 	u32 cursor;
 	float scroll;
+	bool disable_filtering;
 	bool enable_cursor;
 };
 
@@ -92,6 +93,10 @@ void selector_set_bounds(Selector *s, Rect bounds) {
 	s->bounds = bounds;
 }
 
+void selector_set_filtering_disabled(Selector *s, bool disabled) {
+	s->disable_filtering = disabled;
+}
+
 Status selector_get_cursor_entry(Selector *s, SelectorEntry *entry) {
 	return selector_get_entry(s, s->cursor, entry);
 }
@@ -111,7 +116,9 @@ static u32 selector_max_displayable_entries(Ted *ted, const Selector *s) {
 }
 
 static bool selector_show_entry(Selector *s, const SelectorEntry *e) {
-	return !s->search_term || strstr_case_insensitive(e->name, s->search_term);
+	return !s->search_term
+		|| s->disable_filtering
+		|| strstr_case_insensitive(e->name, s->search_term);
 }
 
 static u32 selector_filtered_entry_count(Selector *s) {

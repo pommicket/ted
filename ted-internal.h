@@ -128,6 +128,7 @@ struct Settings {
 	bool force_monospace;
 	bool show_diagnostics;
 	bool autodetect_indentation;
+	bool trust_lsp_symbol_filtering;
 	KeyCombo hover_key;
 	KeyCombo highlight_key;
 	u8 tab_width;

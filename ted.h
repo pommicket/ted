@@ -1330,6 +1330,8 @@ Selector *selector_new(SelectorSortFunction *sort_function);
 void selector_set_userdata(Selector *s, void *userdata);
 /// Get selector data set by \ref selector_set_userdata
 void *selector_get_userdata(Selector *s);
+/// Enables/disables automatic filtering of selector entries by current search term.
+void selector_set_filtering_disabled(Selector *s, bool disabled);
 /// Get number of entries in selector
 size_t selector_entry_count(Selector *s);
 /// set location where selector will be rendered.
