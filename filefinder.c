@@ -147,7 +147,8 @@ static void filefinder_update(Ted *ted) {
 	FileFinder *file_finder = ted->file_finder;
 	char *search_term = buffer_contents_utf8_alloc(ted->line_buffer);
 	if (!search_term) return;
-	bool match_vs_whole_file_path = search_term && strchr(search_term, PATH_SEPARATOR) != NULL;
+	bool match_vs_whole_file_path = search_term
+		&& strcspn(search_term, ALL_PATH_SEPARATORS) != strlen(search_term);
 	if (file_finder->selector_entries_dirty ||
 		!file_finder->prev_search_term ||
 		!streq(search_term, file_finder->prev_search_term)) {
@@ -192,9 +193,9 @@ static void filefinder_update(Ted *ted) {
 				SelectorEntry entry = {0};
 				const char *path = file_finder->filter_results[i];
 				char *dirname = strdup(path);
-				if (strchr(dirname, PATH_SEPARATOR)) {
+				if (strcspn(dirname, ALL_PATH_SEPARATORS) != strlen(dirname)) {
 					path_dirname(dirname);
-					if (*dirname && dirname[strlen(dirname)-1] == PATH_SEPARATOR)
+					if (*dirname && strchr(ALL_PATH_SEPARATORS, dirname[strlen(dirname)-1]))
 						dirname[strlen(dirname)-1] = 0;
 				} else {
 					*dirname = 0;
