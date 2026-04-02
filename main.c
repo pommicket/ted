@@ -1,5 +1,6 @@
 /*
 TODO:
+- change SelectorEntry.userdata to a void*
 - make escape cancel indexing processes
 FUTURE FEATURES:
 - save/load sessions under custom names

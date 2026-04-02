@@ -130,9 +130,8 @@ static void filefinder_render(Ted *ted) {
 }
 
 static void filefinder_select_file(Ted *ted, const SelectorEntry *entry) {
-	FileFinder *file_finder = ted->file_finder;
 	char *root = ted_get_root_dir(ted);
-	char *path = path_full(root, file_finder->filter_results[entry->userdata]);
+	char *path = path_full(root, (const char *)entry->userdata);
 	free(root);
 	menu_close(ted);
 	ted_open_file(ted, path);
@@ -202,7 +201,7 @@ static void filefinder_update(Ted *ted) {
 				}
 				entry.detail = dirname;
 				entry.name = path_filename(path);
-				entry.userdata = i;
+				entry.userdata = (u64)path;
 				selector_add_entry(file_finder->selector, &entry);
 				free(dirname);
 			}
@@ -256,8 +255,8 @@ static bool filefinder_close(Ted *ted) {
 
 static int filefinder_selector_cmp(Selector *s, const SelectorEntry *a_entry, const SelectorEntry *b_entry) {
 	FileFinder *file_finder = selector_get_userdata(s);
-	const char *a_path = file_finder->filter_results[a_entry->userdata],
-		*b_path = file_finder->filter_results[b_entry->userdata];
+	const char *a_path = (const char *)a_entry->userdata,
+		*b_path = (const char *)b_entry->userdata;
 	const char *a_name = a_entry->name;
 	const char *b_name = b_entry->name;
 	const char *search_term = file_finder->prev_search_term;
