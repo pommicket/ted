@@ -514,3 +514,18 @@ void filefinder_frame(Ted *ted) {
 		}
 	}
 }
+
+void filefinder_stop_index(Ted *ted) {
+	FileFinder *file_finder = ted->file_finder;
+	arr_foreach_ptr(file_finder->projects, Project, project) {
+		if (project->process) {
+			if (ted_message_type(ted) == MESSAGE_INFO) {
+				// clear "Indexing project..." message box
+				ted_clear_message(ted);
+			}
+			process_kill(&project->process);
+			file_list_free(&project->new_files);
+		}
+	}
+	file_finder->open_when_index_finishes = false;
+}

@@ -1,6 +1,4 @@
 /*
-TODO:
-- make escape cancel indexing processes
 FUTURE FEATURES:
 - save/load sessions under custom names
 - wrap-text command

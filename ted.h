@@ -885,6 +885,8 @@ float settings_padding(const Settings *settings);
 void filefinder_index(Ted *ted, bool show_message);
 /// clear all file finder indexes
 void filefinder_reset(Ted *ted);
+/// stop current index process
+void filefinder_stop_index(Ted *ted);
 
 // === find.c ===
 /// which buffer will be searched?

@@ -654,6 +654,7 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 		} else if (menu_is_any_open(ted)) {
 			menu_escape(ted);
 		} else {
+			filefinder_stop_index(ted);
 			if (ted->find) {
 				find_close(ted);
 			}
