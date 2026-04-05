@@ -366,7 +366,7 @@ static void command_selector_update(Ted *ted) {
 	SelectorEntry entry = {0};
 	if (execute && selector_get_cursor_entry(selector, &entry) && entry.userdata) {
 		line_buffer_clear_submitted(line_buffer);
-		Command c = (Command)entry.userdata;
+		Command c = (Command)(uintptr_t)entry.userdata;
 		char *argument = str32_to_utf8_cstr(buffer_get_line(ted->argument_buffer, 0)), *endp = NULL;
 		CommandArgument arg = {.number = 1};
 		if (*argument) {
@@ -545,7 +545,7 @@ void menu_init(Ted *ted) {
 		if (c != CMD_UNKNOWN && *name) {
 			SelectorEntry entry = {
 				.name = name,
-				.userdata = c,
+				.userdata = (void *)(uintptr_t)c,
 			};
 			selector_add_entry(ted->command_selector, &entry);
 		}

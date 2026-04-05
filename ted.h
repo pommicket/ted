@@ -156,7 +156,7 @@ typedef struct SelectorEntry {
 	/// a copy of this string will be made, so you can free the pointer immediately after calling \ref selector_add_entry
 	const char *detail;
 	/// use this for whatever you want
-	u64 userdata;
+	void *userdata;
 	/// reserved for future use -- must be zeroed.
 	char reserved[32];
 } SelectorEntry;

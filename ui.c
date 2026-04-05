@@ -404,7 +404,7 @@ static void file_selector_ensure_cwd(Ted *ted, FileSelector *fs) {
 }
 
 static int file_selector_entry_cmp(Selector *s, const SelectorEntry *a, const SelectorEntry *b) {
-	FsType a_type = (FsType)a->userdata, b_type = (FsType)b->userdata;
+	FsType a_type = (FsType)(uintptr_t)a->userdata, b_type = (FsType)(uintptr_t)b->userdata;
 	const char *search_term = s->search_term;
 	if (search_term) {
 		// prioritize matches over putting directories first
@@ -663,7 +663,7 @@ char *file_selector_update(Ted *ted, FileSelector *fs) {
 			SelectorEntry entry = {
 				.color = color_setting_for_file_type(files[i]->type),
 				.name = name,
-				.userdata = files[i]->type,
+				.userdata = (void *)(uintptr_t)files[i]->type,
 			};
 			selector_add_entry(&fs->sel, &entry);
 		}
