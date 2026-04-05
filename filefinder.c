@@ -13,6 +13,8 @@ typedef struct {
 	// file name offsets for quick lookup
 	// (files[i] + name_offsets[i] == path_filename(files[i]))
 	u32 *name_offsets;
+	// hashtable[i] = dynamic array of indices into FileList.files which have
+	//                a 4-character substring that hashes to i (mod arr_count(hashtable))
 	u32 *hashtable[1024];
 	BufferList *buffers;
 } FileList;
