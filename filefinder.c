@@ -1,4 +1,5 @@
 #include "ted-internal.h"
+#include <wctype.h>
 
 typedef struct BufferList BufferList;
 struct BufferList {
@@ -12,6 +13,7 @@ typedef struct {
 	// file name offsets for quick lookup
 	// (files[i] + name_offsets[i] == path_filename(files[i]))
 	u32 *name_offsets;
+	u32 *hashtable[1024];
 	BufferList *buffers;
 } FileList;
 
@@ -33,8 +35,9 @@ struct FileFinder {
 	char *prev_search_term;
 	bool selector_entries_dirty;
 	bool open_when_index_finishes;
-	size_t filter_progress;
-	size_t filter_count;
+	u32 filter_progress;
+	u32 filter_count;
+	i32 filter_bucket;
 	long prev_project;
 	const char *filter_results[500];
 };
@@ -80,16 +83,46 @@ static void file_list_free(FileList *list) {
 	buffer_list_free(list->buffers);
 	arr_free(list->files);
 	arr_free(list->name_offsets);
+	for (size_t i = 0; i < arr_count(list->hashtable); i++) {
+		arr_free(list->hashtable[i]);
+	}
 	memset(list, 0, sizeof *list);
 }
 
-static void file_list_add(FileList *list, const char *file, size_t len) {
-	char *name = buffer_list_malloc(&list->buffers, len + 1);
-	if (!name) return;
-	memcpy(name, file, len);
-	name[len] = 0;
-	arr_add(list->files, name);
-	arr_add(list->name_offsets, (u32)(path_filename(name) - name));
+static void file_list_add(FileList *list, const char *file, u32 len) {
+	char *path = buffer_list_malloc(&list->buffers, len + 1);
+	if (!path) return;
+	memcpy(path, file, len);
+	path[len] = 0;
+	u32 file_id = arr_len(list->files);
+	arr_add(list->files, path);
+	const char *filename = path_filename(path);
+	u32 filename_len = (u32)(path + len - filename);
+	arr_add(list->name_offsets, len - filename_len);
+	u32 hash = 0;
+	// add to hash table
+	u32 c, hist[4] = {0};
+	size_t n;
+	// rolling hash of lowercase filename
+	while ((n = unicode_utf8_to_utf32(&c, filename, filename_len)) <= 4) {
+		if (c == 0) break;
+		filename += n;
+		filename_len -= n;
+		// 3709206359 = 1000000007^3 mod 2^32
+		hash -= hist[0] * 3709206359u;
+		hist[0] = hist[1];
+		hist[1] = hist[2];
+		hist[2] = hist[3];
+		hist[3] = c =
+		#if WCHAR_MAX < UNICODE_CODE_POINTS
+			c > WCHAR_MAX ? c : 
+		#endif
+			towlower(c);
+		hash *= 1000000007u;
+		hash += c;
+		if (hist[0])
+			arr_add(list->hashtable[hash % arr_count(list->hashtable)], file_id);
+	}
 }
 
 static long filefinder_get_project_index(Ted *ted) {
@@ -139,7 +172,7 @@ static void filefinder_select_file(Ted *ted, const SelectorEntry *entry) {
 	free(path);
 }
 
-static size_t file_list_len(FileList *list) {
+static u32 file_list_len(FileList *list) {
 	return arr_len(list->files);
 }
 
@@ -155,27 +188,74 @@ static void filefinder_update(Ted *ted) {
 		// start new filter
 		file_finder->filter_progress = 0;
 		file_finder->filter_count = 0;
+		file_finder->filter_bucket = -1;
 		free(file_finder->prev_search_term);
 		file_finder->prev_search_term = search_term;
 		file_finder->selector_entries_dirty = false;
 		search_term = NULL; // prevent it from being freed
 	}
 	free(search_term);
+	search_term = file_finder->prev_search_term;
 	Project *project = filefinder_get_project(ted);
 	if (!project) return;
 	FileList *files = &project->files;
-	if (file_finder->filter_progress < file_list_len(files)) {
+	if (match_vs_whole_file_path) {
+		// can't use hash table
+		file_finder->filter_bucket = -1;
+	} else if (file_finder->filter_bucket < 0) {
+		// figure out which hash table bucket to filter through
+		u32 hash = 0, c, hist[4] = {0};
+		size_t n;
+		// rolling hash of lowercase search term
+		const char *p = search_term;
+		i32 best_candidate = -1;
+		u32 best_entries = U32_MAX;
+		while ((n = unicode_utf8_to_utf32(&c, p, 4)) <= 4) {
+			if (c == 0) break;
+			p += n;
+			hash -= hist[0] * 3709206359u;
+			hist[0] = hist[1];
+			hist[1] = hist[2];
+			hist[2] = hist[3];
+			hist[3] = c =
+			#if WCHAR_MAX < UNICODE_CODE_POINTS
+				c > WCHAR_MAX ? c : 
+			#endif
+				towlower(c);
+			hash *= 1000000007u;
+			hash += c;
+			if (hist[0]) {
+				u32 candidate = hash % arr_count(files->hashtable);
+				u32 entries = arr_len(files->hashtable[candidate]);
+				// search in matching hash table bucket with fewest entries
+				if (entries < best_entries) {
+					best_candidate = (i32)candidate;
+					best_entries = entries;
+				}
+			}
+		}
+		if (best_entries == 0) {
+			// no matching files
+			selector_clear_entries(file_finder->selector);
+		}
+		file_finder->filter_bucket = best_candidate;
+	}
+	// hash table bucket to search, or -1 to search all files
+	const i32 filter_bucket = file_finder->filter_bucket;
+	u32 bucket_len = filter_bucket < 0 ? file_list_len(files) : arr_len(files->hashtable[filter_bucket]);
+	if (file_finder->filter_progress < bucket_len) {
 		double start_time = time_get_seconds();
-		size_t i = file_finder->filter_progress;
-		size_t filter_count = file_finder->filter_count;
-		for (; i < file_list_len(files); i++) {
-			const char *path = files->files[i];
-			const char *search_target = match_vs_whole_file_path ? path : path + files->name_offsets[i];
-			if (strstr_case_insensitive(search_target, file_finder->prev_search_term)) {
+		u32 i = file_finder->filter_progress;
+		u32 filter_count = file_finder->filter_count;
+		for (; i < bucket_len; i++) {
+			u32 file_id = filter_bucket < 0 ? i : files->hashtable[filter_bucket][i];
+			const char *path = files->files[file_id];
+			const char *search_target = match_vs_whole_file_path ? path : path + files->name_offsets[file_id];
+			if (strstr_case_insensitive(search_target, search_term)) {
 				file_finder->filter_results[filter_count++] = path;
 				if (filter_count >= arr_count(file_finder->filter_results)) {
 					// we've got enough results; finish up now.
-					i = file_list_len(files);
+					i = bucket_len;
 					break;
 				}
 			}
@@ -186,7 +266,7 @@ static void filefinder_update(Ted *ted) {
 		}
 		file_finder->filter_count = filter_count;
 		file_finder->filter_progress = i;
-		if (file_finder->filter_progress >= file_list_len(files)) {
+		if (file_finder->filter_progress >= bucket_len) {
 			// finished filtering - update selector
 			selector_clear_entries(file_finder->selector);
 			for (i = 0; i < file_finder->filter_count; i++) {
@@ -309,6 +389,7 @@ void filefinder_init(Ted *ted) {
 		.render = filefinder_render,
 		.update = filefinder_update,
 	};
+	file_finder->filter_bucket = -1;
 	strbuf_cpy(info.name, MENU_FILEFINDER);
 	menu_register(ted, &info);
 
@@ -392,7 +473,7 @@ void filefinder_frame(Ted *ted) {
 					i++; // empty line, for some reason
 					continue;
 				}
-				file_list_add(&project->new_files, project->readbuf + i, line_len);
+				file_list_add(&project->new_files, project->readbuf + i, (u32)line_len);
 				i = (size_t)(newline + 1 - project->readbuf);
 			}
 			if ((size_t)nbytes - i > sizeof project->readbuf / 2) {

@@ -1,7 +1,6 @@
 /*
 TODO:
 - make escape cancel indexing processes
-- make filefinder filtering faster
 FUTURE FEATURES:
 - save/load sessions under custom names
 - wrap-text command
