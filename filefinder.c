@@ -106,10 +106,9 @@ static void file_list_add(FileList *list, const char *file, u32 len) {
 	u32 c, hist[4] = {0};
 	size_t n;
 	// rolling hash of lowercase filename
-	while ((n = unicode_utf8_to_utf32(&c, filename, filename_len)) <= 4) {
+	while ((n = unicode_utf8_to_utf32(&c, filename, 4)) <= 4) {
 		if (c == 0) break;
 		filename += n;
-		filename_len -= n;
 		// 3709206359 = 1000000007^3 mod 2^32
 		hash -= hist[0] * 3709206359u;
 		hist[0] = hist[1];
@@ -117,7 +116,7 @@ static void file_list_add(FileList *list, const char *file, u32 len) {
 		hist[2] = hist[3];
 		hist[3] = c =
 		#if WCHAR_MAX < UNICODE_CODE_POINTS
-			c > WCHAR_MAX ? c : 
+			c > WCHAR_MAX ? c :
 		#endif
 			towlower(c);
 		hash *= 1000000007u;
@@ -221,7 +220,7 @@ static void filefinder_update(Ted *ted) {
 			hist[2] = hist[3];
 			hist[3] = c =
 			#if WCHAR_MAX < UNICODE_CODE_POINTS
-				c > WCHAR_MAX ? c : 
+				c > WCHAR_MAX ? c :
 			#endif
 				towlower(c);
 			hash *= 1000000007u;
