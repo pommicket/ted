@@ -118,7 +118,7 @@ static void file_list_add(FileList *list, const char *file, u32 len) {
 		#if WCHAR_MAX < UNICODE_CODE_POINTS
 			c > WCHAR_MAX ? c :
 		#endif
-			towlower(c);
+			(u32)towlower((wint_t)c);
 		hash *= 1000000007u;
 		hash += c;
 		if (hist[0])
@@ -222,7 +222,7 @@ static void filefinder_update(Ted *ted) {
 			#if WCHAR_MAX < UNICODE_CODE_POINTS
 				c > WCHAR_MAX ? c :
 			#endif
-				towlower(c);
+				(u32)towlower((wint_t)c);
 			hash *= 1000000007u;
 			hash += c;
 			if (hist[0]) {
