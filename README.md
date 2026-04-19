@@ -378,6 +378,7 @@ Then run `make.bat release`.
 <tr><td>3.1.1</td> <td>File finder improvements, `trust-lsp-symbol-filtering`, bug fixes</td> <td>2026 Mar 25</td></tr>
 <tr><td>3.1.2</td> <td>File finder bug fix</td> <td>2026 Apr 1</td></tr>
 <tr><td>3.1.3</td> <td>File finder performance improvements</td> <td>2026 Apr 5</td></tr>
+<tr><td>3.1.4</td> <td>Fix split view crash</td> <td>2026 Apr 7</td></tr>
 </table>
 
 ## License
