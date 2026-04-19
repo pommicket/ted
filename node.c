@@ -506,6 +506,7 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 			ted->resizing_split = node;
 
 		node_frame(ted, node->split_a, r1);
+		// the node_frame() above may have turned this node from a split into a tab node.
 		if (!node->tabs)
 			node_frame(ted, node->split_b, r2);
 	}
