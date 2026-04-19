@@ -327,36 +327,42 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 				}
 				if (ted->dragging_tab_node) {
 					// check if user dropped tab here
+					Node *drag_node = ted->dragging_tab_node;
+					u16 drag_index = ted->dragging_tab_idx;
 					arr_foreach_ptr(ted->mouse_releases[SDL_BUTTON_LEFT], MouseRelease, release) {
-						if (rect_contains_point(tab_bar_rect, release->pos)) {
-							u16 tab_index = (u16)roundf((release->pos.x - r.pos.x) / tab_width);
-							if (tab_index <= arr_len(node->tabs)) {
-								Node *drag_node = ted->dragging_tab_node;
-								u16 drag_index = ted->dragging_tab_idx;
-								TextBuffer *tab = drag_node->tabs[drag_index];
-
-								// remove the old tab
-								arr_remove(drag_node->tabs, drag_index);
-								if (node == drag_node) {
-									// fix index if we move tab from one place to another in the same node
-									if (tab_index > drag_index)
-										--tab_index;
-								}
-								// insert the tab here
-								arr_insert(node->tabs, tab_index, tab);
-								if (arr_len(drag_node->tabs) == 0) {
-									// removed the last tab from a node; close it
-									node_close(ted, drag_node);
-								} else {
-									// make sure active tab is valid
-									drag_node->active_tab = clamp_u16(drag_node->active_tab, 0, (u16)arr_len(drag_node->tabs) - 1);
-								}
-
-								ted->dragging_tab_node = NULL; // stop dragging
-								// switch to this buffer
-								ted_switch_to_buffer(ted, tab);
-							}
+						if (!rect_contains_point(tab_bar_rect, release->pos))
+							continue;
+						u16 tab_index = (u16)roundf((release->pos.x - r.pos.x) / tab_width);
+						if (tab_index > arr_len(node->tabs)) {
+							continue;
 						}
+						TextBuffer *tab = drag_node->tabs[drag_index];
+						// remove the old tab
+						arr_remove(drag_node->tabs, drag_index);
+						if (node == drag_node && tab_index > drag_index) {
+							// fix index if we move tab from one place to another in the same node
+							--tab_index;
+						}
+						// insert the tab here
+						arr_insert(node->tabs, tab_index, tab);
+						if (arr_len(drag_node->tabs) == 0) {
+							assert(node != drag_node); // since we just added a tab to node above.
+							// removed the last tab from a node; close it
+							bool closing_sibling = node_parent(ted, node) == node_parent(ted, drag_node);
+							node_close(ted, drag_node);
+							if (closing_sibling) {
+								// node is no longer valid (has been merged with sibling)
+								return;
+							}
+						} else {
+							// make sure active tab is valid
+							drag_node->active_tab = clamp_u16(drag_node->active_tab, 0, (u16)arr_len(drag_node->tabs) - 1);
+						}
+
+						ted->dragging_tab_node = NULL; // stop dragging
+						// switch to this buffer
+						ted_switch_to_buffer(ted, tab);
+						break;
 					}
 				}
 				arr_foreach_ptr(ted->mouse_clicks[SDL_BUTTON_MIDDLE], MouseClick, click) {
