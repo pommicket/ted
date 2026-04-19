@@ -345,6 +345,8 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 						}
 						// insert the tab here
 						arr_insert(node->tabs, tab_index, tab);
+						// set active tab to the one that was just dragged
+						node->active_tab = tab_index;
 						if (arr_len(drag_node->tabs) == 0) {
 							assert(node != drag_node); // since we just added a tab to node above.
 							// removed the last tab from a node; close it
