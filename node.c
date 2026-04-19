@@ -230,11 +230,12 @@ void node_close(Ted *ted, Node *node) {
 			assert(node == parent->split_b);
 			other_side = parent->split_a;
 		}
+		bool other_was_active = ted->active_node == other_side;
 		// replace parent with other side of split
 		*parent = *other_side;
 		free(other_side);
 		arr_remove_item(ted->nodes, other_side);
-		if (was_active) {
+		if (was_active || other_was_active) {
 			Node *new_active_node = parent;
 			// make sure we don't set the active node to a split
 			while (!new_active_node->tabs)
@@ -456,18 +457,17 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 		TextBuffer *buffer = node->tabs[node->active_tab];
 		Rect buffer_rect = r;
 		buffer_rect.pos.y += tab_bar_height;
-		
+
 		// make sure buffer border and tab border overlap
 		buffer_rect.pos.y  -= border_thickness;
 		buffer_rect.size.y += border_thickness;
-		
+
 		buffer_rect.size.y -= tab_bar_height;
 		buffer_render(buffer, buffer_rect);
 	} else {
 		const Settings *settings = ted_active_settings(ted);
 		float padding = settings->padding;
 		// this node is a split
-		Node *a = node->split_a, *b = node->split_b;
 		Rect r1 = r, r2 = r;
 		SDL_Cursor *resize_cursor = node->split_vertical ? ted->cursor_resize_v : ted->cursor_resize_h;
 		if (node == ted->resizing_split) {
@@ -504,9 +504,10 @@ void node_frame(Ted *ted, Node *node, Rect r) {
 		}
 		if (ted_clicked_in_rect(ted, r_between))
 			ted->resizing_split = node;
-		
-		node_frame(ted, a, r1);
-		node_frame(ted, b, r2);
+
+		node_frame(ted, node->split_a, r1);
+		if (!node->tabs)
+			node_frame(ted, node->split_b, r2);
 	}
 }
 
