@@ -1219,8 +1219,8 @@ float ted_get_menu_width(Ted *ted);
 ///
 /// Return value must be freed.
 char *ted_get_file(Ted const *ted, const char *name);
-/// get full path relative to ted working directory.
-char *ted_path_full(Ted *ted, const char *relpath);
+/// get full path relative to ted working directory, and resolve symlinks if follow-symlinks setting is on.
+char *ted_filename_to_path(Ted *ted, const char *filename);
 /// Returns the buffer containing the file at absolute path `path`, or `NULL` if there is none.
 TextBuffer *ted_get_buffer_with_file(Ted *ted, const char *path);
 /// close this buffer, discarding unsaved changes.
@@ -1274,6 +1274,8 @@ u32 ted_active_color(Ted *ted, ColorSetting color);
 ///
 /// returns `true` on success.
 bool ted_open_file(Ted *ted, const char *filename);
+/// wrapper around \ref buffer_load_file that does path resolution, etc.
+bool ted_open_file_in_buffer(Ted *ted, TextBuffer *buffer, const char *filename);
 /// create a new buffer for the file `filename`, or open it if it's already open.
 ///
 /// if `filename` is `NULL`, this creates an untitled buffer.

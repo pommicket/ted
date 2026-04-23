@@ -251,7 +251,7 @@ static bool session_read_buffer(Ted *ted, FILE *fp) {
 	if (!filename) return false;
 	if (!buffer_has_error(buffer)) {
 		if (*filename) {
-			if (!buffer_load_file(buffer, filename))
+			if (!ted_open_file_in_buffer(ted, buffer, filename))
 				buffer_new_file(buffer, NULL);
 		} else {
 			buffer_new_file(buffer, NULL);

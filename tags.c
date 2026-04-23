@@ -366,10 +366,8 @@ top:;
 						}
 						assert(streq(name, tag));
 						char *path = path_full(ted->tags_dir, filename);
-						char *full_path = ted_path_full(ted, path);
-						success = ted_open_file(ted, full_path);
+						success = ted_open_file(ted, path);
 						free(path); path = NULL;
-						free(full_path); full_path = NULL;
 						success = success && goto_tag_address(ted, address);
 						if (!success)
 							goto failure;

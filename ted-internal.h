@@ -40,6 +40,8 @@
 #define TED_NODE_MAX 256
 /// max number of buffers
 #define TED_BUFFER_MAX 1024
+/// max number of times to follow symlinks
+#define TED_MAX_SYMLINK_DEPTH 32 // on my system, MAXSYMLINKS is 20, so this should be plenty
 
 /// Version string
 #define TED_VERSION_FULL "ted v. " TED_VERSION
@@ -129,6 +131,7 @@ struct Settings {
 	bool show_diagnostics;
 	bool autodetect_indentation;
 	bool trust_lsp_symbol_filtering;
+	bool follow_symlinks;
 	KeyCombo hover_key;
 	KeyCombo highlight_key;
 	u8 tab_width;

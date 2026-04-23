@@ -490,7 +490,7 @@ static Status file_selector_cd1(Ted *ted, FileSelector *fs, const char *name, si
 		
 
 		#if __unix__
-		if (symlink_depth < 32) { // on my system, MAXSYMLINKS is 20, so this should be plenty
+		if (symlink_depth < TED_MAX_SYMLINK_DEPTH) {
 			char *link_to = read_link(path);
 			if (link_to) {
 				free(path);
@@ -523,7 +523,7 @@ static Status file_selector_cd_(Ted *ted, FileSelector *fs, const char *path, in
 			// necessary because the full path of \ on windows isn't just \, it's c:\ or something
 			char pathsep[] = {PATH_SEPARATOR, '\0'};
 			free(fs->cwd);
-			fs->cwd = ted_path_full(ted, pathsep);
+			fs->cwd = path_full(ted->cwd, pathsep);
 			path += 1;
 		}
 		#if _WIN32

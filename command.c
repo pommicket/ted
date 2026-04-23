@@ -428,7 +428,11 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 		break;
 	
 	case CMD_OPEN:
-		menu_open(ted, MENU_OPEN);
+		if (argument_str) {
+			ted_open_file(ted, argument_str);
+		} else {
+			menu_open(ted, MENU_OPEN);
+		}
 		break;
 	case CMD_NEW:
 		ted_new_file(ted, NULL);

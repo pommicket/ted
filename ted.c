@@ -5,6 +5,7 @@
 	#include <SDL_syswm.h>
 #elif __unix__
 	#include <unistd.h>
+	#include <sys/stat.h>
 #endif
 
 
@@ -404,8 +405,64 @@ u32 ted_active_color(Ted *ted, ColorSetting color) {
 	return settings_color(ted_active_settings(ted), color);
 }
 
-char *ted_path_full(Ted *ted, const char *relpath) {
-	return path_full(ted->cwd, relpath);
+
+static char *follow_symlinks(Ted *ted, const char *path) {
+	#if __unix__
+	char *derefed = NULL;
+	assert(path[0] == '/');
+	for (size_t i = 0; i == 0 || path[i - 1]; i++) {
+		if (path[i] == 0 || (i && path[i] == '/' && path[i+1])) {
+			struct stat statbuf;
+			size_t depth = 0;
+			// null terminate
+			arr_add(derefed, 0);
+			arr_set_len(derefed, arr_len(derefed)-1);
+			while ((depth++) < TED_MAX_SYMLINK_DEPTH
+				&& lstat(derefed, &statbuf) == 0
+				&& S_ISLNK(statbuf.st_mode)) {
+				char *next = read_link(derefed);
+				if (!next) {
+					ted_error(ted, "readlink %s: %s", derefed, strerror(errno));
+					free(derefed);
+					return NULL;
+				}
+				if (*next == '/') {
+					arr_set_len(derefed, 0);
+				} else {
+					while (derefed[arr_len(derefed)-1] != '/') {
+						arr_remove_last(derefed);
+					}
+				}
+				for (char *p = next; *p; p++) {
+					arr_add(derefed, *p);
+				}
+				free(next);
+			}
+		}
+		arr_add(derefed, path[i]);
+	}
+	char *ret = str_dup(derefed);
+	arr_free(derefed);
+	return ret;
+	#else
+	(void)ted;
+	return str_dup(path);
+	#endif
+}
+
+char *ted_filename_to_path(Ted *ted, const char *filename) {
+	char *path = path_full(ted->cwd, filename);
+	if (ted_active_settings(ted)->follow_symlinks) {
+		char *derefed_path = follow_symlinks(ted, path);
+		free(path);
+		if (!derefed_path) {
+			return false;
+		}
+		// resolve .., etc.
+		path = path_full(ted->cwd, derefed_path);
+		free(derefed_path);
+	}
+	return path;
 }
 
 static bool ted_is_regular_buffer(Ted *ted, TextBuffer *buffer) {
@@ -717,8 +774,15 @@ bool ted_open_file(Ted *ted, const char *filename) {
 		return false;
 	}
 	
-	char *path = ted_path_full(ted, filename);
+	char *path = ted_filename_to_path(ted, filename);
 	bool success = open_path(ted, path);
+	free(path);
+	return success;
+}
+
+bool ted_open_file_in_buffer(Ted *ted, TextBuffer *buffer, const char *filename) {
+	char *path = filename ? ted_filename_to_path(ted, filename) : NULL;
+	bool success = buffer_load_file(buffer, path);
 	free(path);
 	return success;
 }
@@ -746,7 +810,7 @@ static bool new_with_path(Ted *ted, const char *path) {
 bool ted_new_file(Ted *ted, const char *filename) {
 	char *path = NULL;
 	if (filename)
-		path = ted_path_full(ted, filename);
+		path = ted_filename_to_path(ted, filename);
 	bool success = new_with_path(ted, path);
 	free(path);
 	return success;

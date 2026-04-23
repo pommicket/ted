@@ -121,6 +121,7 @@ static const SettingBool settings_bool[] = {
 	{"force-monospace", &settings_zero.force_monospace, true},
 	{"show-diagnostics", &settings_zero.show_diagnostics, true},
 	{"trust-lsp-symbol-filtering", &settings_zero.trust_lsp_symbol_filtering, true},
+	{"follow-symlinks", &settings_zero.follow_symlinks, false},
 };
 static const SettingBool setting_auto_add_newline = SETTING_AUTO_ADD_NEWLINE;
 static const SettingBool setting_indent_with_spaces = SETTING_INDENT_WITH_SPACES;
