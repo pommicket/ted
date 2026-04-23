@@ -380,6 +380,7 @@ Then run `make.bat release`.
 <tr><td>3.1.3</td> <td>File finder performance improvements</td> <td>2026 Apr 5</td></tr>
 <tr><td>3.1.4</td> <td>Fix split view crash</td> <td>2026 Apr 7</td></tr>
 <tr><td>3.1.5</td> <td>Fix another crash and active tab being wrong after dragging</td> <td>2026 Apr 18</td></tr>
+<tr><td>3.1.6</td> <td>`follow-symlinks` setting</td> <td>2026 Apr 22</td></tr>
 </table>
 
 ## License
