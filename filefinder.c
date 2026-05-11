@@ -15,7 +15,7 @@ typedef struct {
 	u32 *name_offsets;
 	// hashtable[i] = dynamic array of indices into FileList.files which have
 	//                a 4-character substring that hashes to i (mod arr_count(hashtable))
-	u32 *hashtable[1024];
+	u32 *hashtable[4096];
 	BufferList *buffers;
 } FileList;
 
@@ -214,6 +214,14 @@ static void filefinder_update(Ted *ted) {
 		while ((n = unicode_utf8_to_utf32(&c, p, 4)) <= 4) {
 			if (c == 0) break;
 			p += n;
+			if (c == ' ') {
+				hist[0] = 0;
+				hist[1] = 0;
+				hist[2] = 0;
+				hist[3] = 0;
+				hash = 0;
+				continue;
+			}
 			hash -= hist[0] * 3709206359u;
 			hist[0] = hist[1];
 			hist[1] = hist[2];
@@ -245,6 +253,16 @@ static void filefinder_update(Ted *ted) {
 	const i32 filter_bucket = file_finder->filter_bucket;
 	u32 bucket_len = filter_bucket < 0 ? file_list_len(files) : arr_len(files->hashtable[filter_bucket]);
 	if (file_finder->filter_progress < bucket_len) {
+		char **words = NULL;
+		const char *word_start = search_term + strspn(search_term, " ");
+		while (*word_start) {
+			size_t word_len = strcspn(word_start, " ");
+			char *word = strn_dup(word_start, word_len);
+			if (!word) break;
+			arr_add(words, word);
+			word_start += word_len;
+			word_start += strspn(word_start, " ");
+		}
 		double start_time = time_get_seconds();
 		u32 i = file_finder->filter_progress;
 		u32 filter_count = file_finder->filter_count;
@@ -252,7 +270,15 @@ static void filefinder_update(Ted *ted) {
 			u32 file_id = filter_bucket < 0 ? i : files->hashtable[filter_bucket][i];
 			const char *path = files->files[file_id];
 			const char *search_target = match_vs_whole_file_path ? path : path + files->name_offsets[file_id];
-			if (strstr_case_insensitive(search_target, search_term)) {
+			bool match = true;
+			arr_foreach_ptr(words, char*, pword) {
+				const char *word = *pword;
+				if (!strstr_case_insensitive(search_target, word)) {
+					match = false;
+					break;
+				}
+			}
+			if (match) {
 				file_finder->filter_results[filter_count++] = path;
 				if (filter_count >= arr_count(file_finder->filter_results)) {
 					// we've got enough results; finish up now.
@@ -260,7 +286,7 @@ static void filefinder_update(Ted *ted) {
 					break;
 				}
 			}
-			if (i % 1024 == 0 && time_get_seconds() - start_time >= 0.01) {
+			if (i % 256 == 0 && time_get_seconds() - start_time >= 0.01) {
 				// only spend 10ms per frame on filtering
 				break;
 			}
