@@ -71,6 +71,7 @@ static CommandName command_names[] = {
 	{"autocomplete-back", CMD_AUTOCOMPLETE_BACK},
 	{"find-usages", CMD_FIND_USAGES},
 	{"copy-path", CMD_COPY_PATH},
+	{"copy-ref", CMD_COPY_REF},
 	{"goto-definition", CMD_GOTO_DEFINITION},
 	{"goto-definition-at-cursor", CMD_GOTO_DEFINITION_AT_CURSOR},
 	{"goto-declaration-at-cursor", CMD_GOTO_DECLARATION_AT_CURSOR},
@@ -337,6 +338,17 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 			SDL_SetClipboardText(buffer_get_path(buffer));
 		} else {
 			SDL_SetClipboardText(ted->cwd);
+		}
+		break;
+	case CMD_COPY_REF:
+		if (buffer && buffer_is_named_file(buffer)) {
+			char *ref = a_sprintf("%s:%" PRIu32,
+				buffer_get_path(buffer),
+				buffer_cursor_pos(buffer).line + 1);
+			if (ref) {
+				SDL_SetClipboardText(ref);
+			}
+			free(ref);
 		}
 		break;
 	case CMD_TAB:

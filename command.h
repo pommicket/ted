@@ -127,6 +127,8 @@ typedef enum {
 	
 	/// copy path to current file
 	CMD_COPY_PATH,
+	/// copy current path:line
+	CMD_COPY_REF,
 
 	CMD_TAB_CLOSE,
 	/// argument = index of tab (starting at 0)

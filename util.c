@@ -344,6 +344,7 @@ char *a_sprintf(const char *fmt, ...) {
 	if (ret < 0) return NULL; // bad format or something
 	u32 n = (u32)ret;
 	char *str = calloc(1, n + 1);
+	if (!str) return NULL;
 	va_start(args, fmt);
 	vsnprintf(str, n + 1, fmt, args);
 	va_end(args);
