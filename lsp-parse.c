@@ -175,6 +175,14 @@ static void parse_capabilities(LSP *lsp, const JSON *json, JSONObject capabiliti
 				// so this should always be zero? spec is really unclear here.
 				change_type = 0;
 			}
+			// didSave support
+			JSONValue did_save_value = json_object_get(json, sync, "save");
+			cap->did_save_support = did_save_value.type == JSON_TRUE || did_save_value.type == JSON_OBJECT;
+			if (did_save_value.type == JSON_OBJECT) {
+				JSONObject did_save = did_save_value.val.object;
+				cap->did_save_include_text = json_object_get_bool(json, did_save, "includeText", false);
+			}
+				printf("did includsetext=%d\n",cap->did_save_include_text);
 		}
 		cap->open_close_support = open_close;
 		cap->sync_support = change_type >= 1;

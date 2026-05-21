@@ -335,6 +335,8 @@ static const char *lsp_request_method(LSPRequest *request) {
 		return "textDocument/didClose";
 	case LSP_REQUEST_DID_CHANGE:
 		return "textDocument/didChange";
+	case LSP_REQUEST_DID_SAVE:
+		return "textDocument/didSave";
 	case LSP_REQUEST_COMPLETION:
 		return "textDocument/completion";
 	case LSP_REQUEST_SIGNATURE_HELP:
@@ -444,6 +446,99 @@ static void write_symbol_kind_support(JSONWriter *o) {
 	write_obj_end(o);
 }
 
+static void write_client_capabilities(JSONWriter *o) {
+	write_obj_start(o);
+	// here are the client capabilities for ted
+	write_key_obj_start(o, "textDocument");
+		write_key_obj_start(o, "completion");
+			// completion capabilities
+			write_key_obj_start(o, "completionItem");
+				write_key_bool(o, "snippetSupport", false);
+				write_key_bool(o, "commitCharactersSupport", false);
+				write_key_arr_start(o, "documentationFormat");
+					// we dont really support markdown
+					write_arr_elem_string(o, "plaintext");
+				write_arr_end(o);
+				write_key_bool(o, "deprecatedSupport", true);
+				write_key_bool(o, "preselectSupport", false);
+				write_symbol_tag_support(o);
+				write_key_bool(o, "insertReplaceSupport", false);
+			write_obj_end(o);
+			write_completion_item_kind_support(o);
+			write_key_bool(o, "contextSupport", true);
+		write_obj_end(o);
+		
+		// signature help capabilities
+		write_key_obj_start(o, "signatureHelp");
+			write_key_obj_start(o, "signatureInformation");
+				write_key_obj_start(o, "parameterInformation");
+					write_key_bool(o, "labelOffsetSupport", true);
+				write_obj_end(o);
+				write_key_bool(o, "activeParameterSupport", true);
+			write_obj_end(o);
+			// we don't have context support because sending the activeSignatureHelp member is annoying
+			//write_key_bool(o, "contextSupport", true);
+		write_obj_end(o);
+		
+		// hover capabilities
+		write_key_obj_start(o, "hover");
+			write_key_arr_start(o, "contentFormat");
+				write_arr_elem_string(o, "plaintext");
+			write_arr_end(o);
+		write_obj_end(o);
+		
+		// definition capabilities
+		write_key_obj_start(o, "definition");
+			// NOTE: LocationLink support doesn't seem useful to us right now.
+		write_obj_end(o);
+		
+		// document link capabilities
+		write_key_obj_start(o, "documentLink");
+			write_key_bool(o, "tooltipSupport", true);
+		write_obj_end(o);
+		
+		// publish diagnostics capabilities
+		write_key_obj_start(o, "publishDiagnostics");
+			write_key_bool(o, "codeDescriptionSupport", true);
+		write_obj_end(o);
+		
+		write_key_obj_start(o, "codeAction");
+			write_key_bool(o, "isPreferredSupport", true);
+			write_key_obj_start(o, "codeActionLiteralSupport");
+				write_key_obj_start(o, "codeActionKind");
+					write_key_arr_start(o, "valueSet");
+						write_arr_elem_string(o, "quickfix");
+						write_arr_elem_string(o, "refactor");
+						write_arr_elem_string(o, "refactor.extract");
+						write_arr_elem_string(o, "refactor.inline");
+						write_arr_elem_string(o, "refactor.rewrite");
+						write_arr_elem_string(o, "source");
+						write_arr_elem_string(o, "source.organizeImports");
+						write_arr_elem_string(o, "source.fixAll");
+					write_arr_end(o);
+				write_obj_end(o);
+			write_obj_end(o);
+		write_obj_end(o);
+	write_obj_end(o);
+	write_key_obj_start(o, "workspace");
+		write_key_bool(o, "workspaceFolders", true);
+		write_key_obj_start(o, "workspaceEdit");
+			write_key_bool(o, "documentChanges", true);
+			write_key_arr_start(o, "resourceOperations");
+				write_arr_elem_string(o, "create");
+				write_arr_elem_string(o, "rename");
+				write_arr_elem_string(o, "delete");
+			write_arr_end(o);
+		write_obj_end(o);
+		write_key_obj_start(o, "symbol");
+			write_symbol_kind_support(o);
+			write_symbol_tag_support(o);
+			// resolve is kind of a pain to implement. i'm not doing it yet.
+		write_obj_end(o);
+	write_obj_end(o);
+	write_obj_end(o);
+}
+
 // NOTE: don't call lsp_request_free after calling this function.
 //  I will do it for you.
 void write_request(LSP *lsp, LSPRequest *request, StrBuilder *builder) {
@@ -475,99 +570,11 @@ void write_request(LSP *lsp, LSPRequest *request, StrBuilder *builder) {
 		write_key_obj_start(o, "params");
 		write_obj_end(o);
 		break;
-	case LSP_REQUEST_INITIALIZE: {
+	case LSP_REQUEST_INITIALIZE:
 		write_key_obj_start(o, "params");
 			write_key_number(o, "processId", process_get_id());
-			write_key_obj_start(o, "capabilities");
-				// here are the client capabilities for ted
-				write_key_obj_start(o, "textDocument");
-					write_key_obj_start(o, "completion");
-						// completion capabilities
-						write_key_obj_start(o, "completionItem");
-							write_key_bool(o, "snippetSupport", false);
-							write_key_bool(o, "commitCharactersSupport", false);
-							write_key_arr_start(o, "documentationFormat");
-								// we dont really support markdown
-								write_arr_elem_string(o, "plaintext");
-							write_arr_end(o);
-							write_key_bool(o, "deprecatedSupport", true);
-							write_key_bool(o, "preselectSupport", false);
-							write_symbol_tag_support(o);
-							write_key_bool(o, "insertReplaceSupport", false);
-						write_obj_end(o);
-						write_completion_item_kind_support(o);
-						write_key_bool(o, "contextSupport", true);
-					write_obj_end(o);
-					
-					// signature help capabilities
-					write_key_obj_start(o, "signatureHelp");
-						write_key_obj_start(o, "signatureInformation");
-							write_key_obj_start(o, "parameterInformation");
-								write_key_bool(o, "labelOffsetSupport", true);
-							write_obj_end(o);
-							write_key_bool(o, "activeParameterSupport", true);
-						write_obj_end(o);
-						// we don't have context support because sending the activeSignatureHelp member is annoying
-						//write_key_bool(o, "contextSupport", true);
-					write_obj_end(o);
-					
-					// hover capabilities
-					write_key_obj_start(o, "hover");
-						write_key_arr_start(o, "contentFormat");
-							write_arr_elem_string(o, "plaintext");
-						write_arr_end(o);
-					write_obj_end(o);
-					
-					// definition capabilities
-					write_key_obj_start(o, "definition");
-						// NOTE: LocationLink support doesn't seem useful to us right now.
-					write_obj_end(o);
-					
-					// document link capabilities
-					write_key_obj_start(o, "documentLink");
-						write_key_bool(o, "tooltipSupport", true);
-					write_obj_end(o);
-					
-					// publish diagnostics capabilities
-					write_key_obj_start(o, "publishDiagnostics");
-						write_key_bool(o, "codeDescriptionSupport", true);
-					write_obj_end(o);
-					
-					write_key_obj_start(o, "codeAction");
-						write_key_bool(o, "isPreferredSupport", true);
-						write_key_obj_start(o, "codeActionLiteralSupport");
-							write_key_obj_start(o, "codeActionKind");
-								write_key_arr_start(o, "valueSet");
-									write_arr_elem_string(o, "quickfix");
-									write_arr_elem_string(o, "refactor");
-									write_arr_elem_string(o, "refactor.extract");
-									write_arr_elem_string(o, "refactor.inline");
-									write_arr_elem_string(o, "refactor.rewrite");
-									write_arr_elem_string(o, "source");
-									write_arr_elem_string(o, "source.organizeImports");
-									write_arr_elem_string(o, "source.fixAll");
-								write_arr_end(o);
-							write_obj_end(o);
-						write_obj_end(o);
-					write_obj_end(o);
-				write_obj_end(o);
-				write_key_obj_start(o, "workspace");
-					write_key_bool(o, "workspaceFolders", true);
-					write_key_obj_start(o, "workspaceEdit");
-						write_key_bool(o, "documentChanges", true);
-						write_key_arr_start(o, "resourceOperations");
-							write_arr_elem_string(o, "create");
-							write_arr_elem_string(o, "rename");
-							write_arr_elem_string(o, "delete");
-						write_arr_end(o);
-					write_obj_end(o);
-					write_key_obj_start(o, "symbol");
-						write_symbol_kind_support(o);
-						write_symbol_tag_support(o);
-						// resolve is kind of a pain to implement. i'm not doing it yet.
-					write_obj_end(o);
-				write_obj_end(o);
-			write_obj_end(o);
+			write_key(o, "capabilities");
+			write_client_capabilities(o);
 			SDL_LockMutex(lsp->workspace_folders_mutex);
 			write_key_file_uri(o, "rootUri", lsp->workspace_folders[0]);
 			write_key(o, "workspaceFolders");
@@ -577,7 +584,7 @@ void write_request(LSP *lsp, LSPRequest *request, StrBuilder *builder) {
 				write_key_string(o, "name", "ted");
 			write_obj_end(o);
 		write_obj_end(o);
-	} break;
+		break;
 	case LSP_REQUEST_CANCEL: {
 		const LSPRequestCancel *cancel = &request->data.cancel;
 		write_key_obj_start(o, "params");
@@ -767,6 +774,17 @@ void write_request(LSP *lsp, LSPRequest *request, StrBuilder *builder) {
 					}
 				write_arr_end(o);
 			write_obj_end(o);
+		write_obj_end(o);
+		} break;
+	case LSP_REQUEST_DID_SAVE: {
+		LSPRequestDidSave *save = &request->data.save;
+		write_key_obj_start(o, "params");
+			write_key_obj_start(o, "textDocument");
+				write_key_file_uri(o, "uri", save->document);
+			write_obj_end(o);
+			if (save->text.offset) {
+				write_key_string(o, "text", lsp_request_string(request, save->text));
+			}
 		write_obj_end(o);
 		} break;
 	}

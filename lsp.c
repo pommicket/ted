@@ -123,6 +123,7 @@ void lsp_request_free(LSPRequest *r) {
 	case LSP_REQUEST_DOCUMENT_LINK:
 	case LSP_REQUEST_CONFIGURATION:
 	case LSP_REQUEST_DID_OPEN:
+	case LSP_REQUEST_DID_SAVE:
 	case LSP_REQUEST_FORMATTING:
 	case LSP_REQUEST_RANGE_FORMATTING:
 		break;
@@ -256,6 +257,8 @@ static bool lsp_supports_request(LSP *lsp, const LSPRequest *request) {
 	case LSP_REQUEST_DID_OPEN:
 	case LSP_REQUEST_DID_CLOSE:
 		return cap->open_close_support;
+	case LSP_REQUEST_DID_SAVE:
+		return cap->did_save_support;
 	case LSP_REQUEST_DID_CHANGE:
 		return cap->sync_support;
 	case LSP_REQUEST_CODE_ACTION:
@@ -318,6 +321,7 @@ static bool request_type_is_notification(LSPRequestType type) {
 	case LSP_REQUEST_CANCEL:
 	case LSP_REQUEST_DID_OPEN:
 	case LSP_REQUEST_DID_CLOSE:
+	case LSP_REQUEST_DID_SAVE:
 	case LSP_REQUEST_DID_CHANGE:
 	case LSP_REQUEST_DID_CHANGE_WORKSPACE_FOLDERS:
 	case LSP_REQUEST_CONFIGURATION:
@@ -972,6 +976,14 @@ bool lsp_has_incremental_sync_support(LSP *lsp) {
 
 bool lsp_has_prepare_rename(LSP *lsp) {
 	return lsp->capabilities.prepare_rename_support;
+}
+
+bool lsp_has_did_save(LSP *lsp) {
+	return lsp->capabilities.did_save_support;
+}
+
+bool lsp_did_save_include_text(LSP *lsp) {
+	return lsp->capabilities.did_save_include_text;
 }
 
 const char *lsp_get_command(LSP *lsp) {

@@ -3479,6 +3479,18 @@ bool buffer_save(TextBuffer *buffer) {
 			buffer_settings(buffer)->auto_reload_config) {
 			ted_reload_configs(buffer->ted);
 		}
+		LSP *lsp = buffer_lsp(buffer);
+		if (lsp && lsp_has_did_save(lsp)) {
+			LSPRequest req = {.type = LSP_REQUEST_DID_SAVE};
+			LSPRequestDidSave *did_save = &req.data.save;
+			did_save->document = buffer_lsp_document_id(buffer);
+			if (lsp_did_save_include_text(lsp)) {
+				char *text = buffer_contents_utf8_alloc(buffer);
+				did_save->text = lsp_request_add_string(&req, text);
+				free(text);
+			}
+			lsp_send_request(lsp, &req);
+		}
 	}
 	return success;
 }

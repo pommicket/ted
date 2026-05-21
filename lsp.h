@@ -76,6 +76,7 @@ typedef enum {
 	LSP_REQUEST_DID_OPEN, //< textDocument/didOpen
 	LSP_REQUEST_DID_CLOSE, //< textDocument/didClose
 	LSP_REQUEST_DID_CHANGE, //< textDocument/didChange
+	LSP_REQUEST_DID_SAVE, //< textDocument/didSave
 	LSP_REQUEST_COMPLETION, //< textDocument/completion
 	LSP_REQUEST_SIGNATURE_HELP, //< textDocument/signatureHelp
 	LSP_REQUEST_HOVER, //< textDocument/hover
@@ -127,6 +128,12 @@ typedef struct {
 typedef struct {
 	LSPDocumentID document;
 } LSPRequestDidClose;
+
+typedef struct {
+	LSPDocumentID document;
+	// only need to provide this if lsp_did_save_include_text is true
+	LSPString text;
+} LSPRequestDidSave;
 
 // see TextDocumentContentChangeEvent in the LSP spec
 typedef struct {
@@ -287,6 +294,7 @@ typedef struct {
 		LSPRequestDidOpen open;
 		LSPRequestDidClose close;
 		LSPRequestDidChange change;
+		LSPRequestDidSave save;
 		LSPRequestConfiguration configuration;
 		LSPRequestCompletion completion;
 		LSPRequestSignatureHelp signature_help;
@@ -643,35 +651,6 @@ typedef struct {
 	u32 version_number; // for LSP
 } LSPDocumentData;
 
-typedef struct {
-	/// send didChange?
-	bool sync_support;
-	/// can didChange notifications have partial changes?
-	bool incremental_sync_support;
-	/// send didOpen/didClose?
-	bool open_close_support;
-	bool signature_help_support;
-	bool completion_support;
-	bool hover_support;
-	bool definition_support;
-	bool declaration_support;
-	bool implementation_support;
-	bool type_definition_support;
-	bool workspace_symbols_support;
-	bool highlight_support;
-	// support for multiple root folders
-	// sadly, as of me writing this, clangd and rust-analyzer don't support this
-	// (but jdtls and gopls do)
-	bool workspace_folders_support;
-	bool rename_support;
-	bool prepare_rename_support;
-	bool references_support;
-	bool document_link_support;
-	bool formatting_support;
-	bool range_formatting_support;
-	bool code_action_support;
-} LSPCapabilities;
-
 typedef struct LSP LSP;
 
 /// arguments to \ref lsp_create, but in `struct` form because
@@ -761,6 +740,10 @@ bool lsp_document_position_eq(LSPDocumentPosition a, LSPDocumentPosition b);
 bool lsp_has_incremental_sync_support(LSP *lsp);
 /// does this server support textDocument/prepareRename requests?
 bool lsp_has_prepare_rename(LSP *lsp);
+/// does the server support didSave notifications?
+bool lsp_has_did_save(LSP *lsp);
+/// should text be included in didSave notifications?
+bool lsp_did_save_include_text(LSP *lsp);
 /// get dynamic array of completion trigger characters.
 const uint32_t *lsp_completion_trigger_chars(LSP *lsp);
 /// get dynamic array of signature help trigger characters.
@@ -781,6 +764,37 @@ void lsp_quit(void);
 
 #if defined LSP_INTERNAL && !defined LSP_INTERNAL_H_
 #define LSP_INTERNAL_H_
+
+typedef struct {
+	/// send didChange?
+	bool sync_support;
+	/// can didChange notifications have partial changes?
+	bool incremental_sync_support;
+	/// send didOpen/didClose?
+	bool open_close_support;
+	bool signature_help_support;
+	bool completion_support;
+	bool hover_support;
+	bool definition_support;
+	bool declaration_support;
+	bool implementation_support;
+	bool type_definition_support;
+	bool workspace_symbols_support;
+	bool highlight_support;
+	// support for multiple root folders
+	// sadly, as of me writing this, clangd and rust-analyzer don't support this
+	// (but jdtls and gopls do)
+	bool workspace_folders_support;
+	bool rename_support;
+	bool prepare_rename_support;
+	bool references_support;
+	bool document_link_support;
+	bool formatting_support;
+	bool range_formatting_support;
+	bool code_action_support;
+	bool did_save_support;
+	bool did_save_include_text;
+} LSPCapabilities;
 
 struct LSP {
 	// thread safety is important here!
