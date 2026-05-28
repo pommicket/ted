@@ -182,7 +182,6 @@ static void parse_capabilities(LSP *lsp, const JSON *json, JSONObject capabiliti
 				JSONObject did_save = did_save_value.val.object;
 				cap->did_save_include_text = json_object_get_bool(json, did_save, "includeText", false);
 			}
-				printf("did includsetext=%d\n",cap->did_save_include_text);
 		}
 		cap->open_close_support = open_close;
 		cap->sync_support = change_type >= 1;
