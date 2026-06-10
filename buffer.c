@@ -1756,12 +1756,18 @@ BufferPos buffer_pos_end_of_line(TextBuffer *buffer, u32 line) {
 	};
 }
 
-void buffer_cursor_move_to_start_of_line(TextBuffer *buffer) {
-	buffer_cursor_move_to_pos(buffer, buffer_pos_start_of_line(buffer, buffer->cursor_pos.line));
+bool buffer_cursor_move_to_start_of_line(TextBuffer *buffer) {
+	BufferPos prev_pos = buffer->cursor_pos;
+	BufferPos new_pos = buffer_pos_start_of_line(buffer, buffer->cursor_pos.line);
+	buffer_cursor_move_to_pos(buffer, new_pos);
+	return !buffer_pos_eq(prev_pos, new_pos);
 }
 
-void buffer_cursor_move_to_end_of_line(TextBuffer *buffer) {
-	buffer_cursor_move_to_pos(buffer, buffer_pos_end_of_line(buffer, buffer->cursor_pos.line));
+bool buffer_cursor_move_to_end_of_line(TextBuffer *buffer) {
+	BufferPos prev_pos = buffer->cursor_pos;
+	BufferPos new_pos = buffer_pos_end_of_line(buffer, buffer->cursor_pos.line);
+	buffer_cursor_move_to_pos(buffer, new_pos);
+	return !buffer_pos_eq(prev_pos, new_pos);
 }
 
 void buffer_cursor_move_to_start_of_file(TextBuffer *buffer) {

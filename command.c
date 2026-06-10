@@ -271,13 +271,21 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 		autocomplete_close(ted);
 		break;
 	case CMD_START_OF_LINE:
-		if (ted->selector_open) selector_home(ted, ted->selector_open);
-		else if (buffer) buffer_cursor_move_to_start_of_line(buffer);
+		if (!(buffer && buffer_cursor_move_to_start_of_line(buffer))
+			&& ted->selector_open) {
+			// If cursor is already at start of line,
+			// move to first selector entry.
+			selector_home(ted, ted->selector_open);
+		}
 		autocomplete_close(ted);
 		break;
 	case CMD_END_OF_LINE:
-		if (ted->selector_open) selector_end(ted, ted->selector_open);
-		else if (buffer) buffer_cursor_move_to_end_of_line(buffer);
+		if (!(buffer && buffer_cursor_move_to_end_of_line(buffer))
+			&& ted->selector_open) {
+			// If cursor is already at end of line,
+			// move to last selector entry.
+			selector_end(ted, ted->selector_open);
+		}
 		autocomplete_close(ted);
 		break;
 	case CMD_SELECT_START_OF_LINE:

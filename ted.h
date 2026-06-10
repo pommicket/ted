@@ -602,9 +602,13 @@ BufferPos buffer_pos_start_of_line(TextBuffer *buffer, u32 line);
 /// Buffer position corresponding to the end of line `line` (0-indexed).
 BufferPos buffer_pos_end_of_line(TextBuffer *buffer, u32 line);
 /// Move cursor to the start of the line, like the Home key does.
-void buffer_cursor_move_to_start_of_line(TextBuffer *buffer);
+///
+/// Returns false if cursor is already at start of line
+bool buffer_cursor_move_to_start_of_line(TextBuffer *buffer);
 /// Move cursor to the end of the line, like the End key does.
-void buffer_cursor_move_to_end_of_line(TextBuffer *buffer);
+///
+/// Returns false if cursor is already at end of line
+bool buffer_cursor_move_to_end_of_line(TextBuffer *buffer);
 /// Move cursor to the start of the file, like Ctrl+Home does.
 void buffer_cursor_move_to_start_of_file(TextBuffer *buffer);
 /// Move cursor to the end of the file, like Ctrl+End does.
