@@ -383,6 +383,7 @@ Then run `make.bat release`.
 <tr><td>3.1.6</td> <td>`follow-symlinks` setting</td> <td>2026 Apr 22</td></tr>
 <tr><td>3.1.7</td> <td>`:copy-ref`, improved filefinder search</td> <td>2026 May 10</td></tr>
 <tr><td>3.1.8</td> <td>LSP didSave notifications</td> <td>2026 May 27</td></tr>
+<tr><td>3.1.9</td> <td>Fix home/end keys being weird with selector open.</td> <td>2026 Jun 9</td></tr>
 </table>
 
 ## License
