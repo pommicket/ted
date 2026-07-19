@@ -12,7 +12,7 @@ ALL_CFLAGS=$(CFLAGS) -Wall -Wextra -Wshadow -Wconversion -Wpedantic -pedantic -s
 	-Wno-unused-function -Wno-fixed-enum-extension -Wimplicit-fallthrough -Wno-format-truncation -Wno-unknown-warning-option \
 	-Ipcre2 -DTED_GLOBAL_DATA_DIR='"$(GLOBAL_DATA_DIR)"' -DTED_LOCAL_DATA_DIR='"$(LOCAL_DATA_DIR)"' \
 	-fno-omit-frame-pointer
-LIBS=-lSDL2 -lGL -lm libpcre2-32.a libpcre2-8.a
+LIBS=-lSDL3 -lGL -lm libpcre2-32.a libpcre2-8.a
 RELEASE_CFLAGS=-O3 $(ALL_CFLAGS)
 PROFILE_CFLAGS=-O3 -g -DPROFILE=1 $(ALL_CFLAGS)
 
@@ -35,7 +35,7 @@ release_debug: *.[ch] pcre-lib
 profile: *.[ch] pcre-lib
 	$(CC) main.c -o ted $(PROFILE_CFLAGS) $(LIBS)
 clean:
-	rm -f ted *.o *.a
+	rm -rf debug release ted *.o *.a
 install: release
 	@[ -w `dirname $(GLOBAL_DATA_DIR)` ] || { echo "You need permission to write to $(GLOBAL_DATA_DIR). Try running with sudo/as root." && exit 1; }
 	@[ -w `dirname $(INSTALL_BIN_DIR)` ] || { echo "You need permission to write to $(INSTALL_BIN_DIR). Try running with sudo/as root." && exit 1; }

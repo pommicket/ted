@@ -321,7 +321,7 @@ struct Ted {
 	MouseClick *mouse_clicks[4];
 	MouseRelease *mouse_releases[4];
 	/// total amount scrolled this frame
-	int scroll_total_x, scroll_total_y;
+	float scroll_total_x, scroll_total_y;
 	MenuInfo *all_menus;
 	/// index of currently open menu, or 0 if no menu is open
 	u32 menu_open_idx;

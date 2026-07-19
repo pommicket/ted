@@ -364,8 +364,8 @@
             }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_94E20AEB9C46436D9B12AF00BEF346DA"
             {
-            "SourcePath" = "8:..\\..\\SDL2.dll"
-            "TargetName" = "8:SDL2.dll"
+            "SourcePath" = "8:..\\..\\SDL3.dll"
+            "TargetName" = "8:SDL3.dll"
             "Tag" = "8:"
             "Folder" = "8:_569DA12250204417A1AE6410E061AAFF"
             "Condition" = "8:"

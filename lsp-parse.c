@@ -5,6 +5,8 @@
 #include "util.h"
 #include "unicode.h"
 
+#include <ctype.h>
+
 static WarnUnusedResult bool lsp_expect_type(LSP *lsp, JSONValue value, JSONValueType type, const char *what) {
 	if (value.type != type) {
 		lsp_set_error(lsp, "Expected %s for %s, got %s",

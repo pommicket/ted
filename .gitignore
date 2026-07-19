@@ -27,7 +27,7 @@ TAGS
 *.zip
 *.a
 *.asc
-SDL2
+SDL3
 *.deb
 .vs
 test.txt

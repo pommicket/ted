@@ -44,7 +44,7 @@ struct Autocomplete {
 	BufferPos last_pos;
 	/// which completion is currently selected (index into suggested)
 	i32 cursor;
-	i32 scroll;
+	float scroll;
 	
 	/// was the last request for phantom completion?
 	bool last_request_phantom;
@@ -134,13 +134,13 @@ void autocomplete_select_completion(Ted *ted) {
 
 static void autocomplete_correct_scroll(Ted *ted) {
 	Autocomplete *ac = ted->autocomplete;
-	i32 scroll = ac->scroll;
-	scroll = min_i32(scroll, (i32)arr_len(ac->suggested) - AUTOCOMPLETE_NCOMPLETIONS_VISIBLE);
-	scroll = max_i32(scroll, 0);
+	float scroll = ac->scroll;
+	scroll = fminf(scroll, (float)(arr_len(ac->suggested) - AUTOCOMPLETE_NCOMPLETIONS_VISIBLE));
+	scroll = fmaxf(scroll, 0);
 	ac->scroll = scroll;
 }
 
-void autocomplete_scroll(Ted *ted, i32 by) {
+void autocomplete_scroll(Ted *ted, float by) {
 	Autocomplete *ac = ted->autocomplete;
 	ac->scroll += by;
 	autocomplete_correct_scroll(ted);
@@ -155,7 +155,7 @@ static void autocomplete_move_cursor(Ted *ted, i32 by) {
 	cursor += by;
 	cursor = (i32)mod_i32(cursor, (i32)ncompletions);
 	ac->cursor = cursor;
-	ac->scroll = ac->cursor - AUTOCOMPLETE_NCOMPLETIONS_VISIBLE / 2;
+	ac->scroll = (float)ac->cursor - 0.5f * AUTOCOMPLETE_NCOMPLETIONS_VISIBLE;
 	autocomplete_correct_scroll(ted);
 }
 
@@ -600,7 +600,7 @@ void autocomplete_frame(Ted *ted) {
 	ac->cursor = ncompletions ? (i32)mod_i64(ac->cursor, (i64)ncompletions) : 0;
 	
 	autocomplete_correct_scroll(ted);
-	i32 scroll = ac->scroll;
+	i32 scroll = (i32)roundf(ac->scroll);
 	u32 ncompletions_visible = min_u32((u32)ncompletions, AUTOCOMPLETE_NCOMPLETIONS_VISIBLE);
 	
 	float menu_width = 400, menu_height = (float)ncompletions_visible * char_height;

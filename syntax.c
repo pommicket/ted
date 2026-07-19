@@ -3,6 +3,7 @@
 #include "ted-internal.h"
 #include "keywords.h"
 
+#include <ctype.h>
 
 // ---- syntax state constants ----
 // syntax state is explained in development.md

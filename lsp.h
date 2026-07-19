@@ -17,8 +17,8 @@ typedef u32 LSPDocumentID;
 typedef u32 LSPID;
 /// a request ID. this is unique across all servers. a request's ID is never 0.
 typedef u32 LSPRequestID;
-typedef struct SDL_mutex *LSPMutex;
-typedef struct SDL_semaphore *LSPSemaphore;
+typedef struct SDL_Mutex *LSPMutex;
+typedef struct SDL_Semaphore *LSPSemaphore;
 typedef struct SDL_Thread *LSPThread;
 
 /// a struct for keeping track of a LSP server ID and a request ID
@@ -878,7 +878,8 @@ struct LSP {
 		char error[512];
 };
 
-#include "sdl-inc.h"
+#include <SDL3/SDL_thread.h>
+#include <SDL3/SDL_mutex.h>
 
 #define lsp_set_error(lsp, ...) do {\
 		SDL_LockMutex(lsp->error_mutex);\

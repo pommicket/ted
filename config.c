@@ -9,6 +9,7 @@
 
 #include "ted-internal.h"
 #include "pcre-inc.h"
+#include <ctype.h>
 
 /// Sections of `ted.cfg`
 typedef enum {

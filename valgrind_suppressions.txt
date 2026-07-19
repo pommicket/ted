@@ -167,7 +167,7 @@
    Memcheck:Leak
    match-leak-kinds: reachable
    fun:malloc
-   obj:/usr/lib/x86_64-linux-gnu/libSDL2-2.0.so.*
+   obj:/usr/lib/x86_64-linux-gnu/libSDL3.so.*
    ...
    fun:main
 }

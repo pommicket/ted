@@ -42,6 +42,7 @@ the first character can be interpreted specially if it is one of the following:
 #endif
 
 #include "ted-internal.h"
+#include <SDL3/SDL_main.h>
 
 #include <locale.h>
 #include <signal.h>
@@ -278,33 +279,13 @@ static void ted_update_window_dimensions(Ted *ted) {
 int ted_crash_signals[] = {SIGSEGV, SIGFPE, SIGABRT, SIGILL, 0};
 #endif
 
+int main(int argc, char *argv[]) {
 #if _WIN32
-INT WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
-	PSTR lpCmdLine, INT nCmdShow) {
-	(void)hInstance; (void)hPrevInstance; (void)lpCmdLine; (void)nCmdShow;
-	int argc = 0;
-	LPWSTR* wide_argv = CommandLineToArgvW(GetCommandLineW(), &argc);
-	char** argv = calloc(argc + 1, sizeof *argv);
-	if (!argv) {
-		die("Out of memory.");
-	}
-	for (int i = 0; i < argc; i++) {
-		LPWSTR wide_arg = wide_argv[i];
-		int len = (int)wcslen(wide_arg);
-		int bufsz = len * 4 + 8;
-		argv[i] = calloc((size_t)bufsz, 1);
-		if (!argv[i]) die("Out of memory.");
-		WideCharToMultiByte(CP_UTF8, 0, wide_arg, len, argv[i], bufsz - 1, NULL, NULL);
-	}
-	LocalFree(wide_argv);
 	{
 	    WSADATA wsaData = {0};
 	    WSAStartup(MAKEWORD(2, 2), &wsaData);
 	}
 	SetProcessDPIAware();
-	
-#else
-int main(int argc, char **argv) {
 #endif
 	PROFILE_TIME(init_start)
 	PROFILE_TIME(basic_init_start)
@@ -379,9 +360,10 @@ int main(int argc, char **argv) {
 	
 	PROFILE_TIME(sdl_start)
 	SDL_SetHint(SDL_HINT_NO_SIGNAL_HANDLERS, "1"); // if this program is sent a SIGTERM/SIGINT, don't turn it into a quit event
-	if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_TIMER) < 0)
+	if (!SDL_Init(SDL_INIT_VIDEO))
 		die("%s", SDL_GetError());
 	PROFILE_TIME(sdl_end)
+
 	
 	PROFILE_TIME(misc_start)
 
@@ -520,10 +502,13 @@ int main(int argc, char **argv) {
 	PROFILE_TIME(misc_end)
 	
 	PROFILE_TIME(window_start)
-	SDL_Window *window = SDL_CreateWindow("ted", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 1280, 720,
-		(test ? SDL_WINDOW_HIDDEN : SDL_WINDOW_SHOWN)|SDL_WINDOW_OPENGL|SDL_WINDOW_RESIZABLE);
+	SDL_Window *window = SDL_CreateWindow("ted", 1280, 720,
+		(test ? SDL_WINDOW_HIDDEN : 0)|SDL_WINDOW_OPENGL|SDL_WINDOW_RESIZABLE);
 	if (!window)
 		die("%s", SDL_GetError());
+
+	// FIXME SDL3
+	SDL_StartTextInput(window);
 
 	ted->window = window;
 		
@@ -532,7 +517,7 @@ int main(int argc, char **argv) {
 		if (icon_filename) {
 			SDL_Surface *icon = SDL_LoadBMP(icon_filename);
 			SDL_SetWindowIcon(window, icon);
-			SDL_FreeSurface(icon);
+			SDL_DestroySurface(icon);
 			free(icon_filename);
 		} // if we can't find the icon file, it's no big deal
 	}
@@ -540,7 +525,7 @@ int main(int argc, char **argv) {
 	PROFILE_TIME(window_end)
 	PROFILE_TIME(gl_start)
 	
-	SDL_GLContext *glctx = NULL;
+	SDL_GLContext glctx = NULL;
 	{ // get OpenGL context
 		int gl_versions[][2] = {
 			{4,3},
@@ -651,19 +636,19 @@ int main(int argc, char **argv) {
 
 
 
-	ted->cursor_ibeam = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_IBEAM);
+	ted->cursor_ibeam = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_TEXT);
 	ted->cursor_wait = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_WAIT);
-	ted->cursor_arrow = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_ARROW);
-	ted->cursor_resize_h = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEWE);
-	ted->cursor_resize_v = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZENS);
-	ted->cursor_hand = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_HAND);
-	ted->cursor_move = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_SIZEALL);
+	ted->cursor_arrow = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_DEFAULT);
+	ted->cursor_resize_h = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_EW_RESIZE);
+	ted->cursor_resize_v = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NS_RESIZE);
+	ted->cursor_hand = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_POINTER);
+	ted->cursor_move = SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_MOVE);
 	
 	PROFILE_TIME(create_end)
 
 	PROFILE_TIME(get_ready_start)
 
-	Uint32 time_at_last_frame = SDL_GetTicks();
+	Uint64 time_at_last_frame = SDL_GetTicks();
 
 	SDL_GL_SetSwapInterval(1); // vsync
 	
@@ -704,9 +689,9 @@ int main(int argc, char **argv) {
 		SDL_PumpEvents();
 		u32 key_modifier = ted_get_key_modifier(ted);
 		{ // get mouse position
-			int mouse_x = 0, mouse_y = 0;
+			float mouse_x = 0, mouse_y = 0;
 			ted->mouse_state = SDL_GetMouseState(&mouse_x, &mouse_y);
-			ted->mouse_pos = (vec2){(float)mouse_x, (float)mouse_y};
+			ted->mouse_pos = (vec2){mouse_x, mouse_y};
 		}
 
 		for (size_t i = 0; i < arr_count(ted->mouse_clicks); ++i)
@@ -732,17 +717,17 @@ int main(int argc, char **argv) {
 			TextBuffer *buffer = ted->active_buffer;
 			
 			switch (event.type) {
-			case SDL_QUIT:
+			case SDL_EVENT_QUIT:
 				command_execute(ted, CMD_QUIT, 1);
 				break;
-			case SDL_MOUSEWHEEL: {
+			case SDL_EVENT_MOUSE_WHEEL: {
 				if (ted_is_ctrl_down(ted)) {
 					// adjust text size with ctrl+scroll
 					const Settings *settings = ted_active_settings(ted);
-					scroll_wheel_text_size_change += settings->ctrl_scroll_adjust_text_size * event.wheel.preciseY;
+					scroll_wheel_text_size_change += settings->ctrl_scroll_adjust_text_size * event.wheel.y;
 				} else if (key_modifier == 0) {
 					// scroll with mouse wheel
-					Sint32 dx = event.wheel.x, dy = -event.wheel.y;
+					float dx = event.wheel.x, dy = -event.wheel.y;
 					if (autocomplete_box_contains_point(ted, ted_mouse_pos(ted))) {
 						autocomplete_scroll(ted, dy);
 					} else {
@@ -751,7 +736,7 @@ int main(int argc, char **argv) {
 					}
 				}
 			} break;
-			case SDL_MOUSEBUTTONDOWN: {
+			case SDL_EVENT_MOUSE_BUTTON_DOWN: {
 				if (ted->recording_macro)
 					break; // ignore mouse input during macros
 				
@@ -810,7 +795,7 @@ int main(int argc, char **argv) {
 					arr_add(ted->mouse_clicks[button], click);
 				}
 			} break;
-			case SDL_MOUSEBUTTONUP: {
+			case SDL_EVENT_MOUSE_BUTTON_UP: {
 				if (ted->recording_macro)
 					break; // ignore mouse input during macros
 				
@@ -823,7 +808,7 @@ int main(int argc, char **argv) {
 				};
 				arr_add(ted->mouse_releases[button], release);
 			} break;
-			case SDL_MOUSEMOTION: {
+			case SDL_EVENT_MOUSE_MOTION: {
 				if (ted->recording_macro)
 					break; // ignore mouse input during macros
 				
@@ -839,12 +824,12 @@ int main(int argc, char **argv) {
 				}
 				hover_reset_timer(ted);
 			} break;
-			case SDL_KEYDOWN: {
-				SDL_Keycode keycode = event.key.keysym.sym;
-				SDL_Keymod modifier = event.key.keysym.mod;
+			case SDL_EVENT_KEY_DOWN: {
+				SDL_Keycode keycode = event.key.key;
+				SDL_Keymod modifier = event.key.mod;
 				ted_press_key(ted, keycode, modifier);
 			} break;
-			case SDL_TEXTINPUT: {
+			case SDL_EVENT_TEXT_INPUT: {
 				const char *text = event.text.text;
 				if (buffer
 					// unfortunately, some key combinations like ctrl+minus still register as a "-" text input event
@@ -884,7 +869,7 @@ int main(int argc, char **argv) {
 			}
 		}
 		{
-			int mx = 0, my = 0;
+			float mx = 0, my = 0;
 			ted->mouse_state = SDL_GetMouseState(&mx, &my);
 			ted->mouse_pos = (vec2){(float)mx, (float)my};
 		}
@@ -934,11 +919,9 @@ int main(int argc, char **argv) {
 
 		double frame_dt;
 		{
-			Uint32 time_this_frame = SDL_GetTicks();
-			frame_dt = 0.001 * (time_this_frame - time_at_last_frame);
+			Uint64 time_this_frame = SDL_GetTicks();
+			frame_dt = 0.001 * (double)(time_this_frame - time_at_last_frame);
 			time_at_last_frame = time_this_frame;
-			
-			
 		}
 		
 		{
@@ -959,13 +942,13 @@ int main(int argc, char **argv) {
 			double scroll_speed = 40.0;
 			double scroll_amount_x = scroll_speed * frame_dt * 1.5; // characters are taller than they are wide
 			double scroll_amount_y = scroll_speed * frame_dt;
-			if (ted_is_key_down(ted, SDLK_UP))
+			if (ted_is_key_down(ted, SDL_SCANCODE_UP))
 				buffer_scroll(active_buffer, 0, -scroll_amount_y);
-			if (ted_is_key_down(ted, SDLK_DOWN))
+			if (ted_is_key_down(ted, SDL_SCANCODE_DOWN))
 				buffer_scroll(active_buffer, 0, +scroll_amount_y);
-			if (ted_is_key_down(ted, SDLK_LEFT))
+			if (ted_is_key_down(ted, SDL_SCANCODE_LEFT))
 				buffer_scroll(active_buffer, -scroll_amount_x, 0);
-			if (ted_is_key_down(ted, SDLK_RIGHT))
+			if (ted_is_key_down(ted, SDL_SCANCODE_RIGHT))
 				buffer_scroll(active_buffer, +scroll_amount_x, 0);
 		}
 		
@@ -1246,9 +1229,9 @@ int main(int argc, char **argv) {
 		SDL_SetWindowTitle(window, ted->window_title);
 		if (ted->cursor) {
 			SDL_SetCursor(ted->cursor);
-			SDL_ShowCursor(SDL_ENABLE);
+			SDL_ShowCursor();
 		} else {
-			SDL_ShowCursor(SDL_DISABLE);
+			SDL_HideCursor();
 		}
 		
 		double frame_end_noswap = time_get_seconds();
@@ -1337,14 +1320,14 @@ int main(int argc, char **argv) {
 	}
 	arr_free(ted->shell_history);
 	fclose(ted->log), ted->log = NULL;
-	SDL_FreeCursor(ted->cursor_arrow);
-	SDL_FreeCursor(ted->cursor_ibeam);
-	SDL_FreeCursor(ted->cursor_wait);
-	SDL_FreeCursor(ted->cursor_resize_h);
-	SDL_FreeCursor(ted->cursor_resize_v);
-	SDL_FreeCursor(ted->cursor_hand);
-	SDL_FreeCursor(ted->cursor_move);
-	SDL_GL_DeleteContext(glctx);
+	SDL_DestroyCursor(ted->cursor_arrow);
+	SDL_DestroyCursor(ted->cursor_ibeam);
+	SDL_DestroyCursor(ted->cursor_wait);
+	SDL_DestroyCursor(ted->cursor_resize_h);
+	SDL_DestroyCursor(ted->cursor_resize_v);
+	SDL_DestroyCursor(ted->cursor_hand);
+	SDL_DestroyCursor(ted->cursor_move);
+	SDL_GL_DestroyContext(glctx);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
 	for (u16 i = 0; i < arr_len(ted->buffers); ++i)

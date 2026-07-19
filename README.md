@@ -83,7 +83,7 @@ explaining what they do. `yes`, `on`, and `true` are all synonyms, as are `no`, 
 Keyboard shortcuts are of the form `key combo = action`, where `action` is an argument (number or string),
 followed by a command. The commands match the things in the command palette (Ctrl+Shift+p), but `:` is added to the beginning to make
 it clear it's a command.
-A list of key names can be found [here](https://wiki.libsdl.org/SDL2/SDL_Keycode).
+A list of keys can be found [here](https://wiki.libsdl.org/SDL3/SDL_Keycode).
 
 Colors are formatted like `#rgb`, `#rgba`, `#rrggbb` or `#rrggbbaa`, where r, g, b, and a are red, green,
 blue, and alpha (transparency/opacity). You can use a [color picker](https://www.google.com/search?q=color+picker) to help you out.
@@ -279,14 +279,14 @@ If you didn't, run `git submodule update --init --recursive`.
 To install `ted` from source on Linux, you will also need:
 
 - A C compiler
-- The SDL2 development libraries
+- The SDL3 development libraries
 - cmake
 - imagemagick convert (for creating the .deb installer)
 
 These can be installed on Ubuntu/Debian with:
 
 ```bash
-sudo apt install clang libsdl2-dev cmake imagemagick
+sudo apt install clang libsdl3-dev cmake imagemagick
 ```
 
 Then run `make -j8 release` to build or `sudo make install -j8` to build and install.
@@ -305,8 +305,8 @@ On Windows, install Microsoft Visual Studio 2022, then find and add vcvarsall.ba
 Also, install the [Visual Studio Installer Projects extension](https://marketplace.visualstudio.com/items?itemName=VisualStudioClient.MicrosoftVisualStudio2022InstallerProjects)
 (needed to build the .msi installer).
 
-Next you will need the SDL2 VC development libraries: https://www.libsdl.org/download-2.0.php.
-Extract the zip, copy SDL2-2.x.y into the ted directory, and rename it to SDL2. Also copy SDL2\\lib\\x64\\SDL2.dll
+Next you will need the SDL3 VC development libraries: https://github.com/libsdl-org/SDL/releases (named `SDL3-devel-3.x.y-VC.zip`).
+Extract the zip, copy SDL3-3.x.y into the ted directory, and rename it to SDL3. Also copy SDL3\\lib\\x64\\SDL3.dll
 to the ted directory.
 Then run `make.bat release`.
 

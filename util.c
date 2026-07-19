@@ -13,6 +13,8 @@
 #endif
 #include <wctype.h>
 #include <ctype.h>
+#include <stdlib.h>
+#include <SDL3/SDL_stdinc.h>
 
 // on 16-bit systems, this is 16383. on 32/64-bit systems, this is 1073741823
 // it is unusual to have a string that long.
@@ -457,31 +459,12 @@ int str_qsort_case_insensitive_cmp(const void *av, const void *bv) {
 	return strcmp_case_insensitive(*a, *b);
 }
 
-#if _WIN32
+
 void qsort_with_context(void *base, size_t nmemb, size_t size,
 	int (*compar)(void *, const void *, const void *),
 	void *arg) {
-	qsort_s(base, nmemb, size, compar, arg);
+	SDL_qsort_r(base, nmemb, size, compar, arg);
 }
-#else
-typedef struct {
-	int (*compar)(void *, const void *, const void *);
-	void *context;
-} QSortWithContext;
-int qsort_with_context_cmp(const void *a, const void *b, void *context) {
-	QSortWithContext *c = context;
-	return c->compar(c->context, a, b);
-}
-void qsort_with_context(void *base, size_t nmemb, size_t size,
-	int (*compar)(void *, const void *, const void *),
-	void *arg) {
-	QSortWithContext ctx = {
-		.compar = compar,
-		.context = arg
-	};
-	qsort_r(base, nmemb, size, qsort_with_context_cmp, &ctx);
-}
-#endif
 
 bool is_path_separator(char c) {
 	return strchr(ALL_PATH_SEPARATORS, c) != NULL;

@@ -75,7 +75,7 @@ cc main.c
 ```
 Of course this is not possible because ted uses libraries. But at least we have
 ```
-cc main.c libpcre.a -lSDL2 -lm
+cc main.c libpcre.a -lSDL3 -lm
 ```
 or something.
 

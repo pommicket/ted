@@ -5,6 +5,7 @@
 #include "ted-internal.h"
 
 #include <sys/stat.h>
+#include <ctype.h>
 
 #if __unix__
 #include <fcntl.h>

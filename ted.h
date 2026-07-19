@@ -15,6 +15,9 @@
 extern "C" {
 #endif
 
+#include <SDL3/SDL_scancode.h>
+#include <SDL3/SDL_keycode.h>
+
 #include "base.h"
 #include "util.h"
 #include "text.h"
@@ -949,7 +952,7 @@ void autocomplete_open(Ted *ted, uint32_t trigger);
 /// or select the phantom completion if there is one.
 void autocomplete_select_completion(Ted *ted);
 /// scroll completion list
-void autocomplete_scroll(Ted *ted, i32 by);
+void autocomplete_scroll(Ted *ted, float by);
 /// move cursor to next completion
 void autocomplete_next(Ted *ted);
 /// move cursor to previous completion
@@ -1178,7 +1181,7 @@ float ted_window_height(Ted *ted);
 /// set title of ted window
 void ted_set_window_title(Ted *ted, const char *title);
 /// returns `true` if the given SDL key code is down
-bool ted_is_key_down(Ted *ted, i32 key);
+bool ted_is_key_down(Ted *ted, SDL_Scancode key);
 /// returns `true` if the given \ref KeyCombo is down
 bool ted_is_key_combo_down(Ted *ted, KeyCombo key_combo);
 /// returns `true` if either ctrl key is down
@@ -1295,7 +1298,7 @@ void ted_node_switch(Ted *ted, Node *node);
 /// reload ted configuration
 void ted_reload_configs(Ted *ted);
 /// handle a key press
-void ted_press_key(Ted *ted, i32 keycode, u32 modifier);
+void ted_press_key(Ted *ted, SDL_Keycode keycode, u32 modifier);
 /// get the buffer and buffer position where the mouse is.
 ///
 /// returns `false` if the mouse is not in a buffer.

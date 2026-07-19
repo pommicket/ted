@@ -15,6 +15,9 @@
 #include <fcntl.h>
 #include <time.h>
 
+// apparently this is how you're supposed to do it??
+extern char **environ;
+
 char *read_link(const char *path) {
 	char *buf = NULL;
 	for (size_t len = 16; len <= 65536; len <<= 1) {
@@ -527,7 +530,7 @@ Socket *socket_connect_tcp(const char *address, u16 port) {
 		return s;
 	}
 
-	if (connect(fd, &addr, sizeof addr) < 0) {
+	if (connect(fd, (const struct sockaddr *)&addr, sizeof addr) < 0) {
 		strbuf_printf(s->error, "couldn't connect to %s:%u (%s)",
 			address, port, strerror(errno));
 		close(fd);

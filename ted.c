@@ -2,7 +2,7 @@
 
 #include "ted-internal.h"
 #if _WIN32
-	#include <SDL_syswm.h>
+	#include <SDL3/SDL_syswm.h>
 #elif __unix__
 	#include <unistd.h>
 	#include <sys/stat.h>
@@ -23,7 +23,7 @@ void die(const char *fmt, ...) {
 	va_end(args);
 	
 	// show a message box, and if that fails, print it
-	if (SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", buf, NULL) < 0) {
+	if (SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", buf, NULL)) {
 		debug_println("%s\n", buf);
 	}
 	
@@ -93,17 +93,16 @@ void ted_set_window_title(Ted *ted, const char *title) {
 	strbuf_cpy(ted->window_title, title);
 }
 
-bool ted_is_key_down(Ted *ted, SDL_Keycode key) {
+bool ted_is_key_down(Ted *ted, SDL_Scancode key) {
 	// not currently used but there might be a reason for it in the future
 	(void)ted;
 	
-	const Uint8 *kbd_state = SDL_GetKeyboardState(NULL);
-	for (int i = 0; i < SDL_NUM_SCANCODES; ++i) {
-		if (kbd_state[i] && SDL_GetKeyFromScancode((SDL_Scancode)i) == key) {
-			return true;
-		}
+	int numkeys = 0;
+	const bool *kbd_state = SDL_GetKeyboardState(&numkeys);
+	if ((int)key >= numkeys) {
+		return false;
 	}
-	return false;
+	return kbd_state[key];
 }
 
 bool ted_is_key_combo_down(Ted *ted, KeyCombo combo) {
@@ -895,9 +894,9 @@ void ted_reload_configs(Ted *ted) {
 
 void ted_press_key(Ted *ted, SDL_Keycode keycode, u32 modifier) {
 	KeyCombo key_combo = KEY_COMBO(
-		(u32)((modifier & (KMOD_LCTRL|KMOD_RCTRL)) != 0) << KEY_MODIFIER_CTRL_BIT |
-		(u32)((modifier & (KMOD_LSHIFT|KMOD_RSHIFT)) != 0) << KEY_MODIFIER_SHIFT_BIT |
-		(u32)((modifier & (KMOD_LALT|KMOD_RALT)) != 0) << KEY_MODIFIER_ALT_BIT,
+		(u32)((modifier & (SDL_KMOD_LCTRL|SDL_KMOD_RCTRL)) != 0) << KEY_MODIFIER_CTRL_BIT |
+		(u32)((modifier & (SDL_KMOD_LSHIFT|SDL_KMOD_RSHIFT)) != 0) << KEY_MODIFIER_SHIFT_BIT |
+		(u32)((modifier & (SDL_KMOD_LALT|SDL_KMOD_RALT)) != 0) << KEY_MODIFIER_ALT_BIT,
 		keycode);
 	
 	const KeyAction *const key_actions = ted_active_settings(ted)->key_actions;

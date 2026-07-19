@@ -613,7 +613,7 @@ static bool lsp_send(LSP *lsp) {
 			lsp_message_free(m);
 		}
 		
-		if (SDL_SemTryWait(lsp->quit_sem) == 0) {
+		if (SDL_TryWaitSemaphore(lsp->quit_sem)) {
 			alive = false;
 		}
 	}
@@ -644,13 +644,13 @@ static int lsp_communication_thread(void *data) {
 	initialize.id = get_request_id();
 	lsp_send_request_direct(lsp, &initialize);
 	
-	const u32 send_delay_ms = max_u32(16, (u32)(lsp->send_delay * 1000));
+	const i32 send_delay_ms = max_i32(16, (i32)(lsp->send_delay * 1000));
 	while (1) {
 		if (!lsp_send(lsp))
 			break;
 		if (!lsp_receive(lsp, (size_t)10<<20))
 			break;
-		if (SDL_SemWaitTimeout(lsp->quit_sem, send_delay_ms) == 0)
+		if (SDL_WaitSemaphoreTimeout(lsp->quit_sem, send_delay_ms))
 			break;
 	}
 	
@@ -823,7 +823,7 @@ bool lsp_next_message(LSP *lsp, LSPMessage *message) {
 }
 
 void lsp_free(LSP *lsp) {
-	SDL_SemPost(lsp->quit_sem);
+	SDL_SignalSemaphore(lsp->quit_sem);
 	if (lsp->communication_thread)
 		SDL_WaitThread(lsp->communication_thread, NULL);
 	SDL_DestroyMutex(lsp->messages_mutex);
