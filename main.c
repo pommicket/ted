@@ -1,6 +1,6 @@
 /*
 TODO:
-- IME
+- IME underline
 - IME selection
 FUTURE FEATURES:
 - save/load sessions under custom names
@@ -879,12 +879,6 @@ int main(int argc, char *argv[]) {
 				}
 			} break;
 			}
-		}
-
-		if (ted->text_composition) {
-			printf("%s %s %s\n",str32_to_utf8_cstr(ted->text_composition->before_selection),
-			str32_to_utf8_cstr(ted->text_composition->selection),
-			str32_to_utf8_cstr(ted->text_composition->after_selection));
 		}
 		
 		{

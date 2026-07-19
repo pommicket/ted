@@ -1106,6 +1106,61 @@ static void buffer_render_char(TextBuffer *buffer, Font *font, TextRenderState *
 	}
 }
 
+// Length of line including the current IME composition if line_number is the cursor's line
+static u32 buffer_line_len_including_composition(TextBuffer *buffer, u32 line_number) {
+	u32 len = buffer_line_len(buffer, line_number);
+	if (line_number != buffer->cursor_pos.line) return len;
+	TextComposition *composition = buffer->ted->text_composition;
+	if (!composition) return len;
+	return (u32)(len + composition->before_selection.len
+		+ composition->selection.len
+		+ composition->after_selection.len);
+}
+
+// Convert an index into a line that may include the composition to an index
+// that doesn't include the composition.
+// If line_number isn't the cursor line, this always just returns index.
+static u32 buffer_index_including_composition_to_index_excluding_composition(TextBuffer *buffer, u32 line_number, u32 index) {
+	if (line_number != buffer->cursor_pos.line) return index;
+	u32 cursor_index = buffer->cursor_pos.index;
+	if (index < cursor_index) return index;
+	TextComposition *composition = buffer->ted->text_composition;
+	if (!composition) return index;
+	u32 composition_len = (u32)(composition->before_selection.len
+		+ composition->selection.len
+		+ composition->after_selection.len);
+	if (index < cursor_index + composition_len)
+		return cursor_index;
+	return index - composition_len;
+}
+
+// Get character of line at index including the composition
+// (if line_number is the cursor line).
+static char32_t buffer_line_at_index_including_composition(TextBuffer *buffer, u32 line_number, Line *line, u32 index) {
+	char32_t *str = line->str;
+	if (line_number != buffer->cursor_pos.line) return str[index];
+	u32 cursor_index = buffer->cursor_pos.index;
+	if (index < cursor_index) return str[index];
+	TextComposition *composition = buffer->ted->text_composition;
+	if (!composition) return str[index];
+	u32 composition_len = (u32)(composition->before_selection.len
+		+ composition->selection.len
+		+ composition->after_selection.len);
+	if (index >= cursor_index + composition_len) {
+		return str[index - composition_len];
+	}
+	index -= cursor_index;
+	if (index < composition->before_selection.len)
+		return composition->before_selection.str[index];
+	index -= composition->before_selection.len;
+	
+	if (index < composition->selection.len)
+		return composition->selection.str[index];
+	index -= composition->selection.len;
+	assert(index < composition->after_selection.len);
+	return composition->after_selection.str[index];
+}
+
 // convert line character index to offset in pixels
 static double buffer_index_to_xoff(TextBuffer *buffer, u32 line_number, u32 index) {
 	if (line_number >= buffer->nlines) {
@@ -1113,14 +1168,20 @@ static double buffer_index_to_xoff(TextBuffer *buffer, u32 line_number, u32 inde
 		return 0;
 	}
 	Line *line = &buffer->lines[line_number];
-	char32_t *str = line->str;
 	if (index > line->len)
 		index = line->len;
 	Font *font = buffer_font(buffer);
 	TextRenderState state = text_render_state_default;
 	state.render = false;
-	for (u32 i = 0; i < index; ++i) {
-		buffer_render_char(buffer, font, &state, str[i]);
+	for (u32 i = 0;
+		buffer_index_including_composition_to_index_excluding_composition(
+			buffer, line_number, i) < index ||
+			// (we want the cursor position to be after the composition)
+			buffer_index_including_composition_to_index_excluding_composition(
+				buffer, line_number, i+1) == index;
+		++i) {
+		buffer_render_char(buffer, font, &state,
+			buffer_line_at_index_including_composition(buffer, line_number, line, i));
 	}
 	return state.x;
 }
@@ -1135,19 +1196,22 @@ static u32 buffer_xoff_to_index(TextBuffer *buffer, u32 line_number, double xoff
 		return 0;
 	}
 	Line *line = &buffer->lines[line_number];
-	char32_t *str = line->str;
 	Font *font = buffer_font(buffer);
 	TextRenderState state = text_render_state_default;
 	state.render = false;
-	for (u32 i = 0; i < line->len; ++i) {
+	u32 len_including_composition = buffer_line_len_including_composition(buffer, line_number);
+	for (u32 i = 0; i < len_including_composition; ++i) {
 		double x0 = state.x;
-		buffer_render_char(buffer, font, &state, str[i]);
+		buffer_render_char(buffer, font, &state,
+			buffer_line_at_index_including_composition(buffer, line_number, line, i));
 		double x1 = state.x;
 		if (x1 > xoff) {
 			if (x1 - xoff > xoff - x0)
-				return i;
+				return buffer_index_including_composition_to_index_excluding_composition(
+					buffer, line_number, i);
 			else
-				return i + 1;
+				return buffer_index_including_composition_to_index_excluding_composition(
+					buffer, line_number, i + 1);
 		}
 	}
 	return line->len;
@@ -1471,6 +1535,11 @@ void buffer_cursor_move_to_pos(TextBuffer *buffer, BufferPos pos) {
 	buffer_pos_validate(buffer, &pos);
 	if (buffer_pos_eq(buffer->cursor_pos, pos)) {
 		return;
+	}
+	if (buffer->ted->text_composition) {
+		// cancel active composition (hopefully)
+		SDL_StopTextInput(buffer->ted->window);
+		SDL_StartTextInput(buffer->ted->window);
 	}
 	
 	if (labs((long)buffer->cursor_pos.line - (long)pos.line) > 20) {
@@ -3913,10 +3982,15 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 			SyntaxState syntax_state = line->syntax;
 			syntax_highlight(&syntax_state, language, line->str, line->len, char_types);
 		}
-		for (u32 i = 0; i < line->len; ++i) {
-			char32_t c = line->str[i];
+		const u32 len_including_composition =
+			buffer_line_len_including_composition(buffer, line_idx);
+		for (u32 i = 0; i < len_including_composition; ++i) {
+			char32_t c = buffer_line_at_index_including_composition(
+				buffer, line_idx, line, i);
 			if (syntax_highlighting) {
-				SyntaxCharType type = char_types[i];
+				SyntaxCharType type = char_types[
+					buffer_index_including_composition_to_index_excluding_composition(
+						buffer, line_idx, i)];
 				ColorSetting color = syntax_char_type_to_color_setting(type);
 				color_u32_to_floats(settings_color(settings, color), text_state.color);
 			}
