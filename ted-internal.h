@@ -141,6 +141,8 @@ struct Settings {
 	u8 padding;
 	u8 scrolloff;
 	u8 tags_max_depth;
+	u8 ime_underline_thickness;
+	u8 ime_selection_underline_thickness;
 	GlRcSAB *bg_shader;
 	/// string used to start comments
 	RcStr *comment_start;

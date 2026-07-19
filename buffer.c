@@ -4071,8 +4071,8 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 			}
 			// composition formatting
 			double y = text_state.y + text_font_char_height(font) - text_font_descender_height(font);
-			const float underline_thickness = 1.0f,
-				selection_underline_thickness = 2.0f;
+			const float underline_thickness = settings->ime_underline_thickness,
+				selection_underline_thickness = settings->ime_selection_underline_thickness;
 			// If there is no selection, this is the underline
 			// for the whole composition
 			const Rect before_selection_underline = {

@@ -138,6 +138,8 @@ static const SettingU8 settings_u8[] = {
 	{"padding", &settings_zero.padding, 0, 100, false},
 	{"scrolloff", &settings_zero.scrolloff, 1, 100, true},
 	{"tags-max-depth", &settings_zero.tags_max_depth, 1, 100, false},
+	{"ime-underline-thickness", &settings_zero.ime_underline_thickness, 0, 100, true},
+	{"ime-selection-underline-thickness", &settings_zero.ime_selection_underline_thickness, 0, 100, true},
 };
 static const SettingU8 setting_tab_width = SETTING_TAB_WIDTH;
 static const SettingU16 settings_u16[] = {
