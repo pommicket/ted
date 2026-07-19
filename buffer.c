@@ -1109,7 +1109,7 @@ static void buffer_render_char(TextBuffer *buffer, Font *font, TextRenderState *
 // Length of line including the current IME composition if line_number is the cursor's line
 static u32 buffer_line_len_including_composition(TextBuffer *buffer, u32 line_number) {
 	u32 len = buffer_line_len(buffer, line_number);
-	if (line_number != buffer->cursor_pos.line) return len;
+	if_likely (line_number != buffer->cursor_pos.line) return len;
 	TextComposition *composition = buffer->ted->text_composition;
 	if (!composition) return len;
 	return (u32)(len + composition->before_selection.len
@@ -1121,7 +1121,8 @@ static u32 buffer_line_len_including_composition(TextBuffer *buffer, u32 line_nu
 // that doesn't include the composition.
 // If line_number isn't the cursor line, this always just returns index.
 static u32 buffer_index_including_composition_to_index_excluding_composition(TextBuffer *buffer, u32 line_number, u32 index) {
-	if (line_number != buffer->cursor_pos.line) return index;
+	assert(index <= buffer_line_len_including_composition(buffer, line_number));
+	if_likely (line_number != buffer->cursor_pos.line) return index;
 	u32 cursor_index = buffer->cursor_pos.index;
 	if (index < cursor_index) return index;
 	TextComposition *composition = buffer->ted->text_composition;
@@ -1131,14 +1132,16 @@ static u32 buffer_index_including_composition_to_index_excluding_composition(Tex
 		+ composition->after_selection.len);
 	if (index < cursor_index + composition_len)
 		return cursor_index;
+	assert(index - composition_len <= buffer_line_len(buffer, line_number));
 	return index - composition_len;
 }
 
 // Get character of line at index including the composition
 // (if line_number is the cursor line).
 static char32_t buffer_line_at_index_including_composition(TextBuffer *buffer, u32 line_number, Line *line, u32 index) {
+	assert(index <= buffer_line_len_including_composition(buffer, line_number));
 	char32_t *str = line->str;
-	if (line_number != buffer->cursor_pos.line) return str[index];
+	if_likely (line_number != buffer->cursor_pos.line) return str[index];
 	u32 cursor_index = buffer->cursor_pos.index;
 	if (index < cursor_index) return str[index];
 	TextComposition *composition = buffer->ted->text_composition;
@@ -1173,12 +1176,15 @@ static double buffer_index_to_xoff(TextBuffer *buffer, u32 line_number, u32 inde
 	Font *font = buffer_font(buffer);
 	TextRenderState state = text_render_state_default;
 	state.render = false;
+	const u32 line_len_including_composition =
+		buffer_line_len_including_composition(buffer, line_number);
 	for (u32 i = 0;
 		buffer_index_including_composition_to_index_excluding_composition(
-			buffer, line_number, i) < index ||
+			buffer, line_number, i) < index || (
+			i < line_len_including_composition &&
 			// (we want the cursor position to be after the composition)
 			buffer_index_including_composition_to_index_excluding_composition(
-				buffer, line_number, i+1) == index;
+				buffer, line_number, i+1) == index);
 		++i) {
 		buffer_render_char(buffer, font, &state,
 			buffer_line_at_index_including_composition(buffer, line_number, line, i));
@@ -3987,36 +3993,59 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 		double composition_start, composition_selection_start,
 			composition_selection_end, composition_end;
 		TextComposition *composition = NULL;
-		if (line_idx == buffer->cursor_pos.line) {
+		if_unlikely (line_idx == buffer->cursor_pos.line) {
 			composition = buffer->ted->text_composition;
 			if (composition) {
 				composition_start =
 					composition_end =
 					composition_selection_start =
-					composition_selection_end = 0;
+					composition_selection_end = NAN;
 			}
 		}
 		for (u32 i = 0; i < len_including_composition; ++i) {
 			char32_t c = buffer_line_at_index_including_composition(
 				buffer, line_idx, line, i);
 			if (syntax_highlighting) {
-				SyntaxCharType type = char_types[
-					buffer_index_including_composition_to_index_excluding_composition(
-						buffer, line_idx, i)];
+				u32 index = buffer_index_including_composition_to_index_excluding_composition(
+						buffer, line_idx, i);
+				if_unlikely (composition) {
+					// We can end up with index == line->len if there's a composition
+					// at the end of the line.
+					// So we need to ensure char_types[index] doesn't go OOB.
+					if (index >= line->len) {
+						// If we can get a syntax type from an adjacent character,
+						// use that. Otherwise, just use SYNTAX_NORMAL.
+						assert(index == line->len);
+						const SyntaxCharType type = index
+							? char_types[index - 1]
+							: SYNTAX_NORMAL;
+						if (arr_len(char_types) > index) {
+							char_types[index] = type;
+						} else {
+							arr_add(char_types, type);
+						}
+					}
+				}
+				SyntaxCharType type = char_types[index];
 				ColorSetting color = syntax_char_type_to_color_setting(type);
 				color_u32_to_floats(settings_color(settings, color), text_state.color);
 			}
-			if (composition) {
+			if_unlikely (composition) {
+				// Track coordinates of start/end of composition and
+				// start/end of composition selection.
 				u32 cursor_index = buffer->cursor_pos.index;
 				if (i == cursor_index) {
 					composition_start = text_state.x;
-				} else if (i == cursor_index + composition->before_selection.len
+				}
+				if (i == cursor_index + composition->before_selection.len
 					 + composition->selection.len
 					  + composition->after_selection.len) {
 					composition_end = text_state.x;
-				} else if (i == cursor_index + composition->before_selection.len) {
+				}
+				if (i == cursor_index + composition->before_selection.len) {
 					composition_selection_start = text_state.x;
-				} else if (i == cursor_index + composition->before_selection.len
+				}
+				if (i == cursor_index + composition->before_selection.len
 					+ composition->selection.len) {
 					composition_selection_end = text_state.x;
 				}
@@ -4024,21 +4053,26 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 			buffer_render_char(buffer, font, &text_state, c);
 		}
 
-		if (composition) {
-			if (isnan(composition_selection_end)) {
-				composition_selection_end = text_state.x;
+		if_unlikely (composition) {
+			double *coordinates[4] = {
+				&composition_start,
+				&composition_end,
+				&composition_selection_start,
+				&composition_selection_end,
+			};
+			// Fix up coordniates
+			for (size_t i = 0; i < 4; i++) {
+				if (isnan(*coordinates[i])) {
+					// If this coordinate was never set, it must
+					// refer to the end of the line.
+					*coordinates[i] = text_state.x;
+				}
+				*coordinates[i] += render_start_x;
 			}
-			if (isnan(composition_end)) {
-				composition_end = text_state.x;
-			}
-			composition_start += render_start_x;
-			composition_end += render_start_x;
-			composition_selection_start += render_start_x;
-			composition_selection_end += render_start_x;
 			// composition formatting
-			double y = text_state.y + text_font_char_height(font);
-			float underline_thickness = 1.0f,
-				selection_underline_thickness = 3.0f;
+			double y = text_state.y + text_font_char_height(font) - text_font_descender_height(font);
+			const float underline_thickness = 1.0f,
+				selection_underline_thickness = 2.0f;
 			// If there is no selection, this is the underline
 			// for the whole composition
 			const Rect before_selection_underline = {

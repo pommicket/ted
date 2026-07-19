@@ -310,6 +310,14 @@ float text_font_char_height(Font *font) {
 	return font->char_height;
 }
 
+float text_font_descender_height(Font *font) {
+	int descent = 0;
+	float scale = stbtt_ScaleForPixelHeight(&font->stb_info, font->char_height);
+	stbtt_GetFontVMetrics(&font->stb_info, NULL, &descent, NULL);
+	// NB: descent is negative here. I suppose it makes some sense but it's strange.
+	return scale * (float)-descent;
+}
+
 float text_font_char_width(Font *font, char32_t c) {
 	CharInfo info = {0};
 	if (text_load_char(font, c, &info)) {

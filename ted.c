@@ -1197,3 +1197,4 @@ void ted_clear_composition(Ted *ted) {
 		ted->text_composition = NULL;
 	}
 }
+	

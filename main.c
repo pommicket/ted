@@ -1,8 +1,5 @@
 /*
-TODO:
-- do we need to fix SDL_SetTextInputRect for line numbers?????
-- IME underline
-- IME selection
+- configurable underline thickness
 FUTURE FEATURES:
 - save/load sessions under custom names
 - wrap-text command
@@ -1135,26 +1132,30 @@ int main(int argc, char *argv[]) {
 			}
 		}
 
-		// Technically checking for starting/stopping only once per frame isn't perfect,
-		// but it's very rare to have no active buffer (only if no files are open
-		// or a dialog is open). So it's probably always okay.
+		if (ted->active_buffer) {
+			// Set IME input area and cursor position.
+			BufferPos cursor_pos = buffer_cursor_pos(ted->active_buffer);
+			Rect line_rect = buffer_line_rect(ted->active_buffer, cursor_pos.line);
+			vec2 cursor_point = buffer_pos_to_pixels(ted->active_buffer, cursor_pos);
+			SDL_Rect line_sdl_rect = {
+				.x = (int)line_rect.pos.x,
+				.y = (int)line_rect.pos.y,
+				.w = (int)line_rect.size.x,
+				.h = (int)line_rect.size.y,
+			};
+			SDL_SetTextInputArea(ted->window, &line_sdl_rect, (int)(cursor_point.x - line_rect.pos.x));
+		}
+		// Technically checking for starting/stopping only once per frame isn't
+		// perfect, since key presses can be buffered, but it's very rare to have
+		// no active buffer (only if no files are open or a dialog is open). So probably okay.
 		if (SDL_TextInputActive(ted->window) != !!ted->active_buffer) {
 			if (ted->active_buffer) {
-				BufferPos cursor_pos = buffer_cursor_pos(ted->active_buffer);
-				Rect line_rect = buffer_line_rect(ted->active_buffer, cursor_pos.line);
-				vec2 cursor_point = buffer_pos_to_pixels(ted->active_buffer, cursor_pos);
-				SDL_Rect line_sdl_rect = {
-					.x = (int)line_rect.pos.x,
-					.y = (int)line_rect.pos.y,
-					.w = (int)line_rect.size.x,
-					.h = (int)line_rect.size.y,
-				};
-				SDL_SetTextInputArea(ted->window, &line_sdl_rect, (int)(cursor_point.x - line_rect.pos.x));
 				SDL_StartTextInput(ted->window);
 			} else {
 				SDL_StopTextInput(ted->window);
 			}
 		}
+		
 
 		// stop dragging tab if mouse was released
 		if (arr_len(ted->mouse_releases[SDL_BUTTON_LEFT]))

@@ -89,6 +89,8 @@ void text_font_set_fallback(Font *font, Font *fallback);
 void text_font_change_size(Font *font, float new_size);
 /// Height of a character of this font in pixels.
 float text_font_char_height(Font *font);
+/// Size of font descenders in pixels.
+float text_font_descender_height(Font *font);
 /// Width of the given character in pixels.
 float text_font_char_width(Font *font, char32_t c);
 /// Force text to advance by text_font_char_width(font, ' ') pixels per character (actually, per code point).

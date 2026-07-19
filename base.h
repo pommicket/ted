@@ -67,6 +67,14 @@ typedef uint32_t char32_t;
 #define static_assert_if_possible(cond)
 #endif
 
+#if __GNUC__
+#define if_unlikely(x) if(__builtin_expect(!!(x), 0))
+#define if_likely(x) if(__builtin_expect(!!(x), 1))
+#else
+#define if_unlikely(x) if(x)
+#define if_likely(x) if(x)
+#endif
+
 #ifndef SHORT_FIXED_SIZE_TYPES
 #define SHORT_FIXED_SIZE_TYPES
 /// 8-bit unsigned integer

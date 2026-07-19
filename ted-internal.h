@@ -832,5 +832,7 @@ void ted_perform_workspace_edit(Ted *ted, LSP *lsp, const LSPResponse *response,
 void ted_set_composition(Ted *ted, const char *text, uint32_t selection_start, uint32_t selection_length);
 /// Clear the current IME text composition.
 void ted_clear_composition(Ted *ted);
+/// Update the text input rectangle and cursor position reported to IME.
+void ted_update_ime_input_area(Ted *ted);
 
 #endif // TED_INTERNAL_H_
