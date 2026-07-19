@@ -1,6 +1,7 @@
 /*
-- configurable underline thickness
-FUTURE FEATURES:
+FUTURE:
+- write tests for
+	- syntax highlighting
 - save/load sessions under custom names
 - wrap-text command
 - path-specific extensions

@@ -1494,6 +1494,7 @@ static void syntax_highlight_cfg(SyntaxState *state, const char32_t *line, u32 l
 				while (i < line_len && syntax_number_continues(LANG_CONFIG, line, line_len, i)) {
 					char_types[i++] = SYNTAX_CONSTANT;
 				}
+				--i; // we will increment i in the loop
 			}
 			break;
 		default: {
