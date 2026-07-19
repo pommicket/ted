@@ -37,7 +37,7 @@ typedef int Scancode;
 #endif
 
 /// Version number
-#define TED_VERSION "3.1.9"
+#define TED_VERSION "3.2.0"
 /// Config filename
 #define TED_CFG "ted.cfg"
 
