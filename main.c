@@ -507,9 +507,6 @@ int main(int argc, char *argv[]) {
 	if (!window)
 		die("%s", SDL_GetError());
 
-	// FIXME SDL3
-	SDL_StartTextInput(window);
-
 	ted->window = window;
 		
 	{ // set icon
@@ -868,6 +865,17 @@ int main(int argc, char *argv[]) {
 			} break;
 			}
 		}
+
+		// Technically updating only once per frame isn't perfect,
+		// but it's very rare to have no active buffer (only if no files are open
+		// or a dialog is open). So it's probably always okay.
+		if (SDL_TextInputActive(ted->window) != !!ted->active_buffer) {
+			if (ted->active_buffer)
+				SDL_StartTextInput(ted->window);
+			else
+				SDL_StopTextInput(ted->window);
+		}
+
 		{
 			float mx = 0, my = 0;
 			ted->mouse_state = SDL_GetMouseState(&mx, &my);
