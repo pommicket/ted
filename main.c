@@ -1,4 +1,7 @@
 /*
+TODO:
+- IME
+- IME selection
 FUTURE FEATURES:
 - save/load sessions under custom names
 - wrap-text command
@@ -360,6 +363,7 @@ int main(int argc, char *argv[]) {
 	
 	PROFILE_TIME(sdl_start)
 	SDL_SetHint(SDL_HINT_NO_SIGNAL_HANDLERS, "1"); // if this program is sent a SIGTERM/SIGINT, don't turn it into a quit event
+	SDL_SetHint(SDL_HINT_IME_IMPLEMENTED_UI, "composition"); // We can handle SDL_EVENT_TEXT_EDITING
 	if (!SDL_Init(SDL_INIT_VIDEO))
 		die("%s", SDL_GetError());
 	PROFILE_TIME(sdl_end)
@@ -826,8 +830,19 @@ int main(int argc, char *argv[]) {
 				SDL_Keymod modifier = event.key.mod;
 				ted_press_key(ted, keycode, modifier);
 			} break;
+			case SDL_EVENT_TEXT_EDITING: {
+				// NB: start/length of -1 indicates no selection.
+				// ... so are we supposed to display some kind of caret if the length is 0?? let's hope not.
+				if (event.edit.start < 0 || event.edit.length <= 0) {
+					ted_set_composition(ted, event.edit.text, 0, 0);
+				} else {
+					ted_set_composition(ted, event.edit.text,
+						(uint32_t)event.edit.start, (uint32_t)event.edit.length);
+				}
+			} break;
 			case SDL_EVENT_TEXT_INPUT: {
 				const char *text = event.text.text;
+				ted_clear_composition(ted);
 				if (buffer
 					// unfortunately, some key combinations like ctrl+minus still register as a "-" text input event
 					&& (key_modifier & ~KEY_MODIFIER_SHIFT) == 0) {
@@ -866,16 +881,12 @@ int main(int argc, char *argv[]) {
 			}
 		}
 
-		// Technically updating only once per frame isn't perfect,
-		// but it's very rare to have no active buffer (only if no files are open
-		// or a dialog is open). So it's probably always okay.
-		if (SDL_TextInputActive(ted->window) != !!ted->active_buffer) {
-			if (ted->active_buffer)
-				SDL_StartTextInput(ted->window);
-			else
-				SDL_StopTextInput(ted->window);
+		if (ted->text_composition) {
+			printf("%s %s %s\n",str32_to_utf8_cstr(ted->text_composition->before_selection),
+			str32_to_utf8_cstr(ted->text_composition->selection),
+			str32_to_utf8_cstr(ted->text_composition->after_selection));
 		}
-
+		
 		{
 			float mx = 0, my = 0;
 			ted->mouse_state = SDL_GetMouseState(&mx, &my);
@@ -1126,6 +1137,27 @@ int main(int argc, char *argv[]) {
 						window_width * 0.5f, window_height * 0.5f, ted_active_color(ted, COLOR_COMMENT), ANCHOR_MIDDLE);
 					text_render(font);
 				}
+			}
+		}
+
+		// Technically checking for starting/stopping only once per frame isn't perfect,
+		// but it's very rare to have no active buffer (only if no files are open
+		// or a dialog is open). So it's probably always okay.
+		if (SDL_TextInputActive(ted->window) != !!ted->active_buffer) {
+			if (ted->active_buffer) {
+				BufferPos cursor_pos = buffer_cursor_pos(ted->active_buffer);
+				Rect line_rect = buffer_line_rect(ted->active_buffer, cursor_pos.line);
+				vec2 cursor_point = buffer_pos_to_pixels(ted->active_buffer, cursor_pos);
+				SDL_Rect line_sdl_rect = {
+					.x = (int)line_rect.pos.x,
+					.y = (int)line_rect.pos.y,
+					.w = (int)line_rect.size.x,
+					.h = (int)line_rect.size.y,
+				};
+				SDL_SetTextInputArea(ted->window, &line_sdl_rect, (int)(cursor_point.x - line_rect.pos.x));
+				SDL_StartTextInput(ted->window);
+			} else {
+				SDL_StopTextInput(ted->window);
 			}
 		}
 

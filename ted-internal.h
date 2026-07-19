@@ -286,6 +286,12 @@ typedef struct {
 typedef TextBuffer *TextBufferPtr;
 typedef Node *NodePtr;
 
+typedef struct {
+	String32 before_selection;
+	String32 selection;
+	String32 after_selection;
+} TextComposition;
+
 struct Ted {
 	/// all running LSP servers
 	LSP *lsps[TED_LSP_MAX + 1];
@@ -460,6 +466,10 @@ struct Ted {
 	u64 edit_notify_id;
 	EditNotifyInfo *edit_notifys;
 	FileFinder *file_finder;
+
+	// Current text composition
+	TextComposition *text_composition;
+	
 #if HAS_INOTIFY
 	// 16384 = default inotify queue size
 	char inotify_event_buf[16384 * sizeof(struct inotify_event)];
@@ -818,5 +828,9 @@ void ted_process_publish_diagnostics(Ted *ted, LSP *lsp, LSPRequest *request);
 void ted_check_inotify(Ted *ted);
 /// perform LSP WorkspaceEdit
 void ted_perform_workspace_edit(Ted *ted, LSP *lsp, const LSPResponse *response, const LSPWorkspaceEdit *edit);
+/// Set the current IME text composition.
+void ted_set_composition(Ted *ted, const char *text, uint32_t selection_start, uint32_t selection_length);
+/// Clear the current IME text composition.
+void ted_clear_composition(Ted *ted);
 
 #endif // TED_INTERNAL_H_

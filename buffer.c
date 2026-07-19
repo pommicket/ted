@@ -276,6 +276,12 @@ Rect buffer_rect(TextBuffer *buffer) {
 	return rect4(buffer->x1, buffer->y1, buffer->x2, buffer->y2);
 }
 
+Rect buffer_line_rect(TextBuffer *buffer, u32 line) {
+	float line_height = text_font_char_height(buffer_font(buffer));
+	float y1 = buffer->y1 + line_height * (float)((double)line - buffer->scroll_y);
+	return rect4(buffer->x1, y1, buffer->x2, y1 + line_height);
+}
+
 const char *buffer_get_path(TextBuffer *buffer) {
 	return buffer->path;
 }

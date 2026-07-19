@@ -978,8 +978,18 @@ String32 str32(char32_t *str, size_t len) {
 	return s;
 }
 
-String32 str32_substr(String32 s, size_t from, size_t len) {
+String32 str32_dup(String32 s) {
+	char32_t *str = calloc(s.len, sizeof *str);
+	if (!str) return (String32){0};
+	memcpy(str, s.str, s.len * sizeof *str);
+	return (String32){str, s.len};
+}
+
+String32 str32_substr_ref(String32 s, size_t from, size_t len) {
 	return str32(s.str + from, len);
+}
+String32 str32_substr(String32 s, size_t from, size_t len) {
+	return str32_dup(str32_substr_ref(s, from, len));
 }
 
 // frees string and sets it to ""

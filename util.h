@@ -295,7 +295,14 @@ bool timespec_eq(struct timespec a, struct timespec b);
 struct timespec timespec_max(struct timespec a, struct timespec b);
 double timespec_to_seconds(struct timespec ts);
 String32 str32(char32_t *str, size_t len);
+/// Get substring of String32.
+///
+/// Must be str32_free'd.
 String32 str32_substr(String32 s, size_t from, size_t len);
+/// Get reference to substring of String32.
+///
+/// Must NOT be str32_free'd. Only alive as long as s is.
+String32 str32_substr_ref(String32 s, size_t from, size_t len);
 void str32_free(String32 *s);
 String32 str32_from_utf8(const char *utf8);
 /// convert UTF-32 to UTF-8.

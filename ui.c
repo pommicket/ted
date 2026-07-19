@@ -585,7 +585,7 @@ char *file_selector_update(Ted *ted, FileSelector *fs) {
 
 	if (last_path_sep != U32_MAX) {
 		bool include_last_path_sep = last_path_sep == 0;
-		String32 dir_name32 = str32_substr(search_term32, 0, last_path_sep + include_last_path_sep);
+		String32 dir_name32 = str32_substr_ref(search_term32, 0, last_path_sep + include_last_path_sep);
 		char *dir_name = str32_to_utf8_cstr(dir_name32);
 		if (dir_name) {
 			// replace all members of ALL_PATH_SEPARATORS with PATH_SEPARATOR in dir_name (i.e. change / to \ on windows)

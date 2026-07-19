@@ -1157,3 +1157,43 @@ void ted_check_inotify(Ted *ted) {
 	arr_free(watches_modified);
 }
 #endif
+
+void ted_set_composition(Ted *ted, const char *text, uint32_t selection_start, uint32_t selection_length) {
+	if (!text || !text[0]) {
+		ted_clear_composition(ted);
+		return;
+	}
+	
+	TextComposition *composition = ted->text_composition;
+	if (!composition) {
+		composition = ted->text_composition = ted_calloc(ted, 1, sizeof *composition);
+		if (!composition) return;
+	}
+	str32_free(&composition->before_selection);
+	str32_free(&composition->selection);
+	str32_free(&composition->after_selection);
+	String32 str = str32_from_utf8(text);
+	if (selection_length) {
+		// safety dance
+		selection_start = min_u32((u32)str.len, selection_start);
+		selection_length = min_u32((u32)str.len - selection_start, selection_length);
+		composition->before_selection = str32_substr(str, 0, selection_start);
+		composition->selection = str32_substr(str, selection_start, selection_length);
+		composition->after_selection = str32_substr(str, selection_start + selection_length,
+			str.len - (selection_start + selection_length));
+		str32_free(&str);
+	} else {
+		composition->before_selection = str;
+	}
+}
+
+void ted_clear_composition(Ted *ted) {
+	TextComposition *composition = ted->text_composition;
+	if (composition) {
+		str32_free(&composition->before_selection);
+		str32_free(&composition->selection);
+		str32_free(&composition->after_selection);
+		free(composition);
+		ted->text_composition = NULL;
+	}
+}

@@ -410,8 +410,10 @@ void buffer_set_manual_language(TextBuffer *buffer, u32 language);
 u32 buffer_first_line_on_screen(TextBuffer *buffer);
 /// last line which will appear on screen
 u32 buffer_last_line_on_screen(TextBuffer *buffer);
-/// get rectangle buffer is rendered to
+/// get screen rectangle which buffer is rendered to
 Rect buffer_rect(TextBuffer *buffer);
+/// get screen rectangle which corresponds to this line index
+Rect buffer_line_rect(TextBuffer *buffer, u32 line);
 /// is this buffer empty?
 bool buffer_empty(TextBuffer *buffer);
 /// returns the buffer's display filename (not full path) into `filename`
