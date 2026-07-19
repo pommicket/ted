@@ -219,6 +219,13 @@ u32 color_vec4_to_u32(vec4 color) {
 		| (u32)(color.w * 255);
 }
 
+u32 color_floats_to_u32(const float color[4]) {
+	return (u32)(color[0] * 255) << 24
+		| (u32)(color[1] * 255) << 16
+		| (u32)(color[2] * 255) << 8
+		| (u32)(color[3] * 255);
+}
+
 static vec4 color_rgba_to_hsva(vec4 rgba) {
 	float R = rgba.x, G = rgba.y, B = rgba.z, A = rgba.w;
 	float M = maxf(R, maxf(G, B));

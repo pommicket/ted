@@ -3984,6 +3984,18 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 		}
 		const u32 len_including_composition =
 			buffer_line_len_including_composition(buffer, line_idx);
+		double composition_start, composition_selection_start,
+			composition_selection_end, composition_end;
+		TextComposition *composition = NULL;
+		if (line_idx == buffer->cursor_pos.line) {
+			composition = buffer->ted->text_composition;
+			if (composition) {
+				composition_start =
+					composition_end =
+					composition_selection_start =
+					composition_selection_end = 0;
+			}
+		}
 		for (u32 i = 0; i < len_including_composition; ++i) {
 			char32_t c = buffer_line_at_index_including_composition(
 				buffer, line_idx, line, i);
@@ -3994,7 +4006,84 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 				ColorSetting color = syntax_char_type_to_color_setting(type);
 				color_u32_to_floats(settings_color(settings, color), text_state.color);
 			}
+			if (composition) {
+				u32 cursor_index = buffer->cursor_pos.index;
+				if (i == cursor_index) {
+					composition_start = text_state.x;
+				} else if (i == cursor_index + composition->before_selection.len
+					 + composition->selection.len
+					  + composition->after_selection.len) {
+					composition_end = text_state.x;
+				} else if (i == cursor_index + composition->before_selection.len) {
+					composition_selection_start = text_state.x;
+				} else if (i == cursor_index + composition->before_selection.len
+					+ composition->selection.len) {
+					composition_selection_end = text_state.x;
+				}
+			}
 			buffer_render_char(buffer, font, &text_state, c);
+		}
+
+		if (composition) {
+			if (isnan(composition_selection_end)) {
+				composition_selection_end = text_state.x;
+			}
+			if (isnan(composition_end)) {
+				composition_end = text_state.x;
+			}
+			composition_start += render_start_x;
+			composition_end += render_start_x;
+			composition_selection_start += render_start_x;
+			composition_selection_end += render_start_x;
+			// composition formatting
+			double y = text_state.y + text_font_char_height(font);
+			float underline_thickness = 1.0f,
+				selection_underline_thickness = 3.0f;
+			// If there is no selection, this is the underline
+			// for the whole composition
+			const Rect before_selection_underline = {
+				.pos = {
+					(float)composition_start,
+					(float)y
+				},
+				.size = {
+					(float)((composition->selection.len
+						? composition_selection_end
+						: composition_end) - composition_start),
+					underline_thickness,
+				},
+			};
+			const Rect selection_underline = {
+				.pos = {
+					(float)composition_selection_start,
+					(float)y
+				},
+				.size = {
+					(float)(composition_selection_end - composition_selection_start),
+					selection_underline_thickness,
+				},
+			};
+			const Rect after_selection_underline = {
+				.pos = {
+					(float)composition_selection_end,
+					(float)y
+				},
+				.size = {
+					(float)(composition_end - composition_selection_end),
+					underline_thickness,
+				},
+			};
+			u32 color = color_floats_to_u32(text_state.color);
+			if (!composition->selection.len
+				|| composition->before_selection.len) {
+				gl_geometry_rect(before_selection_underline, color);
+			}
+			if (composition->selection.len) {
+				gl_geometry_rect(selection_underline, color);
+			}
+			if (composition->selection.len && composition->after_selection.len) {
+				gl_geometry_rect(after_selection_underline, color);
+			}
 		}
 
 		// next line

@@ -863,6 +863,7 @@ float color_contrast_ratio_u32(u32 color1, u32 color2);
 void color_u32_to_floats(u32 rgba, float floats[4]);
 vec4 color_u32_to_vec4(u32 rgba);
 u32 color_vec4_to_u32(vec4 color);
+u32 color_floats_to_u32(const float color[4]);
 u32 color_interpolate(float x, u32 color1, u32 color2);
 
 // === command.c ===

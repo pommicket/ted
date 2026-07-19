@@ -1,5 +1,6 @@
 /*
 TODO:
+- do we need to fix SDL_SetTextInputRect for line numbers?????
 - IME underline
 - IME selection
 FUTURE FEATURES:
