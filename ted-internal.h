@@ -557,7 +557,9 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *argument, co
 ///
 /// if the config with this path has already been read, this does nothing.
 void config_read(Ted *ted, const char *path, ConfigFormat format);
+/// Free all configuration data.
 void config_free_all(Ted *ted);
+/// Merge configuration from `src_cfg` into `dest`, overwriting existing settings.
 void config_merge_into(Settings *dest, const Config *src_cfg);
 /// call this after all your calls to \ref config_merge_into
 ///

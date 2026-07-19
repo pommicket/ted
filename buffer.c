@@ -3008,15 +3008,15 @@ char *buffer_get_selected_text_utf8(TextBuffer *buffer) {
 static void buffer_copy_or_cut(TextBuffer *buffer, bool cut) {
 	char *text = buffer_get_selected_text_utf8(buffer);
 	if (!text) return;
-	int err = SDL_SetClipboardText(text);
+	bool result = SDL_SetClipboardText(text);
 	free(text);
-	if (err < 0) {
-		buffer_error(buffer, "Couldn't set clipboard contents: %s", SDL_GetError());
-	} else {
+	if (result) {
 		// text copied successfully
 		if (cut) {
 			buffer_delete_selection(buffer);
 		}
+	} else {
+		buffer_error(buffer, "Couldn't set clipboard contents: %s", SDL_GetError());
 	}
 }
 

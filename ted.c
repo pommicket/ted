@@ -1,9 +1,7 @@
 // various core ted functions (opening files, displaying errors, etc.)
 
 #include "ted-internal.h"
-#if _WIN32
-	#include <SDL3/SDL_syswm.h>
-#elif __unix__
+#if __unix__
 	#include <unistd.h>
 	#include <sys/stat.h>
 #endif
@@ -23,7 +21,7 @@ void die(const char *fmt, ...) {
 	va_end(args);
 	
 	// show a message box, and if that fails, print it
-	if (SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", buf, NULL)) {
+	if (!SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", buf, NULL)) {
 		debug_println("%s\n", buf);
 	}
 	
@@ -96,7 +94,6 @@ void ted_set_window_title(Ted *ted, const char *title) {
 bool ted_is_key_down(Ted *ted, SDL_Scancode key) {
 	// not currently used but there might be a reason for it in the future
 	(void)ted;
-	
 	int numkeys = 0;
 	const bool *kbd_state = SDL_GetKeyboardState(&numkeys);
 	if ((int)key >= numkeys) {
@@ -548,16 +545,18 @@ static Font *ted_load_multifont(Ted *ted, const char *filenames) {
 
 float ted_get_ui_scaling(Ted *ted) {
 #if _WIN32
-	SDL_SysWMinfo wm_info;
-	SDL_VERSION(&wm_info.version);
-	if (!SDL_GetWindowWMInfo(ted->window, &wm_info))
+	HWND hwnd = (HWND)SDL_GetPointerProperty(SDL_GetWindowProperties(ted->window), SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
+	if (!hwnd) {
+		// ???
 		return 1;
-	HWND hwnd = wm_info.info.win.window;
+	}
 	UINT dpi = GetDpiForWindow(hwnd);
 	if (!dpi)
 		return 1;
 	return (float)dpi / 96.0f;
 #else
+	// Could do this for linux as well.
+	// But then again, you can also just change the font size (and probably you'll want to do that anyways)
 	(void)ted;
 	return 1;
 #endif

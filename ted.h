@@ -15,14 +15,26 @@
 extern "C" {
 #endif
 
-#include <SDL3/SDL_scancode.h>
-#include <SDL3/SDL_keycode.h>
-
 #include "base.h"
 #include "util.h"
 #include "text.h"
 #include "colors.h"
 #include "command.h"
+
+// NB: SDL_Keycode is just defined as Uint32
+/// Represents a "key label" whose physical position can vary by keyboard layout.
+typedef uint32_t Keycode;
+
+#ifdef TED_INTERNAL_H_
+// Only use SDL enum definition for internal code (so that we don't get enum-to-int casting warnings).
+// Otherwise we don't really want to include all the SDL stuff, in case the backend changes.
+#include <SDL3/SDL_scancode.h>
+typedef SDL_Scancode Scancode;
+#else
+// These typedefs will be the same on all real machines.
+/// A key scancode which refers to the same physical key regardless of keyboard layout.
+typedef int Scancode;
+#endif
 
 /// Version number
 #define TED_VERSION "3.1.9"
@@ -199,7 +211,7 @@ enum {
 #define KEY_MODIFIER_ALT ((u32)1<<KEY_MODIFIER_ALT_BIT)
 /// a "key combo" is some subset of {control, shift, alt} + some key.
 typedef struct {
-	/// high 32 bits = SDL_Keycode\n
+	/// high 32 bits = Keycode\n
 	/// low 8 bits = key modifier (see e.g. \ref KEY_MODIFIER_SHIFT)\n
 	/// the remaining 24 bits are currently reserved and should be 0.
 	u64 value;
@@ -207,8 +219,8 @@ typedef struct {
 /// Create \ref KeyCombo from modifier and key.
 #define KEY_COMBO(modifier, key) ((KeyCombo){.value = (u64)(modifier) \
 	| ((u64)(key) << 32)})
-/// extract `SDL_Keycode` from \ref KeyCombo
-#define KEY_COMBO_KEY(combo) ((SDL_Keycode)((combo.value) >> 32))
+/// extract \ref Keycode from \ref KeyCombo
+#define KEY_COMBO_KEY(combo) ((Keycode)((combo.value) >> 32))
 /// extract key modifier from \ref KeyCombo
 #define KEY_COMBO_MODIFIER(combo) ((u32)((combo.value) & 0xff))
 
@@ -1181,7 +1193,7 @@ float ted_window_height(Ted *ted);
 /// set title of ted window
 void ted_set_window_title(Ted *ted, const char *title);
 /// returns `true` if the given SDL key code is down
-bool ted_is_key_down(Ted *ted, SDL_Scancode key);
+bool ted_is_key_down(Ted *ted, Scancode key);
 /// returns `true` if the given \ref KeyCombo is down
 bool ted_is_key_combo_down(Ted *ted, KeyCombo key_combo);
 /// returns `true` if either ctrl key is down
@@ -1298,7 +1310,7 @@ void ted_node_switch(Ted *ted, Node *node);
 /// reload ted configuration
 void ted_reload_configs(Ted *ted);
 /// handle a key press
-void ted_press_key(Ted *ted, SDL_Keycode keycode, u32 modifier);
+void ted_press_key(Ted *ted, Keycode keycode, u32 modifier);
 /// get the buffer and buffer position where the mouse is.
 ///
 /// returns `false` if the mouse is not in a buffer.
