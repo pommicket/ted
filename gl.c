@@ -2,14 +2,24 @@
 // also houses all of the basic rendering functions ted uses.
 
 #include "ted-internal.h"
-#include "lib/glcorearb.h"
 
 float gl_window_width, gl_window_height;
 int gl_version_major, gl_version_minor;
 
+static SDL_GLContext glctx = NULL;
+
 #define gl_define_proc(upper, lower) PFNGL##upper##PROC gl##lower;
 gl_for_each_proc(gl_define_proc)
 #undef gl_define_proc
+
+#if DEBUG
+static void APIENTRY gl_message_callback(GLenum source, GLenum type, unsigned int id, GLenum severity,
+	GLsizei length, const char *message, const void *userParam) {
+	(void)source; (void)type; (void)id; (void)length; (void)userParam;
+	if (severity == GL_DEBUG_SEVERITY_NOTIFICATION) return;
+	debug_println("Message from OpenGL: %s.", message);
+}
+#endif
 
 GlRcSAB *gl_rc_sab_new(GLuint shader, GLuint array, GLuint buffer) {
 	GlRcSAB *s = calloc(1, sizeof *s);
@@ -95,30 +105,29 @@ GLuint gl_compile_shader(char error_buf[256], const char *code, GLenum shader_ty
 }
 
 // link together GL shaders
-GLuint gl_link_program(char error_buf[256], GLuint *shaders, size_t count) {
+GLuint gl_link_program(char error_buf[256], const GLuint *shaders, size_t count) {
 	GLuint program = glCreateProgram();
-	if (program) {
-		for (size_t i = 0; i < count; ++i) {
-			if (!shaders[i]) {
-				glDeleteProgram(program);
-				return 0;
-			}
-			glAttachShader(program, shaders[i]);
-		}
-		glLinkProgram(program);
-		GLint status = 0;
-		glGetProgramiv(program, GL_LINK_STATUS, &status);
-		if (status == GL_FALSE) {
-			char log[1024] = {0};
-			glGetProgramInfoLog(program, sizeof log - 1, NULL, log);
-			if (error_buf) {
-				str_printf(error_buf, 256, "Error linking shaders: %s", log);
-			} else {
-				debug_println("Error linking shaders: %s", log);
-			}
+	if (!program) return 0;
+	for (size_t i = 0; i < count; ++i) {
+		if (!shaders[i]) {
 			glDeleteProgram(program);
 			return 0;
 		}
+		glAttachShader(program, shaders[i]);
+	}
+	glLinkProgram(program);
+	GLint status = 0;
+	glGetProgramiv(program, GL_LINK_STATUS, &status);
+	if (status == GL_FALSE) {
+		char log[1024] = {0};
+		glGetProgramInfoLog(program, sizeof log - 1, NULL, log);
+		if (error_buf) {
+			str_printf(error_buf, 256, "Error linking shaders: %s", log);
+		} else {
+			debug_println("Error linking shaders: %s", log);
+		}
+		glDeleteProgram(program);
+		return 0;
 	}
 	return program;
 }
@@ -128,6 +137,10 @@ GLuint gl_compile_and_link_shaders(char error_buf[256], const char *vshader_code
 	shaders[0] = gl_compile_shader(error_buf, vshader_code, GL_VERTEX_SHADER);
 	shaders[1] = gl_compile_shader(error_buf, fshader_code, GL_FRAGMENT_SHADER);
 	GLuint program = gl_link_program(error_buf, shaders, 2);
+	if (program) {
+		glDetachShader(program, shaders[0]);
+		glDetachShader(program, shaders[1]);
+	}
 	if (shaders[0]) glDeleteShader(shaders[0]);
 	if (shaders[1]) glDeleteShader(shaders[1]);
 	return program;
@@ -166,7 +179,7 @@ static GLuint gl_geometry_v_color;
 static GLint gl_geometry_u_window_size;
 static GLuint gl_geometry_vbo, gl_geometry_vao;
 
-void gl_geometry_init(void) {
+static void geometry_init(void) {
 	const char *vshader_code = "attribute vec2 v_pos;\n\
 	attribute vec4 v_color;\n\
 	uniform vec2 u_window_size;\n\
@@ -248,4 +261,66 @@ void gl_geometry_draw(void) {
 	glDrawArrays(GL_TRIANGLES, 0, (GLsizei)(3 * ntriangles));
 	
 	arr_clear(gl_geometry_triangles);
+}
+
+void gl_init(SDL_Window *window) {
+	// get OpenGL context
+	const int gl_versions[][2] = {
+		{4,3},
+		{3,0},
+		{2,0},
+		{0,0},
+	};
+	for (int i = 0; gl_versions[i][0]; ++i) {
+		gl_version_major = gl_versions[i][0];
+		gl_version_minor = gl_versions[i][1];
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, gl_version_major);
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, gl_version_minor);
+	#if DEBUG
+		SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
+	#endif
+		glctx = SDL_GL_CreateContext(window);
+		if (glctx) {
+			break;
+		} else {
+			debug_println("Couldn't get GL %d.%d context. Falling back to %d.%d.",
+				gl_versions[i][0], gl_versions[i][1], gl_versions[i+1][0], gl_versions[i+1][1]);
+		}
+	}
+	
+	if (!glctx)
+		die("%s", SDL_GetError());
+	gl_get_procs();
+	#if DEBUG
+	if (gl_version_major * 100 + gl_version_minor >= 403) {
+		GLint flags = 0;
+		glGetIntegerv(GL_CONTEXT_FLAGS, &flags);
+		glEnable(GL_DEBUG_OUTPUT);
+		glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+		if (flags & GL_CONTEXT_FLAG_DEBUG_BIT) {
+			// set up debug message callback
+			glDebugMessageCallback(gl_message_callback, NULL);
+			glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, NULL, GL_TRUE);
+		}
+	}
+	#endif
+	geometry_init();
+}
+
+void gl_quit(void) {
+	if (gl_geometry_program) {
+		glDeleteProgram(gl_geometry_program);
+	}
+	if (glDeleteBuffers) {
+		glDeleteBuffers(1, &gl_geometry_vbo);
+		glDeleteVertexArrays(1, &gl_geometry_vao);
+	}
+	if (glctx) {
+		SDL_GL_DestroyContext(glctx);
+	}
+	// Set all OpenGL function pointers to NULL, so we know if we
+	// accidentally call one after quitting.
+	#define gl_set_proc_to_null(upper, lower) gl##lower = NULL;
+	gl_for_each_proc(gl_set_proc_to_null)
+	#undef gl_set_proc_to_null
 }

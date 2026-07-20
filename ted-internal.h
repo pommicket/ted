@@ -12,7 +12,7 @@
 #include "unicode.h"
 #include "ds.h"
 #include "sdl-inc.h"
-#include "lib/glcorearb.h"
+
 #if __linux__
 #include <sys/inotify.h>
 #define HAS_INOTIFY 1
@@ -628,6 +628,7 @@ extern int gl_version_major, gl_version_minor;
 	do(CREATEPROGRAM, CreateProgram)\
 	do(DELETEPROGRAM, DeleteProgram)\
 	do(ATTACHSHADER, AttachShader)\
+	do(DETACHSHADER, DetachShader)\
 	do(LINKPROGRAM, LinkProgram)\
 	do(GETPROGRAMIV, GetProgramiv)\
 	do(GETPROGRAMINFOLOG, GetProgramInfoLog)\
@@ -674,8 +675,10 @@ GlRcTexture *gl_rc_texture_new(GLuint texture);
 void gl_rc_texture_incref(GlRcTexture *t);
 /// decrease reference count on `*t`, and set `*t` to NULL if the reference count is 0.
 void gl_rc_texture_decref(GlRcTexture **pt);
-/// initialize geometry stuff
-void gl_geometry_init(void);
+/// initialize GL
+void gl_init(SDL_Window *window);
+/// quit GL
+void gl_quit(void);
 
 // === ide-autocomplete.c ===
 void autocomplete_init(Ted *ted);

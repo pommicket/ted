@@ -128,15 +128,6 @@ static Rect message_box_rect(Ted *ted) {
 			(vec2){ted_get_menu_width(ted), 3 * char_height + 2 * padding});
 }
 
-#if DEBUG
-static void APIENTRY gl_message_callback(GLenum source, GLenum type, unsigned int id, GLenum severity,
-	GLsizei length, const char *message, const void *userParam) {
-	(void)source; (void)type; (void)id; (void)length; (void)userParam;
-	if (severity == GL_DEBUG_SEVERITY_NOTIFICATION) return;
-	debug_println("Message from OpenGL: %s.", message);
-}
-#endif
-
 #define CRASH_CRASH_MESSAGE "ted crashed while trying to handle a crash! yikes! ):"
 #define CRASH_MESSAGE "ted has crashed ):  Please send %s/log.txt to pommicket""@gmail.com if you want this fixed.", ted->local_data_dir
 #define CRASH_STARTUP_MESSAGE "ted crashed when starting up ):"
@@ -524,55 +515,10 @@ int main(int argc, char *argv[]) {
 	
 	PROFILE_TIME(window_end)
 	PROFILE_TIME(gl_start)
-	
-	SDL_GLContext glctx = NULL;
-	{ // get OpenGL context
-		int gl_versions[][2] = {
-			{4,3},
-			{3,0},
-			{2,0},
-			{0,0},
-		};
-		for (int i = 0; gl_versions[i][0]; ++i) {
-			gl_version_major = gl_versions[i][0];
-			gl_version_minor = gl_versions[i][1];
-			SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, gl_version_major);
-			SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, gl_version_minor);
-		#if DEBUG
-			SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
-		#endif
-			glctx = SDL_GL_CreateContext(window);
-			if (glctx) {
-				break;
-			} else {
-				debug_println("Couldn't get GL %d.%d context. Falling back to %d.%d.",
-					gl_versions[i][0], gl_versions[i][1], gl_versions[i+1][0], gl_versions[i+1][1]);
-			}
-		}
-		
-		if (!glctx)
-			die("%s", SDL_GetError());
-		gl_get_procs();
-	}
-	
-#if DEBUG
-	if (gl_version_major * 100 + gl_version_minor >= 403) {
-		GLint flags = 0;
-		glGetIntegerv(GL_CONTEXT_FLAGS, &flags);
-		glEnable(GL_DEBUG_OUTPUT);
-		glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-		if (flags & GL_CONTEXT_FLAG_DEBUG_BIT) {
-			// set up debug message callback
-			glDebugMessageCallback(gl_message_callback, NULL);
-			glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, NULL, GL_TRUE);
-		}
-	}
-#endif
-
-	ted->file_selector = file_selector_new();
-	gl_geometry_init();
+	gl_init(window);
 	PROFILE_TIME(gl_end)
 	PROFILE_TIME(misc2_start)
+	ted->file_selector = file_selector_new();
 	text_init();
 	menu_init(ted);
 	find_init(ted);
@@ -1366,7 +1312,7 @@ int main(int argc, char *argv[]) {
 	SDL_DestroyCursor(ted->cursor_resize_v);
 	SDL_DestroyCursor(ted->cursor_hand);
 	SDL_DestroyCursor(ted->cursor_move);
-	SDL_GL_DestroyContext(glctx);
+	gl_quit();
 	SDL_DestroyWindow(window);
 	SDL_Quit();
 	for (u16 i = 0; i < arr_len(ted->buffers); ++i)

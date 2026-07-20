@@ -932,7 +932,7 @@ void find_close(Ted *ted);
 /// create and compile a shader
 u32 gl_compile_shader(char error_buf[256], const char *code, u32 shader_type);
 /// create new shader program from shaders
-u32 gl_link_program(char error_buf[256], u32 *shaders, size_t count);
+u32 gl_link_program(char error_buf[256], const u32 *shaders, size_t count);
 /// create a shader program from vertex shader and fragment shader source
 u32 gl_compile_and_link_shaders(char error_buf[256], const char *vshader_code, const char *fshader_code);
 /// get vertex attribute location
