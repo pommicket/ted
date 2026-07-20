@@ -901,7 +901,7 @@ int main(int argc, char *argv[]) {
 				if (buffer_is_named_file(buffer)) {
 					const char *buffer_path = buffer_get_path(buffer);
 					assert(*buffer_path);
-					char *last_sep = strrchr(buffer_path, PATH_SEPARATOR);
+					const char *last_sep = strrchr(buffer_path, PATH_SEPARATOR);
 					if (last_sep) {
 						size_t dirname_len = (size_t)(last_sep - buffer_path);
 						if (dirname_len == 0) dirname_len = 1; // make sure "/x" sets our cwd to "/", not ""
@@ -1358,6 +1358,7 @@ int main(int argc, char *argv[]) {
 	}
 	arr_free(ted->shell_history);
 	fclose(ted->log), ted->log = NULL;
+	ted_free_fonts(ted);
 	SDL_DestroyCursor(ted->cursor_arrow);
 	SDL_DestroyCursor(ted->cursor_ibeam);
 	SDL_DestroyCursor(ted->cursor_wait);
@@ -1380,7 +1381,6 @@ int main(int argc, char *argv[]) {
 	buffer_free(ted->replace_buffer);
 	buffer_free(ted->build_buffer);
 	buffer_free(ted->argument_buffer);
-	ted_free_fonts(ted);
 	config_free_all(ted);
 	macros_free(ted);
 	free(ted->build_dir);
