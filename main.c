@@ -1393,11 +1393,5 @@ int main(int argc, char *argv[]) {
 	free(ted->global_data_dir);
 	free(ted->home);
 	free(ted);
-#if _WIN32
-	for (int i = 0; i < argc; ++i)
-		free(argv[i]);
-	free(argv);
-#endif
-
 	return 0;
 }
