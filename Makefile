@@ -70,3 +70,8 @@ ted.deb: release
 	dpkg-deb --root-owner-group --build $(DEBTMP)/ted
 	mv $(DEBTMP)/ted.deb ./
 	rm -rf $(DEBTMP)
+ted_signed.deb: ted.deb
+	F=ted_`grep '#define TED_VERSION' ted.h | cut -d'"' -f2`-1_amd64.deb; \
+		echo "Outputting to $$F" && \
+		cp -i ted.deb "$$F" && \
+		gpg --detach-sign --armor "$$F"

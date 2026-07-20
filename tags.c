@@ -13,8 +13,10 @@ static bool get_tags_dir(Ted *ted, bool error_if_does_not_exist) {
 		if (exists)
 			return true;
 		path = path_full(ted->tags_dir, "..");
-		if (streq(path, ted->tags_dir))
+		if (streq(path, ted->tags_dir)) {
+			free(path);
 			break;
+		}
 		free(ted->tags_dir);
 		ted->tags_dir = path;
 	}
