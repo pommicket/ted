@@ -1315,6 +1315,7 @@ int main(int argc, char *argv[]) {
 		}
 	}
 	
+	ted_clear_composition(ted);
 	
 	for (size_t i = 0; i < arr_count(ted->mouse_clicks); ++i)
 		arr_clear(ted->mouse_clicks[i]);

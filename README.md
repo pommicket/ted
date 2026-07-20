@@ -305,7 +305,8 @@ On Windows, install Microsoft Visual Studio 2026, then find and add vcvarsall.ba
 Also, install the [Visual Studio Installer Projects extension](https://marketplace.visualstudio.com/items?itemName=VisualStudioClient.MicrosoftVisualStudio2022InstallerProjects)
 (needed to build the .msi installer).
 
-Next you will need the SDL3 VC development libraries: https://github.com/libsdl-org/SDL/releases (named `SDL3-devel-3.x.y-VC.zip`).
+Next you will need the SDL3 VC development libraries: https://github.com/libsdl-org/SDL/releases (named `SDL3-devel-3.x.y-VC.zip`;
+you might have to click "show all assets").
 Extract the zip, copy SDL3-3.x.y into the ted directory, and rename it to SDL3. Also copy SDL3\\lib\\x64\\SDL3.dll
 to the ted directory.
 Then run `make.bat release`.

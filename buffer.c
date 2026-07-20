@@ -1155,11 +1155,11 @@ static char32_t buffer_line_at_index_including_composition(TextBuffer *buffer, u
 	index -= cursor_index;
 	if (index < composition->before_selection.len)
 		return composition->before_selection.str[index];
-	index -= composition->before_selection.len;
+	index -= (u32)composition->before_selection.len;
 	
 	if (index < composition->selection.len)
 		return composition->selection.str[index];
-	index -= composition->selection.len;
+	index -= (u32)composition->selection.len;
 	assert(index < composition->after_selection.len);
 	return composition->after_selection.str[index];
 }
