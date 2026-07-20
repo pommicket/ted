@@ -300,8 +300,8 @@ mkdir -p ~/.local/bin ~/.local/share
 GLOBAL_DATA_DIR='~/.local/share/ted-data' LOCAL_DATA_DIR='~/.local/share/ted' INSTALL_BIN_DIR='~/.local/bin' make install -j8
 ```
 
-On Windows, install Microsoft Visual Studio 2022, then find and add vcvarsall.bat to your PATH
-(most likely lives at `C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build`).
+On Windows, install Microsoft Visual Studio 2026, then find and add vcvarsall.bat to your PATH
+(most likely lives at `C:\Program Files\Microsoft Visual Studio\2026\Community\VC\Auxiliary\Build`).
 Also, install the [Visual Studio Installer Projects extension](https://marketplace.visualstudio.com/items?itemName=VisualStudioClient.MicrosoftVisualStudio2022InstallerProjects)
 (needed to build the .msi installer).
 
