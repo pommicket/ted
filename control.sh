@@ -11,5 +11,5 @@ Essential: no
 Maintainer: Pommicket <pommicket@gmail.com>
 Description: A text editor.'
 printf 'Installed-Size: %s\n' $(du -k $1 | tail -n1 | cut -f1)
-echo 'Depends: libsdl2-2.0-0
+echo 'Depends: libsdl3-0
 Homepage: https://github.com/pommicket/ted'
