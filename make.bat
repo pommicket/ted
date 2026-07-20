@@ -11,7 +11,11 @@ if not exist pcre2-8-static.lib (
 	copy /y pcre2\Release\pcre2-32-static.lib
 	copy /y pcre2\Release\pcre2-8-static.lib
 )
-SET C_FLAGS=/nologo /W4 /MD /wd4200 /wd4204 /wd4221 /wd4706 /wd4214 /D_CRT_SECURE_NO_WARNINGS /I SDL3/include /I pcre2 User32.lib SDL3/lib/x64/SDL3.lib pcre2-8-static.lib pcre2-32-static.lib
+SET CL_OPTIONS=/nologo /W4 /MD /wd4200 /wd4204 /wd4221 /wd4706 /wd4214 /D_CRT_SECURE_NO_WARNINGS
+SET INCLUDES=/I SDL3/include /I pcre2
+SET LINK_OPTIONS=/SUBSYSTEM:WINDOWS
+SET LIBS=User32.lib SDL3/lib/x64/SDL3.lib pcre2-8-static.lib pcre2-32-static.lib
+SET C_FLAGS=%CL_OPTIONS% %INCLUDES% %LIBS% /link %LINK_OPTIONS%
 rc /nologo ted.rc
 if _%1 == _ (
 	if not exist debug mkdir debug
