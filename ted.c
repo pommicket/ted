@@ -113,15 +113,12 @@ bool ted_is_key_down(Ted *ted, SDL_Keycode key) {
 		return !!(SDL_GetModState() & SDL_KMOD_LGUI);
 	if (key == SDLK_RGUI)
 		return !!(SDL_GetModState() & SDL_KMOD_RGUI);
-	if ((int)key >= numkeys) {
-		return false;
-	}
 	for (int i = 0; i < numkeys; ++i) {
 		if (kbd_state[i] && SDL_GetKeyFromScancode((SDL_Scancode)i, SDL_KMOD_NONE, false) == key) {
 			return true;
 		}
 	}
-	return kbd_state[key];
+	return false;
 }
 
 bool ted_is_key_combo_down(Ted *ted, KeyCombo combo) {
