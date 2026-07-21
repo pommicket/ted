@@ -27,7 +27,7 @@ if _%1 == _ (
 	popd
 )
 if _%1 == _release (
-	cl main.c ted.res /O2 /wd4702 %C_FLAGS% /Fe:ted
+	cl main.c ted.res /O2 /wd4702 /Fe:ted %C_FLAGS%
 	devenv windows_installer\ted\ted.vdproj /nologo /build "Release|Default"
 	copy /y windows_installer\ted\Release\ted.msi
 )
