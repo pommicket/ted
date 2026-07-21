@@ -91,13 +91,35 @@ void ted_set_window_title(Ted *ted, const char *title) {
 	strbuf_cpy(ted->window_title, title);
 }
 
-bool ted_is_key_down(Ted *ted, SDL_Scancode key) {
+bool ted_is_key_down(Ted *ted, SDL_Keycode key) {
 	// not currently used but there might be a reason for it in the future
 	(void)ted;
 	int numkeys = 0;
 	const bool *kbd_state = SDL_GetKeyboardState(&numkeys);
+	// We have to do this bullshit because of SDL3 adding the "modifier" argument to SDL_GetKeyFromScancode.
+	if (key == SDLK_LSHIFT)
+		return !!(SDL_GetModState() & SDL_KMOD_LSHIFT);
+	if (key == SDLK_RSHIFT)
+		return !!(SDL_GetModState() & SDL_KMOD_RSHIFT);
+	if (key == SDLK_LCTRL)
+		return !!(SDL_GetModState() & SDL_KMOD_LCTRL);
+	if (key == SDLK_RCTRL)
+		return !!(SDL_GetModState() & SDL_KMOD_RCTRL);
+	if (key == SDLK_LALT)
+		return !!(SDL_GetModState() & SDL_KMOD_LALT);
+	if (key == SDLK_RALT)
+		return !!(SDL_GetModState() & SDL_KMOD_RALT);
+	if (key == SDLK_LGUI)
+		return !!(SDL_GetModState() & SDL_KMOD_LGUI);
+	if (key == SDLK_RGUI)
+		return !!(SDL_GetModState() & SDL_KMOD_RGUI);
 	if ((int)key >= numkeys) {
 		return false;
+	}
+	for (int i = 0; i < numkeys; ++i) {
+		if (kbd_state[i] && SDL_GetKeyFromScancode((SDL_Scancode)i, SDL_KMOD_NONE, false) == key) {
+			return true;
+		}
 	}
 	return kbd_state[key];
 }

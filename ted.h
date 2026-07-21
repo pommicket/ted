@@ -25,17 +25,6 @@ extern "C" {
 /// Represents a "key label" whose physical position can vary by keyboard layout.
 typedef uint32_t Keycode;
 
-#ifdef TED_INTERNAL_H_
-// Only use SDL enum definition for internal code (so that we don't get enum-to-int casting warnings).
-// Otherwise we don't really want to include all the SDL stuff, in case the backend changes.
-#include <SDL3/SDL_scancode.h>
-typedef SDL_Scancode Scancode;
-#else
-// These typedefs will be the same on all real machines.
-/// A key scancode which refers to the same physical key regardless of keyboard layout.
-typedef int Scancode;
-#endif
-
 /// Version number
 #define TED_VERSION "3.2.1"
 /// Config filename
@@ -1196,7 +1185,7 @@ float ted_window_height(Ted *ted);
 /// set title of ted window
 void ted_set_window_title(Ted *ted, const char *title);
 /// returns `true` if the given SDL key code is down
-bool ted_is_key_down(Ted *ted, Scancode key);
+bool ted_is_key_down(Ted *ted, Keycode key);
 /// returns `true` if the given \ref KeyCombo is down
 bool ted_is_key_combo_down(Ted *ted, KeyCombo key_combo);
 /// returns `true` if either ctrl key is down

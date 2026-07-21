@@ -900,13 +900,13 @@ int main(int argc, char *argv[]) {
 			double scroll_speed = 40.0;
 			double scroll_amount_x = scroll_speed * frame_dt * 1.5; // characters are taller than they are wide
 			double scroll_amount_y = scroll_speed * frame_dt;
-			if (ted_is_key_down(ted, SDL_SCANCODE_UP))
+			if (ted_is_key_down(ted, SDLK_UP))
 				buffer_scroll(active_buffer, 0, -scroll_amount_y);
-			if (ted_is_key_down(ted, SDL_SCANCODE_DOWN))
+			if (ted_is_key_down(ted, SDLK_DOWN))
 				buffer_scroll(active_buffer, 0, +scroll_amount_y);
-			if (ted_is_key_down(ted, SDL_SCANCODE_LEFT))
+			if (ted_is_key_down(ted, SDLK_LEFT))
 				buffer_scroll(active_buffer, -scroll_amount_x, 0);
-			if (ted_is_key_down(ted, SDL_SCANCODE_RIGHT))
+			if (ted_is_key_down(ted, SDLK_RIGHT))
 				buffer_scroll(active_buffer, +scroll_amount_x, 0);
 		}
 		
