@@ -387,6 +387,7 @@ Then run `make.bat release`.
 <tr><td>3.1.9</td> <td>Fix home/end keys being weird with selector open.</td> <td>2026 Jun 9</td></tr>
 <tr><td>3.2.0</td> <td>Upgrade to SDL3, IME input</td> <td>2026 Jul 19</td></tr>
 <tr><td>3.2.1</td> <td>Fix crash when ted is closed on some systems.</td> <td>2026 Jul 20</td></tr>
+<tr><td>3.2.2</td> <td>Fix issue with shift/ctrl+click.</td> <td>2026 Jul 20</td></tr>
 </table>
 
 ## License
