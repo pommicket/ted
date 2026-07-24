@@ -1,4 +1,4 @@
-ted
+*.debug
 !windows_installer/ted
 !windows_installer/ted/ted
 Debug
@@ -38,3 +38,4 @@ compile_commands.json
 .cache
 doc
 out
+*.release

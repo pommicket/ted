@@ -289,15 +289,18 @@ These can be installed on Ubuntu/Debian with:
 sudo apt install clang libsdl3-dev cmake imagemagick
 ```
 
-Then run `make -j8 release` to build or `sudo make install -j8` to build and install.
-You can also run `make -j8 ted.deb` to build the .deb installer.
+Then run `make -j ted.release` to build then `sudo make install` to install.
+You can also run `make -j ted.deb` to build the .deb installer.
+If your operating system is old enough that it doesn’t have an SDL3 package,
+you can also build a version with SDL3 statically linked in, using
+`make -j ted-static-sdl.release`, then install with `sudo make install-ted-static-sdl`.
 
 This installs ted for all users. If you just want to install it for yourself (or you don't have superuser access), you can do so
 with
 
 ```bash
 mkdir -p ~/.local/bin ~/.local/share
-GLOBAL_DATA_DIR='~/.local/share/ted-data' LOCAL_DATA_DIR='~/.local/share/ted' INSTALL_BIN_DIR='~/.local/bin' make install -j8
+GLOBAL_DATA_DIR='~/.local/share/ted-data' LOCAL_DATA_DIR='~/.local/share/ted' INSTALL_BIN_DIR='~/.local/bin' make install -j
 ```
 
 On Windows, install Microsoft Visual Studio 2026, then find and add vcvarsall.bat to your PATH

@@ -12,31 +12,46 @@ ALL_CFLAGS=$(CFLAGS) -Wall -Wextra -Wshadow -Wconversion -Wpedantic -pedantic -s
 	-Wno-unused-function -Wno-fixed-enum-extension -Wimplicit-fallthrough -Wno-format-truncation -Wno-unknown-warning-option \
 	-Ipcre2 -DTED_GLOBAL_DATA_DIR='"$(GLOBAL_DATA_DIR)"' -DTED_LOCAL_DATA_DIR='"$(LOCAL_DATA_DIR)"' \
 	-fno-omit-frame-pointer
-LIBS=-lSDL3 -lGL -lm libpcre2-32.a libpcre2-8.a
+LIBS_NON_SDL=-lm libpcre2-32.a libpcre2-8.a
+LIBS=$(LIBS_NON_SDL) -lSDL3
+SDL_DIR=SDL3
+STATIC_SDL=$(SDL_DIR)/build/libSDL3.a
+FETCH_SDL=$(SDL_DIR)/fetched.o
 RELEASE_CFLAGS=-O3 $(ALL_CFLAGS)
 PROFILE_CFLAGS=-O3 -g -DPROFILE=1 $(ALL_CFLAGS)
+PCRELIB=libpcre2-8.a
 
-debug-build: ted compile_commands.json
-ted: debug/ted
+debug-build: ted.debug compile_commands.json
+ted.debug: debug/ted
 	@# note: needed so cp doesn't fail if `ted` is busy
-	rm -f ted
-	cp debug/ted .
+	rm -f ted.debug
+	cp debug/ted ./ted.debug
 compile_commands.json: debug/ted
 	rm -f compile_commands.json
 	cp debug/compile_commands.json .
-debug/ted: *.[ch] pcre-lib CMakeLists.txt
+debug/ted: *.[ch] $(PCRELIB) CMakeLists.txt
 	mkdir -p debug
 	cd debug && cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=1 -DCMAKE_BUILD_TYPE=Debug -GNinja ..
 	ninja -C debug
-release: *.[ch] pcre-lib
-	$(CC) main.c -o ted $(RELEASE_CFLAGS) $(LIBS)
-release_debug: *.[ch] pcre-lib
-	$(CC) main.c -g -o ted $(RELEASE_CFLAGS) $(LIBS)
-profile: *.[ch] pcre-lib
-	$(CC) main.c -o ted $(PROFILE_CFLAGS) $(LIBS)
+ted.release: *.[ch] $(PCRELIB)
+	$(CC) main.c -o ted.release $(RELEASE_CFLAGS) $(LIBS)
+ted.release_debug: *.[ch] $(PCRELIB)
+	$(CC) main.c -g -o ted.release_debug $(RELEASE_CFLAGS) $(LIBS)
+ted-static-sdl.release: *.[ch] $(STATIC_SDL)
+	$(CC) main.c -g -o ted-static-sdl.release $(RELEASE_CFLAGS) $(LIBS_NON_SDL) $(STATIC_SDL)
+$(STATIC_SDL): $(FETCH_SDL)
+	cd $(SDL_DIR)/build && cmake -DCMAKE_BUILD_TYPE=Release -DSDL_STATIC=1 -S ..
+	$(MAKE) -C $(SDL_DIR)/build
+$(FETCH_SDL):
+	[ -e $(SDL_DIR) ] && echo 'Directory $(SDL_DIR) already exists - try deleting it and rebuilding.' && exit 1 || :
+	git clone --recursive 'https://github.com/libsdl-org/SDL' $(SDL_DIR)
+	touch $(FETCH_SDL)
+ted.profile: *.[ch] $(PCRELIB)
+	$(CC) main.c -o ted.profile $(PROFILE_CFLAGS) $(LIBS)
 clean:
-	rm -rf debug release ted *.o *.a
-install: release
+	rm -rf debug release *.o *.a
+install: install-ted
+install-%: %.release
 	@[ -w `dirname $(GLOBAL_DATA_DIR)` ] || { echo "You need permission to write to $(GLOBAL_DATA_DIR). Try running with sudo/as root." && exit 1; }
 	@[ -w `dirname $(INSTALL_BIN_DIR)` ] || { echo "You need permission to write to $(INSTALL_BIN_DIR). Try running with sudo/as root." && exit 1; }
 
@@ -44,8 +59,8 @@ install: release
 	cp -r assets $(GLOBAL_DATA_DIR)
 	cp -r themes $(GLOBAL_DATA_DIR)
 	install -m 644 ted.cfg $(GLOBAL_DATA_DIR)
-	install ted $(INSTALL_BIN_DIR)
-pcre-lib:
+	install $< $(INSTALL_BIN_DIR)/ted
+$(PCRELIB):
 	@if [ '!' -f pcre2/build/Makefile ]; then \
 		rm -rf pcre2/build; \
 		mkdir pcre2/build && cd pcre2/build && pwd && \
@@ -55,23 +70,18 @@ pcre-lib:
 	cp pcre2/build/libpcre2-32.a pcre2/build/libpcre2-8.a .
 keywords.h: keywords.py
 	python3 keywords.py
-ted.deb: release
-	rm -rf $(DEBTMP)
-	mkdir -p $(DEBTMP)/ted/DEBIAN
-	mkdir -p $(DEBTMP)/ted$(INSTALL_BIN_DIR)
-	mkdir -p $(DEBTMP)/ted$(GLOBAL_DATA_DIR)
-	mkdir -p $(DEBTMP)/ted/usr/share/icons/hicolor/48x48/apps/
-	convert assets/icon.bmp -resize 48x48 $(DEBTMP)/ted/usr/share/icons/hicolor/48x48/apps/ted.png
-	mkdir -p $(DEBTMP)/ted/usr/share/applications
-	cp ted.desktop $(DEBTMP)/ted/usr/share/applications
-	cp ted $(DEBTMP)/ted$(INSTALL_BIN_DIR)/
-	cp -r assets themes ted.cfg $(DEBTMP)/ted$(GLOBAL_DATA_DIR)/
-	./control.sh $(DEBTMP)/ted > $(DEBTMP)/ted/DEBIAN/control
-	dpkg-deb --root-owner-group --build $(DEBTMP)/ted
-	mv $(DEBTMP)/ted.deb ./
-	rm -rf $(DEBTMP)
-ted_signed.deb: ted.deb
+%.deb: %.release control.sh makedeb.sh
+	INSTALL_BIN_DIR='$(INSTALL_BIN_DIR)' \
+		LOCAL_DATA_DIR='$(LOCAL_DATA_DIR)' \
+		GLOBAL_DATA_DIR='$(GLOBAL_DATA_DIR)' \
+		./makedeb.sh `basename $@ .deb`
+ted-versioned.deb: ted.deb
 	F=ted_`grep '#define TED_VERSION' ted.h | cut -d'"' -f2`-1_amd64.deb; \
 		echo "Outputting to $$F" && \
-		cp -i ted.deb "$$F" && \
-		gpg --detach-sign --armor "$$F"
+		cp -i ted.deb "$$F"
+ted-static-sdl-versioned.deb: ted-static-sdl.deb
+	F=ted-static-sdl_`grep '#define TED_VERSION' ted.h | cut -d'"' -f2`-1_amd64.deb; \
+		echo "Outputting to $$F" && \
+		cp -i ted-static-sdl.deb "$$F"
+
+publish: ted-versioned.deb ted-static-sdl-versioned.deb
