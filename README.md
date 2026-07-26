@@ -2,17 +2,10 @@
 
 A text editor.
 
-<img src="ted.png">
+<img src="ted.png" alt="">
 
-To download installers for ted for Windows and Debian/Ubuntu, go to
-the [releases](https://github.com/pommicket/ted/releases).
-
-On Debian/Ubuntu if you want automatic updates, you can also
-[add my repository to apt](https://s.pommicket.com/deb/), and just do
-
-```sh
-sudo apt install ted
-```
+Installers for ted for Windows and Debian/Ubuntu can be found on
+ted's [homepage](https://ted.pommicket.com).
 
 <!-- WEBSITE INDEX.HTML ON -->
 
