@@ -55,8 +55,14 @@ For how to use ted, see [GUIDE.md](GUIDE.md).
 
 ## Building from source
 
-Make sure you cloned `ted` with submodules (`git clone --recursive ...`).
-If you didn't, run `git submodule update --init --recursive`.
+Download `ted`'s source tree with the link above or
+
+```
+git clone --recursive https://cgit.pommicket.com/ted.git
+```
+
+If you didn't use the command above,
+run `git submodule update --init --recursive` to download ted’s dependencies.
 
 To install `ted` from source on Linux, you will also need:
 

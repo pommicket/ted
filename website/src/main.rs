@@ -65,12 +65,17 @@ fn try_main() -> Result<(), Box<dyn Error>> {
 		}
 	}
 	let nav_template = read_to_string("template-nav.html")?;
-	let process_html_file = |path: &str| -> String {
-		path.replace("${GUIDE}", &guide)
+	let process_html_file = |filename: &str, source: &str| -> Result<String, Box<dyn Error>> {
+		let nav = nav_template.replace(&format!("<td><a href=\"{filename}\""),
+			&format!("<td data-selected><a href=\"{filename}\""));
+		if nav == nav_template {
+			Err(format!("Couldn't find nav link for {filename}"))?;
+		}
+		Ok(source.replace("${GUIDE}", &guide)
 			.replace("${VERSION}", &version)
-			.replace("${NAV}", &nav_template)
+			.replace("${NAV}", &nav)
 			.replace("${STYLE}", &style)
-			.replace("${README}", &readme_index)
+			.replace("${README}", &readme_index))
 	};
 	let files = command_output(&["git", "ls-files", "-z"])?;
 	let files = files.split('\0');
@@ -81,8 +86,7 @@ fn try_main() -> Result<(), Box<dyn Error>> {
 		"main.css",
 		"Cargo.lock",
 		"Cargo.toml",
-		"rustfmt.toml",
-		"src",
+		"rustfmt.toml"
 	]
 	.into();
 	for filename in files {
@@ -91,6 +95,7 @@ fn try_main() -> Result<(), Box<dyn Error>> {
 		}
 		if filename.starts_with("template-")
 			|| filename.starts_with(".")
+			|| filename.starts_with("src/")
 			|| excluded.contains(filename)
 		{
 			continue;
@@ -99,7 +104,7 @@ fn try_main() -> Result<(), Box<dyn Error>> {
 		if filename.ends_with(".html") {
 			println!("Processing HTML {filename}");
 			let source = read_to_string(filename)?;
-			std::fs::write(&output_path, process_html_file(&source))?;
+			std::fs::write(&output_path, process_html_file(filename, &source)?)?;
 		} else {
 			println!("Copying {filename}");
 			std::fs::copy(filename, &output_path)?;
