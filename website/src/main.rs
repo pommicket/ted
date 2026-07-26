@@ -187,7 +187,28 @@ fn try_main() -> Result<(), Box<dyn Error>> {
 	let guide = markdown_to_html("../GUIDE.md")?;
 	let changelog = markdown_contents_to_html(&process_changelog()?)?;
 	// The CSS is small enough that it's probably better just to include it inline
-	let style = format!("<style>{}</style>", read_to_string("main.css")?);
+	let style_template = read_to_string("main.css")?;
+	let colors = [
+		// (color name, dark mode, light mode)
+		("BG", "#001", "#ddd"),
+		("TEXT", "#fff", "#000"),
+		("BORDER", "#a77", "#844"),
+		("SELECTED_TAB_BG", "#714f4f", "#ccadad"),
+		("LINK", "#a7f", "#70a"),
+	];
+	let mut style_dark = style_template.clone();
+	let mut style_light = style_template.clone();
+	// could just use light-dark() or var(), but that isn't supported
+	// on older browsers such as IE.
+	for (name, dark, light) in colors {
+		let name = format!("$COLOR_{name}");
+		style_dark = style_dark.replace(&name, dark);
+		style_light = style_light.replace(&name, light);
+	}
+	let style = format!(
+		r#"<style id="style-dark">{style_dark}</style>
+<script id="style-light" type="text/plain">{style_light}</script>"#
+	);
 	let mut readme_index = String::new();
 	{
 		let mut outputting = false;
@@ -205,14 +226,19 @@ fn try_main() -> Result<(), Box<dyn Error>> {
 		}
 	}
 	let nav_template = read_to_string("template-nav.html")?;
+	let color_scheme_selector = format!(
+		"<script>{}</script>",
+		read_to_string("color-scheme-selector.js")?
+	);
 	let process_html_file = |filename: &str, source: &str| -> Result<String, Box<dyn Error>> {
-		let nav = nav_template.replace(
+		let mut nav = nav_template.replace(
 			&format!("<td><a href=\"{filename}\""),
 			&format!("<td data-selected><a href=\"{filename}\""),
 		);
 		if nav == nav_template {
 			Err(format!("Couldn't find nav link for {filename}"))?;
 		}
+		nav.push_str(&color_scheme_selector);
 		Ok(source
 			.replace("${GUIDE}", &guide)
 			.replace("${VERSION}", &version)
@@ -231,6 +257,7 @@ fn try_main() -> Result<(), Box<dyn Error>> {
 		"Cargo.lock",
 		"Cargo.toml",
 		"rustfmt.toml",
+		"color-scheme-selector.js",
 	]
 	.into();
 	for filename in files {

@@ -1,17 +1,17 @@
 body {
 	font-family: "Noto Sans Mono", monospace;
-	background: #001;
-	color: #fff;
-	border: 1px solid #a77;
+	background: $COLOR_BG;
+	color: $COLOR_TEXT;
+	border: 1px solid $COLOR_BORDER;
 }
 img {
 	max-width: 100%;
 }
 a, a:visited {
-	color: #a7f;
+	color: $COLOR_LINK;
 }
 nav {
-	border-bottom: 1px solid #a77;
+	border-bottom: 1px solid $COLOR_BORDER;
 }
 nav table {
 	table-layout: fixed;
@@ -20,13 +20,13 @@ nav table {
 }
 nav td {
 	padding: 2px;
-	border-left: 1px solid #a77;
+	border-left: 1px solid $COLOR_BORDER;
 }
 nav td:nth-of-type(1) {
 	border-left: 0;
 }
 nav a, nav a:visited {
-	color: #fff;
+	color: $COLOR_TEXT;
 	text-decoration: none;
 	width: 100%;
 	height: 100%;
@@ -36,7 +36,7 @@ nav a:hover {
 	text-decoration: underline;
 }
 nav td[data-selected] {
-	background: #714f4f;
+	background: $COLOR_SELECTED_TAB_BG;
 }
 h1 {
 	margin: 8px 4px;
@@ -48,4 +48,9 @@ hgroup p {
 }
 main {
 	padding: 0 4px;
+}
+#color-scheme-select {
+	position: absolute;
+	margin-top: 4px;
+	right: 12px;
 }
