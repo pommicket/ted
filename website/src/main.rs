@@ -6,7 +6,7 @@ fn read_to_string(path: &str) -> Result<String, Box<dyn Error>> {
 	Ok(std::fs::read_to_string(path).map_err(|e| format!("Couldn't read {path}: {e}"))?)
 }
 
-fn markdown_to_html(path: &str) -> Result<String, Box<dyn Error>> {
+fn markdown_contents_to_html(contents: &str) -> Result<String, Box<dyn Error>> {
 	let options = markdown::Options {
 		compile: markdown::CompileOptions {
 			allow_dangerous_html: true,
@@ -15,20 +15,159 @@ fn markdown_to_html(path: &str) -> Result<String, Box<dyn Error>> {
 		},
 		..Default::default()
 	};
+	Ok(markdown::to_html_with_options(contents, &options).unwrap())
+}
+
+fn markdown_to_html(path: &str) -> Result<String, Box<dyn Error>> {
 	let contents = read_to_string(path)?;
-	Ok(markdown::to_html_with_options(&contents, &options).unwrap())
+	markdown_contents_to_html(&contents)
 }
 
 fn command_output(cmdline: &[&str]) -> Result<String, Box<dyn Error>> {
-	let output = Command::new(cmdline[0]).args(&cmdline[1..]).output()?;
+	let output = Command::new(cmdline[0])
+		.stderr(std::process::Stdio::piped())
+		.args(&cmdline[1..])
+		.output()?;
 	if !output.status.success() {
-		Err(format!(
-			"{} failed.\nstderr: {}",
-			cmdline[0],
-			String::from_utf8_lossy(&output.stderr)
-		))?;
+		Err(format!("{} failed.", cmdline[0]))?;
 	}
 	Ok(String::from_utf8(output.stdout)?)
+}
+
+// path for source tarball for version `version`.
+fn source_tarball_path(version: &str) -> String {
+	format!("releases/ted-{version}-src.tar.gz")
+}
+
+fn package_source(version: &str) -> Result<(), Box<dyn Error>> {
+	_ = std::fs::remove_dir_all("tmp-ted");
+	let status = Command::new("git")
+		.arg("clone")
+		.arg("..")
+		.arg("--single-branch")
+		.arg("--branch")
+		.arg(version)
+		.arg("tmp-ted")
+		.stdout(std::process::Stdio::null())
+		// annoyingly the "detached head" thing goes to stderr, so we have to void it.
+		.stderr(std::process::Stdio::null())
+		.status()
+		.map_err(|e| format!("cloning version {version}: {e}"))?;
+	if !status.success() {
+		Err(format!(
+			"cloning version {version}: git clone exited with code {status}"
+		))?;
+	}
+	let files = Command::new("git")
+		.current_dir("tmp-ted")
+		.arg("ls-files")
+		.arg("-z")
+		.stderr(std::process::Stdio::piped())
+		.output()?;
+	if !files.status.success() {
+		Err(format!(
+			"listing files for {version}: git clone exited with code {status}"
+		))?;
+	}
+	let files = String::from_utf8(files.stdout)?;
+	// first package to an intermediate file, in case tar process is interrupted
+	let tmp = "tmp.tar.gz";
+	let status = Command::new("tar")
+		.current_dir("tmp-ted")
+		.arg("-czf")
+		.arg(tmp)
+		.arg("--transform=s,^,ted/,")
+		.args(files.split('\0').filter(|x| !x.is_empty()))
+		.status()
+		.map_err(|e| format!("tarring version {version}: {e}"))?;
+	if !status.success() {
+		Err(format!(
+			"tarring version {version}: tar exited with code {status}"
+		))?;
+	}
+	std::fs::rename(format!("tmp-ted/{tmp}"), source_tarball_path(version))?;
+	Ok(())
+}
+
+fn process_changelog() -> Result<String, Box<dyn Error>> {
+	let changelog_in = read_to_string("../CHANGELOG.md")?;
+	let versions = changelog_in.split("## ");
+	let mut changelog_out = String::new();
+	if !std::fs::exists("releases")? {
+		eprintln!(
+			"Warning: releases/ does not exist.
+Installer download links will not be included for old versions."
+		);
+		std::fs::create_dir_all("releases")?;
+	}
+	let mut release_files = vec![];
+	for f in std::fs::read_dir("releases").map_err(|e| format!("reading releases/: {e}"))? {
+		let f = f?;
+		if let Some(s) = f.file_name().to_str() {
+			release_files.push(s.to_owned());
+		}
+	}
+	for description in versions {
+		if description.trim().is_empty() {
+			continue;
+		}
+		changelog_out.push_str("## ");
+		changelog_out.push_str(description);
+		let version = description
+			.split(' ')
+			.next()
+			.ok_or("Couldn't extract version number")?;
+		if version.starts_with("0.")
+			|| version.starts_with("1.")
+			|| version == "2.0"
+			|| version == "2.1"
+			|| version == "2.2"
+			|| version == "2.2r1"
+			|| version == "2.3"
+			|| version == "2.8.4"
+		{
+			// no tag available
+			continue;
+		}
+		if !std::fs::exists(source_tarball_path(version))? {
+			println!("Cloning {version}...");
+			package_source(version)?;
+		}
+		let mut debs = vec![];
+		let mut msis = vec![];
+		for file in &release_files {
+			if file.ends_with("_amd64.deb") && file.starts_with(&format!("ted_{version}-")) {
+				debs.push(file);
+			}
+			if file == &format!("ted_{version}_amd64.msi") {
+				msis.push(file);
+			}
+		}
+		if debs.len() > 1 {
+			Err(format!(
+				"More than one deb file found for version {version}"
+			))?;
+		}
+		if msis.len() > 1 {
+			Err(format!(
+				"More than one msi file found for version {version}"
+			))?;
+		}
+		if let [deb] = &debs[..] {
+			changelog_out.push_str(&format!(
+				"- [Debian/Ubuntu x86-64 (.deb)](releases/{deb})\n"
+			));
+		}
+		if let [msi] = &msis[..] {
+			changelog_out.push_str(&format!("- [Windows x86-64 (.msi)](releases/{msi})\n"));
+		}
+		changelog_out.push_str(&format!(
+			"- [Source code (.tar.gz)]({})\n",
+			source_tarball_path(version)
+		));
+		changelog_out.push('\n');
+	}
+	Ok(changelog_out)
 }
 
 fn try_main() -> Result<(), Box<dyn Error>> {
@@ -46,7 +185,7 @@ fn try_main() -> Result<(), Box<dyn Error>> {
 	}
 	let readme = markdown_to_html("../README.md")?;
 	let guide = markdown_to_html("../GUIDE.md")?;
-	let changelog = markdown_to_html("../CHANGELOG.md")?;
+	let changelog = markdown_contents_to_html(&process_changelog()?)?;
 	// The CSS is small enough that it's probably better just to include it inline
 	let style = format!("<style>{}</style>", read_to_string("main.css")?);
 	let mut readme_index = String::new();
@@ -67,12 +206,15 @@ fn try_main() -> Result<(), Box<dyn Error>> {
 	}
 	let nav_template = read_to_string("template-nav.html")?;
 	let process_html_file = |filename: &str, source: &str| -> Result<String, Box<dyn Error>> {
-		let nav = nav_template.replace(&format!("<td><a href=\"{filename}\""),
-			&format!("<td data-selected><a href=\"{filename}\""));
+		let nav = nav_template.replace(
+			&format!("<td><a href=\"{filename}\""),
+			&format!("<td data-selected><a href=\"{filename}\""),
+		);
 		if nav == nav_template {
 			Err(format!("Couldn't find nav link for {filename}"))?;
 		}
-		Ok(source.replace("${GUIDE}", &guide)
+		Ok(source
+			.replace("${GUIDE}", &guide)
 			.replace("${VERSION}", &version)
 			.replace("${NAV}", &nav)
 			.replace("${STYLE}", &style)
@@ -88,7 +230,7 @@ fn try_main() -> Result<(), Box<dyn Error>> {
 		"main.css",
 		"Cargo.lock",
 		"Cargo.toml",
-		"rustfmt.toml"
+		"rustfmt.toml",
 	]
 	.into();
 	for filename in files {
@@ -112,6 +254,19 @@ fn try_main() -> Result<(), Box<dyn Error>> {
 			std::fs::copy(filename, &output_path)?;
 		}
 	}
+	std::fs::create_dir_all("dist/releases")?;
+	println!("Link release files...");
+	for file in std::fs::read_dir("releases")? {
+		let file = file?.file_name();
+		let file = file
+			.to_str()
+			.ok_or_else(|| format!("Invalid UTF-8 in filename: {}", file.to_string_lossy()))?;
+		if !(file.ends_with(".tar.gz") || file.ends_with(".msi") || file.ends_with(".deb")) {
+			continue;
+		}
+		std::fs::hard_link(format!("releases/{file}"), format!("dist/releases/{file}"))?;
+	}
+	println!("All done!");
 	Ok(())
 }
 
