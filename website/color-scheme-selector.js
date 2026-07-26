@@ -14,10 +14,13 @@ function setStyle(style) {
 }
 addOption('dark');
 addOption('light');
+addOption('extradark');
 document.body.appendChild(select);
 if (window.localStorage && 
 	localStorage.getItem('ted-color-scheme')) {
-	setStyle(localStorage.getItem('ted-color-scheme'));
+	var prev = localStorage.getItem('ted-color-scheme');
+	setStyle(prev);
+	select.value = prev;
 }
 
 select.onchange = function () {

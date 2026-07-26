@@ -189,25 +189,28 @@ fn try_main() -> Result<(), Box<dyn Error>> {
 	// The CSS is small enough that it's probably better just to include it inline
 	let style_template = read_to_string("main.css")?;
 	let colors = [
-		// (color name, dark mode, light mode)
-		("BG", "#001", "#ddd"),
-		("TEXT", "#fff", "#000"),
-		("BORDER", "#a77", "#844"),
-		("SELECTED_TAB_BG", "#714f4f", "#ccadad"),
-		("LINK", "#a7f", "#70a"),
+		// (color name, dark, light, extradark)
+		("BG", "#001", "#eee", "#000"),
+		("TEXT", "#fff", "#000", "#fff"),
+		("BORDER", "#a77", "#844", "#9a7"),
+		("SELECTED_TAB_BG", "#714f4f", "#ccadad", "#66714f"),
+		("LINK", "#a7f", "#70a", "#c0f"),
 	];
 	let mut style_dark = style_template.clone();
 	let mut style_light = style_template.clone();
+	let mut style_extradark = style_template.clone();
 	// could just use light-dark() or var(), but that isn't supported
 	// on older browsers such as IE.
-	for (name, dark, light) in colors {
+	for (name, dark, light, extradark) in colors {
 		let name = format!("$COLOR_{name}");
 		style_dark = style_dark.replace(&name, dark);
+		style_extradark = style_extradark.replace(&name, extradark);
 		style_light = style_light.replace(&name, light);
 	}
 	let style = format!(
 		r#"<style id="style-dark">{style_dark}</style>
-<script id="style-light" type="text/plain">{style_light}</script>"#
+<script id="style-light" type="text/plain">{style_light}</script>
+<script id="style-extradark" type="text/plain">{style_extradark}</script>"#
 	);
 	let mut readme_index = String::new();
 	{
