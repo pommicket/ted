@@ -46,6 +46,7 @@ fn try_main() -> Result<(), Box<dyn Error>> {
 	}
 	let readme = markdown_to_html("../README.md")?;
 	let guide = markdown_to_html("../GUIDE.md")?;
+	let changelog = markdown_to_html("../CHANGELOG.md")?;
 	// The CSS is small enough that it's probably better just to include it inline
 	let style = format!("<style>{}</style>", read_to_string("main.css")?);
 	let mut readme_index = String::new();
@@ -75,7 +76,8 @@ fn try_main() -> Result<(), Box<dyn Error>> {
 			.replace("${VERSION}", &version)
 			.replace("${NAV}", &nav)
 			.replace("${STYLE}", &style)
-			.replace("${README}", &readme_index))
+			.replace("${README}", &readme_index)
+			.replace("${CHANGELOG}", &changelog))
 	};
 	let files = command_output(&["git", "ls-files", "-z"])?;
 	let files = files.split('\0');

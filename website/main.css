@@ -12,8 +12,6 @@ a, a:visited {
 }
 nav {
 	border-bottom: 1px solid #a77;
-	margin: 0;
-	padding: 0;
 }
 nav table {
 	table-layout: fixed;
@@ -40,16 +38,13 @@ nav a:hover {
 nav td[data-selected] {
 	background: #714f4f;
 }
-hgroup p, hgroup h1 {
-	font-weight: bold;
-}
 h1 {
 	margin: 8px 4px;
 }
 hgroup p {
+	font-weight: bold;
 	font-style: italic;
-	margin: 0;
-	margin-left: 2em;
+	margin: 0 0 0 2em;
 }
 main {
 	padding: 0 4px;
