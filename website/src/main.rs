@@ -238,9 +238,6 @@ fn try_main() -> Result<(), Box<dyn Error>> {
 			&format!("<td><a href=\"{filename}\""),
 			&format!("<td data-selected><a href=\"{filename}\""),
 		);
-		if nav == nav_template {
-			Err(format!("Couldn't find nav link for {filename}"))?;
-		}
 		nav.push_str(&color_scheme_selector);
 		Ok(source
 			.replace("${GUIDE}", &guide)
@@ -284,6 +281,8 @@ fn try_main() -> Result<(), Box<dyn Error>> {
 			std::fs::copy(filename, &output_path)?;
 		}
 	}
+	println!("Copying favicon.ico");
+	std::fs::copy("../assets/icon.ico", "dist/favicon.ico")?;
 	std::fs::create_dir_all("dist/releases")?;
 	println!("Link release files...");
 	for file in std::fs::read_dir("releases")? {
