@@ -76,11 +76,11 @@ keywords.h: keywords.py
 		GLOBAL_DATA_DIR='$(GLOBAL_DATA_DIR)' \
 		./makedeb.sh `basename $@ .deb`
 ted-versioned.deb: ted.deb
-	F=ted_`grep '#define TED_VERSION' ted.h | cut -d'"' -f2`-1_amd64.deb; \
+	F=ted_`./version.sh`-1_amd64.deb; \
 		echo "Outputting to $$F" && \
 		cp -i ted.deb "$$F"
 ted-static-sdl-versioned.deb: ted-static-sdl.deb
-	F=ted-static-sdl_`grep '#define TED_VERSION' ted.h | cut -d'"' -f2`-1_amd64.deb; \
+	F=ted-static-sdl_`./version.sh`-1_amd64.deb; \
 		echo "Outputting to $$F" && \
 		cp -i ted-static-sdl.deb "$$F"
 

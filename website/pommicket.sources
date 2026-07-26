@@ -1,0 +1,5 @@
+Types: deb
+URIs: https://s.pommicket.com/deb/
+Suites: stable
+Components: main 
+Signed-By: /usr/share/keyrings/pommicket.gpg

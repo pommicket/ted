@@ -20,7 +20,7 @@ else
 fi
 
 echo 'Package: '"$1"
-printf 'Version: %s\n' $(grep '#define TED_VERSION' ted.h | cut -d'"' -f2)
+printf 'Version: %s\n' `./version.sh`
 echo 'Section: text
 Priority: optional
 Architecture: amd64

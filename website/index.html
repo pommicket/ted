@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta content="width=device-width,initial-scale=1" name="viewport">
+<title>ted: a text editor</title>
+${STYLE}
+</head>
+<body>
+<hgroup><h1>ted</h1><p>A text editor for the 21<sup>st</sup> century</p></hgroup>
+${NAV}
+<main>
+<h2>Debian repository</h2>
+<p>
+To install the ted Debian repository on Debian or Ubuntu, and receive
+automatic updates, run
+</p>
+<pre><code>
+sudo sh -c 'curl https://ted.pommicket.com/install-repo.sh | sh'
+</code></pre>
+
+<h2>Download version ${VERSION}</h2>
+<ul>
+<li><a href="releases/ted-${VERSION}.deb">Debian/Ubuntu x86-64 (.deb)</a></li>
+<li><a href="releases/ted-${VERSION}.tar.gz">Other Linux x86-64 (.tar.gz)</a></li>
+<li><a href="releases/ted-${VERSION}.msi">Windows x86-64 (.msi)</a></li>
+<li><a href="releases/ted-${VERSION}-src.tar.gz">Source code (.tar.gz)</a></li>
+</ul>
+
+<img src="ted.png">
+
+<!-- Stuff from ../README.md -->
+
+${README}
+
+</main>
+</body>
+</html>

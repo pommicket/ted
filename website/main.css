@@ -1,0 +1,32 @@
+body {
+	font-family: "Noto Sans Mono", monospace;
+	background: #001;
+	color: #fff;
+	border: 1px solid #a77;
+}
+img {
+	max-width: 100%;
+}
+a, a:visited {
+	color: #a7f;
+}
+hgroup {
+	background: #714f4f;
+	border-bottom: 1px solid #a77;
+	margin: 0;
+	padding: 4px;
+	display: flex;
+}
+hgroup p, hgroup h1 {
+	display: inline;
+	font-weight: bold;
+	margin: 0;
+}
+hgroup p {
+	margin-left: 2em;
+	font-style: italic;
+	align-self: center;
+}
+nav, main {
+	padding: 0 4px;
+}
