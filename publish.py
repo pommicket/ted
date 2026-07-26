@@ -42,9 +42,9 @@ if version not in tags:
 	subprocess.run(['git', 'tag', '-s', version])
 
 confirm(f'\x1b[1mThis is the point of no return.\x1b[0m Push trunk and {version} everywhere? ')
-for remote in ['server']:# TODO, 'origin', 'github']:
+for remote in ['server', 'origin', 'github']:
 	subprocess.run(['git', 'push', remote, 'trunk', version])
 
 confirm('Publish website? ')
-subprocess.run(['rclone', 'copy', '-P', 'website/dist/', 'linode-br:/ted.pommicket.com/'])
+subprocess.run(['./website/publish.sh'])
 
