@@ -41,8 +41,8 @@ if version not in tags:
 	print('Creating tag…')
 	subprocess.run(['git', 'tag', '-s', version])
 
-confirm(f'This is the point of no return. Push trunk and {version} everywhere? ')
-for remote in ['server']# TODO, 'origin', 'github']:
+confirm(f'\x1b[1mThis is the point of no return.\x1b[0m Push trunk and {version} everywhere? ')
+for remote in ['server']:# TODO, 'origin', 'github']:
 	subprocess.run(['git', 'push', remote, 'trunk', version])
 
 confirm('Publish website? ')
