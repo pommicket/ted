@@ -1,3 +1,7 @@
+## 3.2.4 — 2026 Jul 26
+
+Fix composition being shown in non-active buffers.
+
 ## 3.2.3 — 2026 Jul 20
 
 Fix further SDL3 migration bugs.

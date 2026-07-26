@@ -1,9 +1,4 @@
 /*
-TODO:
-- Fix composition appearing in non-active buffers
-- Why doesn't compose emdash work??
-- composition underline color is sometimes wrong?? like under "TODO:" above.
-
 FUTURE:
 - write tests for
 	- syntax highlighting

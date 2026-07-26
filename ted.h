@@ -26,7 +26,7 @@ extern "C" {
 typedef uint32_t Keycode;
 
 /// Version number
-#define TED_VERSION "3.2.3"
+#define TED_VERSION "3.2.4"
 /// Config filename
 #define TED_CFG "ted.cfg"
 

@@ -1110,6 +1110,7 @@ static void buffer_render_char(TextBuffer *buffer, Font *font, TextRenderState *
 static u32 buffer_line_len_including_composition(TextBuffer *buffer, u32 line_number) {
 	u32 len = buffer_line_len(buffer, line_number);
 	if_likely (line_number != buffer->cursor_pos.line) return len;
+	if (buffer != buffer->ted->active_buffer) return len;
 	TextComposition *composition = buffer->ted->text_composition;
 	if (!composition) return len;
 	return (u32)(len + composition->before_selection.len
@@ -1123,6 +1124,7 @@ static u32 buffer_line_len_including_composition(TextBuffer *buffer, u32 line_nu
 static u32 buffer_index_including_composition_to_index_excluding_composition(TextBuffer *buffer, u32 line_number, u32 index) {
 	assert(index <= buffer_line_len_including_composition(buffer, line_number));
 	if_likely (line_number != buffer->cursor_pos.line) return index;
+	if (buffer != buffer->ted->active_buffer) return index;
 	u32 cursor_index = buffer->cursor_pos.index;
 	if (index < cursor_index) return index;
 	TextComposition *composition = buffer->ted->text_composition;
@@ -1142,6 +1144,7 @@ static char32_t buffer_line_at_index_including_composition(TextBuffer *buffer, u
 	assert(index <= buffer_line_len_including_composition(buffer, line_number));
 	char32_t *str = line->str;
 	if_likely (line_number != buffer->cursor_pos.line) return str[index];
+	if (buffer != buffer->ted->active_buffer) return str[index];
 	u32 cursor_index = buffer->cursor_pos.index;
 	if (index < cursor_index) return str[index];
 	TextComposition *composition = buffer->ted->text_composition;
@@ -1542,7 +1545,7 @@ void buffer_cursor_move_to_pos(TextBuffer *buffer, BufferPos pos) {
 	if (buffer_pos_eq(buffer->cursor_pos, pos)) {
 		return;
 	}
-	if (buffer->ted->text_composition) {
+	if (buffer == buffer->ted->active_buffer && buffer->ted->text_composition) {
 		// cancel active composition (hopefully)
 		SDL_StopTextInput(buffer->ted->window);
 		SDL_StartTextInput(buffer->ted->window);
@@ -3993,7 +3996,8 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 		double composition_start, composition_selection_start,
 			composition_selection_end, composition_end;
 		TextComposition *composition = NULL;
-		if_unlikely (line_idx == buffer->cursor_pos.line) {
+		if_unlikely (line_idx == buffer->cursor_pos.line
+			&& buffer->ted->active_buffer == buffer) {
 			composition = buffer->ted->text_composition;
 			if (composition) {
 				composition_start =
