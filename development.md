@@ -142,5 +142,5 @@ When releasing a new version of `ted`:
 - Update `TED_VERSION` in `ted.h`.
 - Update `CHANGELOG.md`.
 - Run `./update-windows-installer.py`.
-- Run `make.bat release` on Windows.
+- Run `make.bat release` on Windows, copy over `.msi`.
 - Run `make publish` on Debian/Ubuntu.
