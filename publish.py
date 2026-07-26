@@ -1,0 +1,50 @@
+#!/usr/bin/env python3
+
+import subprocess, re, sys, os, shutil
+
+# Script to publish new version of ted to the various places.
+def confirm(prompt):
+	ok = input(prompt)
+	if not ok.lower().startswith('y'):
+		print('Aborting.')
+		sys.exit(1)
+
+version = subprocess.check_output('./version.sh').decode().strip()
+assert not '\n' in version
+assert re.match(r'^\d+\.\d+\.\d+$', version), 'Unexpected version ' + version
+
+confirm('Publish ted v. ' + version + '? ')
+
+with open('CHANGELOG.md') as f:
+	assert f.read().startswith('## ' + version + ' '), \
+		'Changelog should start with ## ' + version
+
+print('Copying over remote files to local website/releases/…')
+subprocess.run(['rclone', 'copy', '-P', 'linode-br:/ted.pommicket.com/releases/', 'website/releases/'])
+
+print('Copying over ted.msi…')
+subprocess.run(['scp', 'git:ted.msi', '.'])
+checksum = subprocess.check_output(['sha256sum', 'ted.msi']).decode().strip().split()[0]
+confirm('Checksum is\n' + checksum + '\nIs this correct? ')
+
+print('Moving around files…')
+os.rename('ted.msi', f'website/releases/ted_{version}_amd64.msi')
+for package in ['ted', 'ted-static-sdl']:
+	for dest in ['website/releases', '/p/repo/pool/main']:
+		shutil.copyfile(f'{package}_{version}-1_amd64.deb', f'{dest}/{package}_{version}-1_amd64.deb')
+
+print('Building website…')
+subprocess.run(['cargo', 'run'], cwd='website')
+
+tags = subprocess.check_output(['git', 'tag']).decode().split('\n')
+if version not in tags:
+	print('Creating tag…')
+	subprocess.run(['git', 'tag', '-s', version])
+
+confirm(f'This is the point of no return. Push trunk and {version} everywhere? ')
+for remote in ['server']# TODO, 'origin', 'github']:
+	subprocess.run(['git', 'push', remote, 'trunk', version])
+
+confirm('Publish website? ')
+subprocess.run(['rclone', 'copy', '-P', 'website/dist/', 'linode-br:/ted.pommicket.com/'])
+

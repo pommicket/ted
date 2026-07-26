@@ -40,7 +40,8 @@ ted.release_debug: *.[ch] $(PCRELIB)
 ted-static-sdl.release: *.[ch] $(STATIC_SDL)
 	$(CC) main.c -g -o ted-static-sdl.release $(RELEASE_CFLAGS) $(LIBS_NON_SDL) $(STATIC_SDL)
 $(STATIC_SDL): $(FETCH_SDL)
-	cd $(SDL_DIR)/build && cmake -DCMAKE_BUILD_TYPE=Release -DSDL_STATIC=1 -S ..
+	@mkdir -p $(SDL_DIR)/build
+	cd $(SDL_DIR)/build && cmake -DCMAKE_BUILD_TYPE=Release -DSDL_TESTS=0 -DSDL_STATIC=1 -S ..
 	$(MAKE) -C $(SDL_DIR)/build
 $(FETCH_SDL):
 	[ -e $(SDL_DIR) ] && echo 'Directory $(SDL_DIR) already exists - try deleting it and rebuilding.' && exit 1 || :
@@ -78,10 +79,11 @@ keywords.h: keywords.py
 ted-versioned.deb: ted.deb
 	F=ted_`./version.sh`-1_amd64.deb; \
 		echo "Outputting to $$F" && \
-		cp -i ted.deb "$$F"
+		cp ted.deb "$$F"
 ted-static-sdl-versioned.deb: ted-static-sdl.deb
 	F=ted-static-sdl_`./version.sh`-1_amd64.deb; \
 		echo "Outputting to $$F" && \
-		cp -i ted-static-sdl.deb "$$F"
+		cp ted-static-sdl.deb "$$F"
 
 publish: ted-versioned.deb ted-static-sdl-versioned.deb
+	./publish.py
