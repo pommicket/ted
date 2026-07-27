@@ -4006,6 +4006,7 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 					composition_selection_end = NAN;
 			}
 		}
+		u32 composition_color = 0;
 		for (u32 i = 0; i < len_including_composition; ++i) {
 			char32_t c = buffer_line_at_index_including_composition(
 				buffer, line_idx, line, i);
@@ -4030,9 +4031,10 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 						}
 					}
 				}
-				SyntaxCharType type = char_types[index];
+				const SyntaxCharType type = char_types[index];
 				ColorSetting color = syntax_char_type_to_color_setting(type);
-				color_u32_to_floats(settings_color(settings, color), text_state.color);
+				composition_color = settings_color(settings, color);
+				color_u32_to_floats(composition_color, text_state.color);
 			}
 			if_unlikely (composition) {
 				// Track coordinates of start/end of composition and
@@ -4111,16 +4113,15 @@ void buffer_render(TextBuffer *buffer, Rect r) {
 					underline_thickness,
 				},
 			};
-			u32 color = color_floats_to_u32(text_state.color);
 			if (!composition->selection.len
 				|| composition->before_selection.len) {
-				gl_geometry_rect(before_selection_underline, color);
+				gl_geometry_rect(before_selection_underline, composition_color);
 			}
 			if (composition->selection.len) {
-				gl_geometry_rect(selection_underline, color);
+				gl_geometry_rect(selection_underline, composition_color);
 			}
 			if (composition->selection.len && composition->after_selection.len) {
-				gl_geometry_rect(after_selection_underline, color);
+				gl_geometry_rect(after_selection_underline, composition_color);
 			}
 		}
 
