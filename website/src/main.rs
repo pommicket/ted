@@ -135,9 +135,13 @@ Installer download links will not be included for old versions."
 		}
 		let mut debs = vec![];
 		let mut msis = vec![];
+		let mut static_sdl_debs = vec![];
 		for file in &release_files {
 			if file.ends_with("_amd64.deb") && file.starts_with(&format!("ted_{version}-")) {
 				debs.push(file);
+			}
+			if file.ends_with("_amd64.deb") && file.starts_with(&format!("ted-static-sdl_{version}-")) {
+				static_sdl_debs.push(file);
 			}
 			if file == &format!("ted_{version}_amd64.msi") {
 				msis.push(file);
@@ -148,6 +152,11 @@ Installer download links will not be included for old versions."
 				"More than one deb file found for version {version}"
 			))?;
 		}
+		if static_sdl_debs.len() > 1 {
+			Err(format!(
+				"More than one static-sdl deb file found for version {version}"
+			))?;
+		}
 		if msis.len() > 1 {
 			Err(format!(
 				"More than one msi file found for version {version}"
@@ -156,6 +165,11 @@ Installer download links will not be included for old versions."
 		if let [deb] = &debs[..] {
 			changelog_out.push_str(&format!(
 				"- [Debian/Ubuntu x86-64 (.deb)](releases/{deb})\n"
+			));
+		}
+		if let [deb_static_sdl] = &static_sdl_debs[..] {
+			changelog_out.push_str(&format!(
+				"- [Debian/Ubuntu x86-64, static SDL (.deb)](releases/{deb_static_sdl})\n"
 			));
 		}
 		if let [msi] = &msis[..] {
@@ -258,6 +272,7 @@ fn try_main() -> Result<(), Box<dyn Error>> {
 		"Cargo.toml",
 		"rustfmt.toml",
 		"color-scheme-selector.js",
+		"publish.sh",
 	]
 	.into();
 	for filename in files {

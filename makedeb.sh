@@ -25,7 +25,7 @@ run mkdir -p $DEBTMP/ted/usr/share/icons/hicolor/48x48/apps/
 run convert assets/icon.bmp -resize 48x48 $DEBTMP/ted/usr/share/icons/hicolor/48x48/apps/ted.png
 run mkdir -p $DEBTMP/ted/usr/share/applications
 run cp ted.desktop $DEBTMP/ted/usr/share/applications
-run cp $1.release $DEBTMP/ted${INSTALL_BIN_DIR}/
+run cp $1.release $DEBTMP/ted${INSTALL_BIN_DIR}/ted
 run cp -r assets themes ted.cfg $DEBTMP/ted${GLOBAL_DATA_DIR}/
 echo Running "./control.sh $1 > $DEBTMP/ted/DEBIAN/control"
 ./control.sh $1 > $DEBTMP/ted/DEBIAN/control || exit 1

@@ -48,3 +48,6 @@ for remote in ['server', 'origin', 'github']:
 confirm('Publish website? ')
 subprocess.run(['./website/publish.sh'])
 
+confirm('Publish to repo? ')
+subprocess.run(['../repo/release.sh'], cwd='../repo')
+
