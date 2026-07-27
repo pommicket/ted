@@ -16,7 +16,7 @@ addOption('dark');
 addOption('light');
 addOption('extradark');
 document.body.appendChild(select);
-if (window.localStorage && 
+if (window.localStorage &&
 	localStorage.getItem('ted-color-scheme')) {
 	var prev = localStorage.getItem('ted-color-scheme');
 	setStyle(prev);

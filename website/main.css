@@ -6,6 +6,7 @@ body {
 }
 img {
 	max-width: 100%;
+	height: auto;
 }
 a, a:visited {
 	color: $COLOR_LINK;
@@ -53,4 +54,7 @@ main {
 	position: absolute;
 	margin-top: 4px;
 	right: 12px;
+}
+pre {
+	white-space: pre-wrap;
 }
