@@ -278,7 +278,6 @@ int main(int argc, char *argv[]) {
 	    WSADATA wsaData = {0};
 	    WSAStartup(MAKEWORD(2, 2), &wsaData);
 	}
-	SetProcessDPIAware();
 #endif
 	PROFILE_TIME(init_start)
 	PROFILE_TIME(basic_init_start)
@@ -497,7 +496,8 @@ int main(int argc, char *argv[]) {
 	
 	PROFILE_TIME(window_start)
 	SDL_Window *window = SDL_CreateWindow("ted", 1280, 720,
-		(test ? SDL_WINDOW_HIDDEN : 0)|SDL_WINDOW_OPENGL|SDL_WINDOW_RESIZABLE);
+		(test ? SDL_WINDOW_HIDDEN : 0)|SDL_WINDOW_OPENGL|SDL_WINDOW_RESIZABLE
+		|SDL_WINDOW_HIGH_PIXEL_DENSITY);
 	if (!window)
 		die("%s", SDL_GetError());
 
@@ -785,6 +785,10 @@ int main(int argc, char *argv[]) {
 						(uint32_t)event.edit.start, (uint32_t)event.edit.length);
 				}
 			} break;
+			case SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED:
+				// new DPI = new text size probably
+				ted_update_text_size(ted);
+				break;
 			case SDL_EVENT_TEXT_INPUT: {
 				const char *text = event.text.text;
 				ted_clear_composition(ted);

@@ -178,7 +178,6 @@ void command_execute_string_argument(Ted *ted, Command c, const char *string) {
 void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argument, const CommandContext *context) {
 	TextBuffer *buffer = ted->active_buffer;
 	Node *node = ted->active_node;
-	Settings *settings = ted_active_settings(ted);
 	if (ted->recording_macro)
 		macro_add(ted, c, full_argument);
 	const char *argument_str = full_argument->string;
@@ -582,19 +581,19 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 
 	case CMD_TEXT_SIZE_INCREASE:
 		if (argument != 0) {
-			i64 new_text_size = settings->text_size + argument;
+			i64 new_text_size = ted->default_settings.text_size_no_dpi + argument;
 			if (new_text_size >= TEXT_SIZE_MIN && new_text_size <= TEXT_SIZE_MAX) {
-				settings->text_size = (u16)new_text_size;
-				ted_change_text_size(ted, (float)new_text_size);
+				ted->default_settings.text_size_no_dpi = (u16)new_text_size;
+				ted_update_text_size(ted);
 			}
 		}
 		break;
 	case CMD_TEXT_SIZE_DECREASE:
 		if (argument != 0) {
-			i64 new_text_size = settings->text_size - argument;
+			i64 new_text_size = ted->default_settings.text_size_no_dpi - argument;
 			if (new_text_size >= TEXT_SIZE_MIN && new_text_size <= TEXT_SIZE_MAX) {
-				settings->text_size = (u16)new_text_size;
-				ted_change_text_size(ted, (float)new_text_size);
+				ted->default_settings.text_size_no_dpi = (u16)new_text_size;
+				ted_update_text_size(ted);
 			}
 		}
 		break;

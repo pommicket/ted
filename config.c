@@ -149,7 +149,6 @@ static const SettingU16 settings_u16[] = {
 	{"framerate-cap", &settings_zero.framerate_cap, 3, 1000, false},
 	{"lsp-port", &settings_zero.lsp_port, 0, 65535, true},
 };
-const SettingU16 setting_text_size_dpi_aware = {NULL, &settings_zero.text_size, 0, U16_MAX, false};
 static const SettingU32 settings_u32[] = {
 	{"max-file-size", &settings_zero.max_file_size, 100, 2000000000, false},
 	{"max-file-size-view-only", &settings_zero.max_file_size_view_only, 100, 2000000000, false},
@@ -930,8 +929,8 @@ static int key_action_qsort_cmp_combo(const void *av, const void *bv) {
 }
 
 void settings_finalize(Ted *ted, Settings *settings) {
+	(void)ted;
 	arr_qsort(settings->key_actions, key_action_qsort_cmp_combo);
-	settings->text_size = clamp_u16((u16)roundf((float)settings->text_size_no_dpi * ted_get_ui_scaling(ted)), TEXT_SIZE_MIN, TEXT_SIZE_MAX);
 #if _WIN32
 	settings->crlf |= settings->crlf_windows;
 #endif

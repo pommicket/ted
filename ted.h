@@ -1248,10 +1248,6 @@ vec2 ted_mouse_pos(Ted *ted);
 bool ted_mouse_in_rect(Ted *ted, Rect r);
 /// reload all buffers from their files
 void ted_reload_all(Ted *ted);
-/// Change ted's font size.
-///
-/// Avoid calling this super often since it trashes all current font textures.
-void ted_change_text_size(Ted *ted, float new_size);
 /// Get likely root directory of project containing `path`.
 ///
 /// The returned value should be freed.
@@ -1319,6 +1315,9 @@ EditNotifyID ted_add_edit_notify(Ted *ted, EditNotify notify, void *context);
 ///
 /// if `id` is zero or invalid, no action is taken.
 void ted_remove_edit_notify(Ted *ted, EditNotifyID id);
+/// Get text size in physical pixels (DPI aware).
+float ted_text_size(Ted *ted);
+
 
 // === ui.c ===
 /// get a good size of button for this text

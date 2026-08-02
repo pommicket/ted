@@ -97,7 +97,6 @@ struct Settings {
 	u32 max_file_size_view_only;
 	u16 framerate_cap;
 	u16 text_size_no_dpi;
-	u16 text_size;
 	u16 max_menu_width;
 	u16 error_display_time;
 	u16 lsp_port;
@@ -305,11 +304,14 @@ struct Ted {
 	Macro *macros;
 	Macro *recording_macro;
 	bool executing_macro;
-	
-	SDL_Window *window;
+	// Current text size for keeping track of when it changes.
+	// Please use ted_text_size() instead of accessing this directly.
+	float font_text_size;
 	LoadedFont *all_fonts;
 	Font *font_bold;
 	Font *font;
+
+	SDL_Window *window;
 	TextBuffer *active_buffer;
 	/// buffer we are currently drag-to-selecting in, if any
 	TextBuffer *drag_buffer;
@@ -839,5 +841,7 @@ void ted_set_composition(Ted *ted, const char *text, uint32_t selection_start, u
 void ted_clear_composition(Ted *ted);
 /// Update the text input rectangle and cursor position reported to IME.
 void ted_update_ime_input_area(Ted *ted);
+/// Update ted's font size to match ted->default_settings' font size.
+void ted_update_text_size(Ted *ted);
 
 #endif // TED_INTERNAL_H_

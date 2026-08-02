@@ -525,7 +525,7 @@ static Font *ted_load_single_font(Ted *ted, const char *filename) {
 		}
 	}
 	
-	Font *font = text_font_load(path, ted_active_settings(ted)->text_size);
+	Font *font = text_font_load(path, ted_text_size(ted));
 	if (!font) {
 		ted_error(ted, "Couldn't load font '%s': %s\n", path, text_get_err());
 		free(path);
@@ -563,26 +563,20 @@ static Font *ted_load_multifont(Ted *ted, const char *filenames) {
 }
 
 float ted_get_ui_scaling(Ted *ted) {
-#if _WIN32
-	HWND hwnd = (HWND)SDL_GetPointerProperty(SDL_GetWindowProperties(ted->window), SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
-	if (!hwnd) {
-		// ???
-		return 1;
-	}
-	UINT dpi = GetDpiForWindow(hwnd);
-	if (!dpi)
-		return 1;
-	return (float)dpi / 96.0f;
-#else
-	// Could do this for linux as well.
-	// But then again, you can also just change the font size (and probably you'll want to do that anyways)
-	(void)ted;
-	return 1;
-#endif
+	return SDL_GetWindowDisplayScale(ted->window);
+}
+
+// Returns true if the text size changed.
+static bool check_for_new_text_size(Ted *ted) {
+	float old = ted->font_text_size;
+	ted->font_text_size = clampf((float)ted_active_settings(ted)->text_size_no_dpi * ted_get_ui_scaling(ted),
+		TEXT_SIZE_MIN, TEXT_SIZE_MAX);
+	return ted->font_text_size != old;
 }
 
 void ted_load_fonts(Ted *ted) {
 	ted_free_fonts(ted);
+	check_for_new_text_size(ted);
 	const Settings *settings = ted_active_settings(ted);
 	ted->font = ted_load_multifont(ted, rc_str(settings->font, ""));
 	if (!ted->font) {
@@ -596,9 +590,16 @@ void ted_load_fonts(Ted *ted) {
 	}
 }
 
-void ted_change_text_size(Ted *ted, float new_size) {
+float ted_text_size(Ted *ted) {
+	return ted->font_text_size;
+}
+
+void ted_update_text_size(Ted *ted) {
+	if (!check_for_new_text_size(ted)) {
+		return;
+	}
 	arr_foreach_ptr(ted->all_fonts, LoadedFont, f) {
-		text_font_change_size(f->font, new_size);
+		text_font_change_size(f->font, ted_text_size(ted));
 	}
 }
 
@@ -908,6 +909,7 @@ void ted_reload_configs(Ted *ted) {
 	arr_foreach_ptr(ted->buffers, TextBufferPtr, pbuf) {
 		buffer_recompute_settings(*pbuf);
 	}
+	ted_update_text_size(ted);
 }
 
 void ted_press_key(Ted *ted, SDL_Keycode keycode, u32 modifier) {
