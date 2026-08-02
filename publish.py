@@ -20,7 +20,7 @@ with open('CHANGELOG.md') as f:
 		'Changelog should start with ## ' + version
 
 print('Copying over remote files to local website/releases/…')
-subprocess.run(['rclone', 'copy', '-P', 'linode-br:/ted.pommicket.com/releases/', 'website/releases/'])
+subprocess.run(['rclone', 'copy', '-P', 'linode-fr:/ted.pommicket.com/releases/', 'website/releases/'])
 
 print('Copying over ted.msi…')
 subprocess.run(['scp', 'git:ted.msi', '.'])
