@@ -22,6 +22,10 @@ with open('CHANGELOG.md') as f:
 print('Copying over remote files to local website/releases/…')
 subprocess.run(['rclone', 'copy', '-P', 'linode-fr:/ted.pommicket.com/releases/', 'website/releases/'])
 
+print('Building .deb files…')
+subprocess.run(['make', 'ted-versioned.deb'])
+subprocess.run(['make', 'ted-static-sdl-versioned.deb'])
+
 print('Copying over ted.msi…')
 subprocess.run(['scp', 'git:ted.msi', '.'])
 checksum = subprocess.check_output(['sha256sum', 'ted.msi']).decode().strip().split()[0]
