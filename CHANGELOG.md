@@ -1,3 +1,12 @@
+## 3.2.5 — 2026 Aug 1
+
+- Make `text-size` update automatically when config is changed.
+- Fix blurry rendering on Linux with high DPI displays due to SDL3 migration.
+- Scale `text-size` by DPI on Linux — you might need to adjust your `text-size` for high DPI displays.
+  It was already scaled on Windows. I never bothered doing it for Linux because it wasn't easy to
+  look up the DPI scale with SDL2, but now with SDL3 it is :)
+- ted website is now installed to `/usr/share/doc/ted` on Linux.
+
 ## 3.2.4 — 2026 Jul 26
 
 Fix composition being shown in non-active buffers.
