@@ -1,0 +1,30 @@
+<h2>Debian repository</h2>
+<p>
+To install the ted Debian repository on Debian or Ubuntu, and receive
+automatic updates, run
+</p>
+<pre><code>
+sudo sh -c 'curl https://ted.pommicket.com/install-repo.sh | sh'
+</code></pre>
+<p>
+Then to install ted, run
+</p>
+<pre><code>
+sudo apt update
+sudo apt install ted
+</code></pre>
+<p>
+Or install <code>ted-static-sdl</code> if the <code>libsdl3-0</code> dependency is not found.
+</p>
+<h2>Download version ${VERSION}</h2>
+<ul>
+<li><a href="releases/ted_${VERSION}-1_amd64.deb">Debian/Ubuntu x86-64 (.deb)</a></li>
+<li><a href="releases/ted-static-sdl_${VERSION}-1_amd64.deb">Debian/Ubuntu x86-64, static SDL (.deb)*</a></li>
+<li><a href="releases/ted_${VERSION}_amd64.msi">Microsoft Windows® x86-64 (.msi)</a></li>
+<li><a href="releases/ted-${VERSION}-src.tar.gz">Source code (.tar.gz)</a></li>
+</ul>
+<p>
+<em>* use the static SDL version if you get a libsdl3-0 missing dependency message with the normal .deb</em>
+</p>
+
+<img src="ted.png" alt="" width="880" height="660">

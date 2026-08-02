@@ -1,6 +1,14 @@
+use std::cell::OnceCell;
 use std::collections::HashSet;
 use std::error::Error;
 use std::process::{Command, ExitCode};
+
+#[derive(Default)]
+struct Settings {
+	// true = include download files and links for all the versions of ted, etc.,
+	// false = this is for local documentation, don't include all that.
+	for_world_wide_web: bool,
+}
 
 fn read_to_string(path: &str) -> Result<String, Box<dyn Error>> {
 	Ok(std::fs::read_to_string(path).map_err(|e| format!("Couldn't read {path}: {e}"))?)
@@ -89,22 +97,21 @@ fn package_source(version: &str) -> Result<(), Box<dyn Error>> {
 	Ok(())
 }
 
-fn process_changelog() -> Result<String, Box<dyn Error>> {
+fn process_changelog(settings: &Settings) -> Result<String, Box<dyn Error>> {
 	let changelog_in = read_to_string("../CHANGELOG.md")?;
 	let versions = changelog_in.split("## ");
 	let mut changelog_out = String::new();
-	if !std::fs::exists("releases")? {
-		eprintln!(
-			"Warning: releases/ does not exist.
-Installer download links will not be included for old versions."
-		);
-		std::fs::create_dir_all("releases")?;
-	}
 	let mut release_files = vec![];
-	for f in std::fs::read_dir("releases").map_err(|e| format!("reading releases/: {e}"))? {
-		let f = f?;
-		if let Some(s) = f.file_name().to_str() {
-			release_files.push(s.to_owned());
+	if settings.for_world_wide_web && !std::fs::exists("releases")? {
+		Err("Building with --www, but releases/ doesn't exist.
+It should exist and have all the old ted installers.")?;
+	}
+	if settings.for_world_wide_web {
+		for f in std::fs::read_dir("releases").map_err(|e| format!("reading releases/: {e}"))? {
+			let f = f?;
+			if let Some(s) = f.file_name().to_str() {
+				release_files.push(s.to_owned());
+			}
 		}
 	}
 	for description in versions {
@@ -117,7 +124,8 @@ Installer download links will not be included for old versions."
 			.split(' ')
 			.next()
 			.ok_or("Couldn't extract version number")?;
-		if version.starts_with("0.")
+		if !settings.for_world_wide_web
+			|| version.starts_with("0.")
 			|| version.starts_with("1.")
 			|| version == "2.0"
 			|| version == "2.1"
@@ -140,7 +148,9 @@ Installer download links will not be included for old versions."
 			if file.ends_with("_amd64.deb") && file.starts_with(&format!("ted_{version}-")) {
 				debs.push(file);
 			}
-			if file.ends_with("_amd64.deb") && file.starts_with(&format!("ted-static-sdl_{version}-")) {
+			if file.ends_with("_amd64.deb")
+				&& file.starts_with(&format!("ted-static-sdl_{version}-"))
+			{
 				static_sdl_debs.push(file);
 			}
 			if file == &format!("ted_{version}_amd64.msi") {
@@ -184,7 +194,7 @@ Installer download links will not be included for old versions."
 	Ok(changelog_out)
 }
 
-fn try_main() -> Result<(), Box<dyn Error>> {
+fn try_main(settings: &Settings) -> Result<(), Box<dyn Error>> {
 	_ = std::fs::remove_dir_all("dist");
 	std::fs::create_dir("dist")?;
 
@@ -199,7 +209,7 @@ fn try_main() -> Result<(), Box<dyn Error>> {
 	}
 	let readme = markdown_to_html("../README.md")?;
 	let guide = markdown_to_html("../GUIDE.md")?;
-	let changelog = markdown_contents_to_html(&process_changelog()?)?;
+	let changelog = markdown_contents_to_html(&process_changelog(settings)?)?;
 	// The CSS is small enough that it's probably better just to include it inline
 	let style_template = read_to_string("main.css")?;
 	let colors = [
@@ -247,6 +257,7 @@ fn try_main() -> Result<(), Box<dyn Error>> {
 		"<script>{}</script>",
 		read_to_string("color-scheme-selector.js")?
 	);
+	let index_www_only: OnceCell<String> = Default::default();
 	let process_html_file = |filename: &str, source: &str| -> Result<String, Box<dyn Error>> {
 		let mut nav = nav_template.replace(
 			&format!("<td><a href=\"{filename}\""),
@@ -259,11 +270,22 @@ fn try_main() -> Result<(), Box<dyn Error>> {
 			.replace("${NAV}", &nav)
 			.replace("${STYLE}", &style)
 			.replace("${README}", &readme_index)
-			.replace("${CHANGELOG}", &changelog))
+			.replace("${CHANGELOG}", &changelog)
+			.replace("${INDEX_WWW_ONLY}", index_www_only.get().map_or("", |s| s)))
 	};
+	// Download links, etc. should only be shown on index.html if we actually have
+	// release files.
+	if settings.for_world_wide_web {
+		index_www_only
+			.set(process_html_file(
+				"",
+				&read_to_string("template-index-www-only.html")?,
+			)?)
+			.unwrap();
+	}
 	let files = command_output(&["git", "ls-files", "-z"])?;
 	let files = files.split('\0');
-	let excluded: HashSet<&'static str> = [
+	let mut excluded: HashSet<&'static str> = [
 		".",
 		"..",
 		"dist",
@@ -275,6 +297,14 @@ fn try_main() -> Result<(), Box<dyn Error>> {
 		"publish.sh",
 	]
 	.into();
+	if !settings.for_world_wide_web {
+		excluded.extend([
+			"ted.png",
+			"install-repo.sh",
+			"pommicket.gpg",
+			"pommicket.sources",
+		]);
+	}
 	for filename in files {
 		if filename.is_empty() {
 			continue;
@@ -298,24 +328,37 @@ fn try_main() -> Result<(), Box<dyn Error>> {
 	}
 	println!("Copying favicon.ico");
 	std::fs::copy("../assets/icon.ico", "dist/favicon.ico")?;
-	std::fs::create_dir_all("dist/releases")?;
-	println!("Link release files...");
-	for file in std::fs::read_dir("releases")? {
-		let file = file?.file_name();
-		let file = file
-			.to_str()
-			.ok_or_else(|| format!("Invalid UTF-8 in filename: {}", file.to_string_lossy()))?;
-		if !(file.ends_with(".tar.gz") || file.ends_with(".msi") || file.ends_with(".deb")) {
-			continue;
+	if settings.for_world_wide_web {
+		std::fs::create_dir_all("dist/releases")?;
+		println!("Link release files...");
+		for file in std::fs::read_dir("releases")? {
+			let file = file?.file_name();
+			let file = file
+				.to_str()
+				.ok_or_else(|| format!("Invalid UTF-8 in filename: {}", file.to_string_lossy()))?;
+			if !(file.ends_with(".tar.gz") || file.ends_with(".msi") || file.ends_with(".deb")) {
+				continue;
+			}
+			std::fs::hard_link(format!("releases/{file}"), format!("dist/releases/{file}"))?;
 		}
-		std::fs::hard_link(format!("releases/{file}"), format!("dist/releases/{file}"))?;
 	}
 	println!("All done!");
 	Ok(())
 }
 
 fn main() -> ExitCode {
-	match try_main() {
+	let mut args: Vec<String> = std::env::args().collect();
+	args.remove(0);
+	let mut settings = Settings::default();
+	if let Some(i) = args.iter().position(|x| x == "--www") {
+		settings.for_world_wide_web = true;
+		args.remove(i);
+	}
+	if !args.is_empty() {
+		eprintln!("Unrecognized arguments: {args:?}");
+		return ExitCode::FAILURE;
+	}
+	match try_main(&settings) {
 		Ok(()) => ExitCode::SUCCESS,
 		Err(e) => {
 			eprintln!("{e}");

@@ -48,13 +48,7 @@ For how to use ted, see [GUIDE.md](GUIDE.md).
 
 ## Building from source
 
-Download `ted`'s source tree with the link above or
-
-```
-git clone --recursive https://cgit.pommicket.com/ted.git
-```
-
-If you didn't use the command above,
+Download `ted`'s source code, then
 run `git submodule update --init --recursive` to download ted’s dependencies.
 
 To install `ted` from source on Linux, you will also need:
@@ -81,7 +75,7 @@ with
 
 ```bash
 mkdir -p ~/.local/bin ~/.local/share
-GLOBAL_DATA_DIR='~/.local/share/ted-data' LOCAL_DATA_DIR='~/.local/share/ted' INSTALL_BIN_DIR='~/.local/bin' make install -j
+GLOBAL_DATA_DIR='~/.local/share/ted-data' INSTALL_DIR='~/.local' make install -j
 ```
 
 On Windows, install Microsoft Visual Studio 2026, then find and add vcvarsall.bat to your PATH

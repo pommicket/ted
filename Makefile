@@ -1,11 +1,14 @@
 # where to put ted's files
+# INSTALL_DIR = prefix for GLOBAL_DATA_DIR, BIN_DIR, DOC_DIR, if they're not provided
 # GLOBAL_DATA_DIR = files shared between all users (e.g. default ted.cfg)
 # LOCAL_DATA_DIR = user-specific files
 # either one can start with ~ for home directory.
 # these are currently ignored for debug builds.
-GLOBAL_DATA_DIR?=/usr/share/ted
+INSTALL_DIR?=/usr
+DOC_DIR?=$(INSTALL_DIR)/share/doc/ted
+GLOBAL_DATA_DIR?=$(INSTALL_DIR)/share/ted
 LOCAL_DATA_DIR?=~/.local/share/ted
-INSTALL_BIN_DIR?=/usr/bin
+BIN_DIR?=$(INSTALL_DIR)/bin
 DEBTMP=deb-tmp
 
 ALL_CFLAGS=$(CFLAGS) -Wall -Wextra -Wshadow -Wconversion -Wpedantic -pedantic -std=gnu11 \
@@ -54,13 +57,13 @@ clean:
 install: install-ted
 install-%: %.release
 	@[ -w `dirname $(GLOBAL_DATA_DIR)` ] || { echo "You need permission to write to $(GLOBAL_DATA_DIR). Try running with sudo/as root." && exit 1; }
-	@[ -w `dirname $(INSTALL_BIN_DIR)` ] || { echo "You need permission to write to $(INSTALL_BIN_DIR). Try running with sudo/as root." && exit 1; }
+	@[ -w `dirname $(BIN_DIR)` ] || { echo "You need permission to write to $(BIN_DIR). Try running with sudo/as root." && exit 1; }
 
 	mkdir -p $(GLOBAL_DATA_DIR)
 	cp -r assets $(GLOBAL_DATA_DIR)
 	cp -r themes $(GLOBAL_DATA_DIR)
 	install -m 644 ted.cfg $(GLOBAL_DATA_DIR)
-	install $< $(INSTALL_BIN_DIR)/ted
+	install $< $(BIN_DIR)/ted
 $(PCRELIB):
 	@if [ '!' -f pcre2/build/Makefile ]; then \
 		rm -rf pcre2/build; \
@@ -72,9 +75,10 @@ $(PCRELIB):
 keywords.h: keywords.py
 	python3 keywords.py
 %.deb: %.release control.sh makedeb.sh
-	INSTALL_BIN_DIR='$(INSTALL_BIN_DIR)' \
+	BIN_DIR='$(BIN_DIR)' \
 		LOCAL_DATA_DIR='$(LOCAL_DATA_DIR)' \
 		GLOBAL_DATA_DIR='$(GLOBAL_DATA_DIR)' \
+		DOC_DIR='$(DOC_DIR)' \
 		./makedeb.sh `basename $@ .deb`
 ted-versioned.deb: ted.deb
 	F=ted_`./version.sh`-1_amd64.deb; \

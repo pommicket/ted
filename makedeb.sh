@@ -17,16 +17,32 @@ run() {
 	$@ || exit 1
 }
 
+if cargo --version 2>&1 >/dev/null; then
+	cd website
+	run cargo run
+	cd ..
+else
+	printf 'Rust not found, so documentation will not be built. Is this okay [y/n]? '
+	read ok
+	if [ "$ok" != 'y' ]; then
+		echo 'Aborting.'
+		exit 1
+	fi
+fi
 run rm -rf $DEBTMP
 run mkdir -p $DEBTMP/ted/DEBIAN
-run mkdir -p $DEBTMP/ted${INSTALL_BIN_DIR}
+run mkdir -p $DEBTMP/ted${BIN_DIR}
 run mkdir -p $DEBTMP/ted${GLOBAL_DATA_DIR}
 run mkdir -p $DEBTMP/ted/usr/share/icons/hicolor/48x48/apps/
 run convert assets/icon.bmp -resize 48x48 $DEBTMP/ted/usr/share/icons/hicolor/48x48/apps/ted.png
 run mkdir -p $DEBTMP/ted/usr/share/applications
 run cp ted.desktop $DEBTMP/ted/usr/share/applications
-run cp $1.release $DEBTMP/ted${INSTALL_BIN_DIR}/ted
+run cp $1.release $DEBTMP/ted${BIN_DIR}/ted
 run cp -r assets themes ted.cfg $DEBTMP/ted${GLOBAL_DATA_DIR}/
+if [ -d website/dist ]; then
+	run mkdir -p $DEBTMP/ted${DOC_DIR}/
+	run cp website/dist/* $DEBTMP/ted${DOC_DIR}/
+fi
 echo Running "./control.sh $1 > $DEBTMP/ted/DEBIAN/control"
 ./control.sh $1 > $DEBTMP/ted/DEBIAN/control || exit 1
 run dpkg-deb --root-owner-group --build $DEBTMP/ted
