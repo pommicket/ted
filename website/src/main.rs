@@ -137,6 +137,7 @@ It should exist and have all the old ted installers.")?;
 			// no tag available
 			continue;
 		}
+		changelog_out.push_str("### Downloads\n");
 		if !std::fs::exists(source_tarball_path(version))? {
 			println!("Cloning {version}...");
 			package_source(version)?;
@@ -191,6 +192,7 @@ It should exist and have all the old ted installers.")?;
 		));
 		changelog_out.push('\n');
 	}
+println!("{changelog_out}");
 	Ok(changelog_out)
 }
 
