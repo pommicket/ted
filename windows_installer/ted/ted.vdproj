@@ -57,7 +57,25 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_6FED88F936F141EFAA2CA0CE50CEE698"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_7A72229CE9684EEAB9C107D98025399F"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_91D7FF67C24C4FB284889D190EE59ACD"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_92E95F7A36244FDCA2AAEF66F723547D"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -81,6 +99,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_AAE089CCBF6B446D8233D5CE2A91E7C7"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_ACFEB51FD2794D5A824F2A1A763DF2DF"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
@@ -94,6 +118,12 @@
         "Entry"
         {
         "MsmKey" = "8:_BAE9D84A9581438492544CD343FEF163"
+        "OwnerKey" = "8:_UNDEFINED"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
+        "MsmKey" = "8:_C7BC1FDFC4F64C2E979BCD40E4AE0A0F"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -342,12 +372,72 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_6FED88F936F141EFAA2CA0CE50CEE698"
+            {
+            "SourcePath" = "8:..\\..\\website\\dist\\guide.html"
+            "TargetName" = "8:guide.html"
+            "Tag" = "8:"
+            "Folder" = "8:_3AE64F691700470C93B08F170CFCF9DF"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_7A72229CE9684EEAB9C107D98025399F"
+            {
+            "SourcePath" = "8:..\\..\\website\\dist\\changelog.html"
+            "TargetName" = "8:changelog.html"
+            "Tag" = "8:"
+            "Folder" = "8:_3AE64F691700470C93B08F170CFCF9DF"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_91D7FF67C24C4FB284889D190EE59ACD"
             {
             "SourcePath" = "8:..\\..\\assets\\icon.ico"
             "TargetName" = "8:icon.ico"
             "Tag" = "8:"
             "Folder" = "8:_B3FB164B3BC947688BD157D4F95FC865"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_92E95F7A36244FDCA2AAEF66F723547D"
+            {
+            "SourcePath" = "8:..\\..\\website\\dist\\index.html"
+            "TargetName" = "8:index.html"
+            "Tag" = "8:"
+            "Folder" = "8:_3AE64F691700470C93B08F170CFCF9DF"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -422,6 +512,26 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_AAE089CCBF6B446D8233D5CE2A91E7C7"
+            {
+            "SourcePath" = "8:..\\..\\website\\dist\\favicon.ico"
+            "TargetName" = "8:favicon.ico"
+            "Tag" = "8:"
+            "Folder" = "8:_3AE64F691700470C93B08F170CFCF9DF"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
             "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_ACFEB51FD2794D5A824F2A1A763DF2DF"
             {
             "SourcePath" = "8:..\\..\\LICENSE.txt"
@@ -468,6 +578,26 @@
             "TargetName" = "8:README.md"
             "Tag" = "8:"
             "Folder" = "8:_569DA12250204417A1AE6410E061AAFF"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:FALSE"
+            "IsDependency" = "11:FALSE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_C7BC1FDFC4F64C2E979BCD40E4AE0A0F"
+            {
+            "SourcePath" = "8:..\\..\\website\\dist\\404.html"
+            "TargetName" = "8:404.html"
+            "Tag" = "8:"
+            "Folder" = "8:_3AE64F691700470C93B08F170CFCF9DF"
             "Condition" = "8:"
             "Transitive" = "11:FALSE"
             "Vital" = "11:TRUE"
@@ -565,6 +695,17 @@
                     "Condition" = "8:"
                     "Transitive" = "11:FALSE"
                     "Property" = "8:_3D89FD3EC68247C0950547DA2FAE0EDB"
+                        "Folders"
+                        {
+                        }
+                    }
+                    "{9EF0B969-E518-4E46-987F-47570745A589}:_3AE64F691700470C93B08F170CFCF9DF"
+                    {
+                    "Name" = "8:doc"
+                    "AlwaysCreate" = "11:FALSE"
+                    "Condition" = "8:"
+                    "Transitive" = "11:FALSE"
+                    "Property" = "8:_8EF2A5F5A71A41FD8DF8F77467E9804D"
                         "Folders"
                         {
                         }

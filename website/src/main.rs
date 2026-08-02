@@ -194,11 +194,24 @@ It should exist and have all the old ted installers.")?;
 	Ok(changelog_out)
 }
 
+fn get_version() -> Result<String, Box<dyn Error>> {
+	for line in read_to_string("../ted.h")?.split('\n') {
+		if let Some(ver) = line.strip_prefix("#define TED_VERSION \"") {
+			let ver = ver.split('"').next().unwrap();
+			if !ver.bytes().all(|b| b.is_ascii_digit() || b == b'.') {
+				Err(format!("Invalid version in ../ted.h: {ver}"))?
+			}
+			return Ok(ver.to_owned());
+		}
+	}
+	Err("No version found in ../ted.h".into())
+}
+
 fn try_main(settings: &Settings) -> Result<(), Box<dyn Error>> {
 	_ = std::fs::remove_dir_all("dist");
 	std::fs::create_dir("dist")?;
 
-	let version: String = command_output(&["../version.sh"])?.trim_ascii_end().into();
+	let version: String = get_version()?;
 	let version_parts: Vec<_> = version.split('.').collect();
 	assert_eq!(version_parts.len(), 3, "ted version should have 3 parts");
 	for part in version_parts {
