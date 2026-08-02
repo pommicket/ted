@@ -3,6 +3,9 @@
 After installing ted, you can just start using it like you would any other editor. The keyboard shortcuts
 are mostly what you'd expect them to be (Ctrl+o for open, Ctrl+n for new, Ctrl+s for save, etc.).
 
+You can open this page from ted by pressing Ctrl+Shift+p
+to open the command palette, and selecting "open-guide".
+
 ### Tips
 
 - Even if you don't want to change anything with ted, it's a good idea to look at the config file (see below) to

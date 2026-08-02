@@ -35,6 +35,13 @@ the first character can be interpreted specially if it is one of the following:
 	#define TED_GLOBAL_DATA_DIR "/usr/share/ted"
 #endif
 #endif
+#ifndef TED_DOC_DIR
+#if _WIN32
+	#define TED_DOC_DIR "@/doc"
+#else
+	#define TED_DOC_DIR "/usr/share/doc/ted"
+#endif
+#endif
 #ifndef TED_LOCAL_DATA_DIR
 #if _WIN32
 	#define TED_LOCAL_DATA_DIR "^/ted"
@@ -427,6 +434,7 @@ int main(int argc, char *argv[]) {
 		DataDir data_dirs[] = {
 			{.src = TED_LOCAL_DATA_DIR, .dest = &ted->local_data_dir},
 			{.src = TED_GLOBAL_DATA_DIR, .dest = &ted->global_data_dir},
+			{.src = TED_DOC_DIR, .dest = &ted->doc_dir},
 		};
 		for (size_t i = 0; i < arr_count(data_dirs); i++) {
 			const char *src = data_dirs[i].src;
@@ -1341,6 +1349,7 @@ int main(int argc, char *argv[]) {
 	free(ted->warn_overwrite);
 	free(ted->local_data_dir);
 	free(ted->global_data_dir);
+	free(ted->doc_dir);
 	free(ted->home);
 	free(ted);
 	return 0;

@@ -97,6 +97,8 @@ typedef enum {
 	CMD_REDO,
 	CMD_COMMAND_SELECTOR,
 	CMD_OPEN_CONFIG,
+	/// Open ted documentation in default browser
+	CMD_OPEN_GUIDE,
 	/// reload all buffers from file
 	CMD_RELOAD_ALL,
 	CMD_QUIT,

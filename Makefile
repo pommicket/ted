@@ -14,7 +14,7 @@ DEBTMP=deb-tmp
 ALL_CFLAGS=$(CFLAGS) -Wall -Wextra -Wshadow -Wconversion -Wpedantic -pedantic -std=gnu11 \
 	-Wno-unused-function -Wno-fixed-enum-extension -Wimplicit-fallthrough -Wno-format-truncation -Wno-unknown-warning-option \
 	-Ipcre2 -DTED_GLOBAL_DATA_DIR='"$(GLOBAL_DATA_DIR)"' -DTED_LOCAL_DATA_DIR='"$(LOCAL_DATA_DIR)"' \
-	-fno-omit-frame-pointer
+	-DTED_DOC_DIR='"$(DOC_DIR)"' -fno-omit-frame-pointer
 LIBS_NON_SDL=-lm libpcre2-32.a libpcre2-8.a
 LIBS=$(LIBS_NON_SDL) -lSDL3
 SDL_DIR=SDL3

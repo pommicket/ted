@@ -5,7 +5,8 @@
 - Scale `text-size` by DPI on Linux — you might need to adjust your `text-size` for high DPI displays.
   It was already scaled on Windows. I never bothered doing it for Linux because it wasn't easy to
   look up the DPI scale with SDL2, but now with SDL3 it is :)
-- ted website is now installed to `/usr/share/doc/ted` on Linux.
+- ted website is now installed to `/usr/share/doc/ted` on Linux and `C:\Program Files (x86)\ted\doc` on Windows.
+- You can now open the [guide](guide.html) with `:open-guide`.
 
 ## 3.2.4 — 2026 Jul 26
 

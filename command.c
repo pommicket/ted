@@ -62,6 +62,7 @@ static CommandName command_names[] = {
 	{"set-language", CMD_SET_LANGUAGE},
 	{"command-selector", CMD_COMMAND_SELECTOR},
 	{"open-config", CMD_OPEN_CONFIG},
+	{"open-guide", CMD_OPEN_GUIDE},
 	{"undo", CMD_UNDO},
 	{"redo", CMD_REDO},
 	{"copy", CMD_COPY},
@@ -574,6 +575,22 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 		char *local_config_filename = a_sprintf("%s%c%s", ted->local_data_dir, PATH_SEPARATOR, TED_CFG);
 		ted_open_file(ted, local_config_filename);
 		free(local_config_filename);
+	} break;
+	case CMD_OPEN_GUIDE: {
+		char *guide_dir = NULL;
+		if (ted->doc_dir) {
+			guide_dir = a_sprintf("%s/guide.html", ted->doc_dir);
+			if (guide_dir && !fs_file_exists(guide_dir)) {
+				free(guide_dir);
+				guide_dir = NULL;
+			}
+		}
+		if (guide_dir) {
+			open_with_default_application(guide_dir);
+			free(guide_dir);
+		} else {
+			ted_error(ted, "Can't open documentation: ted was installed without documentation.");
+		}
 	} break;
 	case CMD_COMMAND_SELECTOR:
 		menu_open(ted, MENU_COMMAND_SELECTOR);

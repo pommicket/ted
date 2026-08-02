@@ -451,6 +451,8 @@ struct Ted {
 	char *build_dir;
 	/// where we are reading tags from
 	char *tags_dir;
+	/// directory where ted's documentation lives
+	char *doc_dir;
 	/// `nodes[0]` is always the "root node", if any buffers are open.
 	Node **nodes;
 	TextBuffer **buffers;
