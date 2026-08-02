@@ -74,7 +74,7 @@ $(PCRELIB):
 	cp pcre2/build/libpcre2-32.a pcre2/build/libpcre2-8.a .
 keywords.h: keywords.py
 	python3 keywords.py
-%.deb: %.release control.sh makedeb.sh
+%.deb: %.release control.sh makedeb.sh website/*.html website/src/*.rs
 	BIN_DIR='$(BIN_DIR)' \
 		LOCAL_DATA_DIR='$(LOCAL_DATA_DIR)' \
 		GLOBAL_DATA_DIR='$(GLOBAL_DATA_DIR)' \
