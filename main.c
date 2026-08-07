@@ -749,6 +749,9 @@ int main(int argc, char *argv[]) {
 					arr_add(ted->mouse_clicks[button], click);
 				}
 			} break;
+			case SDL_EVENT_DROP_FILE:
+				ted_open_file(ted, event.drop.data);
+				break;
 			case SDL_EVENT_MOUSE_BUTTON_UP: {
 				if (ted->recording_macro)
 					break; // ignore mouse input during macros
