@@ -270,9 +270,18 @@ static LONG WINAPI error_signal_handler(EXCEPTION_POINTERS *info) {
 
 static void ted_update_window_dimensions(Ted *ted) {
 	int w = 0, h = 0;
-	SDL_GetWindowSize(ted->window, &w, &h);
+	SDL_GetWindowSizeInPixels(ted->window, &w, &h);
 	gl_window_width = ted->window_width = (float)w;
 	gl_window_height = ted->window_height = (float)h;
+}
+
+static vec2 convert_sdl_event_coordinates(Ted *ted, float x, float y) {
+	// why is there no hint for doing this automatically?????
+	float dpi = SDL_GetWindowPixelDensity(ted->window);
+	return (vec2){
+		.x = dpi * (float)x,
+		.y = dpi * (float)y,
+	};
 }
 
 #if __unix__
@@ -696,7 +705,7 @@ int main(int argc, char *argv[]) {
 				
 				Uint32 button = event.button.button;
 				u8 times = event.button.clicks; // number of clicks
-				float x = (float)event.button.x, y = (float)event.button.y;
+				// why is there no SDL hint that automatically converts event coordinates??????
 				
 				if (button == SDL_BUTTON_X1) {
 					ted_press_key(ted, KEYCODE_X1, key_modifier);
@@ -706,7 +715,7 @@ int main(int argc, char *argv[]) {
 				
 				if (button >= arr_count(ted->mouse_clicks)) break;
 				
-				vec2 pos = {x, y};
+				vec2 pos = convert_sdl_event_coordinates(ted, event.button.x, event.button.y);
 				bool add = true;
 				if (*ted->message_shown) {
 					if (rect_contains_point(message_box_rect(ted), pos)) {
@@ -759,7 +768,7 @@ int main(int argc, char *argv[]) {
 				Uint8 button = event.button.button;
 				if (button >= arr_count(ted->mouse_releases)) break;
 				
-				vec2 pos = {(float)event.button.x, (float)event.button.y};
+				vec2 pos = convert_sdl_event_coordinates(ted, event.button.x, event.button.y);
 				MouseRelease release = {
 					.pos = pos
 				};
@@ -768,16 +777,15 @@ int main(int argc, char *argv[]) {
 			case SDL_EVENT_MOUSE_MOTION: {
 				if (ted->recording_macro)
 					break; // ignore mouse input during macros
-				
-				float x = (float)event.motion.x, y = (float)event.motion.y;
+				vec2 pos = convert_sdl_event_coordinates(ted, event.motion.x, event.motion.y);
 				if (ted->drag_buffer != ted->active_buffer)
 					ted->drag_buffer = NULL;
 				if (ted->drag_buffer) {
-					BufferPos pos = {0};
+					BufferPos buffer_pos = {0};
 					// drag to select
 					// we don't check the return value here, because it's okay to drag off the screen.
-					buffer_pixels_to_pos(ted->drag_buffer, (vec2){x, y}, &pos);
-					buffer_select_to_pos(ted->drag_buffer, pos);
+					buffer_pixels_to_pos(ted->drag_buffer, pos, &buffer_pos);
+					buffer_select_to_pos(ted->drag_buffer, buffer_pos);
 				}
 				hover_reset_timer(ted);
 			} break;
