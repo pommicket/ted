@@ -510,7 +510,7 @@ int main(int argc, char *argv[]) {
 		die("%s", SDL_GetError());
 
 	ted->window = window;
-		
+
 	{ // set icon
 		char *icon_filename = ted_get_file(ted, "assets/icon.bmp");
 		if (icon_filename) {
@@ -635,6 +635,7 @@ int main(int argc, char *argv[]) {
 	
 	double start_time = time_get_seconds();
 	double scroll_wheel_text_size_change = 0.0;
+	float prev_pixel_density = SDL_GetWindowPixelDensity(window);
 	
 	while (!ted->quit) {
 		ted_update_time(ted);
@@ -834,6 +835,10 @@ int main(int argc, char *argv[]) {
 				}
 			} break;
 			}
+		}
+		if (SDL_GetWindowPixelDensity(window) != prev_pixel_density) {
+			prev_pixel_density = SDL_GetWindowPixelDensity(window);
+			ted_update_text_size(ted);
 		}
 		
 		// default to arrow cursor
