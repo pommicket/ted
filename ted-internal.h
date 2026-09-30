@@ -845,5 +845,9 @@ void ted_clear_composition(Ted *ted);
 void ted_update_ime_input_area(Ted *ted);
 /// Update ted's font size to match ted->default_settings' font size.
 void ted_update_text_size(Ted *ted);
+/// Convert from SDL's event coordinate system into physical pixels.
+vec2 ted_convert_sdl_event_coordinates(Ted *ted, float x, float y);
+/// Get latest mouse position from SDL into ted->mouse_pos
+void ted_update_mouse_state(Ted *ted);
 
 #endif // TED_INTERNAL_H_

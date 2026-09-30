@@ -275,15 +275,6 @@ static void ted_update_window_dimensions(Ted *ted) {
 	gl_window_height = ted->window_height = (float)h;
 }
 
-static vec2 convert_sdl_event_coordinates(Ted *ted, float x, float y) {
-	// why is there no hint for doing this automatically?????
-	float dpi = SDL_GetWindowPixelDensity(ted->window);
-	return (vec2){
-		.x = dpi * (float)x,
-		.y = dpi * (float)y,
-	};
-}
-
 #if __unix__
 int ted_crash_signals[] = {SIGSEGV, SIGFPE, SIGABRT, SIGILL, 0};
 #endif
@@ -649,13 +640,9 @@ int main(int argc, char *argv[]) {
 		ted_update_time(ted);
 		double frame_start = ted->frame_time;
 
-		SDL_PumpEvents();
-		u32 key_modifier = ted_get_key_modifier(ted);
-		{ // get mouse position
-			float mouse_x = 0, mouse_y = 0;
-			ted->mouse_state = SDL_GetMouseState(&mouse_x, &mouse_y);
-			ted->mouse_pos = (vec2){mouse_x, mouse_y};
-		}
+		SDL_PumpEvents(); // get latest mouse/keyboard state
+		const u32 key_modifier = ted_get_key_modifier(ted);
+		ted_update_mouse_state(ted);
 
 		for (size_t i = 0; i < arr_count(ted->mouse_clicks); ++i)
 			arr_clear(ted->mouse_clicks[i]);
@@ -715,7 +702,7 @@ int main(int argc, char *argv[]) {
 				
 				if (button >= arr_count(ted->mouse_clicks)) break;
 				
-				vec2 pos = convert_sdl_event_coordinates(ted, event.button.x, event.button.y);
+				vec2 pos = ted_convert_sdl_event_coordinates(ted, event.button.x, event.button.y);
 				bool add = true;
 				if (*ted->message_shown) {
 					if (rect_contains_point(message_box_rect(ted), pos)) {
@@ -768,7 +755,7 @@ int main(int argc, char *argv[]) {
 				Uint8 button = event.button.button;
 				if (button >= arr_count(ted->mouse_releases)) break;
 				
-				vec2 pos = convert_sdl_event_coordinates(ted, event.button.x, event.button.y);
+				vec2 pos = ted_convert_sdl_event_coordinates(ted, event.button.x, event.button.y);
 				MouseRelease release = {
 					.pos = pos
 				};
@@ -777,7 +764,7 @@ int main(int argc, char *argv[]) {
 			case SDL_EVENT_MOUSE_MOTION: {
 				if (ted->recording_macro)
 					break; // ignore mouse input during macros
-				vec2 pos = convert_sdl_event_coordinates(ted, event.motion.x, event.motion.y);
+				vec2 pos = ted_convert_sdl_event_coordinates(ted, event.motion.x, event.motion.y);
 				if (ted->drag_buffer != ted->active_buffer)
 					ted->drag_buffer = NULL;
 				if (ted->drag_buffer) {
@@ -847,12 +834,6 @@ int main(int argc, char *argv[]) {
 				}
 			} break;
 			}
-		}
-		
-		{
-			float mx = 0, my = 0;
-			ted->mouse_state = SDL_GetMouseState(&mx, &my);
-			ted->mouse_pos = (vec2){(float)mx, (float)my};
 		}
 		
 		// default to arrow cursor

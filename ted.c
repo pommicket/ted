@@ -1227,3 +1227,18 @@ void ted_change_text_size_by(Ted *ted, i64 amount) {
 	}
 	ted_update_text_size(ted);
 }
+
+vec2 ted_convert_sdl_event_coordinates(Ted *ted, float x, float y) {
+	// why is there no hint for doing this automatically?????
+	float dpi = SDL_GetWindowPixelDensity(ted->window);
+	return (vec2){
+		.x = dpi * (float)x,
+		.y = dpi * (float)y,
+	};
+}
+
+void ted_update_mouse_state(Ted *ted) {
+	float mx=0, my=0;
+	ted->mouse_state = SDL_GetMouseState(&mx, &my);
+	ted->mouse_pos = ted_convert_sdl_event_coordinates(ted, mx, my);
+}
