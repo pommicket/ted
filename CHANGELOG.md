@@ -1,3 +1,11 @@
+## 3.2.6 — 2026 Sep 29
+
+- Fix `:increase/decrease-text-size` being broken in some cases.
+- Fix stuff being small on high DPI displays on some platforms.\
+  As it turns out, SDL3 reports two display scale values, one for
+  “display scale on Windows/X11” and one for “display scale on macOS/Wayland”.
+  Event coordinates helpfully only account for *one* of them.
+
 ## 3.2.5 — 2026 Aug 1
 
 - Fix IME composition underline color being syntax highlighting for end of line, instead of cursor position.
