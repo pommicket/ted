@@ -569,7 +569,7 @@ float ted_get_ui_scaling(Ted *ted) {
 // Returns true if the text size changed.
 static bool check_for_new_text_size(Ted *ted) {
 	float old = ted->font_text_size;
-	ted->font_text_size = clampf((float)ted_active_settings(ted)->text_size_no_dpi * ted_get_ui_scaling(ted),
+	ted->font_text_size = clampf((float)ted_default_settings(ted)->text_size_no_dpi * ted_get_ui_scaling(ted),
 		TEXT_SIZE_MIN, TEXT_SIZE_MAX);
 	return ted->font_text_size != old;
 }
@@ -1219,3 +1219,11 @@ void ted_clear_composition(Ted *ted) {
 	}
 }
 	
+void ted_change_text_size_by(Ted *ted, i64 amount) {
+	if (amount == 0) return;
+	i64 new_text_size = ted->default_settings.text_size_no_dpi + amount;
+	if (new_text_size >= TEXT_SIZE_MIN && new_text_size <= TEXT_SIZE_MAX) {
+		ted->default_settings.text_size_no_dpi = (u16)new_text_size;
+	}
+	ted_update_text_size(ted);
+}

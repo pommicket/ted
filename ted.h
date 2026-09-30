@@ -1317,6 +1317,8 @@ EditNotifyID ted_add_edit_notify(Ted *ted, EditNotify notify, void *context);
 void ted_remove_edit_notify(Ted *ted, EditNotifyID id);
 /// Get text size in physical pixels (DPI aware).
 float ted_text_size(Ted *ted);
+/// Change text size by amount (like ctrl -/+).
+void ted_change_text_size_by(Ted *ted, i64 amount);
 
 
 // === ui.c ===

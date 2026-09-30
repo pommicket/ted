@@ -595,26 +595,12 @@ void command_execute_ex(Ted *ted, Command c, const CommandArgument *full_argumen
 	case CMD_COMMAND_SELECTOR:
 		menu_open(ted, MENU_COMMAND_SELECTOR);
 		break;
-
 	case CMD_TEXT_SIZE_INCREASE:
-		if (argument != 0) {
-			i64 new_text_size = ted->default_settings.text_size_no_dpi + argument;
-			if (new_text_size >= TEXT_SIZE_MIN && new_text_size <= TEXT_SIZE_MAX) {
-				ted->default_settings.text_size_no_dpi = (u16)new_text_size;
-				ted_update_text_size(ted);
-			}
-		}
+		ted_change_text_size_by(ted, argument);
 		break;
 	case CMD_TEXT_SIZE_DECREASE:
-		if (argument != 0) {
-			i64 new_text_size = ted->default_settings.text_size_no_dpi - argument;
-			if (new_text_size >= TEXT_SIZE_MIN && new_text_size <= TEXT_SIZE_MAX) {
-				ted->default_settings.text_size_no_dpi = (u16)new_text_size;
-				ted_update_text_size(ted);
-			}
-		}
+		ted_change_text_size_by(ted, -argument);
 		break;
-
 	case CMD_VIEW_ONLY:
 		if (buffer) buffer_set_view_only(buffer, !buffer_is_view_only(buffer));
 		break;
