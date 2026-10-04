@@ -11,7 +11,9 @@ struct Settings {
 }
 
 fn read_to_string(path: &str) -> Result<String, Box<dyn Error>> {
-	Ok(std::fs::read_to_string(path).map_err(|e| format!("Couldn't read {path}: {e}"))?)
+	let contents =
+		std::fs::read_to_string(path).map_err(|e| format!("Couldn't read {path}: {e}"))?;
+	Ok(contents.replace('\r', ""))
 }
 
 fn markdown_contents_to_html(contents: &str) -> Result<String, Box<dyn Error>> {
@@ -192,7 +194,6 @@ It should exist and have all the old ted installers.")?;
 		));
 		changelog_out.push('\n');
 	}
-println!("{changelog_out}");
 	Ok(changelog_out)
 }
 

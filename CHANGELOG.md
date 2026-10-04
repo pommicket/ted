@@ -1,4 +1,4 @@
-## 3.2.6 — 2026 Sep 29
+## 3.2.6 — 2026 Oct 4
 
 - Fix `:increase/decrease-text-size` being broken in some cases.
 - Fix stuff being small on high DPI displays on some platforms.\
